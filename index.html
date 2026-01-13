@@ -34,17 +34,30 @@
 
     *{box-sizing:border-box}
     html,body{height:100%}
+
     body{
       margin:0;
       color:var(--text);
       font: 16px/1.6 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
-      /* CLEAN background – no hard dark overlays that cut into content */
+      background: var(--bg); /* ✅ ONLY solid bg here */
+      overflow-x:hidden;
+      position: relative;   /* ✅ for background layer */
+    }
+
+    /* ✅ NEW: background gradient as a fixed layer BEHIND everything */
+    body::before{
+      content:"";
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      pointer-events: none;
       background:
         radial-gradient(1200px 700px at 10% 5%, rgba(153,69,255,.22), transparent 60%),
         radial-gradient(1000px 650px at 90% 10%, rgba(20,241,149,.18), transparent 55%),
         radial-gradient(900px 600px at 70% 85%, rgba(0,209,255,.14), transparent 55%),
         var(--bg);
-      overflow-x:hidden;
+      /* optional: smoothen transitions even more */
+      transform: translateZ(0);
     }
 
     a{color:inherit; text-decoration:none}
@@ -93,9 +106,9 @@
       background: rgba(255,255,255,.06);
       color: rgba(255,255,255,.88);
       font-weight:850;
-      font-size:13px;            /* smaller so it fits */
+      font-size:13px;
       transition: .15s ease;
-      white-space: nowrap;       /* prevent "How / to / Buy" stacking */
+      white-space: nowrap;
       flex: 0 0 auto;
     }
     .btn:hover{background: rgba(255,255,255,.10); transform: translateY(-1px)}
@@ -295,7 +308,6 @@
           </div>
         </a>
 
-        <!-- NAV buttons -->
         <nav class="nav" aria-label="Main navigation">
           <a class="btn" href="#what">What is $SOS?</a>
           <a class="btn" href="#tokenomics">Tokenomics</a>
@@ -304,7 +316,6 @@
           <a class="btn" href="#socials">Socials</a>
         </nav>
 
-        <!-- Right socials only (CA removed) -->
         <div class="headerRight">
           <a class="btn" href="https://x.com/Solana_X1" target="_blank" rel="noreferrer">X</a>
           <a class="btn" href="https://t.me/Solana_X1" target="_blank" rel="noreferrer">Telegram</a>
