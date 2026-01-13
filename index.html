@@ -39,12 +39,11 @@
       margin:0;
       color:var(--text);
       font: 16px/1.6 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
-      background: var(--bg); /* ✅ ONLY solid bg here */
+      background: var(--bg);
       overflow-x:hidden;
-      position: relative;   /* ✅ for background layer */
+      position: relative;
     }
 
-    /* ✅ NEW: background gradient as a fixed layer BEHIND everything */
     body::before{
       content:"";
       position: fixed;
@@ -56,7 +55,6 @@
         radial-gradient(1000px 650px at 90% 10%, rgba(20,241,149,.18), transparent 55%),
         radial-gradient(900px 600px at 70% 85%, rgba(0,209,255,.14), transparent 55%),
         var(--bg);
-      /* optional: smoothen transitions even more */
       transform: translateZ(0);
     }
 
@@ -89,7 +87,6 @@
     .brandText .ticker{font-weight:900; letter-spacing:.2px; font-size:18px}
     .brandText .name{font-weight:700; color:var(--muted); font-size:14px}
 
-    /* Nav as BUTTONS in one row */
     .nav{
       display:flex; align-items:center; justify-content:center;
       gap:10px;
@@ -110,12 +107,22 @@
       transition: .15s ease;
       white-space: nowrap;
       flex: 0 0 auto;
+      user-select:none;
+      -webkit-tap-highlight-color: transparent;
     }
     .btn:hover{background: rgba(255,255,255,.10); transform: translateY(-1px)}
     .btn.primary{
       border: 0;
       background: linear-gradient(90deg, var(--g), var(--c), var(--p));
       color: #061012;
+    }
+
+    /* ✅ NEW: gradient option for other buttons too */
+    .btn.grad{
+      border: 0;
+      background: linear-gradient(90deg, var(--g), var(--c), var(--p));
+      color: #061012;
+      box-shadow: 0 10px 24px rgba(0,0,0,.25);
     }
 
     .headerRight{
@@ -228,6 +235,38 @@
       -webkit-background-clip:text; background-clip:text; color:transparent;
     }
 
+    /* ✅ NEW: clickable copy field */
+    .copyBox{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      cursor:pointer;
+    }
+    .copyText{
+      margin-top:10px;
+      font-family:ui-monospace, Menlo, Consolas, monospace;
+      color:rgba(255,255,255,.85);
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+    }
+    .copyHint{
+      font-size:12px;
+      font-weight:850;
+      color:rgba(255,255,255,.70);
+      border:1px solid rgba(255,255,255,.14);
+      background:rgba(255,255,255,.06);
+      border-radius:999px;
+      padding:8px 10px;
+      flex:0 0 auto;
+    }
+    .copyHint.ok{
+      border:0;
+      color:#061012;
+      background: linear-gradient(90deg, var(--g), var(--c), var(--p));
+    }
+
     /* ===== HOW TO BUY ===== */
     .steps{
       display:grid;
@@ -317,9 +356,10 @@
         </nav>
 
         <div class="headerRight">
-          <a class="btn" href="https://x.com/Solana_X1" target="_blank" rel="noreferrer">X</a>
-          <a class="btn" href="https://t.me/Solana_X1" target="_blank" rel="noreferrer">Telegram</a>
-          <a class="btn" href="https://t.me/solanaonsolana_bot" target="_blank" rel="noreferrer">Bot</a>
+          <!-- ✅ make all socials colorful (same style) -->
+          <a class="btn grad" href="https://x.com/Solana_X1" target="_blank" rel="noreferrer">X</a>
+          <a class="btn grad" href="https://t.me/Solana_X1" target="_blank" rel="noreferrer">Telegram</a>
+          <a class="btn grad" href="https://t.me/solanaonsolana_bot" target="_blank" rel="noreferrer">Bot</a>
         </div>
       </div>
     </div>
@@ -399,11 +439,13 @@
 
           <div style="height:14px"></div>
 
-          <div class="stat">
-            <div class="k">Contract Address</div>
-            <div class="v" style="font-family:ui-monospace,Menlo,Consolas,monospace; font-size:16px; color:rgba(255,255,255,.85)">
-              XXXXXXXXXXXXXXXXXXXXXXXX
+          <!-- ✅ Click to copy CA -->
+          <div class="stat copyBox" data-copy="XXXXXXXXXXXXXXXXXXXXXXXX" role="button" tabindex="0" aria-label="Copy Contract Address">
+            <div style="min-width:0">
+              <div class="k">Contract Address</div>
+              <div class="copyText">XXXXXXXXXXXXXXXXXXXXXXXX</div>
             </div>
+            <div class="copyHint" id="caHintTop">Click to copy</div>
           </div>
         </div>
       </div>
@@ -474,19 +516,23 @@
       <div class="card">
         <div class="cardInner">
           <h2 class="h2">Socials</h2>
+
+          <!-- ✅ Make all social buttons colorful -->
           <div class="socialRow">
-            <a class="btn primary" href="https://t.me/Solana_X1" target="_blank" rel="noreferrer">Telegram</a>
-            <a class="btn" href="https://x.com/Solana_X1" target="_blank" rel="noreferrer">X (Twitter)</a>
-            <a class="btn" href="https://t.me/solanaonsolana_bot" target="_blank" rel="noreferrer">Telegram Bot</a>
+            <a class="btn grad" href="https://t.me/Solana_X1" target="_blank" rel="noreferrer">Telegram</a>
+            <a class="btn grad" href="https://x.com/Solana_X1" target="_blank" rel="noreferrer">X (Twitter)</a>
+            <a class="btn grad" href="https://t.me/solanaonsolana_bot" target="_blank" rel="noreferrer">Telegram Bot</a>
           </div>
 
           <div style="height:14px"></div>
 
-          <div class="stat">
-            <div class="k">Contract Address</div>
-            <div style="margin-top:10px; font-family:ui-monospace,Menlo,Consolas,monospace; color:rgba(255,255,255,.85)">
-              XXXXXXXXXXXXXXXXXXXXXXXX
+          <!-- ✅ Click to copy CA (same behavior as Tokenomics) -->
+          <div class="stat copyBox" data-copy="XXXXXXXXXXXXXXXXXXXXXXXX" role="button" tabindex="0" aria-label="Copy Contract Address">
+            <div style="min-width:0">
+              <div class="k">Contract Address</div>
+              <div class="copyText">XXXXXXXXXXXXXXXXXXXXXXXX</div>
             </div>
+            <div class="copyHint" id="caHintBottom">Click to copy</div>
           </div>
         </div>
       </div>
@@ -499,6 +545,66 @@
 
   <script>
     document.getElementById("y").textContent = new Date().getFullYear();
+
+    // ✅ Copy-to-clipboard for any .copyBox
+    function setHint(el, ok){
+      if(!el) return;
+      if(ok){
+        el.textContent = "Copied!";
+        el.classList.add("ok");
+        window.setTimeout(() => {
+          el.textContent = "Click to copy";
+          el.classList.remove("ok");
+        }, 1200);
+      } else {
+        el.textContent = "Copy failed";
+        window.setTimeout(() => {
+          el.textContent = "Click to copy";
+        }, 1200);
+      }
+    }
+
+    async function copyText(text){
+      try{
+        await navigator.clipboard.writeText(text);
+        return true;
+      }catch(e){
+        // fallback
+        const ta = document.createElement("textarea");
+        ta.value = text;
+        ta.setAttribute("readonly","");
+        ta.style.position="fixed";
+        ta.style.top="-9999px";
+        document.body.appendChild(ta);
+        ta.select();
+        try{
+          const ok = document.execCommand("copy");
+          document.body.removeChild(ta);
+          return ok;
+        }catch(err){
+          document.body.removeChild(ta);
+          return false;
+        }
+      }
+    }
+
+    document.querySelectorAll(".copyBox").forEach(box => {
+      const value = box.getAttribute("data-copy") || "";
+      const hint = box.querySelector(".copyHint");
+
+      const handler = async () => {
+        const ok = await copyText(value.trim());
+        setHint(hint, ok);
+      };
+
+      box.addEventListener("click", handler);
+      box.addEventListener("keydown", (e) => {
+        if(e.key === "Enter" || e.key === " "){
+          e.preventDefault();
+          handler();
+        }
+      });
+    });
   </script>
 </body>
 </html>
