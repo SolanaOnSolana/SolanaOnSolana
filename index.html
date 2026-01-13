@@ -2,342 +2,358 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#070711" />
+
   <title>$SOS — Solana on Solana</title>
   <meta name="description" content="$SOS — Solana on Solana. Meet the Guardian of the chain." />
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="$SOS — Solana on Solana" />
+  <meta property="og:description" content="Meet the Guardian of the chain." />
+  <meta property="og:type" content="website" />
+  <meta property="og:image" content="assets/logo.png" />
 
   <style>
     :root{
       --bg:#070711;
       --panel: rgba(255,255,255,.06);
-      --panel2: rgba(255,255,255,.09);
+      --panel2: rgba(255,255,255,.08);
       --stroke: rgba(255,255,255,.12);
 
       --text: rgba(255,255,255,.92);
-      --muted: rgba(255,255,255,.70);
+      --muted: rgba(255,255,255,.72);
 
-      --g:#14F195;
-      --p:#9945FF;
-      --c:#00D1FF;
+      --g:#14F195;   /* solana green */
+      --c:#00D1FF;   /* cyan */
+      --p:#9945FF;   /* purple */
 
       --radius: 22px;
+      --shadow: 0 18px 60px rgba(0,0,0,.55);
       --shadow2: 0 10px 30px rgba(0,0,0,.35);
-      --max: 1120px;
-
-      --h1: clamp(40px, 5vw, 62px);
-      --h2: clamp(26px, 3vw, 34px);
-      --body: 16px;
-      --line: 1.65;
+      --max: 1100px;
     }
 
     *{box-sizing:border-box}
     html,body{height:100%}
     body{
       margin:0;
-      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
-      background: var(--bg);
-      color: var(--text);
-      font-size: var(--body);
-      line-height: var(--line);
-      overflow-x:hidden;
-    }
-
-    /* Smooth background */
-    .bg{
-      position:fixed; inset:0; z-index:-2;
+      color:var(--text);
+      font: 16px/1.6 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Apple Color Emoji","Segoe UI Emoji";
       background:
-        radial-gradient(1200px 700px at 20% 10%, rgba(153,69,255,.22), transparent 60%),
-        radial-gradient(900px 600px at 80% 10%, rgba(20,241,149,.20), transparent 60%),
-        radial-gradient(800px 600px at 70% 85%, rgba(0,209,255,.14), transparent 60%),
-        linear-gradient(180deg, rgba(255,255,255,.02), rgba(0,0,0,.18));
+        radial-gradient(1200px 700px at 10% 5%, rgba(153,69,255,.22), transparent 60%),
+        radial-gradient(1000px 650px at 90% 10%, rgba(20,241,149,.18), transparent 55%),
+        radial-gradient(900px 600px at 70% 85%, rgba(0,209,255,.14), transparent 55%),
+        var(--bg);
+      overflow-x:hidden;
     }
 
     a{color:inherit; text-decoration:none}
     .wrap{max-width:var(--max); margin:0 auto; padding:0 18px}
-    .section{padding:70px 0}
-    .card{
-      background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.045));
-      border:1px solid var(--stroke);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow2);
-    }
-    .pad{padding:22px}
-    .muted{color:var(--muted)}
-    .divider{height:1px; background:rgba(255,255,255,.10); margin:16px 0}
-    .anchor{scroll-margin-top: 92px}
 
-    /* Buttons */
-    .btn{
-      display:inline-flex; align-items:center; justify-content:center;
-      gap:8px;
-      padding:10px 14px;
-      border-radius:999px;
-      border:1px solid rgba(255,255,255,.14);
-      background: rgba(255,255,255,.06);
-      color:var(--text);
-      font-weight:800;
-      font-size:13px;
-      cursor:pointer;
-      transition: transform .12s ease, background .12s ease, border-color .12s ease;
-      user-select:none;
-      white-space:nowrap;
+    /* ===== HEADER ===== */
+    .header{
+      position:sticky; top:0; z-index:20;
+      backdrop-filter: blur(14px);
+      background: rgba(7,7,17,.58);
+      border-bottom: 1px solid rgba(255,255,255,.08);
     }
-    .btn:hover{transform: translateY(-1px); background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.20)}
-    .btn.primary{
-      border:0;
-      background: linear-gradient(90deg, var(--g), var(--c), var(--p));
-      color:#061016;
-      box-shadow: 0 16px 36px rgba(20,241,149,.18);
-    }
-
-    /* HEADER (clean + aligned) */
-    header{
-      position:sticky; top:0; z-index:50;
-      backdrop-filter: blur(12px);
-      background: rgba(7,7,17,.70);
-      border-bottom:1px solid rgba(255,255,255,.10);
-    }
-
-    .nav{
-      display:grid;
-      grid-template-columns: 260px 1fr auto;
-      align-items:center;
+    .headerRow{
+      display:flex; align-items:center; justify-content:space-between;
       gap:14px;
       padding:14px 0;
     }
 
-    @media (max-width: 980px){
-      .nav{grid-template-columns: 1fr; gap:10px}
-      .navlinks{justify-content:flex-start}
-      .actions{justify-content:flex-start}
+    .brand{
+      display:flex; align-items:center; gap:12px; min-width:240px;
     }
-
-    .brand{display:flex; align-items:center; gap:10px}
     .brand img{
-      width:38px; height:38px; object-fit:contain;
-      border-radius:10px;
-      filter: drop-shadow(0 10px 22px rgba(0,0,0,.45));
+      width:40px; height:40px; object-fit:contain;
+      filter: drop-shadow(0 10px 25px rgba(0,0,0,.45));
     }
-    .brand .t1{font-weight:900; letter-spacing:.2px; line-height:1.1}
-    .brand .t2{font-size:13px; color:var(--muted); margin-top:2px}
+    .brandText{display:flex; flex-direction:column; line-height:1.05}
+    .brandText .ticker{font-weight:900; letter-spacing:.2px; font-size:18px}
+    .brandText .name{font-weight:700; color:var(--muted); font-size:14px}
 
-    .navlinks{
-      display:flex; gap:14px; flex-wrap:wrap;
-      justify-content:center;
+    .nav{
+      display:flex; align-items:center; justify-content:center;
+      gap:22px;
+      flex: 1;
+      min-width: 420px;
     }
-    .navlinks a{
-      font-size:13px; color:var(--muted);
-      padding:8px 10px; border-radius:999px;
-      border:1px solid transparent;
+    .nav a{
+      color: rgba(255,255,255,.80);
+      font-weight:700;
+      font-size:14px;
+      padding:8px 10px;
+      border-radius: 12px;
+      transition: .15s ease;
     }
-    .navlinks a:hover{
-      color:var(--text);
-      border-color: rgba(255,255,255,.12);
-      background: rgba(255,255,255,.04);
+    .nav a:hover{
+      color: var(--text);
+      background: rgba(255,255,255,.06);
     }
 
-    .actions{
-      display:flex; gap:10px; align-items:center; flex-wrap:wrap;
-      justify-content:flex-end;
+    .headerRight{
+      display:flex; align-items:center; gap:10px; justify-content:flex-end;
+      min-width: 360px;
     }
 
-    .copy{
+    .btn{
+      display:inline-flex; align-items:center; justify-content:center;
+      gap:10px;
+      padding:10px 14px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      color: rgba(255,255,255,.88);
+      font-weight:800;
+      font-size:14px;
+      transition: .15s ease;
+      white-space:nowrap;
+    }
+    .btn:hover{background: rgba(255,255,255,.10); transform: translateY(-1px)}
+    .btn.primary{
+      border: 0;
+      background: linear-gradient(90deg, var(--g), var(--c), var(--p));
+      color: #061012;
+      box-shadow: 0 14px 35px rgba(20,241,149,.16);
+    }
+
+    .caPill{
       display:flex; align-items:center; gap:10px;
       padding:10px 12px;
-      border-radius:999px;
-      border:1px solid rgba(255,255,255,.12);
-      background: rgba(255,255,255,.05);
-      font-size:12px;
-      color:var(--muted);
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
       max-width: 320px;
     }
-    .copy code{
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Courier New", monospace;
+    .caPill b{font-size:12px; opacity:.85}
+    .caText{
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
       font-size:12px;
-      color: rgba(255,255,255,.82);
-      overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
-      display:block;
-      max-width: 220px;
-    }
-
-    /* HERO (one column, centered, big logo) */
-    .hero{padding:64px 0 26px}
-    .heroBox{
-      padding:42px 26px;
-      text-align:center;
-      position:relative;
+      color: rgba(255,255,255,.85);
       overflow:hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 185px;
     }
-    .heroBox:before{
-      content:"";
-      position:absolute; inset:-2px; z-index:-1;
-      background:
-        radial-gradient(700px 260px at 20% 0%, rgba(153,69,255,.22), transparent 60%),
-        radial-gradient(650px 260px at 80% 0%, rgba(20,241,149,.18), transparent 60%),
-        radial-gradient(650px 260px at 50% 100%, rgba(0,209,255,.12), transparent 60%);
+    .copyBtn{
+      padding:8px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.08);
+      font-weight:900;
+      cursor:pointer;
+      color: rgba(255,255,255,.9);
     }
+    .copyBtn:hover{background: rgba(255,255,255,.12)}
+    .copied{outline: 2px solid rgba(20,241,149,.35)}
 
+    /* ===== SECTIONS ===== */
+    section{padding:36px 0}
+    .card{
+      background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.05));
+      border: 1px solid rgba(255,255,255,.10);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow2);
+    }
+    .cardInner{padding:28px}
+
+    /* ===== HERO ===== */
+    .hero{padding-top:26px}
+    .heroCard{
+      padding:40px 24px;
+      text-align:center;
+    }
     .heroLogo{
-      width:200px; height:200px;
-      object-fit:contain;
-      filter: drop-shadow(0 26px 44px rgba(0,0,0,.55));
-      margin-bottom:14px;
-    }
-    @media (max-width: 520px){
-      .heroLogo{width:160px; height:160px}
+      width:140px; height:140px; object-fit:contain;
+      filter: drop-shadow(0 18px 40px rgba(0,0,0,.55));
+      margin: 0 auto 10px;
+      display:block;
     }
 
-    .heroCoin{
-      font-weight:900;
-      font-size:28px;
-      margin:0;
-      letter-spacing:-.2px;
-    }
-    .heroName{
-      margin:4px 0 0;
-      color:var(--muted);
-      font-weight:800;
-    }
-    .heroTag{
-      margin:14px 0 0;
-      font-weight:900;
-      font-size:18px;
-      color: rgba(255,255,255,.88);
-    }
-
+    /* THIS is now the biggest text */
     .heroTitle{
-      margin:18px auto 0;
-      font-size: var(--h1);
-      line-height:1.07;
-      letter-spacing:-.8px;
-      font-weight: 900;
-      max-width: 18ch;
+      margin: 10px 0 0;
+      font-weight: 1000;
+      letter-spacing: -1.2px;
+      line-height: 1.05;
+      font-size: clamp(54px, 7vw, 86px);
     }
     .heroTitle .grad{
       background: linear-gradient(90deg, var(--g), var(--c), var(--p));
-      -webkit-background-clip:text;
-      background-clip:text;
-      color:transparent;
-    }
-    .heroSub{
-      margin:14px auto 0;
-      color: var(--muted);
-      font-size: 16px;
-      max-width: 70ch;
-    }
-    .heroCtas{
-      display:flex;
-      gap:10px;
-      flex-wrap:wrap;
-      justify-content:center;
-      margin-top:22px;
+      -webkit-background-clip:text; background-clip:text; color:transparent;
     }
 
-    /* Sections */
-    h2{
-      margin:0 0 12px;
-      font-size: var(--h2);
-      letter-spacing:-.3px;
+    .heroSubName{
+      margin: 10px 0 0;
       font-weight: 900;
+      font-size: clamp(18px, 2.2vw, 26px);
+      color: rgba(255,255,255,.88);
     }
-    p{margin:10px 0; color: var(--muted)}
-    .lead{color: rgba(255,255,255,.86); font-weight:800}
 
-    /* What section layout with sticker on the right */
-    .whatGrid{
+    /* slogan smaller */
+    .heroSlogan{
+      margin: 10px 0 0;
+      font-weight: 800;
+      font-size: 16px;
+      color: rgba(255,255,255,.78);
+    }
+
+    .heroDesc{
+      margin: 14px auto 0;
+      max-width: 820px;
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    .heroActions{
+      margin-top: 18px;
+      display:flex; gap:12px; justify-content:center; flex-wrap:wrap;
+    }
+
+    /* ===== WHAT IS (ONE BIG BOX) ===== */
+    .twoCol{
       display:grid;
-      grid-template-columns: 1.3fr .7fr;
-      gap:14px;
-      align-items:stretch;
+      grid-template-columns: 1.35fr .65fr;
+      gap:18px;
+      align-items:start;
     }
-    @media (max-width: 980px){
-      .whatGrid{grid-template-columns:1fr}
+    .h2{
+      margin:0 0 12px;
+      font-size: 34px;
+      line-height:1.2;
+      font-weight: 950;
+      letter-spacing:-.5px;
     }
-    .imgWrap{
-      background: rgba(0,0,0,.16);
-      border:1px solid rgba(255,255,255,.10);
-      border-radius: 18px;
-      overflow:hidden;
+    .bodyText{
+      color: var(--muted);
+      font-weight: 600;
+    }
+    .bodyText p{margin: 0 0 14px}
+    .bodyText p:last-child{margin:0}
+
+    .stickerWrap{
       display:flex;
-      align-items:center;
       justify-content:center;
-      min-height: 360px;
+      align-items:center;
+      padding-top: 8px;
     }
-    .imgWrap img{
+    .stickerWrap img{
       width:100%;
-      height:100%;
+      max-width: 340px;
+      height:auto;
       object-fit:contain;
-      display:block;
-      padding:10px;
+      filter: drop-shadow(0 18px 40px rgba(0,0,0,.55));
     }
 
-    .tokos{
+    /* ===== TOKENOMICS ===== */
+    .grid3{
+      display:grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap:14px;
+    }
+    .stat{
+      padding:16px;
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.18);
+    }
+    .stat .k{color: rgba(255,255,255,.70); font-weight:800; font-size:12px; letter-spacing:.5px; text-transform:uppercase}
+    .stat .v{margin-top:8px; font-weight:950; font-size:20px}
+    .stat .v .grad{
+      background: linear-gradient(90deg, var(--g), var(--c), var(--p));
+      -webkit-background-clip:text; background-clip:text; color:transparent;
+    }
+
+    /* ===== HOW TO BUY ===== */
+    .steps{
       display:grid;
       grid-template-columns: repeat(4, 1fr);
-      gap:12px;
+      gap:14px;
     }
-    @media (max-width: 980px){ .tokos{grid-template-columns: 1fr 1fr} }
-    @media (max-width: 520px){ .tokos{grid-template-columns: 1fr} }
-
-    .toko{
-      padding:16px;
-      border-radius:18px;
-      border:1px solid rgba(255,255,255,.10);
-      background: rgba(255,255,255,.05);
-    }
-    .toko .k{font-size:12px; color:var(--muted); font-weight:900; letter-spacing:.2px}
-    .toko .v{margin-top:6px; font-weight:900; font-size:16px; color:rgba(255,255,255,.88)}
-
-    .steps{display:grid; grid-template-columns: 1fr 1fr; gap:14px}
-    @media (max-width: 860px){ .steps{grid-template-columns:1fr} }
     .step{
-      padding:18px;
-      border-radius:18px;
-      border:1px solid rgba(255,255,255,.10);
-      background: rgba(255,255,255,.05);
+      padding:16px;
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.18);
     }
-    .step .n{
-      width:30px; height:30px; border-radius:10px;
+    .step .num{
+      width:28px; height:28px; border-radius:10px;
       display:inline-flex; align-items:center; justify-content:center;
-      background: linear-gradient(90deg, var(--g), var(--c), var(--p));
-      color:#061016; font-weight:900;
-      margin-bottom:10px;
+      background: rgba(255,255,255,.08);
+      border: 1px solid rgba(255,255,255,.12);
+      font-weight: 950;
+      margin-bottom: 10px;
     }
-    .step .t{font-weight:900; margin:0; color: rgba(255,255,255,.88)}
-    .step .d{margin-top:6px; color: var(--muted)}
+    .step h4{margin:0 0 8px; font-weight: 950}
+    .step p{margin:0; color: var(--muted); font-weight:600}
 
+    /* ===== FAQ ===== */
     details{
-      border:1px solid rgba(255,255,255,.10);
-      background: rgba(255,255,255,.05);
-      border-radius:16px;
-      padding:14px 16px;
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.18);
+      padding: 14px 16px;
     }
-    details + details{margin-top:10px}
-    summary{cursor:pointer; font-weight:900; color: rgba(255,255,255,.88)}
-    details p{margin:10px 0 0}
+    details + details{margin-top:12px}
+    summary{
+      cursor:pointer;
+      font-weight: 900;
+      color: rgba(255,255,255,.88);
+      list-style:none;
+    }
+    summary::-webkit-details-marker{display:none}
+    details p{margin:10px 0 0; color: var(--muted); font-weight:600}
 
-    footer{padding:36px 0 46px; border-top:1px solid rgba(255,255,255,.10)}
-    small{color:var(--muted)}
+    /* ===== SOCIALS ===== */
+    .socialRow{
+      display:flex; gap:12px; flex-wrap:wrap;
+    }
+
+    /* ===== FOOTER ===== */
+    footer{
+      padding: 24px 0 40px;
+      color: rgba(255,255,255,.55);
+      font-weight:600;
+      text-align:center;
+    }
+
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 980px){
+      .headerRow{flex-wrap:wrap}
+      .nav{order:3; width:100%; justify-content:flex-start; min-width:unset; flex-wrap:wrap}
+      .headerRight{order:2; width:100%; justify-content:flex-start; min-width:unset; flex-wrap:wrap}
+      .brand{min-width:unset}
+    }
+    @media (max-width: 860px){
+      .twoCol{grid-template-columns: 1fr}
+      .grid3{grid-template-columns: 1fr}
+      .steps{grid-template-columns: 1fr}
+      .heroLogo{width:120px; height:120px}
+    }
+
+    /* smooth scrolling */
+    html{scroll-behavior:smooth}
   </style>
 </head>
 
 <body>
-  <div class="bg"></div>
-
   <!-- HEADER -->
-  <header>
+  <div class="header">
     <div class="wrap">
-      <div class="nav">
-        <div class="brand">
-          <img src="assets/logo.png" alt="$SOS logo">
-          <div>
-            <div class="t1">$SOS</div>
-            <div class="t2">Solana on Solana</div>
+      <div class="headerRow">
+        <a class="brand" href="#top" aria-label="Home">
+          <img src="assets/logo.png" alt="$SOS Logo" />
+          <div class="brandText">
+            <div class="ticker">$SOS</div>
+            <div class="name">Solana on Solana</div>
           </div>
-        </div>
+        </a>
 
-        <nav class="navlinks" aria-label="Primary">
+        <!-- NAV (one clean line) -->
+        <nav class="nav" aria-label="Main navigation">
           <a href="#what">What is $SOS?</a>
           <a href="#tokenomics">Tokenomics</a>
           <a href="#buy">How to Buy</a>
@@ -345,217 +361,247 @@
           <a href="#socials">Socials</a>
         </nav>
 
-        <div class="actions">
-          <a class="btn" href="https://x.com/Solana_X1" target="_blank" rel="noopener">X</a>
-          <a class="btn" href="https://t.me/Solana_X1" target="_blank" rel="noopener">Telegram</a>
-          <a class="btn" href="https://t.me/solanaonsolana_bot" target="_blank" rel="noopener">Bot</a>
+        <!-- RIGHT: socials + CA -->
+        <div class="headerRight">
+          <a class="btn" href="https://x.com/Solana_X1" target="_blank" rel="noreferrer">X</a>
+          <a class="btn" href="https://t.me/Solana_X1" target="_blank" rel="noreferrer">Telegram</a>
+          <a class="btn" href="https://t.me/solanaonsolana_bot" target="_blank" rel="noreferrer">Bot</a>
 
-          <div class="copy" title="Click Copy to copy the contract address">
-            <span style="font-weight:900;">CA</span>
-            <code id="caText">XXXXXXXXXXXXXXXXXXXXXXXX</code>
-            <button class="btn" style="padding:8px 10px; font-size:12px;" id="copyBtn">Copy</button>
+          <div class="caPill" title="Contract Address">
+            <b>CA</b>
+            <div id="caText" class="caText">XXXXXXXXXXXXXXXXXXXXXXXX</div>
+            <button id="copyBtn" class="copyBtn" type="button">Copy</button>
           </div>
         </div>
       </div>
     </div>
-  </header>
+  </div>
 
-  <!-- HERO (single column) -->
-  <section class="hero">
-    <div class="wrap">
-      <div class="card heroBox">
-        <img class="heroLogo" src="assets/logo.png" alt="$SOS character logo">
+  <!-- HERO -->
+  <main id="top" class="wrap">
+    <section class="hero">
+      <div class="card heroCard">
+        <img class="heroLogo" src="assets/logo.png" alt="$SOS Large Logo" />
 
-        <p class="heroCoin">$SOS</p>
-        <p class="heroName">Solana on Solana</p>
-        <p class="heroTag">Meet the Guardian of the chain.</p>
-
+        <!-- IMPORTANT: $SOS + name is biggest now -->
         <h1 class="heroTitle">
-          Built for <span class="grad">culture</span>, speed, and on-chain energy.
+          <span class="grad">$SOS</span>
         </h1>
+        <div class="heroSubName">Solana on Solana</div>
+        <div class="heroSlogan">Meet the Guardian of the chain.</div>
 
-        <p class="heroSub">
+        <p class="heroDesc">
           $SOS is a Solana-native memecoin built around a guardian character — a protector of balance and harmony,
           now protecting the culture that moves fastest on-chain.
         </p>
 
-        <div class="heroCtas">
-          <a class="btn primary" href="https://t.me/Solana_X1" target="_blank" rel="noopener">Join Telegram</a>
-          <a class="btn" href="https://x.com/Solana_X1" target="_blank" rel="noopener">Follow on X</a>
-          <a class="btn" href="https://t.me/solanaonsolana_bot" target="_blank" rel="noopener">Use the Bot</a>
+        <!-- Social buttons under hero (as you requested) -->
+        <div class="heroActions">
+          <a class="btn primary" href="https://t.me/Solana_X1" target="_blank" rel="noreferrer">Join Telegram</a>
+          <a class="btn" href="https://x.com/Solana_X1" target="_blank" rel="noreferrer">Follow on X</a>
+          <a class="btn" href="https://t.me/solanaonsolana_bot" target="_blank" rel="noreferrer">Use the Bot</a>
+          <a class="btn" href="#buy">How to Buy</a>
         </div>
       </div>
-    </div>
-  </section>
+    </section>
 
-  <!-- WHAT IS $SOS (sticker moved here) -->
-  <section class="section" id="what">
-    <div class="wrap">
-      <div class="whatGrid anchor">
-        <div class="card pad">
-          <h2>What is $SOS?</h2>
+    <!-- WHAT IS (single wide box + sticker inside same box) -->
+    <section id="what">
+      <div class="card">
+        <div class="cardInner">
+          <div class="twoCol">
+            <div>
+              <h2 class="h2">What is $SOS?</h2>
+              <div class="bodyText">
+                <p>
+                  <b>$SOS</b> is a Solana-native memecoin built around a guardian character — made to live inside the Solana culture loop.
+                </p>
+                <p>
+                  <b>Before memecoins.</b> Before blockchains. Before the Solana chain existed — there was Solana.
+                </p>
+                <p>
+                  She began as a Pokémon Ranger in 2006, trained to protect balance and harmony. That training never left her. It evolved.
+                </p>
+                <p>
+                  Years later, a new world emerged. Chaotic. Viral. Unstoppable. Out of this chaos, the fastest chain in crypto was born: <b>Solana</b>.
+                </p>
+                <p>
+                  Not created by marketing. Not chosen by chance. Aligned by destiny.
+                </p>
+                <p>
+                  The guardian of balance did not disappear — she went on-chain to become the guardian of memecoins and culture that Solana needs now more than ever.
+                </p>
+                <p>
+                  Solana did not give her a name. It inherited it. <b>She is Solana on Solana.</b>
+                </p>
+              </div>
+            </div>
 
-          <p class="lead">
-            $SOS is a Solana-native memecoin built around a guardian character — made to live inside the Solana culture loop.
-          </p>
-
-          <div class="divider"></div>
-
-          <p><span style="font-weight:900; color:rgba(255,255,255,.88)">Before memecoins.</span> Before blockchains. Before the Solana chain existed — there was Solana.</p>
-          <p>She began as a Pokémon Ranger in 2006, trained to protect balance and harmony. That training never left her. It evolved.</p>
-          <p>Years later, a new world emerged. Chaotic. Viral. Unstoppable. Out of this chaos, the fastest chain in crypto was born: <span style="font-weight:900; color:rgba(255,255,255,.88)">Solana</span>.</p>
-          <p>Not created by marketing. Not chosen by chance. Aligned by destiny.</p>
-          <p>The guardian of balance did not disappear — she went on-chain to become the guardian of memecoins and culture that Solana needs now more than ever.</p>
-          <p>Solana did not give her a name. It inherited it. <span style="font-weight:900; color:rgba(255,255,255,.88)">She is Solana on Solana.</span></p>
-        </div>
-
-        <div class="card pad">
-          <h2 style="margin-bottom:12px;">Sticker</h2>
-          <div class="imgWrap">
-            <img src="assets/sticker.png" alt="$SOS sticker">
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- TOKENOMICS -->
-  <section class="section" id="tokenomics">
-    <div class="wrap">
-      <div class="card pad anchor">
-        <h2>Tokenomics</h2>
-        <p class="muted">Simple and clean.</p>
-
-        <div class="tokos" style="margin-top:14px;">
-          <div class="toko">
-            <div class="k">TOTAL SUPPLY</div>
-            <div class="v">1,000,000,000 SOS</div>
-          </div>
-          <div class="toko">
-            <div class="k">TAX</div>
-            <div class="v">0%</div>
-          </div>
-          <div class="toko">
-            <div class="k">SUPPLY</div>
-            <div class="v">Burned</div>
-          </div>
-          <div class="toko">
-            <div class="k">CONTRACT ADDRESS</div>
-            <div class="v" style="font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Courier New', monospace; font-size:13px;">
-              XXXXXXXXXXXXXXXXXXXXXXXX
+            <div class="stickerWrap">
+              <img src="assets/sticker.png" alt="$SOS Sticker" />
             </div>
           </div>
         </div>
       </div>
-    </div>
-  </section>
+    </section>
 
-  <!-- HOW TO BUY -->
-  <section class="section" id="buy">
-    <div class="wrap">
-      <div class="card pad anchor">
-        <h2>How to Buy</h2>
-        <p class="muted">Four quick steps.</p>
+    <!-- TOKENOMICS -->
+    <section id="tokenomics">
+      <div class="card">
+        <div class="cardInner">
+          <h2 class="h2">Tokenomics</h2>
+          <div class="grid3">
+            <div class="stat">
+              <div class="k">Supply</div>
+              <div class="v"><span class="grad">1,000,000,000</span> SOS</div>
+            </div>
+            <div class="stat">
+              <div class="k">Tax</div>
+              <div class="v">0%</div>
+            </div>
+            <div class="stat">
+              <div class="k">Supply</div>
+              <div class="v">Burned</div>
+            </div>
+          </div>
 
-        <div class="steps" style="margin-top:14px;">
-          <div class="step">
-            <div class="n">1</div>
-            <p class="t">Get a Solana wallet</p>
-            <p class="d">Install Phantom (or another Solana wallet) and create your wallet.</p>
-          </div>
-          <div class="step">
-            <div class="n">2</div>
-            <p class="t">Add SOL</p>
-            <p class="d">Buy SOL on an exchange and send it to your wallet address.</p>
-          </div>
-          <div class="step">
-            <div class="n">3</div>
-            <p class="t">Swap for $SOS</p>
-            <p class="d">Use a Solana DEX and swap SOL → $SOS. Paste the contract address to be safe.</p>
-          </div>
-          <div class="step">
-            <div class="n">4</div>
-            <p class="t">Join the community</p>
-            <p class="d">Stay active, share memes, and keep the culture moving.</p>
+          <div style="height:14px"></div>
+
+          <div class="stat" style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+            <div>
+              <div class="k">Contract Address</div>
+              <div class="v" style="font-family:ui-monospace,Menlo,Consolas,monospace; font-size:16px; color:rgba(255,255,255,.85)">
+                XXXXXXXXXXXXXXXXXXXXXXXX
+              </div>
+            </div>
+            <button class="copyBtn" type="button" onclick="copyCA()">Copy</button>
           </div>
         </div>
       </div>
-    </div>
-  </section>
+    </section>
 
-  <!-- FAQ (no presale questions) -->
-  <section class="section" id="faq">
-    <div class="wrap">
-      <div class="card pad anchor">
-        <h2>FAQ</h2>
-
-        <details>
-          <summary>What is $SOS?</summary>
-          <p>$SOS is a Solana-native memecoin built around a guardian character narrative.</p>
-        </details>
-
-        <details>
-          <summary>Which chain is $SOS on?</summary>
-          <p>Solana.</p>
-        </details>
-
-        <details>
-          <summary>How do I buy $SOS?</summary>
-          <p>Use a Solana wallet, add SOL, then swap SOL → $SOS on a Solana DEX. Always verify the contract address.</p>
-        </details>
-
-        <details>
-          <summary>Where are the socials?</summary>
-          <p>You can find X, Telegram, and the bot links in the header and footer.</p>
-        </details>
-      </div>
-    </div>
-  </section>
-
-  <!-- FOOTER -->
-  <footer id="socials">
-    <div class="wrap">
-      <div style="display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; align-items:center;">
-        <div style="display:flex; gap:10px; align-items:center;">
-          <img src="assets/logo.png" alt="$SOS" style="width:34px;height:34px;object-fit:contain;border-radius:10px;filter:drop-shadow(0 10px 22px rgba(0,0,0,.45));">
-          <div>
-            <div style="font-weight:900;">$SOS</div>
-            <small>Solana on Solana</small>
+    <!-- HOW TO BUY -->
+    <section id="buy">
+      <div class="card">
+        <div class="cardInner">
+          <h2 class="h2">How to Buy</h2>
+          <div class="steps">
+            <div class="step">
+              <div class="num">1</div>
+              <h4>Get a Wallet</h4>
+              <p>Use a Solana wallet (Phantom, Solflare, Backpack) and set it up securely.</p>
+            </div>
+            <div class="step">
+              <div class="num">2</div>
+              <h4>Fund with SOL</h4>
+              <p>Buy SOL on an exchange and send it to your Solana wallet address.</p>
+            </div>
+            <div class="step">
+              <div class="num">3</div>
+              <h4>Swap for $SOS</h4>
+              <p>Use a Solana DEX and swap SOL → $SOS using the official contract address.</p>
+            </div>
+            <div class="step">
+              <div class="num">4</div>
+              <h4>Join the Community</h4>
+              <p>Follow updates, memes, and announcements via Telegram and X.</p>
+            </div>
           </div>
         </div>
-
-        <div style="display:flex; gap:10px; flex-wrap:wrap;">
-          <a class="btn" href="https://x.com/Solana_X1" target="_blank" rel="noopener">X</a>
-          <a class="btn" href="https://t.me/Solana_X1" target="_blank" rel="noopener">Telegram</a>
-          <a class="btn" href="https://t.me/solanaonsolana_bot" target="_blank" rel="noopener">Bot</a>
-        </div>
-
-        <small>© <span id="year"></span> $SOS</small>
       </div>
-    </div>
-  </footer>
+    </section>
+
+    <!-- FAQ -->
+    <section id="faq">
+      <div class="card">
+        <div class="cardInner">
+          <h2 class="h2">FAQ</h2>
+
+          <details>
+            <summary>What is $SOS?</summary>
+            <p>$SOS is a Solana-native memecoin built around a guardian character — made for Solana culture and community energy.</p>
+          </details>
+
+          <details>
+            <summary>Which chain is $SOS on?</summary>
+            <p>$SOS is on Solana.</p>
+          </details>
+
+          <details>
+            <summary>How do I buy $SOS?</summary>
+            <p>Get a Solana wallet, fund it with SOL, then swap SOL → $SOS on a Solana DEX using the official contract address.</p>
+          </details>
+
+          <details>
+            <summary>Where can I follow updates?</summary>
+            <p>Use the buttons in the header or the Socials section below for Telegram, X, and the Telegram bot.</p>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    <!-- SOCIALS -->
+    <section id="socials">
+      <div class="card">
+        <div class="cardInner">
+          <h2 class="h2">Socials</h2>
+          <div class="socialRow">
+            <a class="btn primary" href="https://t.me/Solana_X1" target="_blank" rel="noreferrer">Telegram</a>
+            <a class="btn" href="https://x.com/Solana_X1" target="_blank" rel="noreferrer">X (Twitter)</a>
+            <a class="btn" href="https://t.me/solanaonsolana_bot" target="_blank" rel="noreferrer">Telegram Bot</a>
+          </div>
+
+          <div style="height:14px"></div>
+
+          <div class="stat">
+            <div class="k">Contract Address</div>
+            <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:10px;">
+              <div class="caText" style="max-width: 100%;">XXXXXXXXXXXXXXXXXXXXXXXX</div>
+              <button class="copyBtn" type="button" onclick="copyCA()">Copy</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      © <span id="y"></span> $SOS — Solana on Solana. All content is for community and entertainment.
+    </footer>
+  </main>
 
   <script>
-    const ca = "XXXXXXXXXXXXXXXXXXXXXXXX";
-    document.getElementById("caText").textContent = ca;
+    const CA = "XXXXXXXXXXXXXXXXXXXXXXXX";
 
-    document.getElementById("copyBtn").addEventListener("click", async () => {
-      try{
-        await navigator.clipboard.writeText(ca);
-        const b = document.getElementById("copyBtn");
-        b.textContent = "Copied";
-        setTimeout(()=>b.textContent="Copy", 1100);
-      }catch(e){
-        const t = document.createElement("textarea");
-        t.value = ca;
-        document.body.appendChild(t);
-        t.select();
-        document.execCommand("copy");
-        document.body.removeChild(t);
-      }
-    });
+    function copyText(text){
+      return navigator.clipboard.writeText(text);
+    }
 
-    document.getElementById("year").textContent = new Date().getFullYear();
+    function flashCopied(el){
+      el.classList.add("copied");
+      const old = el.textContent;
+      el.textContent = "Copied";
+      setTimeout(() => { el.textContent = old; el.classList.remove("copied"); }, 900);
+    }
+
+    function copyCA(){
+      copyText(CA).then(() => {
+        const btn = document.getElementById("copyBtn");
+        if (btn) flashCopied(btn);
+      });
+    }
+
+    // header copy button
+    const copyBtn = document.getElementById("copyBtn");
+    const caText = document.getElementById("caText");
+    if (caText) caText.textContent = CA;
+
+    if (copyBtn){
+      copyBtn.addEventListener("click", () => {
+        copyText(CA).then(() => flashCopied(copyBtn));
+      });
+    }
+
+    document.getElementById("y").textContent = new Date().getFullYear();
   </script>
 </body>
 </html>
