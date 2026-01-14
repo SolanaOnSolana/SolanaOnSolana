@@ -5,10 +5,9 @@
 ============================================================ */
 
 const RPC_URLS = [
-  "https://api.mainnet-beta.solana.com",
-  "https://rpc.ankr.com/solana",
-  "https://solana.drpc.org"
+  "https://x1-rpc-proxy.simon-kaggwa-why.workers.dev"
 ];
+
 
 const DEX_TOKENS = (mint) => `https://api.dexscreener.com/latest/dex/tokens/${encodeURIComponent(mint)}`;
 const FETCH_TIMEOUT_MS = 12000;
