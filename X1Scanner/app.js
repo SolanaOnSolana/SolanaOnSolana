@@ -1,430 +1,646 @@
 /* ============================================================
-  X1Scanner/app.js  — Robust Free-only Solana Token Scanner
-  - Market data: DexScreener
-  - On-chain: Solana RPC with automatic failover
-============================================================ */
+   X1 Contract Scanner — app.js (NO paid APIs)
+   - On-chain via Cloudflare Worker RPC proxy (Helius upstream)
+   - Market/trending via DexScreener (public endpoints)
+   ============================================================ */
 
-const RPC_URLS = [
-  "https://x1-rpc-proxy.simon-kaggwa-why.workers.dev"
-];
+/** ✅ SET THIS to your Cloudflare Worker URL */
+const RPC_PROXY = "https://x1-rpc-proxy.simon-kaggwa-why.workers.dev";
 
+/** RPC config */
+const RPC_TIMEOUT_MS = 12000;
 
-const DEX_TOKENS = (mint) => `https://api.dexscreener.com/latest/dex/tokens/${encodeURIComponent(mint)}`;
-const FETCH_TIMEOUT_MS = 12000;
+/** DexScreener endpoints (public) */
+const DEX_TOKEN_URL = (mint) => `https://api.dexscreener.com/latest/dex/tokens/${encodeURIComponent(mint)}`;
+const DEX_BOOSTED_SOL = "https://api.dexscreener.com/latest/dex/boosted/solana";   // trending-ish
+const DEX_SEARCH_SOL = (q) => `https://api.dexscreener.com/latest/dex/search/?q=${encodeURIComponent(q)}`;
 
+/** Solscan links */
+const SOLSCAN_TOKEN = (mint) => `https://solscan.io/token/${mint}`;
+const SOLSCAN_ACCOUNT = (addr) => `https://solscan.io/account/${addr}`;
+
+/** Helpers */
 const $ = (id) => document.getElementById(id);
+const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
+const shortAddr = (a) => (a ? `${a.slice(0, 4)}…${a.slice(-4)}` : "—");
+const looksBase58 = (s) =>
+  typeof s === "string" &&
+  s.length >= 32 &&
+  s.length <= 52 &&
+  /^[1-9A-HJ-NP-Za-km-z]+$/.test(s);
 
-function setText(id, txt){ const el = $(id); if(el) el.textContent = txt; }
-function setStatus(msg){ setText("status", msg); }
-function setHTML(id, html){ const el = $(id); if(el) el.innerHTML = html; }
-
-function setLogo(url){
-  const img = $("tokenLogo");
-  if(!img) return;
-  if(url){ img.src = url; img.style.display=""; }
-  else { img.removeAttribute("src"); img.style.display="none"; }
+function fmtInt(n) {
+  if (n === null || n === undefined || Number.isNaN(n)) return "—";
+  try {
+    return new Intl.NumberFormat("en-US").format(Math.round(Number(n)));
+  } catch {
+    return String(n);
+  }
 }
-
-function setRiskBadge(level){
-  const el = $("riskBadge");
-  if(!el) return;
-  el.textContent = level === "LOW" ? "LOW RISK" : (level === "MEDIUM" ? "MEDIUM RISK" : "HIGH RISK");
-  el.classList.remove("good","warn","bad");
-  if(level === "LOW") el.classList.add("good");
-  else if(level === "MEDIUM") el.classList.add("warn");
-  else el.classList.add("bad");
-}
-
-/** ------------------ utils ------------------ **/
-function looksBase58(s){
-  return typeof s === "string"
-    && s.length >= 32 && s.length <= 52
-    && /^[1-9A-HJ-NP-Za-km-z]+$/.test(s);
-}
-function shortAddr(a){ return a ? `${a.slice(0,4)}…${a.slice(-4)}` : "—"; }
-function clamp(n,min,max){ return Math.max(min, Math.min(max, n)); }
-function fmtNum(n, digits=2){
-  if(n === null || n === undefined || Number.isNaN(n)) return "—";
+function fmtNum(n, digits = 2) {
+  if (n === null || n === undefined || Number.isNaN(n)) return "—";
   const x = Number(n);
-  if(!Number.isFinite(x)) return "—";
-  try { return new Intl.NumberFormat("en-US",{ maximumFractionDigits: digits }).format(x); }
-  catch { return String(x); }
+  if (!Number.isFinite(x)) return "—";
+  try {
+    return new Intl.NumberFormat("en-US", { maximumFractionDigits: digits }).format(x);
+  } catch {
+    return String(x);
+  }
 }
-function fmtInt(n){
-  if(n === null || n === undefined || Number.isNaN(n)) return "—";
+function fmtUsd(n, digits = 2) {
+  if (n === null || n === undefined || Number.isNaN(n)) return "—";
   const x = Number(n);
-  if(!Number.isFinite(x)) return "—";
-  try { return new Intl.NumberFormat("en-US",{ maximumFractionDigits: 0 }).format(Math.floor(x)); }
-  catch { return String(Math.floor(x)); }
+  if (!Number.isFinite(x)) return "—";
+  if (x >= 1_000_000_000) return `$${fmtNum(x / 1_000_000_000, 2)}B`;
+  if (x >= 1_000_000) return `$${fmtNum(x / 1_000_000, 2)}M`;
+  if (x >= 1_000) return `$${fmtNum(x / 1_000, 2)}K`;
+  return `$${fmtNum(x, digits)}`;
+}
+function setStatus(msg) {
+  const el = $("status");
+  if (el) el.textContent = msg || "—";
+}
+function setBadge(el, txt, mode) {
+  if (!el) return;
+  el.textContent = txt;
+  el.classList.remove("good", "warn", "bad");
+  if (mode) el.classList.add(mode);
+}
+function setScoreBar(pct) {
+  const bar = $("scoreBar");
+  if (!bar) return;
+  bar.style.width = clamp(pct, 0, 100) + "%";
 }
 
-async function fetchWithTimeout(url, options={}, timeoutMs=FETCH_TIMEOUT_MS){
+/** Fetch with timeout */
+async function fetchTimeout(url, opts = {}, ms = RPC_TIMEOUT_MS) {
   const controller = new AbortController();
-  const t = setTimeout(()=>controller.abort(), timeoutMs);
-  try{
-    return await fetch(url, { ...options, signal: controller.signal });
+  const t = setTimeout(() => controller.abort(), ms);
+  try {
+    const res = await fetch(url, { ...opts, signal: controller.signal });
+    return res;
   } finally {
     clearTimeout(t);
   }
 }
 
-/** ------------------ RPC failover ------------------ **/
-let _rpcCursor = 0;
-
-async function rpcCall(method, params){
-  const body = JSON.stringify({ jsonrpc:"2.0", id:1, method, params });
-  let lastErr = null;
-
-  for(let attempt=0; attempt<RPC_URLS.length; attempt++){
-    const url = RPC_URLS[(_rpcCursor + attempt) % RPC_URLS.length];
-    try{
-      const res = await fetchWithTimeout(url, {
-        method:"POST",
-        headers:{ "Content-Type":"application/json" },
-        body
-      });
-
-      // retry on rate limits / server errors
-      if(res.status === 429 || res.status >= 500){
-        const txt = await res.text().catch(()=> "");
-        throw new Error(`RPC ${res.status} ${txt}`.slice(0,220));
-      }
-      if(!res.ok){
-        const txt = await res.text().catch(()=> "");
-        throw new Error(`RPC HTTP ${res.status} ${txt}`.slice(0,220));
-      }
-
-      const j = await res.json();
-      if(j?.error) throw new Error(j.error.message || "RPC error");
-      _rpcCursor = (_rpcCursor + attempt + 1) % RPC_URLS.length; // move forward
-      return j.result;
-
-    }catch(e){
-      lastErr = e;
-      // continue to next rpc
-    }
+/** JSON-RPC via Worker proxy (POST only) */
+async function rpc(method, params) {
+  if (!RPC_PROXY) throw new Error("RPC proxy not set.");
+  const body = JSON.stringify({ jsonrpc: "2.0", id: 1, method, params });
+  const res = await fetchTimeout(RPC_PROXY, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body,
+  });
+  if (!res.ok) {
+    const txt = await res.text().catch(() => "");
+    throw new Error(`RPC HTTP ${res.status} ${txt}`.slice(0, 180));
   }
-
-  throw lastErr || new Error("RPC failed");
+  const j = await res.json();
+  if (j.error) throw new Error(j.error.message || "RPC error");
+  return j.result;
 }
 
-/** ------------------ On-chain queries ------------------ **/
-async function getMintParsed(mint){
-  const r = await rpcCall("getAccountInfo", [mint, { encoding:"jsonParsed", commitment:"confirmed" }]);
-  const parsed = r?.value?.data?.parsed;
-  if(!parsed || parsed.type !== "mint") return null;
-  return parsed.info || null;
+/** On-chain queries */
+async function getTokenSupply(mint) {
+  const r = await rpc("getTokenSupply", [mint]);
+  return r?.value || null; // { amount, decimals, uiAmount, uiAmountString }
 }
-async function getTokenSupply(mint){
-  const r = await rpcCall("getTokenSupply", [mint]);
-  return r?.value || null;
+
+async function getMintAuthorities(mint) {
+  // Use getAccountInfo on mint account (parsed)
+  const r = await rpc("getAccountInfo", [
+    mint,
+    { encoding: "jsonParsed", commitment: "confirmed" },
+  ]);
+  const info = r?.value?.data?.parsed?.info;
+  // For SPL Token mint: parsed.info has mintAuthority and freezeAuthority
+  const mintAuthority = info?.mintAuthority ?? null;
+  const freezeAuthority = info?.freezeAuthority ?? null;
+  const program = r?.value?.owner || null; // token program
+  return { mintAuthority, freezeAuthority, program };
 }
-async function getTokenLargestAccounts(mint){
-  const r = await rpcCall("getTokenLargestAccounts", [mint]);
+
+async function getLargestTokenAccounts(mint) {
+  const r = await rpc("getTokenLargestAccounts", [mint]);
   return Array.isArray(r?.value) ? r.value : [];
 }
-async function getTokenAccountOwner(tokenAccount){
-  const r = await rpcCall("getAccountInfo", [tokenAccount, { encoding:"jsonParsed", commitment:"confirmed" }]);
-  const parsed = r?.value?.data?.parsed;
-  if(!parsed || parsed.type !== "account") return null;
-  return parsed.info?.owner || null;
-}
 
-/** ------------------ Market (DexScreener) ------------------ **/
-async function getDexPairs(mint){
-  const res = await fetchWithTimeout(DEX_TOKENS(mint), { method:"GET" });
-  if(!res.ok){
-    const txt = await res.text().catch(()=> "");
-    throw new Error(`DexScreener HTTP ${res.status} ${txt}`.slice(0,180));
-  }
-  const data = await res.json();
-  const pairs = Array.isArray(data?.pairs) ? data.pairs : [];
-  const solPairs = pairs.filter(p => String(p?.chainId||"").toLowerCase() === "solana");
-  const list = solPairs.length ? solPairs : pairs;
-  list.sort((a,b)=> (Number(b?.liquidity?.usd||0) - Number(a?.liquidity?.usd||0)));
-  return list;
-}
-
-function pickTokenMetaFromDex(bestPair, mint){
-  const base = bestPair?.baseToken || null;
-  const quote = bestPair?.quoteToken || null;
-  let token = base;
-  if(String(base?.address||"") !== mint && String(quote?.address||"") === mint) token = quote;
-
-  const name = token?.name || "—";
-  const symbol = token?.symbol || "—";
-  const logo =
-    bestPair?.info?.imageUrl ||
-    bestPair?.baseToken?.logoURI ||
-    bestPair?.quoteToken?.logoURI ||
-    null;
-
-  return { name, symbol, logo };
-}
-
-function safeNum(obj, path, fallback=null){
-  try{
-    const parts = path.split(".");
-    let cur = obj;
-    for(const k of parts) cur = cur?.[k];
-    const n = Number(cur);
-    return Number.isFinite(n) ? n : fallback;
-  }catch{ return fallback; }
-}
-
-/** ------------------ Risk ------------------ **/
-function computeRiskSignals({ mintInfo, supplyUi, topHolders, owners, bestPair }){
-  const reasons = [];
-  let score = 0;
-
-  const mintAuth = mintInfo?.mintAuthority || null;
-  const freezeAuth = mintInfo?.freezeAuthority || null;
-
-  if(mintAuth){ score += 25; reasons.push(`Mint authority SET (${shortAddr(mintAuth)}). Can mint more supply.`); }
-  else reasons.push("Mint authority NOT set (good).");
-
-  if(freezeAuth){ score += 20; reasons.push(`Freeze authority SET (${shortAddr(freezeAuth)}). Can freeze holders.`); }
-  else reasons.push("Freeze authority NOT set (good).");
-
-  const liqUsd = Number(bestPair?.liquidity?.usd || 0);
-  if(!bestPair){
-    score += 30;
-    reasons.push("No Dex pair found (unknown liquidity/price).");
-  }else{
-    if(liqUsd < 10000){ score += 20; reasons.push(`Very low liquidity ($${fmtInt(liqUsd)}).`); }
-    else if(liqUsd < 50000){ score += 10; reasons.push(`Low liquidity ($${fmtInt(liqUsd)}).`); }
-    else reasons.push(`Liquidity ok ($${fmtInt(liqUsd)}).`);
-  }
-
-  if(supplyUi && supplyUi > 0 && topHolders?.length){
-    const topUi = topHolders.map(x => Number(x.uiAmount || 0));
-    const top1 = (topUi[0] || 0) / supplyUi * 100;
-    const top5 = topUi.slice(0,5).reduce((a,b)=>a+b,0) / supplyUi * 100;
-    const top20 = topUi.slice(0,20).reduce((a,b)=>a+b,0) / supplyUi * 100;
-
-    if(top1 > 20){ score += 20; reasons.push(`Top1 concentration ${top1.toFixed(2)}% (high).`); }
-    else if(top1 > 10){ score += 10; reasons.push(`Top1 concentration ${top1.toFixed(2)}% (medium).`); }
-    else reasons.push(`Top1 concentration ${top1.toFixed(2)}% (good).`);
-
-    if(top5 > 50){ score += 15; reasons.push(`Top5 concentration ${top5.toFixed(2)}% (high).`); }
-    else if(top5 > 35){ score += 8; reasons.push(`Top5 concentration ${top5.toFixed(2)}% (medium).`); }
-
-    if(top20 > 80){ score += 10; reasons.push(`Top20 concentration ${top20.toFixed(2)}% (very high).`); }
-  }else{
-    score += 10;
-    reasons.push("Concentration unknown (RPC limits).");
-  }
-
-  if(Array.isArray(owners) && owners.length){
-    const counts = new Map();
-    for(const o of owners){ if(!o) continue; counts.set(o,(counts.get(o)||0)+1); }
-    const clustered = Array.from(counts.entries()).filter(([,c])=>c>=2).sort((a,b)=>b[1]-a[1]);
-    if(clustered.length){
-      score += clamp(clustered[0][1] * 4, 4, 16);
-      reasons.push(`Cluster detected: ${shortAddr(clustered[0][0])} appears ${clustered[0][1]}x in Top20.`);
-    }else{
-      reasons.push("No obvious Top20 owner clusters (good).");
-    }
-  }
-
-  const level = score >= 60 ? "HIGH" : (score >= 35 ? "MEDIUM" : "LOW");
-  return { score: clamp(score,0,100), level, reasons };
-}
-
-/** ------------------ Render ------------------ **/
-function renderHoldersList({ largest, owners, supplyUi }){
-  const el = $("holdersList");
-  if(!el) return;
-
-  if(!largest?.length){
-    el.innerHTML = `<div style="padding:12px 14px; opacity:.8">—</div>`;
-    return;
-  }
-
-  el.innerHTML = largest.slice(0,20).map((x,i)=>{
-    const ta = x.address;
-    const ui = Number(x.uiAmount || 0);
-    const pct = (supplyUi && supplyUi > 0) ? (ui / supplyUi * 100) : null;
-    const owner = owners?.[i] || null;
-
-    const taLink = ta ? `https://solscan.io/account/${ta}` : "#";
-    const owLink = owner ? `https://solscan.io/account/${owner}` : "#";
-
-    return `
-      <div class="tr">
-        <div class="cellMain">#${i+1}</div>
-        <div>
-          <div class="cellMain">${fmtInt(ui)} <span style="opacity:.7">${pct===null ? "" : `(${pct.toFixed(2)}%)`}</span></div>
-          <div class="cellSub mono">
-            TA: <a class="link" href="${taLink}" target="_blank" rel="noreferrer">${shortAddr(ta)}</a>
-            ${owner ? ` • Owner: <a class="link" href="${owLink}" target="_blank" rel="noreferrer">${shortAddr(owner)}</a>` : ""}
-          </div>
-        </div>
-        <div class="col3">—</div>
-      </div>
-    `;
-  }).join("");
-}
-
-function renderClusters(owners){
-  const el = $("clustersList");
-  if(!el) return;
-
-  if(!owners?.length){
-    el.innerHTML = `<div style="opacity:.8">—</div>`;
-    return;
-  }
-
-  const counts = new Map();
-  for(const o of owners){ if(!o) continue; counts.set(o,(counts.get(o)||0)+1); }
-  const list = Array.from(counts.entries()).filter(([,c])=>c>=2).sort((a,b)=>b[1]-a[1]).slice(0,8);
-
-  if(!list.length){
-    el.innerHTML = `<div style="opacity:.8">No clusters found in Top 20.</div>`;
-    return;
-  }
-
-  el.innerHTML = list.map(([o,c])=>{
-    const u = `https://solscan.io/account/${o}`;
-    return `<div style="margin:8px 0;">
-      <span class="badge warn">Cluster x${c}</span>
-      <a class="link mono" href="${u}" target="_blank" rel="noreferrer" style="margin-left:10px;">${o}</a>
-    </div>`;
-  }).join("");
-}
-
-/** ------------------ main scan ------------------ **/
-async function scanMint(mint){
-  setStatus("Scanning token…");
-  setRiskBadge("MEDIUM");
-  setText("riskReason","—");
-  setText("tokenName","—");
-  setText("tokenSymbol","—");
-  setText("kPrice","—");
-  setText("kLiq","—");
-  setText("kMc","—");
-  setText("kFdv","—");
-  setText("kSupply","—");
-  setText("kDec","—");
-  setText("kAuthorities","—");
-  setHTML("holdersList","");
-  setHTML("clustersList","");
-  setLogo(null);
-
-  const reasonsEl = $("riskReasons");
-  if(reasonsEl) reasonsEl.innerHTML = "—";
-
-  const mintShort = $("mintShort");
-  if(mintShort) mintShort.textContent = mint ? shortAddr(mint) : "—";
-
-  if(!looksBase58(mint)){
-    setStatus("Invalid mint address.");
-    setRiskBadge("HIGH");
-    setText("riskReason","Invalid input");
-    return;
-  }
-
-  // 1) Market first (independent)
-  let bestPair = null;
-  try{
-    const pairs = await getDexPairs(mint);
-    bestPair = pairs?.[0] || null;
-    if(bestPair){
-      const meta = pickTokenMetaFromDex(bestPair, mint);
-      setText("tokenName", meta.name || "—");
-      setText("tokenSymbol", meta.symbol || "—");
-      setLogo(meta.logo || null);
-
-      const priceUsd = safeNum(bestPair,"priceUsd",null);
-      const liqUsd = safeNum(bestPair,"liquidity.usd",null);
-      const mc = safeNum(bestPair,"marketCap",null);
-      const fdv = safeNum(bestPair,"fdv",null);
-
-      setText("kPrice", priceUsd!==null ? `$${fmtNum(priceUsd, 8)}` : "—");
-      setText("kLiq", liqUsd!==null ? `$${fmtInt(liqUsd)}` : "—");
-      setText("kMc", mc!==null ? `$${fmtInt(mc)}` : "—");
-      setText("kFdv", fdv!==null ? `$${fmtInt(fdv)}` : "—");
-    }
-  }catch(e){
-    // Market failing shouldn't kill scan
-    console.warn("Dex error:", e);
-  }
-
-  // 2) On-chain (with failover). If it fails, we still show market + a warning.
-  try{
-    const [mintParsed, supply, largest] = await Promise.all([
-      getMintParsed(mint),
-      getTokenSupply(mint).catch(()=>null),
-      getTokenLargestAccounts(mint).catch(()=>[])
-    ]);
-
-    const decimals = supply ? Number(supply.decimals||0) : (mintParsed ? Number(mintParsed.decimals||0) : null);
-    const supplyUi = supply ? Number(supply.uiAmount||0) : null;
-
-    setText("kDec", decimals!==null ? String(decimals) : "—");
-    setText("kSupply", supplyUi!==null ? fmtInt(supplyUi) : "—");
-
-    const mintAuth = mintParsed?.mintAuthority || null;
-    const freezeAuth = mintParsed?.freezeAuthority || null;
-    setText("kAuthorities", `Mint: ${mintAuth ? shortAddr(mintAuth) : "NONE"} • Freeze: ${freezeAuth ? shortAddr(freezeAuth) : "NONE"}`);
-
-    const top20 = (largest || []).slice(0,20);
-
-    // fetch owners best-effort (parallel, but safe)
-    const ownerPromises = top20.map(it =>
-      getTokenAccountOwner(it.address).catch(()=>null)
-    );
-    const owners = await Promise.all(ownerPromises);
-
-    renderHoldersList({ largest: top20, owners, supplyUi });
-    renderClusters(owners);
-
-    const risk = computeRiskSignals({
-      mintInfo: mintParsed,
-      supplyUi,
-      topHolders: top20,
-      owners,
-      bestPair
-    });
-
-    setRiskBadge(risk.level);
-    setText("riskReason", `Score ${risk.score}/100`);
-    if(reasonsEl){
-      reasonsEl.innerHTML = risk.reasons.map(r => `<div style="margin:6px 0; opacity:.9">• ${r}</div>`).join("");
-    }
-
-    setStatus(`Scan complete • ${risk.level} RISK`);
-
-  }catch(e){
-    console.error(e);
-    // still show something useful
-    setRiskBadge("HIGH");
-    setText("riskReason", "On-chain unavailable");
-    if(reasonsEl){
-      reasonsEl.innerHTML = `<div style="margin:6px 0; opacity:.9">• RPC temporarily unavailable. Try again in 10 seconds.</div>`;
-    }
-    setStatus("Scan partial: RPC temporarily unavailable (try again).");
-  }
-}
-
-/** ------------------ wire UI ------------------ **/
-function getMintInputValue(){
-  const a = $("mint");
-  const b = $("wallet");
-  return (a?.value || b?.value || "").trim();
-}
-
-function bind(){
-  const btn = $("btnScan");
-  if(btn) btn.addEventListener("click", ()=>scanMint(getMintInputValue()));
-  const a = $("mint"), b = $("wallet");
-  [a,b].forEach(inp=>{
-    if(!inp) return;
-    inp.addEventListener("keydown",(e)=>{
-      if(e.key==="Enter") scanMint(getMintInputValue());
-    });
+async function getTokenAccountsOwners(tokenAccounts) {
+  // tokenAccounts are token account addresses; we need owners (getAccountInfo parsed)
+  // We'll do a batch via getMultipleAccounts with jsonParsed
+  if (!tokenAccounts.length) return [];
+  const r = await rpc("getMultipleAccounts", [
+    tokenAccounts,
+    { encoding: "jsonParsed", commitment: "confirmed" },
+  ]);
+  const vals = r?.value || [];
+  return vals.map((acc, i) => {
+    const owner = acc?.data?.parsed?.info?.owner || null;
+    return { tokenAccount: tokenAccounts[i], owner };
   });
 }
 
-bind();
-window.scanMint = scanMint;
+/** DexScreener (market) */
+async function dexToken(mint) {
+  const res = await fetchTimeout(DEX_TOKEN_URL(mint), {}, 12000);
+  if (!res.ok) return null;
+  const j = await res.json().catch(() => null);
+  return j;
+}
+
+function pickBestPair(pairs) {
+  if (!Array.isArray(pairs) || !pairs.length) return null;
+  // prefer highest liquidity USD, then highest volume 24h
+  const sorted = pairs.slice().sort((a, b) => {
+    const la = Number(a?.liquidity?.usd || 0);
+    const lb = Number(b?.liquidity?.usd || 0);
+    if (lb !== la) return lb - la;
+    const va = Number(a?.volume?.h24 || 0);
+    const vb = Number(b?.volume?.h24 || 0);
+    return vb - va;
+  });
+  return sorted[0] || null;
+}
+
+function pairAgeText(pair) {
+  // DexScreener often includes pairCreatedAt (ms)
+  const ts = Number(pair?.pairCreatedAt || 0);
+  if (!ts) return "—";
+  const ageMs = Date.now() - ts;
+  if (ageMs < 0) return "—";
+  const mins = Math.floor(ageMs / 60000);
+  const hrs = Math.floor(mins / 60);
+  const days = Math.floor(hrs / 24);
+  if (days >= 1) return `${days}d`;
+  if (hrs >= 1) return `${hrs}h`;
+  return `${mins}m`;
+}
+
+/** Trending (DexScreener public)
+ *  Dex boosted endpoint returns pairs; we filter to Solana and show top.
+ *  Pumpfun trending (heuristic): from boosted list, keep mints ending with "pump" and show top.
+ */
+async function loadTrending() {
+  const dexEl = $("dexTrending");
+  const pumpEl = $("pumpTrending");
+  const dexHint = $("dexTrendHint");
+  const pumpHint = $("pumpTrendHint");
+
+  if (dexEl) dexEl.innerHTML = `<div class="trendEmpty">Loading…</div>`;
+  if (pumpEl) pumpEl.innerHTML = `<div class="trendEmpty">Loading…</div>`;
+
+  try {
+    const res = await fetchTimeout(DEX_BOOSTED_SOL, {}, 12000);
+    const j = await res.json().catch(() => null);
+    const pairs = Array.isArray(j?.pairs) ? j.pairs : [];
+
+    // filter solana chain
+    const solPairs = pairs.filter((p) => (p?.chainId || "").toLowerCase() === "solana");
+
+    // sort by liquidity usd then vol
+    solPairs.sort((a, b) => {
+      const la = Number(a?.liquidity?.usd || 0);
+      const lb = Number(b?.liquidity?.usd || 0);
+      if (lb !== la) return lb - la;
+      return Number(b?.volume?.h24 || 0) - Number(a?.volume?.h24 || 0);
+    });
+
+    const topDex = solPairs.slice(0, 10);
+    const topPump = solPairs
+      .filter((p) => String(p?.baseToken?.address || "").endsWith("pump"))
+      .slice(0, 10);
+
+    if (dexHint) dexHint.textContent = topDex.length ? `${topDex.length} tokens` : "—";
+    if (pumpHint) pumpHint.textContent = topPump.length ? `${topPump.length} tokens` : "—";
+
+    const render = (arr, el) => {
+      if (!el) return;
+      if (!arr.length) {
+        el.innerHTML = `<div class="trendEmpty">No trending data.</div>`;
+        return;
+      }
+      el.innerHTML = "";
+      arr.forEach((p, idx) => {
+        const name = p?.baseToken?.name || "—";
+        const sym = p?.baseToken?.symbol || "—";
+        const mint = p?.baseToken?.address || "";
+        const price = p?.priceUsd ? `$${fmtNum(p.priceUsd, 8)}` : "—";
+        const liq = fmtUsd(p?.liquidity?.usd || 0);
+        const mc = fmtUsd(p?.marketCap || p?.fdv || 0);
+        const url = p?.url || (mint ? SOLSCAN_TOKEN(mint) : "#");
+
+        const row = document.createElement("a");
+        row.className = "trendRow";
+        row.href = "#";
+        row.addEventListener("click", (e) => {
+          e.preventDefault();
+          const inp = $("mint");
+          if (inp && mint) {
+            inp.value = mint;
+            scan();
+          }
+        });
+
+        row.innerHTML = `
+          <div class="trendIdx">${idx + 1}</div>
+          <div class="trendMain">
+            <div class="trendTitle">${name} <span class="muted">(${sym})</span></div>
+            <div class="trendSub mono">${mint ? shortAddr(mint) : "—"}</div>
+          </div>
+          <div class="trendNums">
+            <div class="trendNum"><span class="muted">Price</span> ${price}</div>
+            <div class="trendNum"><span class="muted">Liq</span> ${liq}</div>
+            <div class="trendNum"><span class="muted">MCap</span> ${mc}</div>
+          </div>
+        `;
+        el.appendChild(row);
+      });
+    };
+
+    render(topDex, dexEl);
+    render(topPump, pumpEl);
+
+  } catch (e) {
+    if (dexEl) dexEl.innerHTML = `<div class="trendEmpty">Failed to load.</div>`;
+    if (pumpEl) pumpEl.innerHTML = `<div class="trendEmpty">Failed to load.</div>`;
+    if (dexHint) dexHint.textContent = "—";
+    if (pumpHint) pumpHint.textContent = "—";
+  }
+}
+
+/** Risk scoring */
+function buildRisk({ mintAuth, freezeAuth, liqUsd, top1Pct, top5Pct, top20Pct, clustersCount }) {
+  // score: 0 best, 100 worst
+  let score = 0;
+  const reasons = [];
+
+  // Authorities
+  if (!mintAuth) {
+    reasons.push("Mint authority NOT set (good).");
+  } else {
+    score += 35;
+    reasons.push("Mint authority is set (risk: can mint more).");
+  }
+
+  if (!freezeAuth) {
+    reasons.push("Freeze authority NOT set (good).");
+  } else {
+    score += 25;
+    reasons.push("Freeze authority is set (risk: can freeze wallets).");
+  }
+
+  // Liquidity
+  if (liqUsd >= 250_000) {
+    reasons.push(`Liquidity strong (${fmtUsd(liqUsd)}).`);
+  } else if (liqUsd >= 50_000) {
+    score += 10;
+    reasons.push(`Liquidity ok (${fmtUsd(liqUsd)}).`);
+  } else if (liqUsd >= 10_000) {
+    score += 20;
+    reasons.push(`Liquidity low (${fmtUsd(liqUsd)}).`);
+  } else {
+    score += 30;
+    reasons.push(`Liquidity very low (${fmtUsd(liqUsd)}).`);
+  }
+
+  // Concentration (top holders)
+  if (top1Pct >= 35) {
+    score += 25;
+    reasons.push(`Top1 concentration ${top1Pct.toFixed(2)}% (very high).`);
+  } else if (top1Pct >= 20) {
+    score += 15;
+    reasons.push(`Top1 concentration ${top1Pct.toFixed(2)}% (high).`);
+  } else if (top1Pct >= 10) {
+    score += 8;
+    reasons.push(`Top1 concentration ${top1Pct.toFixed(2)}% (medium).`);
+  } else {
+    reasons.push(`Top1 concentration ${top1Pct.toFixed(2)}% (low).`);
+  }
+
+  if (top5Pct >= 65) {
+    score += 18;
+    reasons.push(`Top5 concentration ${top5Pct.toFixed(2)}% (very high).`);
+  } else if (top5Pct >= 45) {
+    score += 12;
+    reasons.push(`Top5 concentration ${top5Pct.toFixed(2)}% (high).`);
+  } else if (top5Pct >= 30) {
+    score += 6;
+    reasons.push(`Top5 concentration ${top5Pct.toFixed(2)}% (medium).`);
+  } else {
+    reasons.push(`Top5 concentration ${top5Pct.toFixed(2)}% (low).`);
+  }
+
+  if (clustersCount >= 3) {
+    score += 15;
+    reasons.push(`Owner clusters detected (${clustersCount}).`);
+  } else if (clustersCount >= 1) {
+    score += 8;
+    reasons.push(`Some owner clustering detected (${clustersCount}).`);
+  } else {
+    reasons.push("No obvious Top20 owner clusters (good).");
+  }
+
+  score = clamp(score, 0, 100);
+
+  let label = "MED RISK", badge = "warn";
+  if (score <= 34) { label = "LOW RISK"; badge = "good"; }
+  else if (score >= 70) { label = "HIGH RISK"; badge = "bad"; }
+
+  return { score, label, badge, reasons };
+}
+
+/** UI renderers */
+function renderRiskReasons(items) {
+  const ul = $("riskList");
+  if (!ul) return;
+  ul.innerHTML = "";
+  if (!items || !items.length) {
+    ul.innerHTML = `<li class="muted">No risk reasons.</li>`;
+    return;
+  }
+  items.forEach((t) => {
+    const li = document.createElement("li");
+    li.textContent = t;
+    ul.appendChild(li);
+  });
+}
+
+function renderHoldersTable({ holders, supplyUi }) {
+  const table = $("holdersTable");
+  const hint = $("holdersHint");
+  if (!table) return;
+
+  // keep header
+  const head = table.querySelector(".tr.th");
+  table.innerHTML = "";
+  if (head) table.appendChild(head);
+
+  if (!holders || !holders.length) {
+    const row = document.createElement("div");
+    row.className = "tr";
+    row.innerHTML = `
+      <div class="cellMain">—</div>
+      <div class="cellMain muted">No data</div>
+      <div class="cellMain muted">—</div>
+      <div class="cellMain muted">—</div>
+      <div class="cellMain muted">—</div>
+    `;
+    table.appendChild(row);
+    if (hint) hint.textContent = "—";
+    return;
+  }
+
+  if (hint) hint.textContent = `${holders.length} accounts`;
+
+  holders.forEach((h, i) => {
+    const amt = Number(h.uiAmount || 0);
+    const pct = supplyUi > 0 ? (amt / supplyUi) * 100 : 0;
+    const ta = h.address;
+    const owner = h.owner || "—";
+
+    const row = document.createElement("div");
+    row.className = "tr";
+    row.innerHTML = `
+      <div class="cellMain">#${i + 1}</div>
+      <div>
+        <div class="cellMain">${fmtInt(amt)} <span class="muted">(${pct.toFixed(2)}%)</span></div>
+      </div>
+      <div><a class="link mono" href="${SOLSCAN_ACCOUNT(ta)}" target="_blank" rel="noreferrer">${shortAddr(ta)}</a></div>
+      <div><a class="link mono" href="${SOLSCAN_ACCOUNT(owner)}" target="_blank" rel="noreferrer">${shortAddr(owner)}</a></div>
+      <div><a class="link" href="${SOLSCAN_ACCOUNT(ta)}" target="_blank" rel="noreferrer">View</a></div>
+    `;
+    table.appendChild(row);
+  });
+}
+
+function renderClusters(clusterMap) {
+  const box = $("clusterBox");
+  if (!box) return;
+
+  const entries = Array.from(clusterMap.entries())
+    .filter(([, arr]) => arr.length >= 2)
+    .sort((a, b) => b[1].length - a[1].length);
+
+  if (!entries.length) {
+    box.innerHTML = `<div>No clusters found in Top 20.</div>`;
+    return;
+  }
+
+  box.innerHTML = "";
+  entries.forEach(([owner, tas]) => {
+    const div = document.createElement("div");
+    div.className = "clusterItem";
+    div.innerHTML = `
+      <div><span class="muted">Owner</span> <a class="link mono" href="${SOLSCAN_ACCOUNT(owner)}" target="_blank" rel="noreferrer">${owner}</a></div>
+      <div class="muted" style="margin-top:6px;">Token accounts: ${tas.map(a => shortAddr(a)).join(", ")}</div>
+    `;
+    box.appendChild(div);
+  });
+}
+
+/** Main scan */
+async function scan() {
+  const mint = ($("mint")?.value || "").trim();
+  if (!looksBase58(mint)) {
+    setStatus("Invalid mint address.");
+    return;
+  }
+
+  // Reset UI quickly
+  $("mintShort").textContent = shortAddr(mint);
+  $("dexLink").textContent = "—";
+  $("dexLink").href = "#";
+  $("scanHint").textContent = "Scanning…";
+  renderRiskReasons([]);
+  setStatus("Running scan…");
+
+  // Clear token logo initially
+  const logoEl = $("tokenLogo");
+  if (logoEl) logoEl.style.display = "none";
+
+  try {
+    // Parallel: Dex + onchain
+    const [dex, supply, auth] = await Promise.all([
+      dexToken(mint),
+      getTokenSupply(mint),
+      getMintAuthorities(mint),
+    ]);
+
+    // Dex info
+    const pairs = Array.isArray(dex?.pairs) ? dex.pairs : [];
+    const pair = pickBestPair(pairs);
+
+    const tokenName = pair?.baseToken?.name || dex?.pairs?.[0]?.baseToken?.name || "—";
+    const tokenSymbol = pair?.baseToken?.symbol || dex?.pairs?.[0]?.baseToken?.symbol || "—";
+    $("tokenName").textContent = tokenName;
+    $("tokenSymbol").textContent = tokenSymbol ? `(${tokenSymbol})` : "—";
+
+    // Token logo (Dex)
+    const imgUrl =
+      pair?.baseToken?.icon ||
+      pair?.info?.imageUrl ||
+      pair?.info?.openGraphImageUrl ||
+      null;
+
+    if (logoEl && imgUrl) {
+      logoEl.src = imgUrl;
+      logoEl.style.display = "";
+    } else if (logoEl) {
+      logoEl.style.display = "none";
+    }
+
+    // Market KPIs
+    const priceUsd = pair?.priceUsd ? Number(pair.priceUsd) : null;
+    const liqUsd = Number(pair?.liquidity?.usd || 0);
+    const mcap = Number(pair?.marketCap || 0);
+    const fdv = Number(pair?.fdv || 0);
+    const bestMc = mcap > 0 ? mcap : (fdv > 0 ? fdv : 0);
+
+    $("kPrice").textContent = priceUsd ? `$${fmtNum(priceUsd, priceUsd < 0.01 ? 8 : 6)}` : "—";
+    $("kLiq").textContent = liqUsd ? fmtUsd(liqUsd) : "—";
+    $("kMc").textContent = bestMc ? fmtUsd(bestMc) : "—";
+
+    // Dex link
+    const dexUrl = pair?.url || (mint ? SOLSCAN_TOKEN(mint) : "#");
+    const dexLink = $("dexLink");
+    if (dexLink) {
+      dexLink.href = dexUrl;
+      dexLink.textContent = pair ? (pair?.dexId ? `${pair.dexId} • ${shortAddr(pair.pairAddress || "")}` : "Dex link") : "—";
+    }
+
+    // Onchain supply/decimals
+    const decimals = supply ? Number(supply.decimals || 0) : null;
+    const uiSupply = supply ? Number(supply.uiAmount || 0) : null;
+
+    $("kSupply").textContent = uiSupply !== null ? fmtInt(uiSupply) : "—";
+    $("kDec").textContent = decimals !== null ? String(decimals) : "—";
+
+    // Authorities
+    const mintAuth = auth?.mintAuthority || null;
+    const freezeAuth = auth?.freezeAuthority || null;
+    const program = auth?.program || null;
+
+    const authLine = $("authLine");
+    if (authLine) {
+      const a1 = mintAuth ? "Mint: SET" : "Mint: NONE";
+      const a2 = freezeAuth ? "Freeze: SET" : "Freeze: NONE";
+      authLine.textContent = `${a1} • ${a2}`;
+    }
+
+    $("sMintAuth").textContent = mintAuth ? "SET" : "NONE";
+    $("sFreezeAuth").textContent = freezeAuth ? "SET" : "NONE";
+    $("sProgram").textContent = program ? shortAddr(program) : "—";
+
+    // Pair/market extra signals
+    $("sLiq").textContent = liqUsd ? fmtUsd(liqUsd) : "—";
+    $("sVol").textContent = pair?.volume?.h24 ? fmtUsd(pair.volume.h24) : "—";
+    $("sAge").textContent = pair ? pairAgeText(pair) : "—";
+    $("sDex").textContent = pair?.dexId ? String(pair.dexId).toUpperCase() : "—";
+
+    // Holders & concentration
+    $("holdersHint").textContent = "Loading…";
+    const largest = await getLargestTokenAccounts(mint);
+    const top20 = largest.slice(0, 20);
+
+    // owners for each token account
+    const tas = top20.map((x) => x.address);
+    const owners = await getTokenAccountsOwners(tas);
+
+    // merge
+    const holders = top20.map((x) => {
+      const match = owners.find((o) => o.tokenAccount === x.address);
+      return {
+        address: x.address,
+        uiAmount: Number(x.uiAmount || 0),
+        owner: match?.owner || null,
+      };
+    });
+
+    // holder pct
+    const supplyUi = uiSupply || 0;
+    const sortedH = holders.slice().sort((a, b) => b.uiAmount - a.uiAmount);
+    const top1 = sortedH[0]?.uiAmount || 0;
+    const top5 = sortedH.slice(0, 5).reduce((acc, x) => acc + x.uiAmount, 0);
+    const top20sum = sortedH.reduce((acc, x) => acc + x.uiAmount, 0);
+
+    const top1Pct = supplyUi > 0 ? (top1 / supplyUi) * 100 : 0;
+    const top5Pct = supplyUi > 0 ? (top5 / supplyUi) * 100 : 0;
+    const top20Pct = supplyUi > 0 ? (top20sum / supplyUi) * 100 : 0;
+
+    $("kTop20").textContent = supplyUi > 0 ? `${top20Pct.toFixed(2)}%` : "—";
+    $("sHolders").textContent = `${holders.length}/20`;
+
+    // clusters by owner
+    const clusterMap = new Map();
+    holders.forEach((h) => {
+      const owner = h.owner || "—";
+      if (!clusterMap.has(owner)) clusterMap.set(owner, []);
+      clusterMap.get(owner).push(h.address);
+    });
+    const clustersCount = Array.from(clusterMap.values()).filter((arr) => arr.length >= 2).length;
+
+    // render holders + clusters
+    renderHoldersTable({ holders: sortedH, supplyUi });
+    renderClusters(clusterMap);
+
+    // Risk
+    const risk = buildRisk({
+      mintAuth,
+      freezeAuth,
+      liqUsd,
+      top1Pct,
+      top5Pct,
+      top20Pct,
+      clustersCount,
+    });
+
+    const riskBadge = $("riskBadge");
+    const scoreBadge = $("scoreBadge");
+    setBadge(riskBadge, risk.label, risk.badge);
+
+    if (scoreBadge) scoreBadge.textContent = `Score ${risk.score}/100`;
+    setScoreBar(risk.score);
+
+    // Verdict panel
+    $("verdictBig").textContent = risk.label;
+    $("verdictSub").textContent =
+      risk.label === "LOW RISK"
+        ? "Clean authorities + acceptable liquidity + no strong clustering."
+        : risk.label === "MED RISK"
+        ? "Mixed signals. Check liquidity, concentration and owners before aping."
+        : "High risk signals detected. Extreme caution recommended.";
+
+    renderRiskReasons(risk.reasons);
+
+    $("scanHint").textContent = pair ? "Market + on-chain loaded" : "On-chain loaded (no Dex pair found)";
+    setStatus(`Scan complete • ${risk.label}`);
+
+  } catch (e) {
+    console.error(e);
+    $("scanHint").textContent = "Scan failed";
+    renderRiskReasons([String(e?.message || "Unknown error")]);
+    setStatus("Scan failed: " + (e?.message || "unknown error"));
+  }
+}
+
+/** Wire up */
+function boot() {
+  // scan button
+  const btn = $("btnScan");
+  if (btn) btn.addEventListener("click", scan);
+
+  // enter key
+  const mint = $("mint");
+  if (mint) mint.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") scan();
+  });
+
+  // trending
+  loadTrending();
+  // refresh trending every 60s
+  setInterval(loadTrending, 60000);
+}
+
+boot();
