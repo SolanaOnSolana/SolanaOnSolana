@@ -2,28 +2,13 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <!-- keeps it clean on mobile (no zoom) -->
-  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+  <!-- Mobile: kein erzwungenes Zoom-Lock, aber iOS-Input-Zoom wird durch 16px verhindert -->
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="theme-color" content="#070711" />
   <title>$SOS — Guardian Check</title>
-  <meta name="description" content="Guardian Approved — Solana token risk score + launch readiness checklist." />
+  <meta name="description" content="Guardian Approved — Solana token risk score + launch readiness checklist (on-chain verifiable)." />
 
   <style>
-    /* ===== MOBILE FIXES (no horizontal freeze) ===== */
-    html, body { width:100%; overflow-x:hidden; }
-    body{
-      -webkit-text-size-adjust: 100%;
-      overscroll-behavior-x: none;
-      touch-action: pan-y;
-    }
-
-    /* force long strings to wrap (URLs / base58 / long words) */
-    .li .d,
-    .mono{
-      overflow-wrap:anywhere;
-      word-break:break-word;
-    }
-
     :root{
       --bg:#070711;
       --panel: rgba(255,255,255,.06);
@@ -40,15 +25,16 @@
       --max: 1180px;
     }
 
-    *{box-sizing:border-box}
+    *{box-sizing:border-box; max-width:100%}
     html,body{height:100%}
     body{
       margin:0;
       color:var(--text);
       font: 15.5px/1.55 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
       background: var(--bg);
-      overflow-x:hidden;
+      overflow-x:hidden; /* prevent accidental horizontal scroll */
       position:relative;
+      touch-action: pan-y; /* keeps vertical scroll responsive on mobile */
     }
     body::before{
       content:"";
@@ -63,6 +49,7 @@
 
     a{color:inherit; text-decoration:none}
     .wrap{max-width:var(--max); margin:0 auto; padding:0 18px}
+    main{padding:22px 0 42px}
 
     .topbar{
       position:sticky; top:0; z-index:20;
@@ -120,7 +107,6 @@
     }
     .btn[disabled]{opacity:.55; pointer-events:none}
 
-    main{padding:22px 0 42px}
     .card{
       background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.05));
       border: 1px solid rgba(255,255,255,.10);
@@ -195,8 +181,7 @@
       background: rgba(0,0,0,.18);
       border-radius: 18px;
       padding:16px;
-      max-width:100%;
-      overflow:hidden; /* IMPORTANT: prevents horizontal jitter on iOS */
+      overflow:hidden;
     }
 
     label{
@@ -218,7 +203,6 @@
       font-weight:900;
       letter-spacing:.2px;
       font-size:16px; /* prevents iOS auto-zoom */
-      -webkit-appearance:none;
     }
     input:focus{
       border-color: rgba(0,209,255,.45);
@@ -231,6 +215,8 @@
       font-weight:900;
       min-height: 18px;
       font-size:13px;
+      overflow-wrap:anywhere;
+      word-break:break-word;
     }
 
     .badge{
@@ -247,7 +233,7 @@
     .badge.warn{border-color: rgba(255,220,130,.35); background: rgba(255,220,130,.08); color: rgba(255,240,210,.92)}
     .badge.bad{border-color: rgba(255,120,150,.35); background: rgba(255,120,150,.10); color: rgba(255,190,205,.95)}
 
-    /* ===== RESULT (DNA-like lines) ===== */
+    /* ===== RESULT ===== */
     .resultTop{
       display:flex; align-items:flex-start; justify-content:space-between;
       gap:12px; flex-wrap:wrap;
@@ -263,7 +249,8 @@
       font-weight:900;
       color: rgba(255,255,255,.86);
       margin-top:6px;
-      max-width:100%;
+      overflow-wrap:anywhere;
+      word-break:break-word;
     }
 
     .metricStack{margin-top:12px; display:grid; gap:10px;}
@@ -272,7 +259,6 @@
       background: rgba(255,255,255,.04);
       border-radius: 16px;
       padding:12px 12px;
-      overflow:hidden;
     }
     .metricK{
       display:flex; align-items:center; justify-content:space-between;
@@ -298,6 +284,8 @@
       font-weight:850;
       font-size:12px;
       color: rgba(255,255,255,.62);
+      overflow-wrap:anywhere;
+      word-break:break-word;
     }
     .bar{
       margin-top:10px;
@@ -331,10 +319,9 @@
       gap:10px;
       align-items:flex-start;
       justify-content:space-between;
-      overflow:hidden;     /* IMPORTANT */
-      max-width:100%;      /* IMPORTANT */
+      overflow:hidden;
     }
-    .li .left{min-width:0; max-width:100%;}
+    .li .left{min-width:0;}
     .li .t{font-weight:1000; font-size:13px; letter-spacing:.2px;}
     .li .d{
       margin-top:4px;
@@ -342,9 +329,9 @@
       font-weight:750;
       font-size:12.5px;
       line-height:1.35;
-      max-width:100%;
+      overflow-wrap:anywhere;
+      word-break:break-word;
     }
-
     .pill{
       flex:0 0 auto;
       padding:6px 10px;
@@ -355,6 +342,7 @@
       font-size:12px;
       white-space:nowrap;
       cursor:pointer;
+      user-select:none;
       -webkit-tap-highlight-color: transparent;
     }
     .pill.ok{border:0; background: linear-gradient(90deg,var(--g),var(--c),var(--p)); color:#061012}
@@ -384,7 +372,6 @@
       padding:12px 12px;
       cursor:pointer;
       overflow:hidden;
-      max-width:100%;
     }
     .copyMono{
       font-family: ui-monospace, Menlo, Consolas, monospace;
@@ -413,55 +400,60 @@
       font-size:12px;
     }
 
-    /* ===== WATCH/FAIL POPUP (clickable pills) ===== */
-    .pillModal{
+    /* ===== Modal (for WATCH/FAIL details) ===== */
+    .modalWrap{
       position:fixed; inset:0;
-      display:none;
-      align-items:flex-end;
-      justify-content:center;
-      padding:16px;
       background: rgba(0,0,0,.55);
-      z-index:9999;
+      backdrop-filter: blur(10px);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      padding:18px;
+      z-index:100;
     }
-    .pillModal.show{ display:flex; }
-    .pillSheet{
-      width:min(720px, 100%);
-      border-radius: 18px;
-      border:1px solid rgba(255,255,255,.12);
+    .modal{
+      width:min(920px, 100%);
+      border-radius: 20px;
+      border: 1px solid rgba(255,255,255,.12);
       background: rgba(7,7,17,.92);
-      backdrop-filter: blur(18px);
-      box-shadow: 0 20px 60px rgba(0,0,0,.55);
+      box-shadow: 0 16px 50px rgba(0,0,0,.5);
       overflow:hidden;
     }
-    .pillSheetTop{
+    .modalHead{
       display:flex; align-items:center; justify-content:space-between;
-      gap:10px;
-      padding:12px 14px;
-      border-bottom:1px solid rgba(255,255,255,.10);
+      padding:14px 16px;
+      border-bottom: 1px solid rgba(255,255,255,.10);
     }
-    .pillSheetTitle{
+    .modalTitle{
       font-weight:1000;
-      letter-spacing:.2px;
-      font-size:13px;
-      color: rgba(255,255,255,.90);
+      letter-spacing:-.3px;
     }
-    .pillClose{
-      border:1px solid rgba(255,255,255,.14);
-      background: rgba(255,255,255,.06);
-      color: rgba(255,255,255,.88);
-      border-radius: 999px;
-      padding:7px 10px;
-      font-weight:950;
-      cursor:pointer;
-    }
-    .pillSheetBody{
-      padding:14px;
+    .modalBody{
+      padding:14px 16px 16px;
       color: rgba(255,255,255,.82);
-      font-weight:750;
-      font-size:13.5px;
-      line-height:1.45;
+      font-weight:800;
+      line-height:1.5;
       overflow-wrap:anywhere;
       word-break:break-word;
+    }
+    .modalBody .small{color: rgba(255,255,255,.62); font-weight:750; font-size:12.5px; margin-top:8px}
+    .modalBody code{
+      display:block;
+      margin-top:10px;
+      padding:10px 12px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.25);
+      color: rgba(255,255,255,.86);
+      font-family: ui-monospace, Menlo, Consolas, monospace;
+      font-weight:850;
+      white-space:pre-wrap;
+    }
+
+    /* reduce motion */
+    @media (prefers-reduced-motion: reduce){
+      .btn:hover{transform:none}
+      .bar > div{transition:none}
     }
   </style>
 </head>
@@ -491,34 +483,34 @@
     <section class="card hero">
       <div class="inner">
         <div class="classified">
-          <div class="stamp">GUARDIAN SYSTEM • MAINNET • TOKEN INTEL</div>
+          <div class="stamp">GUARDIAN SYSTEM • MAINNET • ON-CHAIN VERIFIED</div>
           <div class="stamp" id="stampTime">—</div>
         </div>
 
         <h1 class="h1" style="margin-top:12px;"><span class="gradText">Guardian Approved</span> Check</h1>
         <div class="sub">
-          Solana-native scan: authorities + concentration + program type — plus a Launch Readiness checklist.
+          On-chain scan: authorities + holder concentration + token standard + supply. WATCH/FAIL items are clickable and explain exactly what it means and what to do.
         </div>
 
         <div class="layout">
           <!-- INPUT -->
           <div class="panel">
             <label for="mint">Token Mint Address</label>
-            <input id="mint" placeholder="Paste token mint (Solana)..." autocomplete="off" spellcheck="false" />
+            <input id="mint" placeholder="Paste token mint (Solana)..." autocomplete="off" spellcheck="false" inputmode="text" />
             <div class="statusLine" id="status"></div>
 
             <details class="shareBox" id="sharePanel" style="display:none;">
               <summary>Share & Badge</summary>
               <div class="shareInner">
                 <div class="copyBox" id="badgeCopy" role="button" tabindex="0" aria-label="Copy Badge HTML">
-                  <div style="min-width:0; max-width:100%">
+                  <div style="min-width:0">
                     <div style="font-weight:1000; font-size:12px; letter-spacing:.35px; color:rgba(255,255,255,.78); text-transform:uppercase;">Badge Embed (HTML)</div>
                     <div class="copyMono" id="badgeHtml">—</div>
                   </div>
                   <div class="hint" id="badgeHint">Click to copy</div>
                 </div>
                 <div class="copyBox" id="linkCopy" role="button" tabindex="0" aria-label="Copy Scan Link">
-                  <div style="min-width:0; max-width:100%">
+                  <div style="min-width:0">
                     <div style="font-weight:1000; font-size:12px; letter-spacing:.35px; color:rgba(255,255,255,.78); text-transform:uppercase;">Scan Link</div>
                     <div class="copyMono" id="scanLink">—</div>
                   </div>
@@ -563,17 +555,34 @@
           </ul>
         </div>
 
-        <!-- Launch readiness -->
+        <!-- Launch readiness (only actionable items, no "next") -->
         <div class="panel" style="margin-top:16px;">
           <div class="classified">
             <div class="stamp">LAUNCH READINESS</div>
-            <div class="stamp">TO-DO LIST</div>
+            <div class="stamp">ACTION LIST</div>
           </div>
           <ul class="list" id="todoList" style="margin-top:10px;">
             <li class="li">
               <div class="left">
                 <div class="t">Waiting for scan</div>
-                <div class="d">We generate a launch checklist after we read on-chain signals.</div>
+                <div class="d">We generate a checklist only from verified on-chain signals.</div>
+              </div>
+              <span class="pill">—</span>
+            </li>
+          </ul>
+        </div>
+
+        <!-- Token-2022 details -->
+        <div class="panel" style="margin-top:16px;">
+          <div class="classified">
+            <div class="stamp">TOKEN STANDARD DETAILS</div>
+            <div class="stamp">ON-CHAIN</div>
+          </div>
+          <ul class="list" id="extList" style="margin-top:10px;">
+            <li class="li">
+              <div class="left">
+                <div class="t">No scan yet</div>
+                <div class="d">Extensions / token-standard details appear after scan.</div>
               </div>
               <span class="pill">—</span>
             </li>
@@ -603,29 +612,26 @@
     <footer>© <span id="y"></span> $SOS • Guardian Check</footer>
   </main>
 
-  <!-- WATCH/FAIL popup -->
-  <div class="pillModal" id="pillModal" aria-hidden="true">
-    <div class="pillSheet" role="dialog" aria-modal="true" aria-labelledby="pillTitle">
-      <div class="pillSheetTop">
-        <div class="pillSheetTitle" id="pillTitle">Guardian Details</div>
-        <button class="pillClose" id="pillClose" type="button">Close</button>
+  <!-- Modal -->
+  <div class="modalWrap" id="modalWrap" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="modal">
+      <div class="modalHead">
+        <div class="modalTitle" id="modalTitle">Guardian Details</div>
+        <button class="btn" id="modalClose">Close</button>
       </div>
-      <div class="pillSheetBody" id="pillBody">—</div>
+      <div class="modalBody" id="modalBody"></div>
     </div>
   </div>
 
 <script>
 /* ===================== CONFIG ===================== */
-const HELIUS_KEY = "a16897d9-ee14-46e0-aacd-7d3c7a7d3421"; // your key
-
+const HELIUS_KEY = "REPLACE_WITH_YOUR_HELIUS_KEY"; // <-- replace this
 const TOKEN_PROGRAM = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
 const TOKEN_2022_PROGRAM = "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb";
 
 const $ = (id)=>document.getElementById(id);
 $("y").textContent = new Date().getFullYear();
 
-function setStatus(msg){ const el = $("status"); if(el) el.textContent = msg || ""; }
-function setText(id, v){ const el=$(id); if(el) el.textContent = v; }
 function clamp(n,min,max){ return Math.max(min, Math.min(max, n)); }
 function looksBase58(s){
   return typeof s === "string"
@@ -641,6 +647,8 @@ function fmtPct(n){
   if(n === null || n === undefined || Number.isNaN(n)) return "—";
   return `${Number(n).toFixed(2)}%`;
 }
+function setText(id, v){ const el=$(id); if(el) el.textContent = v; }
+function setStatus(msg){ const el = $("status"); if(el) el.textContent = msg || ""; }
 function setBadge(el, txt, mode){
   if(!el) return;
   el.textContent = txt;
@@ -654,29 +662,22 @@ function updateStampTime(){
 updateStampTime();
 setInterval(updateStampTime, 1000);
 
-/* ===== WATCH/FAIL modal ===== */
-function openPillModal(title, msg){
-  const modal = $("pillModal");
-  const body = $("pillBody");
-  const t = $("pillTitle");
-  if(!modal || !body || !t) return;
-
-  t.textContent = title || "Guardian Details";
-  body.textContent = msg || "—";
-
-  modal.classList.add("show");
-  modal.setAttribute("aria-hidden", "false");
+/* ===== Modal ===== */
+function openModal(title, body){
+  $("modalTitle").textContent = title || "Guardian Details";
+  $("modalBody").innerHTML = body || "";
+  const w = $("modalWrap");
+  w.style.display = "flex";
+  w.setAttribute("aria-hidden","false");
 }
-function closePillModal(){
-  const modal = $("pillModal");
-  if(!modal) return;
-  modal.classList.remove("show");
-  modal.setAttribute("aria-hidden", "true");
+function closeModal(){
+  const w = $("modalWrap");
+  w.style.display = "none";
+  w.setAttribute("aria-hidden","true");
 }
-$("pillClose").addEventListener("click", closePillModal);
-$("pillModal").addEventListener("click", (e)=>{
-  if(e.target === $("pillModal")) closePillModal();
-});
+$("modalClose").addEventListener("click", closeModal);
+$("modalWrap").addEventListener("click", (e)=>{ if(e.target === $("modalWrap")) closeModal(); });
+document.addEventListener("keydown", (e)=>{ if(e.key==="Escape") closeModal(); });
 
 /* ===== Clipboard helpers ===== */
 async function copyText(text){
@@ -719,9 +720,8 @@ attachCopy("linkCopy","scanLink","linkHint","Copied!","Copy");
 
 /* ===== RPC (Helius) ===== */
 const HELIUS_RPC = ()=> `https://mainnet.helius-rpc.com/?api-key=${encodeURIComponent(HELIUS_KEY)}`;
-
 async function rpc(method, params){
-  if(!HELIUS_KEY) throw new Error("Helius key missing.");
+  if(!HELIUS_KEY || HELIUS_KEY === "REPLACE_WITH_YOUR_HELIUS_KEY") throw new Error("Helius key missing.");
   const res = await fetch(HELIUS_RPC(), {
     method:"POST",
     headers: {"Content-Type":"application/json"},
@@ -729,13 +729,12 @@ async function rpc(method, params){
   });
   if(!res.ok){
     const t = await res.text().catch(()=> "");
-    throw new Error(`RPC HTTP ${res.status} ${t}`.slice(0,180));
+    throw new Error(`RPC HTTP ${res.status} ${t}`.slice(0,220));
   }
   const j = await res.json();
   if(j.error) throw new Error(j.error.message || "RPC error");
   return j.result;
 }
-
 async function getMintParsed(mint){
   const r = await rpc("getAccountInfo", [mint, { encoding:"jsonParsed", commitment:"confirmed" }]);
   const v = r?.value;
@@ -743,7 +742,9 @@ async function getMintParsed(mint){
   const owner = v.owner;
   const parsed = (v.data && typeof v.data === "object") ? v.data.parsed : null;
   const info = parsed?.info || null;
-  return { owner, info };
+  // Token-2022 parsed mints may include "extensions" or extra fields depending on RPC
+  const rawParsed = parsed || null;
+  return { owner, info, rawParsed };
 }
 async function getTokenSupply(mint){
   const r = await rpc("getTokenSupply", [mint]);
@@ -754,12 +755,60 @@ async function getLargest(mint){
   return r?.value || [];
 }
 
-/* ===== Scoring ===== */
+/* ===== Verdict / scoring ===== */
 function verdictFrom(score, critical){
   if(critical) return {label:"FLAGGED", mode:"bad", title:"FLAGGED • High Risk"};
   if(score >= 80) return {label:"APPROVED", mode:"good", title:"APPROVED • Guardian Grade"};
   if(score >= 50) return {label:"OBSERVED", mode:"warn", title:"OBSERVED • Mixed Signals"};
   return {label:"FLAGGED", mode:"bad", title:"FLAGGED • High Risk"};
+}
+
+/* Explainers (what user should do) */
+function explainFreeze(){
+  return `
+    <b>Freeze Authority is active.</b><br><br>
+    This means an authority wallet can freeze token accounts and block transfers.<br>
+    <div class="small"><b>Action:</b> set Freeze Authority to <code>null</code> (renounce). If the project refuses, treat as high-risk.</div>
+  `;
+}
+function explainMintAuth(){
+  return `
+    <b>Mint Authority is active.</b><br><br>
+    This means the supply can be increased (new tokens minted) at any time.<br>
+    <div class="small"><b>Action:</b> set Mint Authority to <code>null</code> (renounce), or provide a transparent, verifiable reason (e.g., scheduled emissions with public constraints).</div>
+  `;
+}
+function explainTop20(pct){
+  const p = Number(pct||0).toFixed(2);
+  return `
+    <b>Top holders concentration = ${p}%.</b><br><br>
+    Higher concentration means a small group can dump and crash price.<br>
+    <div class="small"><b>Action:</b> improve distribution (airdrop, vesting, LP incentives), and monitor whale wallets. For memes, anything above ~55% deserves caution.</div>
+  `;
+}
+function explainTokenStandard(programType, extReadable){
+  if(programType === "SPL_TOKEN"){
+    return `
+      <b>Token Standard: SPL Token (Legacy).</b><br><br>
+      This is the most common token program on Solana. It has fewer optional controls.<br>
+      <div class="small"><b>Action:</b> focus on authorities + distribution + liquidity signals.</div>
+    `;
+  }
+  if(programType === "TOKEN_2022"){
+    return `
+      <b>Token Standard: Token-2022.</b><br><br>
+      Token-2022 is an official Solana token program that supports optional <b>extensions</b> (extra rules like transfer fees, delegates, extra controls).<br><br>
+      ${extReadable
+        ? `<div class="small"><b>Good news:</b> your RPC returned extension data below, so we can show exactly what's enabled.</div>`
+        : `<div class="small"><b>Important:</b> your RPC response did <u>not</u> include a readable extension list. We cannot verify which extensions are enabled from parsed data here. Treat as <b>WATCH</b> unless you verify via a dedicated Token-2022 extension decoder or program logs.</div>`
+      }
+    `;
+  }
+  return `
+    <b>Token Standard: Unknown owner program.</b><br><br>
+    The mint is not owned by the standard SPL Token programs.<br>
+    <div class="small"><b>Action:</b> verify the mint program carefully. Unknown programs can hide custom rules.</div>
+  `;
 }
 
 function scoreModel(sig){
@@ -772,13 +821,14 @@ function scoreModel(sig){
       k:"Freeze Authority active",
       sev:"bad",
       d:"Freeze authority can block transfers. High-risk for buyers.",
-      clickMsg:"Freeze Authority ACTIVE: Owner can freeze token accounts and block transfers. To fix: set freezeAuthority to null via SPL Token instruction. This is one of the strongest rug signals."
+      clickMsg: explainFreeze()
     });
   }else{
     checks.push({
       k:"Freeze Authority removed",
       sev:"ok",
-      d:"No freeze power detected (good)."
+      d:"No freeze power detected (good).",
+      clickMsg:"Freeze authority is null — no account-freezing power."
     });
   }
 
@@ -788,66 +838,56 @@ function scoreModel(sig){
       k:"Mint Authority active",
       sev:"bad",
       d:"Mint authority can increase supply. High-risk unless justified.",
-      clickMsg:"Mint Authority ACTIVE: Owner can mint more supply any time. To fix: set mintAuthority to null. If the project needs emissions, publish the emission policy + timelock and be transparent."
+      clickMsg: explainMintAuth()
     });
   }else{
     checks.push({
       k:"Mint Authority renounced",
       sev:"ok",
-      d:"Supply cannot be minted further (good)."
+      d:"Supply cannot be minted further (good).",
+      clickMsg:"Mint authority is null — supply cannot be increased."
     });
   }
 
   const t20 = Number(sig.top20 || 0);
   if(t20 >= 75){
     score -= 28;
-    checks.push({
-      k:"Top 20 concentration very high",
-      sev:"bad",
-      d:`Top20 holds ~${t20.toFixed(2)}% of supply. Rug/sell risk.`,
-      clickMsg:`Top20 VERY HIGH (${t20.toFixed(2)}%): Too much supply is concentrated. Buyers risk large dumps. Fix: distribute via liquidity, airdrops, vesting, and avoid multi-wallet sybil clusters.`
-    });
+    checks.push({k:"Top 20 concentration very high", sev:"bad", d:`Top20 holds ~${t20.toFixed(2)}% of supply. Rug/sell risk.`, clickMsg: explainTop20(t20)});
   }else if(t20 >= 55){
     score -= 18;
-    checks.push({
-      k:"Top 20 concentration high",
-      sev:"warn",
-      d:`Top20 holds ~${t20.toFixed(2)}% of supply. Watch distribution.`,
-      clickMsg:`Top20 HIGH (${t20.toFixed(2)}%): Not instantly fatal, but distribution is risky. Consider wider spread, vesting, public wallets, and avoid hidden team wallets.`
-    });
+    checks.push({k:"Top 20 concentration high", sev:"warn", d:`Top20 holds ~${t20.toFixed(2)}% of supply. Watch distribution.`, clickMsg: explainTop20(t20)});
   }else if(t20 >= 35){
     score -= 8;
-    checks.push({
-      k:"Top 20 concentration moderate",
-      sev:"warn",
-      d:`Top20 holds ~${t20.toFixed(2)}% of supply.`,
-      clickMsg:`Top20 MODERATE (${t20.toFixed(2)}%): Acceptable for many launches, but still monitor whales and early wallets.`
-    });
+    checks.push({k:"Top 20 concentration moderate", sev:"warn", d:`Top20 holds ~${t20.toFixed(2)}% of supply.`, clickMsg: explainTop20(t20)});
   }else{
-    checks.push({
-      k:"Distribution looks healthier",
-      sev:"ok",
-      d:`Top20 holds ~${t20.toFixed(2)}% of supply.`
-    });
+    checks.push({k:"Distribution looks healthier", sev:"ok", d:`Top20 holds ~${t20.toFixed(2)}% of supply.`, clickMsg: explainTop20(t20)});
   }
 
+  // Token standard check: never "next" — always explain what it implies.
   if(sig.programType === "TOKEN_2022"){
-    score -= 8;
+    score -= sig.extReadable ? 6 : 10;
     checks.push({
-      k:"SPL Token (Advanced) detected",
-      sev:"warn",
-      d:"This token uses the advanced SPL standard. Optional features (e.g. fees or delegates) may be enabled.",
-      clickMsg:"SPL Token (Advanced): Some extensions can add transfer fees, delegates, or other controls. Next update: we’ll decode extensions on-chain and flag risky ones."
+      k:"Token standard: Token-2022",
+      sev: sig.extReadable ? "warn" : "warn",
+      d: sig.extReadable
+        ? "Token-2022 supports extensions. We list what RPC exposed below."
+        : "Token-2022 supports extensions, but extension list was not readable from parsed RPC here.",
+      clickMsg: explainTokenStandard("TOKEN_2022", sig.extReadable)
     });
   }else if(sig.programType === "SPL_TOKEN"){
-    checks.push({k:"SPL Token program", sev:"ok", d:"Standard SPL Token program detected."});
+    checks.push({
+      k:"Token standard: SPL Token",
+      sev:"ok",
+      d:"Standard SPL Token program detected.",
+      clickMsg: explainTokenStandard("SPL_TOKEN", true)
+    });
   }else{
     score -= 10;
     checks.push({
-      k:"Unknown token program",
+      k:"Token standard: Unknown program",
       sev:"warn",
       d:"Mint not owned by common token programs. Verify carefully.",
-      clickMsg:"Unknown program owner: This mint isn't owned by SPL Token or Token-2022. It could be a custom program. Treat as high-risk until verified."
+      clickMsg: explainTokenStandard("UNKNOWN", false)
     });
   }
 
@@ -856,24 +896,56 @@ function scoreModel(sig){
   return { score, checks, critical };
 }
 
+/* Launch readiness: ONLY actionable items, no placeholders */
 function buildTodo(sig){
   const todos = [];
-  if(sig.freezeActive) todos.push({t:"Remove Freeze Authority", sev:"bad", d:"Set freeze authority to null for trust.", clickMsg:"To-do: Remove Freeze Authority (set to null). This prevents freezing user accounts."});
-  else todos.push({t:"Freeze Authority", sev:"ok", d:"Already removed (good)."});
-  if(sig.mintAuthActive) todos.push({t:"Renounce Mint Authority", sev:"bad", d:"Set mint authority to null so supply cannot be increased.", clickMsg:"To-do: Renounce Mint Authority (set to null). This prevents infinite minting."});
-  else todos.push({t:"Mint Authority", sev:"ok", d:"Already renounced (good)."});
-  const t20 = Number(sig.top20 || 0);
-  if(t20 >= 55) todos.push({t:"Improve Distribution", sev:"warn", d:`Top20 holds ~${t20.toFixed(2)}%. Reduce concentration.`, clickMsg:"To-do: Improve distribution. Reduce top-holder concentration (vesting, LP distribution, transparent wallets)."});
-  else todos.push({t:"Distribution", sev:"ok", d:`Top20 concentration ~${t20.toFixed(2)}% (OK for MVP).`});
-  if(sig.programType === "TOKEN_2022") todos.push({t:"Audit Token-2022 Extensions", sev:"warn", d:"Confirm no fees/delegates/extensions that harm buyers.", clickMsg:"To-do: Audit Token-2022 extensions. Confirm no transfer fees or delegates that can trap buyers."});
-  else todos.push({t:"Program Type", sev:"ok", d:"Standard token program detected."});
+  if(sig.freezeActive){
+    todos.push({t:"Remove Freeze Authority", sev:"bad", d:"Set freeze authority to null so transfers cannot be frozen.", clickMsg: explainFreeze()});
+  }else{
+    todos.push({t:"Freeze Authority", sev:"ok", d:"Already removed (good).", clickMsg:"Freeze authority is null."});
+  }
 
-  todos.push({t:"Liquidity & Venues (Next)", sev:"warn", d:"We’ll add DEX liquidity + venue routing checks next.", clickMsg:"Next: We’ll detect DEX liquidity / venues and add stronger LP + routing checks."});
-  todos.push({t:"Metadata Authority (Next)", sev:"warn", d:"We’ll add Metaplex metadata mutability checks next.", clickMsg:"Next: We’ll detect metadata mutability / update authority signals."});
+  if(sig.mintAuthActive){
+    todos.push({t:"Renounce Mint Authority", sev:"bad", d:"Set mint authority to null so supply cannot be increased.", clickMsg: explainMintAuth()});
+  }else{
+    todos.push({t:"Mint Authority", sev:"ok", d:"Already renounced (good).", clickMsg:"Mint authority is null."});
+  }
+
+  const t20 = Number(sig.top20 || 0);
+  if(t20 >= 55){
+    todos.push({t:"Reduce Whale Concentration", sev:"warn", d:`Top20 holds ~${t20.toFixed(2)}%. Consider wider distribution + transparent vesting.`, clickMsg: explainTop20(t20)});
+  }else if(t20 >= 35){
+    todos.push({t:"Monitor Distribution", sev:"warn", d:`Top20 holds ~${t20.toFixed(2)}%. Watch whale wallets.`, clickMsg: explainTop20(t20)});
+  }else{
+    todos.push({t:"Distribution", sev:"ok", d:`Top20 concentration ~${t20.toFixed(2)}% (healthier).`, clickMsg: explainTop20(t20)});
+  }
+
+  // Token standard in readiness
+  if(sig.programType === "TOKEN_2022"){
+    todos.push({
+      t:"Token-2022 Extensions Review",
+      sev:"warn",
+      d: sig.extReadable
+        ? "Extensions are listed in Token Standard Details. Ensure none are harmful (e.g., transfer fees)."
+        : "Extensions were not readable from parsed RPC here. Verify extensions with a dedicated decoder before trusting.",
+      clickMsg: explainTokenStandard("TOKEN_2022", sig.extReadable)
+    });
+  } else if(sig.programType === "UNKNOWN"){
+    todos.push({
+      t:"Verify Mint Program",
+      sev:"warn",
+      d:"Mint is not owned by standard SPL programs. Confirm program is safe and expected.",
+      clickMsg: explainTokenStandard("UNKNOWN", false)
+    });
+  } else {
+    todos.push({t:"Token Standard", sev:"ok", d:"Standard SPL Token program detected.", clickMsg: explainTokenStandard("SPL_TOKEN", true)});
+  }
+
   return todos;
 }
 
-function renderList(el, items){
+/* Render list with clickable pills (PASS/WATCH/FAIL) */
+function renderList(el, items, listTitle="Guardian Details"){
   el.innerHTML = "";
   for(const it of items){
     const li = document.createElement("li");
@@ -883,22 +955,22 @@ function renderList(el, items){
     const pillCls = sev === "ok" ? "pill ok" : (sev === "bad" ? "pill bad" : "pill warn");
     const pillTxt = sev === "ok" ? "PASS" : (sev === "bad" ? "FAIL" : "WATCH");
 
-    const clickMsg =
-      it.clickMsg ||
-      (pillTxt === "WATCH" ? "WATCH = beobachtet/noch nicht voll verifiziert. Details kommen als nächstes Update." : "");
-
+    const msgHtml = (it.clickMsg || it.msg || "").trim();
     li.innerHTML = `
       <div class="left">
-        <div class="t">${(it.k || it.t)}</div>
-        <div class="d">${it.d}</div>
+        <div class="t">${(it.k || it.t || "—")}</div>
+        <div class="d">${(it.d || "—")}</div>
       </div>
-      <span class="${pillCls}" role="button" tabindex="0" data-msg="${String(clickMsg).replaceAll('"','&quot;')}">${pillTxt}</span>
+      <span class="${pillCls}" role="button" tabindex="0"
+        data-title="${(it.k || it.t || listTitle).replaceAll('"','&quot;')}"
+        data-msg="${msgHtml.replaceAll('"','&quot;')}">${pillTxt}</span>
     `;
     el.appendChild(li);
   }
 }
 
-function renderMetrics(score, sig, uiSupply, top20Sum, owner){
+/* Metrics */
+function renderMetrics(score, sig, uiSupply, top20Sum, owner, decimals){
   const wrap = $("metrics");
   wrap.innerHTML = "";
 
@@ -917,13 +989,31 @@ function renderMetrics(score, sig, uiSupply, top20Sum, owner){
     wrap.appendChild(d);
   };
 
-  metric("Risk Score", `${score}/100`, score>=80 ? "Guardian-grade safety signals." : (score>=50 ? "Mixed signals — review checklist." : "High-risk signals detected."), score);
-  metric("Authorities", authLine, sig.mintAuthActive||sig.freezeActive ? "Authorities present = trust risk." : "No mint/freeze authority (good).");
-  metric("Top 20 Concentration", fmtPct(sig.top20), uiSupply ? `Top20: ${fmtInt(top20Sum)} / ${fmtInt(uiSupply)}` : "Supply not readable.", sig.top20);
-  metric("Program", programText, owner ? `Owner: ${shortAddr(owner)}` : "—");
-  metric("Supply", uiSupply ? fmtInt(uiSupply) : "—", "UI supply (RPC)");
+  metric("Risk Score", `${score}/100`,
+    score>=80 ? "Guardian-grade signals (based on on-chain checks below)." :
+    (score>=50 ? "Mixed signals — read WATCH items carefully." : "High-risk signals detected — proceed with caution."),
+    score
+  );
+
+  metric("Authorities", authLine,
+    sig.mintAuthActive||sig.freezeActive ? "Authorities present = trust risk. Click FAIL for actions." : "No mint/freeze authority (good)."
+  );
+
+  metric("Top 20 Concentration", fmtPct(sig.top20),
+    (uiSupply ? `Top20: ${fmtInt(top20Sum)} / ${fmtInt(uiSupply)} • Decimals ${decimals}` : `Decimals ${decimals}`),
+    sig.top20
+  );
+
+  metric("Token Standard", programText,
+    owner ? `Mint program owner: ${shortAddr(owner)}` : "—"
+  );
+
+  metric("Supply", uiSupply ? fmtInt(uiSupply) : "—",
+    "UI supply (RPC)"
+  );
 }
 
+/* Share */
 function setShareEnabled(enabled, url){
   const a = $("btnShare");
   if(!a) return;
@@ -937,28 +1027,26 @@ function setShareEnabled(enabled, url){
     a.style.pointerEvents = "none";
   }
 }
-
 function buildShareText(mint, verdict, score, sig){
   const link = location.origin + location.pathname + `?mint=${encodeURIComponent(mint)}`;
   const programText = sig.programType === "SPL_TOKEN" ? "SPL Token" : (sig.programType === "TOKEN_2022" ? "Token-2022" : "Unknown");
   const authLine = `${sig.mintAuthActive ? "MINT: ACTIVE" : "MINT: RENOUNCED"} • ${sig.freezeActive ? "FREEZE: ACTIVE" : "FREEZE: REMOVED"}`;
 
   const lines = [
-    `🛡️ GUARDIAN CHECK — Token Risk`,
+    `🛡️ GUARDIAN CHECK — Token Risk (on-chain)`,
     ``,
     `Mint: ${shortAddr(mint)}`,
     `Verdict: ${verdict.label}`,
     `Score: ${score}/100`,
     `Authorities: ${authLine}`,
     `Top20: ${fmtPct(sig.top20)}`,
-    `Program: ${programText}`,
+    `Standard: ${programText}`,
     ``,
     `Run yours: ${link}`,
     `#Solana #Memecoins #Guardian`
   ];
   return lines.join("\n");
 }
-
 function badgeHtmlSnippet(mint, verdictLabel, score){
   const url = `https://solanax1.com/guardian?mint=${encodeURIComponent(mint)}`;
   return `<a href="${url}" target="_blank" rel="noreferrer" style="text-decoration:none">
@@ -968,10 +1056,11 @@ function badgeHtmlSnippet(mint, verdictLabel, score){
 </a>`;
 }
 
+/* Holders */
 function renderHolders(mint, uiSupply, largest){
   const list = $("holdersList");
   if(!uiSupply || !Array.isArray(largest) || !largest.length){
-    renderList(list, [{t:"No holder data", sev:"warn", d:"Largest accounts not readable.", clickMsg:"Could not load largest accounts. This can happen if RPC rate-limits or the mint is not standard."}]);
+    renderList(list, [{t:"No holder data", sev:"warn", d:"Largest accounts not readable from RPC.", clickMsg:"This can happen if RPC is rate-limited or the mint is unusual. Try again."}]);
     return;
   }
   const top = largest.slice(0,5);
@@ -979,14 +1068,136 @@ function renderHolders(mint, uiSupply, largest){
     const addr = x?.address || "—";
     const amt = Number(x?.uiAmount || 0);
     const pct = uiSupply > 0 ? (amt / uiSupply) * 100 : 0;
+    const sev = pct >= 10 ? "warn" : "ok";
     return {
       t: `#${i+1} ${shortAddr(addr)}`,
-      sev: pct >= 10 ? "warn" : "ok",
+      sev,
       d: `${fmtInt(amt)} tokens • ${pct.toFixed(2)}% • Solscan: https://solscan.io/account/${addr}`,
-      clickMsg: `Holder ${shortAddr(addr)} holds ${pct.toFixed(2)}% of supply.\n\nOpen Solscan:\nhttps://solscan.io/account/${addr}`
+      clickMsg: `
+        <b>Holder ${i+1}</b><br><br>
+        Address: <code>${addr}</code><br>
+        Share: <b>${pct.toFixed(2)}%</b> of UI supply.<br>
+        <div class="small">Action: if one wallet holds a huge %, watch for dumps. Check wallet history on Solscan.</div>
+      `
     };
   });
-  renderList(list, items);
+  renderList(list, items, "Top Holder Details");
+}
+
+/* Token-2022 extensions / token-standard details */
+function parseExtensionsFromParsed(rawParsed){
+  // Different RPCs expose different fields; we try multiple known shapes.
+  // If nothing is available, return null.
+  try{
+    const info = rawParsed?.info || rawParsed?.parsed?.info || rawParsed?.data?.parsed?.info || null;
+    if(!info) return null;
+
+    // Common candidates (depends on RPC version):
+    // - info.extensions: array
+    // - info.extensionTypes: array
+    // - info.mintExtensions: object/array
+    const ex1 = info.extensions;
+    const ex2 = info.extensionTypes;
+    const ex3 = info.mintExtensions;
+
+    let out = null;
+
+    if(Array.isArray(ex1) && ex1.length){
+      out = ex1.map(x=>{
+        if(typeof x === "string") return { name:x, details:null };
+        if(typeof x === "object" && x){
+          const name = x.extension || x.type || x.name || "Extension";
+          const details = x.state || x.value || x;
+          return { name, details };
+        }
+        return { name:String(x), details:null };
+      });
+    } else if(Array.isArray(ex2) && ex2.length){
+      out = ex2.map(x=>({name:String(x), details:null}));
+    } else if(ex3 && typeof ex3 === "object"){
+      if(Array.isArray(ex3) && ex3.length){
+        out = ex3.map(x=>({name: x?.type || x?.name || "Extension", details:x}));
+      } else {
+        // object map
+        out = Object.keys(ex3).map(k=>({name:k, details:ex3[k]}));
+      }
+    }
+
+    return out && out.length ? out : null;
+  }catch{
+    return null;
+  }
+}
+
+function humanizeExtensionName(n){
+  const s = String(n||"").toLowerCase();
+  if(s.includes("transferfee") || s.includes("transfer_fee")) return "Transfer Fee (fee on transfers)";
+  if(s.includes("permanentdelegate") || s.includes("permanent_delegate")) return "Permanent Delegate (delegate control)";
+  if(s.includes("nontransferable") || s.includes("non_transferable")) return "Non-Transferable (cannot be transferred)";
+  if(s.includes("interestbearing") || s.includes("interest_bearing")) return "Interest-Bearing (yield mechanics)";
+  if(s.includes("confidential") ) return "Confidential Transfers (privacy mode)";
+  if(s.includes("metadata")) return "Metadata Extension";
+  return n;
+}
+
+function renderTokenStandardDetails(programType, extReadable, extList){
+  const el = $("extList");
+  if(programType !== "TOKEN_2022"){
+    const msg = programType === "SPL_TOKEN"
+      ? "This mint uses the standard SPL Token program. Token-2022 extensions are not applicable."
+      : "This mint does not use a standard SPL Token program. Treat unknown programs with caution.";
+    renderList(el, [{
+      t:"Token standard details",
+      sev: programType === "SPL_TOKEN" ? "ok" : "warn",
+      d: msg,
+      clickMsg: explainTokenStandard(programType === "SPL_TOKEN" ? "SPL_TOKEN" : "UNKNOWN", extReadable)
+    }]);
+    return;
+  }
+
+  if(!extReadable){
+    renderList(el, [{
+      t:"Token-2022 extensions",
+      sev:"warn",
+      d:"Extension list was not exposed by parsed RPC data in this scan.",
+      clickMsg: explainTokenStandard("TOKEN_2022", false) + `<div class="small">Why: some RPC parsers do not return Token-2022 extension state. This is a visibility limitation, not proof of safety.</div>`
+    }]);
+    return;
+  }
+
+  const items = extList.map((x)=>{
+    const nameHuman = humanizeExtensionName(x.name);
+    const raw = x.details ? JSON.stringify(x.details, null, 2).slice(0, 1200) : null;
+
+    // Risk hint for some extension types
+    let sev = "warn";
+    let d = `Extension detected: ${nameHuman}.`;
+    let msg = `<b>${nameHuman}</b><br><br>This extension is enabled on Token-2022.`;
+
+    const lname = String(x.name||"").toLowerCase();
+    if(lname.includes("transferfee")) {
+      d = "Transfer fee can take a % of each transfer.";
+      msg += `<div class="small"><b>Action:</b> verify fee rate + who receives it. Hidden transfer fees can harm buyers.</div>`;
+    } else if(lname.includes("nontransferable")) {
+      sev = "bad";
+      d = "Non-transferable tokens cannot be transferred (severe restriction).";
+      msg += `<div class="small"><b>Action:</b> avoid unless the token is intentionally non-transferable (bad for memecoins).</div>`;
+    } else if(lname.includes("permanentdelegate")) {
+      d = "A delegate can have special control rights.";
+      msg += `<div class="small"><b>Action:</b> verify delegate address and what control it has.</div>`;
+    } else {
+      d = "Token-2022 extension enabled. Review details.";
+      msg += `<div class="small"><b>Action:</b> understand what this extension does before trusting the token.</div>`;
+    }
+
+    if(raw){
+      msg += `<code>${raw}</code>`;
+    }
+
+    return { t: nameHuman, sev, d, clickMsg: msg };
+  });
+
+  renderList(el, items, "Token-2022 Extension Details");
 }
 
 /* ===== Scan ===== */
@@ -995,7 +1206,6 @@ async function scan(){
   setShareEnabled(false);
 
   if(!looksBase58(mint)){ setStatus("Invalid mint address."); return; }
-  if(!HELIUS_KEY){ setStatus("Helius key missing."); return; }
 
   setStatus("Running Guardian Check…");
   setText("mintShort", shortAddr(mint));
@@ -1012,6 +1222,7 @@ async function scan(){
 
     const owner = mintParsed.owner;
     const info = mintParsed.info;
+    const rawParsed = mintParsed.rawParsed;
 
     const mintAuthority = info.mintAuthority ?? null;
     const freezeAuthority = info.freezeAuthority ?? null;
@@ -1032,31 +1243,45 @@ async function scan(){
     const top20Sum = top20.reduce((acc,x)=> acc + Number(x.uiAmount || 0), 0);
     const conc = (uiSupply && uiSupply > 0) ? (top20Sum / uiSupply) * 100 : 0;
 
+    // Token-2022 extensions visibility
+    const extRaw = programType === "TOKEN_2022" ? parseExtensionsFromParsed(rawParsed) : null;
+    const extReadable = !!(extRaw && extRaw.length);
+
     const sig = {
       mintAuthActive: !!mintAuthority,
       freezeActive: !!freezeAuthority,
       top20: conc,
-      programType
+      programType,
+      extReadable
     };
 
     const model = scoreModel(sig);
     const verdict = verdictFrom(model.score, model.critical);
 
+    // header
     setText("verdictTitle", verdict.title);
     setBadge($("verdictBadge"), verdict.label, verdict.mode);
     $("scoreBadge").textContent = `SCORE ${model.score}`;
 
-    renderMetrics(model.score, sig, uiSupply, top20Sum, owner);
+    // metrics
+    renderMetrics(model.score, sig, uiSupply, top20Sum, owner, decimals);
 
+    // lists
     setText("scanHint", `Mint: ${shortAddr(mint)}`);
-    renderList($("checksList"), model.checks);
-    renderList($("todoList"), buildTodo(sig));
+    renderList($("checksList"), model.checks, "Guardian Check Details");
+    renderList($("todoList"), buildTodo(sig), "Launch Readiness Details");
+    renderTokenStandardDetails(programType, extReadable, extRaw || []);
     renderHolders(mint, uiSupply, largest);
 
+    // summary
     const programText = programType === "SPL_TOKEN" ? "SPL Token" : (programType === "TOKEN_2022" ? "Token-2022" : "Unknown");
     const authLine = `${mintAuthority ? "MINT: ACTIVE" : "MINT: RENOUNCED"} • ${freezeAuthority ? "FREEZE: ACTIVE" : "FREEZE: REMOVED"}`;
-    setText("summary", `${verdict.label} • Score ${model.score}/100 • ${authLine} • Top20 ${fmtPct(conc)} • Program ${programText} • Decimals ${decimals}`);
+    const extLine = (programType === "TOKEN_2022")
+      ? (extReadable ? ` • Extensions: visible (${(extRaw||[]).length})` : ` • Extensions: not visible via parsed RPC`)
+      : "";
+    setText("summary", `${verdict.label} • Score ${model.score}/100 • ${authLine} • Top20 ${fmtPct(conc)} • Standard ${programText}${extLine} • Decimals ${decimals}`);
 
+    // share/badge
     const scanUrl = `https://solanax1.com/guardian?mint=${encodeURIComponent(mint)}`;
     setText("scanLink", scanUrl);
     setText("badgeHtml", badgeHtmlSnippet(mint, verdict.label, model.score));
@@ -1073,35 +1298,32 @@ async function scan(){
   }
 }
 
-$("btnScan").addEventListener("click", scan);
-$("mint").addEventListener("keydown", (e)=>{ if(e.key==="Enter") scan(); });
-
-/* CLICK + KEYBOARD ON PILLS (WATCH/FAIL) */
+/* Click handling for pills: open modal with full info */
 document.addEventListener("click", (e)=>{
   const pill = e.target.closest?.(".pill");
   if(!pill) return;
   const msg = pill.getAttribute("data-msg");
-  if(msg){
-    setStatus(msg);
-    openPillModal("Guardian Details", msg);
+  const title = pill.getAttribute("data-title") || "Guardian Details";
+  if(msg && msg.trim() && msg.trim() !== "—"){
+    openModal("Guardian Details", `<div style="font-weight:950;margin-bottom:8px">${title}</div>${msg}`);
   }
 });
 document.addEventListener("keydown", (e)=>{
-  const a = document.activeElement;
-  if(!a || !a.classList || !a.classList.contains("pill")) return;
-  if(e.key === "Enter" || e.key === " "){
+  if((e.key === "Enter" || e.key === " ") && document.activeElement?.classList?.contains("pill")){
     e.preventDefault();
-    const msg = a.getAttribute("data-msg");
-    if(msg){
-      setStatus(msg);
-      openPillModal("Guardian Details", msg);
+    const pill = document.activeElement;
+    const msg = pill.getAttribute("data-msg");
+    const title = pill.getAttribute("data-title") || "Guardian Details";
+    if(msg && msg.trim() && msg.trim() !== "—"){
+      openModal("Guardian Details", `<div style="font-weight:950;margin-bottom:8px">${title}</div>${msg}`);
     }
   }
 });
-document.addEventListener("keydown", (e)=>{
-  if(e.key === "Escape") closePillModal();
-});
 
+$("btnScan").addEventListener("click", scan);
+$("mint").addEventListener("keydown", (e)=>{ if(e.key==="Enter") scan(); });
+
+/* auto-scan from URL */
 (function(){
   const q = new URLSearchParams(location.search);
   const m = (q.get("mint") || "").trim();
