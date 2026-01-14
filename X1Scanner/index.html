@@ -2,150 +2,141 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="theme-color" content="#070711" />
   <title>$SOS — X1 Contract Scanner</title>
-  <meta name="description" content="X1 Contract Scanner — on-chain safety signals, holders, clusters, LP & market data, trending tokens." />
+  <meta name="description" content="$SOS X1 Contract Scanner — on-chain safety + holders + clusters + LP/market data + trending." />
 
-  <!-- Social preview -->
+  <!-- Open Graph -->
   <meta property="og:title" content="$SOS — X1 Contract Scanner" />
-  <meta property="og:description" content="Scan any Solana token mint. Safety signals + holders + clusters + trending." />
+  <meta property="og:description" content="Scan Solana token mints for safety signals, holders, clusters, and market/liquidity." />
   <meta property="og:type" content="website" />
   <meta property="og:image" content="logo.png" />
 
-  <link rel="icon" href="logo.png" />
+  <!-- Your external CSS -->
   <link rel="stylesheet" href="style.css" />
 </head>
 
 <body>
   <!-- TOPBAR -->
-  <div class="topbar">
+  <header class="topbar">
     <div class="wrap">
       <div class="row">
-        <div class="brand">
-          <img src="logo.png" class="brandLogo" alt="$SOS" />
+        <a class="brand" href="/#top" aria-label="Back to Main">
+          <img class="brandLogo" src="logo.png" alt="$SOS" />
           <div class="bt">
             <div class="t">$SOS</div>
             <div class="s">X1 Contract Scanner</div>
           </div>
-        </div>
+        </a>
 
         <div class="actions">
-          <a class="btn" href="https://solanax1.com/" rel="noreferrer">← Back to Main</a>
-          <button class="btn grad" id="btnScan">Scan Contract</button>
+          <a class="btn" href="/" rel="noreferrer">← Back to Main</a>
+          <button class="btn grad" id="btnScan" type="button">Scan Contract</button>
         </div>
       </div>
     </div>
-  </div>
+  </header>
 
   <main class="wrap">
     <!-- HERO -->
     <section class="card hero">
-      <div class="inner">
-        <div class="classified">
+      <div class="inner heroInner">
+        <div class="heroTop">
           <div class="stamp">GUARDIAN SYSTEM • SOLANA • CONTRACT SCAN</div>
           <div class="stamp" id="stampTime">—</div>
         </div>
 
-        <div class="heroGrid">
-          <!-- LEFT: input -->
+        <h1 class="h1"><span class="gradText">X1</span> Contract Scanner</h1>
+        <p class="sub">
+          Paste a Solana token mint address. We pull on-chain safety signals + top holders + owner clusters,
+          then enrich with market/liquidity data and a clear risk verdict. No wallet connect.
+        </p>
+
+        <div class="grid2">
+          <!-- INPUT PANEL -->
           <div class="panel">
-            <h1 class="h1"><span class="gradText">X1</span> Contract Scanner</h1>
-            <div class="sub">
-              Paste a Solana <b>token mint</b>. We pull <b>on-chain safety signals</b> + <b>holders</b> + <b>clusters</b> + <b>LP/market data</b>.
-              No wallet connect. No paid APIs required.
+            <label for="mint">Token Mint Address</label>
+            <input id="mint" placeholder="Paste Solana token mint…" autocomplete="off" spellcheck="false" />
+            <div class="hintRow">
+              <button class="chip" type="button" data-fill="So11111111111111111111111111111111111111112">Try SOL</button>
+              <button class="chip" type="button" data-fill="EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v">Try USDC</button>
+              <button class="chip" type="button" data-fill="Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB">Try USDT</button>
             </div>
-
-            <div class="inputBox">
-              <label for="mint">Token Mint Address</label>
-              <input id="mint" placeholder="Paste Solana token mint…" autocomplete="off" spellcheck="false" />
-              <div class="statusLine" id="status">—</div>
-            </div>
-
-            <div class="quickRow">
-              <button class="chip" data-demo="So11111111111111111111111111111111111111112">Try SOL</button>
-              <button class="chip" data-demo="EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v">Try USDC</button>
-              <button class="chip" data-demo="Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB">Try USDT</button>
-            </div>
+            <div class="statusLine" id="status">Ready.</div>
           </div>
 
-          <!-- RIGHT: results headline -->
-          <div class="panel resultsHead">
-            <div class="tokenHead">
-              <div class="tokenLeft">
-                <img id="tokenLogo" class="tokenLogo" src="logo.png" alt="Token logo" style="display:none;" />
-                <div>
+          <!-- HEADLINE PANEL -->
+          <div class="panel headline">
+            <div class="headlineTop">
+              <div class="tokenRow">
+                <img id="tokenLogo" class="tokenLogo" src="logo.png" alt="Token logo" />
+                <div class="tokenMeta">
                   <div class="tokenName" id="tokenName">—</div>
-                  <div class="tokenMeta">
-                    <span class="mono" id="mintShort">—</span>
-                    <span class="dot">•</span>
-                    <span class="muted" id="tokenSymbol">—</span>
-                  </div>
+                  <div class="tokenTicker" id="tokenTicker">—</div>
+                  <div class="tokenMint" id="mintShort">—</div>
                 </div>
               </div>
 
-              <div class="tokenRight">
+              <div class="badges">
                 <span class="badge" id="riskBadge">—</span>
-                <span class="badge soft" id="scoreBadge">Score —/100</span>
+                <span class="badge good" id="scoreBadge">Score —/100</span>
               </div>
             </div>
 
             <div class="kpiGrid">
               <div class="kpi">
-                <div class="k">PRICE</div>
+                <div class="k">Price</div>
                 <div class="v" id="kPrice">—</div>
+                <div class="mini" id="mPrice">DexScreener (best pair)</div>
               </div>
               <div class="kpi">
-                <div class="k">LIQUIDITY</div>
+                <div class="k">Liquidity</div>
                 <div class="v" id="kLiq">—</div>
+                <div class="mini" id="mLiq">USD liquidity (best pair)</div>
               </div>
               <div class="kpi">
-                <div class="k">MARKET CAP</div>
-                <div class="v" id="kMc">—</div>
+                <div class="k">Market Cap</div>
+                <div class="v" id="kMcap">—</div>
+                <div class="mini" id="mMcap">If available</div>
+              </div>
+
+              <div class="kpi">
+                <div class="k">FDV</div>
+                <div class="v" id="kFdv">—</div>
+                <div class="mini" id="mFdv">If available</div>
               </div>
               <div class="kpi">
-                <div class="k">SUPPLY</div>
+                <div class="k">Supply</div>
                 <div class="v" id="kSupply">—</div>
+                <div class="mini" id="mSupply">On-chain token supply</div>
               </div>
               <div class="kpi">
-                <div class="k">DECIMALS</div>
-                <div class="v" id="kDec">—</div>
-              </div>
-              <div class="kpi">
-                <div class="k">TOP 20 CONC.</div>
-                <div class="v" id="kTop20">—</div>
+                <div class="k">Decimals</div>
+                <div class="v" id="kDecimals">—</div>
+                <div class="mini" id="mDecimals">On-chain</div>
               </div>
             </div>
 
-            <div class="lineRow">
-              <div class="lineItem">
-                <span class="muted">Authorities:</span>
-                <span id="authLine">—</span>
-              </div>
-              <div class="lineItem">
-                <span class="muted">Best pair:</span>
-                <a class="link" id="dexLink" href="#" target="_blank" rel="noreferrer">—</a>
-              </div>
-            </div>
+            <div class="lineRow" id="authLine">Authorities: —</div>
 
             <div class="riskBox">
-              <div class="riskTop">
-                <div class="pill">RISK REASONS</div>
-                <div class="muted" id="scanHint">—</div>
+              <div class="riskHead">
+                <span class="pill">RISK REASONS</span>
               </div>
-              <ul class="riskList" id="riskList">
-                <li class="muted">Run a scan to see risk reasons.</li>
+              <ul class="riskList" id="riskReasons">
+                <li>Run a scan to see risk reasons.</li>
               </ul>
             </div>
           </div>
         </div>
 
         <!-- TRENDING -->
-        <div class="grid2" style="margin-top:16px;">
+        <div class="grid2" style="margin-top:16px">
           <div class="panel">
-            <div class="panelTop">
+            <div class="panelHead">
               <div class="stamp">DEXSCREENER • TRENDING (SOLANA)</div>
-              <div class="stamp" id="dexTrendHint">—</div>
+              <div class="stamp">LIVE</div>
             </div>
             <div class="trendList" id="dexTrending">
               <div class="trendEmpty">No data yet.</div>
@@ -153,140 +144,127 @@
           </div>
 
           <div class="panel">
-            <div class="panelTop">
+            <div class="panelHead">
               <div class="stamp">PUMPFUN • TRENDING (SOLANA)</div>
-              <div class="stamp" id="pumpTrendHint">—</div>
+              <div class="stamp">LIVE</div>
             </div>
             <div class="trendList" id="pumpTrending">
               <div class="trendEmpty">No data yet.</div>
             </div>
           </div>
         </div>
-
-        <!-- HOLDERS -->
-        <div class="panel" style="margin-top:16px;">
-          <div class="panelTop">
-            <div class="stamp">TOP HOLDERS (TOP 20 TOKEN ACCOUNTS)</div>
-            <div class="stamp" id="holdersHint">—</div>
-          </div>
-
-          <div class="table" id="holdersTable">
-            <div class="tr th">
-              <div>#</div>
-              <div>Amount / %</div>
-              <div>Token Account</div>
-              <div>Owner</div>
-              <div>Link</div>
-            </div>
-
-            <div class="tr">
-              <div class="cellMain">—</div>
-              <div class="cellMain muted">No scan yet</div>
-              <div class="cellMain muted">—</div>
-              <div class="cellMain muted">—</div>
-              <div class="cellMain muted">—</div>
-            </div>
-          </div>
-        </div>
-
-        <!-- CLUSTERS -->
-        <div class="panel" style="margin-top:16px;">
-          <div class="panelTop">
-            <div class="stamp">CLUSTERS (SAME OWNER IN TOP 20)</div>
-            <div class="stamp">HEURISTIC</div>
-          </div>
-
-          <div class="clusterBox" id="clusterBox">
-            <div class="muted">Run a scan to detect clusters.</div>
-          </div>
-        </div>
-
-        <!-- EXTRA SIGNALS -->
-        <div class="grid3" style="margin-top:16px;">
-          <div class="panel">
-            <div class="panelTop">
-              <div class="stamp">SAFETY SIGNALS</div>
-              <div class="stamp">ON-CHAIN</div>
-            </div>
-            <div class="sigGrid">
-              <div class="sig">
-                <div class="k">Mint Authority</div>
-                <div class="v" id="sMintAuth">—</div>
-              </div>
-              <div class="sig">
-                <div class="k">Freeze Authority</div>
-                <div class="v" id="sFreezeAuth">—</div>
-              </div>
-              <div class="sig">
-                <div class="k">Token Program</div>
-                <div class="v" id="sProgram">—</div>
-              </div>
-              <div class="sig">
-                <div class="k">Holders (top 20)</div>
-                <div class="v" id="sHolders">—</div>
-              </div>
-            </div>
-          </div>
-
-          <div class="panel">
-            <div class="panelTop">
-              <div class="stamp">LP / MARKET</div>
-              <div class="stamp">DEX</div>
-            </div>
-            <div class="sigGrid">
-              <div class="sig">
-                <div class="k">Liquidity</div>
-                <div class="v" id="sLiq">—</div>
-              </div>
-              <div class="sig">
-                <div class="k">24h Volume</div>
-                <div class="v" id="sVol">—</div>
-              </div>
-              <div class="sig">
-                <div class="k">Pair Age</div>
-                <div class="v" id="sAge">—</div>
-              </div>
-              <div class="sig">
-                <div class="k">DEX</div>
-                <div class="v" id="sDex">—</div>
-              </div>
-            </div>
-          </div>
-
-          <div class="panel">
-            <div class="panelTop">
-              <div class="stamp">GUARDIAN VERDICT</div>
-              <div class="stamp">SCORE</div>
-            </div>
-            <div class="verdictBox">
-              <div class="verdictBig" id="verdictBig">—</div>
-              <div class="verdictSub muted" id="verdictSub">Run a scan to get a verdict.</div>
-              <div class="bar"><div id="scoreBar"></div></div>
-            </div>
-          </div>
-        </div>
-
       </div>
     </section>
 
-    <footer>© <span id="y"></span> $SOS</footer>
+    <!-- HOLDERS -->
+    <section class="card" style="margin-top:16px">
+      <div class="inner">
+        <div class="sectionHead">
+          <div class="pill">TOP HOLDERS (TOP 20 TOKEN ACCOUNTS)</div>
+          <div class="pill subtle" id="holdersHint">—</div>
+        </div>
+
+        <div class="table" id="holdersTable">
+          <div class="tr th">
+            <div>#</div>
+            <div>Amount / %</div>
+            <div>Token Account</div>
+            <div>Owner</div>
+            <div class="col5">Link</div>
+          </div>
+
+          <div class="tr">
+            <div class="cellMain">—</div>
+            <div>
+              <div class="cellMain">No scan yet</div>
+              <div class="cellSub">Paste a mint and run scan.</div>
+            </div>
+            <div class="mono">—</div>
+            <div class="mono">—</div>
+            <div class="col5">—</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CLUSTERS -->
+    <section class="card" style="margin-top:16px">
+      <div class="inner">
+        <div class="sectionHead">
+          <div class="pill">CLUSTERS (SAME OWNER IN TOP 20)</div>
+          <div class="pill subtle">HEURISTIC</div>
+        </div>
+        <div class="clusterBox" id="clustersBox">
+          Run a scan to detect clusters.
+        </div>
+      </div>
+    </section>
+
+    <!-- SAFETY SIGNALS -->
+    <section class="card" style="margin-top:16px">
+      <div class="inner">
+        <div class="sectionHead">
+          <div class="pill">SAFETY SIGNALS</div>
+          <div class="pill subtle">ON-CHAIN + MARKET</div>
+        </div>
+
+        <div class="signalGrid">
+          <div class="sig">
+            <div class="k">Mint Authority</div>
+            <div class="v" id="sMintAuth">—</div>
+          </div>
+          <div class="sig">
+            <div class="k">Freeze Authority</div>
+            <div class="v" id="sFreezeAuth">—</div>
+          </div>
+          <div class="sig">
+            <div class="k">Token Program</div>
+            <div class="v" id="sProgram">—</div>
+          </div>
+          <div class="sig">
+            <div class="k">Holders (top 20)</div>
+            <div class="v" id="sHolderCount">—</div>
+          </div>
+          <div class="sig">
+            <div class="k">Top 1 Concentration</div>
+            <div class="v" id="sTop1">—</div>
+          </div>
+          <div class="sig">
+            <div class="k">Top 5 Concentration</div>
+            <div class="v" id="sTop5">—</div>
+          </div>
+          <div class="sig">
+            <div class="k">Top 20 Concentration</div>
+            <div class="v" id="sTop20">—</div>
+          </div>
+          <div class="sig">
+            <div class="k">Liquidity</div>
+            <div class="v" id="sLiq">—</div>
+          </div>
+          <div class="sig">
+            <div class="k">24h Volume</div>
+            <div class="v" id="sVol">—</div>
+          </div>
+          <div class="sig">
+            <div class="k">Pair Age</div>
+            <div class="v" id="sAge">—</div>
+          </div>
+          <div class="sig">
+            <div class="k">DEX</div>
+            <div class="v" id="sDex">—</div>
+          </div>
+          <div class="sig">
+            <div class="k">Guardian Verdict</div>
+            <div class="v" id="sVerdict">—</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <footer class="footer">© <span id="y"></span> $SOS</footer>
   </main>
 
+  <!-- App JS -->
   <script src="app.js"></script>
-  <script>
-    document.getElementById("y").textContent = new Date().getFullYear();
-    const t = document.getElementById("stampTime");
-    const tick = () => t && (t.textContent = new Date().toISOString().replace("T"," ").slice(0,19)+" UTC");
-    tick(); setInterval(tick, 1000);
-
-    // Quick demo buttons
-    document.querySelectorAll("[data-demo]").forEach(btn=>{
-      btn.addEventListener("click", ()=>{
-        const v = btn.getAttribute("data-demo");
-        const inp = document.getElementById("mint");
-        if(inp){ inp.value = v; }
-      });
-    });
-  </script>
 </body>
 </html>
