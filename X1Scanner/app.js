@@ -1,47 +1,67 @@
 const API = "https://fancy-sky-11bc.simon-kaggwa-why.workers.dev";
 
-const scanBtn = document.querySelector(".scan-btn");
+// Elements
+const scanBtn = document.querySelector(".btn");
 const input = document.querySelector("input");
-const status = document.querySelector(".status");
-const trendingBox = document.querySelector(".trending");
+const statusEl = document.getElementById("scanStatus");
+const trendingEl = document.getElementById("trending");
+const resultBox = document.getElementById("result");
+const resultContent = document.getElementById("resultContent");
 
+// Scan token
 async function scanToken() {
   const mint = input.value.trim();
   if (!mint) return;
 
-  status.textContent = "Scanning on-chain…";
+  statusEl.textContent = "Scanning on-chain…";
+  resultBox.classList.add("hidden");
 
   try {
     const res = await fetch(`${API}/scan?mint=${mint}`);
     const data = await res.json();
 
-    status.innerHTML = `
-      Risk Level: <b>${data.risk}</b><br/>
-      Name: ${data.name}<br/>
-      Symbol: ${data.symbol}
+    resultContent.innerHTML = `
+      <p><b>Risk:</b> ${data.risk}</p>
+      <p><b>Name:</b> ${data.name}</p>
+      <p><b>Symbol:</b> ${data.symbol}</p>
+      <p><b>Mint:</b> ${data.mint}</p>
     `;
+
+    statusEl.textContent = "Scan complete.";
+    resultBox.classList.remove("hidden");
   } catch (e) {
-    status.textContent = "Scan failed";
+    statusEl.textContent = "Scan failed.";
   }
 }
 
+// Load trending
 async function loadTrending() {
   try {
     const res = await fetch(`${API}/trending`);
     const data = await res.json();
 
     if (!data.items.length) {
-      trendingBox.innerHTML = "<i>No trending tokens yet</i>";
+      trendingEl.innerHTML = "<i>No trending tokens yet</i>";
       return;
     }
 
-    trendingBox.innerHTML = data.items
-      .map(t => `<div class="trend">${t.mint}</div>`)
+    trendingEl.innerHTML = data.items
+      .map(
+        t => `<div class="trend" onclick="scanFromTrending('${t.mint}')">
+                ${t.mint}
+              </div>`
+      )
       .join("");
   } catch {
-    trendingBox.innerHTML = "<i>Trending unavailable</i>";
+    trendingEl.innerHTML = "<i>Trending unavailable</i>";
   }
 }
 
+window.scanFromTrending = (mint) => {
+  input.value = mint;
+  scanToken();
+};
+
+// Events
 scanBtn.addEventListener("click", scanToken);
 loadTrending();
