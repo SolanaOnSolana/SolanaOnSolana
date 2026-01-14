@@ -1,0 +1,955 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+  <meta name="theme-color" content="#070711" />
+  <title>$SOS — Guardian Intelligence</title>
+  <meta name="description" content="Guardian Intelligence — wallet DNA + $SOS alignment report." />
+
+  <style>
+    :root{
+      --bg:#070711;
+      --panel: rgba(255,255,255,.06);
+      --panel2: rgba(255,255,255,.08);
+      --stroke: rgba(255,255,255,.12);
+      --text: rgba(255,255,255,.92);
+      --muted: rgba(255,255,255,.70);
+
+      --g:#14F195;
+      --c:#00D1FF;
+      --p:#9945FF;
+
+      --radius: 22px;
+      --shadow: 0 10px 30px rgba(0,0,0,.35);
+      --max: 1180px;
+    }
+
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      color:var(--text);
+      font: 15.5px/1.55 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      background: var(--bg);
+      overflow-x:hidden;
+      position:relative;
+    }
+    body::before{
+      content:"";
+      position:fixed; inset:0; z-index:-1; pointer-events:none;
+      background:
+        radial-gradient(1200px 700px at 10% 5%, rgba(153,69,255,.22), transparent 60%),
+        radial-gradient(1000px 650px at 90% 10%, rgba(20,241,149,.18), transparent 55%),
+        radial-gradient(900px 600px at 70% 85%, rgba(0,209,255,.14), transparent 55%),
+        var(--bg);
+      transform: translateZ(0);
+    }
+
+    a{color:inherit; text-decoration:none}
+    .wrap{max-width:var(--max); margin:0 auto; padding:0 18px}
+
+    .topbar{
+      position:sticky; top:0; z-index:20;
+      backdrop-filter: blur(14px);
+      background: rgba(7,7,17,.62);
+      border-bottom: 1px solid rgba(255,255,255,.08);
+    }
+    .row{
+      display:flex; align-items:center; justify-content:space-between;
+      gap:12px;
+      padding:12px 0;
+      flex-wrap:wrap;
+    }
+    .brand{
+      display:flex; align-items:center; gap:12px;
+      min-width: 240px;
+      user-select:none;
+    }
+    .brand img{
+      width:40px; height:40px; object-fit:contain;
+      filter: drop-shadow(0 10px 25px rgba(0,0,0,.45));
+    }
+    .bt{display:flex; flex-direction:column; line-height:1.05}
+    .bt .t{font-weight:1000; letter-spacing:-.2px; font-size:16px}
+    .bt .s{font-weight:850; color:var(--muted); font-size:12.5px}
+
+    .actions{
+      display:flex; gap:10px; align-items:center; flex-wrap:wrap;
+      justify-content:flex-end;
+      width:100%;
+    }
+    @media (min-width: 980px){ .actions{width:auto} }
+
+    .btn{
+      display:inline-flex; align-items:center; justify-content:center;
+      padding:9px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      color: rgba(255,255,255,.88);
+      font-weight:950;
+      font-size:13px;
+      transition: .15s ease;
+      user-select:none;
+      cursor:pointer;
+      -webkit-tap-highlight-color: transparent;
+      white-space:nowrap;
+    }
+    .btn:hover{background: rgba(255,255,255,.10); transform: translateY(-1px)}
+    .btn.grad{
+      border:0;
+      background: linear-gradient(90deg, var(--g), var(--c), var(--p));
+      color:#061012;
+      box-shadow: 0 10px 24px rgba(0,0,0,.25);
+    }
+    .btn[disabled]{opacity:.55; pointer-events:none}
+
+    main{padding:22px 0 42px}
+    .card{
+      background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.05));
+      border: 1px solid rgba(255,255,255,.10);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+    }
+    .inner{padding:22px}
+
+    .hero{
+      position:relative;
+      overflow:hidden;
+      isolation:isolate;
+    }
+    .hero::before{
+      content:"";
+      position:absolute;
+      inset:-70px -40px;
+      background:
+        radial-gradient(900px 520px at 18% 28%, rgba(20,241,149,.16), transparent 60%),
+        radial-gradient(900px 520px at 82% 20%, rgba(0,209,255,.12), transparent 60%),
+        radial-gradient(900px 520px at 70% 86%, rgba(153,69,255,.14), transparent 60%);
+      z-index:0; pointer-events:none;
+    }
+    .hero > *{position:relative; z-index:1}
+
+    .h1{
+      margin:0;
+      font-weight:1000;
+      letter-spacing:-1px;
+      line-height:1.05;
+      font-size: clamp(36px, 4.6vw, 62px);
+    }
+    .gradText{
+      background: linear-gradient(90deg, var(--g), var(--c), var(--p));
+      -webkit-background-clip:text; background-clip:text; color:transparent;
+    }
+    .sub{
+      margin-top:10px;
+      color: rgba(255,255,255,.76);
+      font-weight:850;
+      max-width: 900px;
+    }
+
+    .grid2{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:16px;
+      margin-top:16px;
+      align-items:start;
+    }
+    @media (max-width: 980px){ .grid2{grid-template-columns:1fr} }
+
+    .panel{
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.18);
+      border-radius: 18px;
+      padding:16px;
+    }
+
+    label{
+      display:block;
+      font-weight:950;
+      font-size:12.5px;
+      letter-spacing:.35px;
+      color: rgba(255,255,255,.82);
+      margin-bottom:8px
+    }
+    input{
+      width:100%;
+      padding:14px 14px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.22);
+      color: rgba(255,255,255,.92);
+      outline:none;
+      font-weight:900;
+      letter-spacing:.2px;
+
+      /* iOS Safari zoom fix */
+      font-size:16px;
+    }
+    input:focus{
+      border-color: rgba(0,209,255,.45);
+      box-shadow: 0 0 0 3px rgba(0,209,255,.12);
+    }
+
+    .classified{
+      display:flex; align-items:center; justify-content:space-between;
+      gap:10px; flex-wrap:wrap;
+    }
+    .stamp{
+      font-weight:1000;
+      font-size:12px;
+      letter-spacing: .45px;
+      text-transform:uppercase;
+      color: rgba(255,255,255,.76);
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      border-radius: 999px;
+      padding:7px 10px;
+    }
+
+    .big{
+      display:flex; align-items:flex-start; justify-content:space-between;
+      gap:12px; flex-wrap:wrap;
+      margin-top:10px;
+    }
+    .big .left{
+      min-width: 240px;
+    }
+    .title2{
+      margin:0;
+      font-weight:1000;
+      font-size:22px;
+      letter-spacing:-.4px;
+    }
+    .mono{
+      font-family: ui-monospace, Menlo, Consolas, monospace;
+      font-weight:900;
+      color: rgba(255,255,255,.86);
+      margin-top:6px;
+    }
+
+    .badge{
+      display:inline-flex; align-items:center; justify-content:center;
+      padding:7px 11px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      font-weight:1000;
+      font-size:12px;
+      white-space:nowrap;
+    }
+    .badge.good{border:0; background: linear-gradient(90deg,var(--g),var(--c),var(--p)); color:#061012}
+    .badge.warn{border-color: rgba(255,220,130,.35); background: rgba(255,220,130,.08); color: rgba(255,240,210,.92)}
+    .badge.bad{border-color: rgba(255,120,150,.35); background: rgba(255,120,150,.10); color: rgba(255,190,205,.95)}
+
+    .kpiGrid{
+      display:grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap:12px;
+      margin-top:12px;
+    }
+    @media (max-width: 980px){ .kpiGrid{grid-template-columns: repeat(2,1fr)} }
+    @media (max-width: 520px){ .kpiGrid{grid-template-columns: 1fr} }
+
+    .kpi{
+      padding:14px;
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.04);
+    }
+    .kpi .k{color: rgba(255,255,255,.70); font-weight:900; font-size:12px; letter-spacing:.45px; text-transform:uppercase}
+    .kpi .v{margin-top:8px; font-weight:1000; font-size:20px}
+    .kpi .mini{margin-top:6px; font-weight:850; font-size:12px; color: rgba(255,255,255,.62)}
+
+    .bar{
+      margin-top:10px;
+      height:12px;
+      border-radius:999px;
+      background: rgba(255,255,255,.08);
+      border: 1px solid rgba(255,255,255,.10);
+      overflow:hidden;
+    }
+    .bar > div{
+      height:100%;
+      width:0%;
+      background: linear-gradient(90deg, var(--g), var(--c), var(--p));
+      border-radius:999px;
+      transition: width .25s ease;
+    }
+
+    .statusLine{
+      margin-top:12px;
+      color: rgba(255,255,255,.72);
+      font-weight:900;
+      min-height: 18px;
+      font-size:13px;
+    }
+
+    .table{
+      margin-top:12px;
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.16);
+      overflow:hidden;
+    }
+    .tr{
+      display:grid;
+      grid-template-columns: 140px 1fr 120px;
+      gap:12px;
+      padding:12px 14px;
+      border-top: 1px solid rgba(255,255,255,.08);
+      align-items:center;
+    }
+    .tr:first-child{border-top:0}
+    @media (max-width: 860px){
+      .tr{grid-template-columns: 120px 1fr; }
+      .tr .col3{display:none}
+    }
+    .th{
+      background: rgba(255,255,255,.04);
+      font-weight:1000;
+      color: rgba(255,255,255,.75);
+      letter-spacing:.3px;
+      text-transform:uppercase;
+      font-size:11.5px;
+    }
+    .cellMain{font-weight:950}
+    .cellSub{font-size:12px; font-weight:850; color: rgba(255,255,255,.62); margin-top:3px}
+    .link{
+      text-decoration:underline;
+      text-underline-offset: 3px;
+      opacity:.95;
+    }
+
+    footer{
+      padding: 18px 0 34px;
+      color: rgba(255,255,255,.45);
+      font-weight:650;
+      text-align:center;
+      font-size:12px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="topbar">
+    <div class="wrap">
+      <div class="row">
+        <div class="brand">
+          <img id="brandLogo" src="logo.png" alt="$SOS" onerror="this.style.display='none'">
+          <div class="bt">
+            <div class="t">$SOS</div>
+            <div class="s">Guardian Intelligence</div>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button class="btn grad" id="btnScan">Scan Wallet</button>
+          <a class="btn" id="btnShare" href="#" target="_blank" rel="noreferrer" style="opacity:.55; pointer-events:none;">Share on X</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <main class="wrap">
+    <section class="card hero">
+      <div class="inner">
+        <div class="classified">
+          <div class="stamp">GUARDIAN SYSTEM • MAINNET • CLASSIFIED</div>
+          <div class="stamp" id="stampTime">—</div>
+        </div>
+
+        <h1 class="h1" style="margin-top:12px;"><span class="gradText">Guardian</span> Wallet DNA</h1>
+        <div class="sub">
+          A high-signal intelligence scan: capital strength, behavioral profile, venue footprint, and $SOS alignment — derived from public on-chain activity.
+        </div>
+
+        <div class="grid2">
+          <!-- Input -->
+          <div class="panel">
+            <label for="wallet">Wallet Address</label>
+            <input id="wallet" placeholder="Paste Solana wallet…" autocomplete="off" spellcheck="false" />
+            <div class="statusLine" id="status">Ready.</div>
+          </div>
+
+          <!-- Headline -->
+          <div class="panel">
+            <div class="big">
+              <div class="left">
+                <h3 class="title2" id="arch">—</h3>
+                <div class="mono" id="walletShort">—</div>
+              </div>
+              <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                <span class="badge" id="verdictBadge">—</span>
+                <span class="badge good" id="powerBadge">—</span>
+              </div>
+            </div>
+
+            <div class="kpiGrid">
+              <div class="kpi">
+                <div class="k">Overall Power</div>
+                <div class="v" id="sPower">—</div>
+                <div class="mini" id="mPower">—</div>
+                <div class="bar"><div id="bPower"></div></div>
+              </div>
+
+              <div class="kpi">
+                <div class="k">SOL Balance</div>
+                <div class="v" id="sSol">—</div>
+                <div class="mini" id="mSol">—</div>
+              </div>
+
+              <div class="kpi">
+                <div class="k">$SOS Holding</div>
+                <div class="v" id="sSOS">—</div>
+                <div class="mini" id="mSOS">—</div>
+              </div>
+
+              <div class="kpi">
+                <div class="k">Activity</div>
+                <div class="v" id="sAct">—</div>
+                <div class="mini" id="mAct">—</div>
+                <div class="bar"><div id="bAct"></div></div>
+              </div>
+
+              <div class="kpi">
+                <div class="k">Stability</div>
+                <div class="v" id="sStab">—</div>
+                <div class="mini" id="mStab">—</div>
+                <div class="bar"><div id="bStab"></div></div>
+              </div>
+
+              <div class="kpi">
+                <div class="k">Venue Footprint</div>
+                <div class="v" id="sVen">—</div>
+                <div class="mini" id="mVen">—</div>
+                <div class="bar"><div id="bVen"></div></div>
+              </div>
+            </div>
+
+            <div class="statusLine" id="summary">—</div>
+          </div>
+        </div>
+
+        <!-- Recent activity table -->
+        <div class="panel" style="margin-top:16px;">
+          <div class="classified">
+            <div class="stamp">RECENT ON-CHAIN ACTIVITY</div>
+            <div class="stamp" id="txHint">—</div>
+          </div>
+
+          <div class="table" id="txTable" style="margin-top:10px;">
+            <div class="tr th">
+              <div>Time</div>
+              <div>Source / Type</div>
+              <div class="col3">Link</div>
+            </div>
+            <div class="tr">
+              <div class="cellMain">—</div>
+              <div>
+                <div class="cellMain">No scan yet</div>
+                <div class="cellSub">Paste a wallet and run scan.</div>
+              </div>
+              <div class="col3">—</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Token intel -->
+        <div class="panel" style="margin-top:16px;">
+          <div class="classified">
+            <div class="stamp">$SOS TOKEN INTEL</div>
+            <div class="stamp" id="tokenStamp">—</div>
+          </div>
+
+          <div class="kpiGrid" style="margin-top:10px;">
+            <div class="kpi">
+              <div class="k">Supply</div>
+              <div class="v" id="tSupply">—</div>
+              <div class="mini" id="tSupplyM">—</div>
+            </div>
+            <div class="kpi">
+              <div class="k">Top 20 Concentration</div>
+              <div class="v" id="tTop20">—</div>
+              <div class="mini" id="tTop20M">—</div>
+              <div class="bar"><div id="bTop20"></div></div>
+            </div>
+            <div class="kpi">
+              <div class="k">Guardian Tier</div>
+              <div class="v" id="tTier">—</div>
+              <div class="mini" id="tTierM">—</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <footer>© <span id="y"></span> $SOS</footer>
+  </main>
+
+<script>
+/* ============================================================
+   CONFIG (ONLY TWO THINGS YOU WILL EVER CHANGE)
+   1) HELIUS_KEY  -> paste your key once
+   2) SOS_MINT    -> later replace with your real mint
+============================================================ */
+const HELIUS_KEY = "7a301cf9-1c7c-4e4f-8adc-3a1e5d1eaea7";
+
+/* Silent test mint (you will replace later with real $SOS mint) */
+const SOS_MINT = "3hFEAFfPBgquhPcuQYJWufENYg9pjMDvgEEsv4jxpump";
+
+/* If you want to keep your current temporary test mint, put it here:
+   const SOS_MINT = "a3W4qutoEJA4232T2gwZUfgYJTetr96pU4SJMwppump";
+*/
+
+// ------------------------------------------------------------
+const $ = (id)=>document.getElementById(id);
+$("y").textContent = new Date().getFullYear();
+$("stampTime").textContent = new Date().toISOString().replace("T"," ").slice(0,19) + " UTC";
+
+(async ()=>{
+  const el = $("brandLogo");
+  const trySrc = async (src)=> new Promise(res=>{
+    const img = new Image();
+    img.onload = ()=>res(src);
+    img.onerror = ()=>res(null);
+    img.src = src;
+  });
+  const src = await trySrc("logo.png") || await trySrc("assets/logo.png");
+  if(src){ el.src = src; el.style.display=""; } else { el.style.display="none"; }
+})();
+
+function looksBase58(s){
+  return typeof s === "string"
+    && s.length >= 32 && s.length <= 52
+    && /^[1-9A-HJ-NP-Za-km-z]+$/.test(s);
+}
+function shortAddr(a){ return a ? (a.slice(0,4)+"…"+a.slice(-4)) : "—"; }
+function clamp(n,min,max){ return Math.max(min, Math.min(max, n)); }
+function pctBar(el, val){ el.style.width = clamp(val,0,100) + "%"; }
+function fmt(n, d=2){
+  if(n === null || n === undefined || Number.isNaN(n)) return "—";
+  const x = Number(n);
+  if(!Number.isFinite(x)) return "—";
+  if(Math.abs(x) >= 1_000_000) return (x/1_000_000).toFixed(2)+"M";
+  if(Math.abs(x) >= 1_000) return (x/1_000).toFixed(2)+"K";
+  return x.toFixed(d);
+}
+function fmtInt(n){
+  if(n === null || n === undefined || Number.isNaN(n)) return "—";
+  try { return new Intl.NumberFormat("en-US").format(Math.round(Number(n))); } catch { return String(n); }
+}
+function setBadge(el, txt, mode){
+  el.textContent = txt;
+  el.classList.remove("good","warn","bad");
+  if(mode) el.classList.add(mode);
+}
+
+// ---------- Helius enhanced
+async function heliusGET(path, params){
+  if(!HELIUS_KEY || HELIUS_KEY.includes("PASTE_")) throw new Error("Helius key not set in CONFIG.");
+  const u = new URL(`https://api.helius.xyz${path}`);
+  u.searchParams.set("api-key", HELIUS_KEY);
+  if(params){
+    for(const [k,v] of Object.entries(params)){
+      if(v !== undefined && v !== null) u.searchParams.set(k, String(v));
+    }
+  }
+  const res = await fetch(u.toString(), { method:"GET" });
+  if(!res.ok){
+    const txt = await res.text().catch(()=> "");
+    throw new Error(`Helius HTTP ${res.status} ${txt}`.slice(0,180));
+  }
+  return res.json();
+}
+
+async function getRecentTx(wallet, limit=140){
+  // Helius endpoint doesn't accept "limit" as query param in some deployments.
+  // Fetch default window, then cut locally.
+  const data = await heliusGET(`/v0/addresses/${wallet}/transactions`);
+  return Array.isArray(data) ? data.slice(0, limit) : data;
+}
+
+// ---------- RPC fallback (Helius RPC first)
+function rpcUrls(){
+  const helius = `https://mainnet.helius-rpc.com/?api-key=${encodeURIComponent(HELIUS_KEY)}`;
+  return [
+    helius,
+    "https://api.mainnet-beta.solana.com",
+    "https://rpc.ankr.com/solana",
+    "https://solana.drpc.org"
+  ];
+}
+let _rpcIndex = 0;
+async function rpc(method, params){
+  const urls = rpcUrls();
+  const body = JSON.stringify({ jsonrpc:"2.0", id:1, method, params });
+
+  for(let attempt=0; attempt<urls.length; attempt++){
+    const url = urls[_rpcIndex % urls.length];
+    const controller = new AbortController();
+    const t = setTimeout(()=>controller.abort(), 12000);
+
+    try{
+      const res = await fetch(url, {
+        method:"POST",
+        headers: {"Content-Type":"application/json"},
+        body,
+        signal: controller.signal
+      });
+      clearTimeout(t);
+
+      if(res.status === 429) throw new Error("Rate limited (429)");
+      if(!res.ok){
+        const txt = await res.text().catch(()=> "");
+        throw new Error(`RPC HTTP ${res.status} ${txt}`.slice(0,160));
+      }
+      const j = await res.json();
+      if(j.error) throw new Error(j.error.message || "RPC error");
+      return j.result;
+
+    }catch(e){
+      clearTimeout(t);
+      _rpcIndex++;
+      if(attempt === urls.length - 1) throw e;
+    }
+  }
+}
+
+async function getSolBalanceLamports(owner){
+  const r = await rpc("getBalance", [owner, { commitment:"confirmed" }]);
+  return r?.value ?? 0;
+}
+async function getSplBalance(owner, mint){
+  if(!looksBase58(mint)) return 0;
+  const r = await rpc("getTokenAccountsByOwner", [
+    owner,
+    { mint },
+    { encoding:"jsonParsed" }
+  ]);
+  const arr = r?.value || [];
+  let total = 0;
+  for(const it of arr){
+    const ta = it?.account?.data?.parsed?.info?.tokenAmount;
+    if(ta) total += Number(ta.uiAmount || 0);
+  }
+  return total;
+}
+async function getTokenSupply(mint){
+  const r = await rpc("getTokenSupply", [mint]);
+  return r?.value || null;
+}
+async function getTokenLargest(mint){
+  const r = await rpc("getTokenLargestAccounts", [mint]);
+  return r?.value || [];
+}
+
+// ---------- Intelligence extraction
+function analyzeWallet(txs){
+  const N = Array.isArray(txs) ? txs.length : 0;
+  if(!N){
+    return {
+      archetype: "UNREADABLE PROFILE",
+      verdict: {label:"OBSERVED", badge:"warn"},
+      power: 10,
+      activity: 5,
+      stability: 20,
+      venue: 10,
+      venuesTop: [],
+      diversityRaw: 0,
+      solFlow: 0,
+      summary: "No readable recent activity window."
+    };
+  }
+
+  let swapish = 0;
+  let venues = new Map();
+  let mints = new Set();
+  let inOut = 0;
+
+  let solIn = 0, solOut = 0;
+
+  for(const tx of txs){
+    const src = String(tx.source || "UNKNOWN").toUpperCase();
+    venues.set(src, (venues.get(src)||0) + 1);
+
+    // token diversity + rotation proxy
+    const tt = Array.isArray(tx.tokenTransfers) ? tx.tokenTransfers : [];
+    const hasIn = tt.some(t => t.toUserAccount);
+    const hasOut = tt.some(t => t.fromUserAccount);
+    if(hasIn && hasOut) inOut++;
+
+    for(const t of tt){
+      if(t.mint) mints.add(t.mint);
+    }
+
+    // venue classification
+    if(src.includes("JUPITER") || src.includes("RAYDIUM") || src.includes("ORCA") || src.includes("METEORA") || src.includes("SWAP")){
+      swapish++;
+    }
+
+    // native SOL flow (enhanced)
+    const nt = Array.isArray(tx.nativeTransfers) ? tx.nativeTransfers : [];
+    for(const n of nt){
+      const amt = Number(n.amount || 0) / 1e9; // lamports -> SOL
+      if(!Number.isFinite(amt) || amt <= 0) continue;
+      // in enhanced tx, "fromUserAccount" / "toUserAccount" sometimes exists
+      if(n.toUserAccount) solIn += amt;
+      if(n.fromUserAccount) solOut += amt;
+    }
+  }
+
+  const swapRatio = swapish / Math.max(1, N);
+  const inOutRatio = inOut / Math.max(1, N);
+  const diversityRaw = mints.size;
+  const diversityScore = clamp(Math.round(diversityRaw * 6), 0, 100);
+
+  const activity = clamp(Math.round(N / 1.2), 0, 100);
+  const stability = clamp(Math.round((1 - inOutRatio) * 100), 0, 100);
+  const venue = clamp(Math.round((Math.min(12, venues.size) / 12) * 100), 0, 100);
+
+  const solFlow = (solIn - solOut); // heuristic over recent window
+
+  // Power score: designed for “wow” but still grounded in behavior
+  // Emphasize stability + activity; penalize hyper-rotation
+  const power = clamp(Math.round(
+    (stability * 0.38) +
+    (activity * 0.30) +
+    ((1 - swapRatio) * 100 * 0.14) +
+    (Math.max(0, 70 - diversityScore) * 0.10) +
+    (venue * 0.08)
+  ), 0, 100);
+
+  let archetype = "CHAIN WALKER";
+  if(power >= 85 && stability >= 75) archetype = "DIAMOND OPERATOR";
+  else if(stability >= 75 && activity <= 45) archetype = "SLEEPING WHALE";
+  else if(activity >= 80 && stability >= 55) archetype = "HUNT MODE";
+  else if(swapRatio >= 0.55 && diversityRaw >= 10) archetype = "VENUE DRIFTER";
+  else if(inOutRatio >= 0.35 && stability <= 45) archetype = "HIGH ROTATION";
+  else if(diversityRaw >= 14) archetype = "TOKEN NOMAD";
+  else if(stability >= 65 && diversityRaw <= 6) archetype = "QUIET ACCUMULATOR";
+
+  let verdict = {label:"OBSERVED", badge:"warn"};
+  if(power >= 78 && stability >= 60) verdict = {label:"APPROVED", badge:"good"};
+  if(power <= 35 && stability <= 40) verdict = {label:"FLAGGED", badge:"bad"};
+
+  const venuesTop = Array.from(venues.entries())
+    .sort((a,b)=>b[1]-a[1])
+    .slice(0,3)
+    .map(([k,v])=>({k,v}));
+
+  const summary =
+    `${archetype} • Power ${power}/100 • Stability ${stability}/100 • Activity ${activity}/100 • Diversity ${diversityRaw} • Net SOL flow ${solFlow.toFixed(3)} (window)`;
+
+  return { archetype, verdict, power, activity, stability, venue, venuesTop, diversityRaw, solFlow, summary };
+}
+
+function sosTier(holding){
+  if(holding <= 0) return {tier:"UNALIGNED", badge:"bad", align: 0, note:"No position detected."};
+  if(holding >= 1_000_000) return {tier:"DIAMOND", badge:"good", align: 98, note:"Guardian-grade alignment."};
+  if(holding >= 100_000)   return {tier:"PROTECTED", badge:"good", align: 85, note:"Strong alignment."};
+  if(holding >= 10_000)    return {tier:"WATCHER", badge:"warn", align: 62, note:"Building position."};
+  return {tier:"FRINGE", badge:"warn", align: 40, note:"Small position."};
+}
+
+function buildShareText(wallet, intel, solBal, sosHold, sos){
+  const link = location.href;
+  const w = shortAddr(wallet);
+  const topVen = intel.venuesTop.map(x=>x.k).join(", ") || "—";
+
+  const lines = [
+    `🛡️ GUARDIAN INTELLIGENCE — $SOS`,
+    ``,
+    `Wallet: ${w}`,
+    `Archetype: ${intel.archetype}`,
+    `Verdict: ${intel.verdict.label}`,
+    `Power: ${intel.power}/100`,
+    `Stability: ${intel.stability}/100`,
+    `Activity: ${intel.activity}/100`,
+    `Venues: ${topVen}`,
+    `SOL: ${solBal.toFixed(3)}`,
+    ``,
+    `$SOS Tier: ${sos.tier} • Holding: ${Math.floor(sosHold)}`,
+    ``,
+    `Scan yours: ${link}`
+  ];
+  return lines.join("\n");
+}
+
+function setShareEnabled(enabled, url){
+  const a = $("btnShare");
+  if(enabled){
+    a.href = url;
+    a.style.opacity = "1";
+    a.style.pointerEvents = "auto";
+  }else{
+    a.href = "#";
+    a.style.opacity = ".55";
+    a.style.pointerEvents = "none";
+  }
+}
+
+function fillTxTable(wallet, txs){
+  const table = $("txTable");
+  const head = table.firstElementChild; // header row
+  table.innerHTML = "";
+  table.appendChild(head);
+
+  const list = (Array.isArray(txs) ? txs : []).slice(0,12);
+  $("txHint").textContent = list.length ? `${list.length} latest events` : "—";
+
+  if(!list.length){
+    const row = document.createElement("div");
+    row.className = "tr";
+    row.innerHTML = `<div class="cellMain">—</div>
+      <div><div class="cellMain">No recent events found</div><div class="cellSub">Try another wallet.</div></div>
+      <div class="col3">—</div>`;
+    table.appendChild(row);
+    return;
+  }
+
+  for(const tx of list){
+    const t = tx.timestamp ? new Date(tx.timestamp * 1000) : null;
+    const time = t ? t.toISOString().slice(0,16).replace("T"," ")+"Z" : "—";
+    const src = String(tx.source || "UNKNOWN");
+    const type = String(tx.type || "TRANSACTION");
+    const sig = String(tx.signature || "");
+    const solscan = sig ? `https://solscan.io/tx/${sig}` : "#";
+
+    const row = document.createElement("div");
+    row.className = "tr";
+    row.innerHTML = `
+      <div class="cellMain">${time}</div>
+      <div>
+        <div class="cellMain">${src} • ${type}</div>
+        <div class="cellSub mono">${sig ? (sig.slice(0,10)+"…"+sig.slice(-10)) : "—"}</div>
+      </div>
+      <div class="col3"><a class="link" href="${solscan}" target="_blank" rel="noreferrer">View</a></div>
+    `;
+    table.appendChild(row);
+  }
+}
+
+async function fillTokenIntel(holding){
+  // supply + top20 concentration (approx from largest accounts)
+  if(!looksBase58(SOS_MINT) || SOS_MINT.includes("SOS_MINT_HERE")){
+    $("tSupply").textContent = "—";
+    $("tSupplyM").textContent = "Mint not set.";
+    $("tTop20").textContent = "—";
+    $("tTop20M").textContent = "—";
+    pctBar($("bTop20"), 0);
+    $("tTier").textContent = "—";
+    $("tTierM").textContent = "—";
+    return;
+  }
+
+  $("tokenStamp").textContent = `Mint: ${shortAddr(SOS_MINT)}`;
+
+  const supply = await getTokenSupply(SOS_MINT);
+  const decimals = supply ? Number(supply.decimals || 0) : 0;
+  const uiSupply = supply ? Number(supply.uiAmount || 0) : null;
+
+  $("tSupply").textContent = uiSupply !== null ? fmtInt(uiSupply) : "—";
+  $("tSupplyM").textContent = uiSupply !== null ? `Decimals: ${decimals}` : "—";
+
+  const largest = await getTokenLargest(SOS_MINT);
+  const top20 = largest.slice(0,20);
+  const topSum = top20.reduce((acc,x)=> acc + Number(x.uiAmount || 0), 0);
+  const conc = (uiSupply && uiSupply > 0) ? (topSum / uiSupply) * 100 : 0;
+
+  $("tTop20").textContent = uiSupply ? `${conc.toFixed(2)}%` : "—";
+  $("tTop20M").textContent = uiSupply ? `Top20: ${fmtInt(topSum)} / ${fmtInt(uiSupply)}` : "—";
+  pctBar($("bTop20"), conc);
+
+  const tier = sosTier(holding);
+  $("tTier").textContent = tier.tier;
+  $("tTierM").textContent = tier.note;
+}
+
+async function scan(){
+  const wallet = $("wallet").value.trim();
+  setShareEnabled(false);
+
+  if(!looksBase58(wallet)){
+    $("status").textContent = "Invalid wallet address.";
+    return;
+  }
+  if(!HELIUS_KEY || HELIUS_KEY.includes("PASTE_")){
+    $("status").textContent = "Scanner is not configured (Helius key missing).";
+    return;
+  }
+
+  $("status").textContent = "Running Guardian scan…";
+  $("walletShort").textContent = shortAddr(wallet);
+
+  try{
+    // parallel pulls
+    const [txs, solLamports, sosHold] = await Promise.all([
+      getRecentTx(wallet, 80),
+      getSolBalanceLamports(wallet),
+      getSplBalance(wallet, SOS_MINT)
+    ]);
+
+    const solBal = Number(solLamports) / 1e9;
+
+    const intel = analyzeWallet(txs);
+    const sos = sosTier(sosHold);
+
+    // Header
+    $("arch").textContent = intel.archetype;
+    setBadge($("verdictBadge"), intel.verdict.label, intel.verdict.badge);
+
+    $("powerBadge").textContent = `POWER ${intel.power}%`;
+    $("sPower").textContent = `${intel.power}%`;
+    $("mPower").textContent = intel.power >= 80 ? "High-strength profile." : (intel.power >= 55 ? "Solid profile." : "Low-strength profile.");
+    pctBar($("bPower"), intel.power);
+
+    $("sSol").textContent = `${solBal.toFixed(3)} SOL`;
+    $("mSol").textContent = solBal >= 50 ? "High capital reserve." : (solBal >= 5 ? "Moderate reserve." : "Low reserve.");
+
+    $("sSOS").textContent = fmtInt(Math.floor(sosHold));
+    $("mSOS").textContent = `${sos.tier} • ${sos.note}`;
+
+    $("sAct").textContent = `${intel.activity}/100`;
+    $("mAct").textContent = intel.activity >= 75 ? "High on-chain tempo." : (intel.activity >= 45 ? "Active wallet." : "Low tempo.");
+    pctBar($("bAct"), intel.activity);
+
+    $("sStab").textContent = `${intel.stability}/100`;
+    $("mStab").textContent = intel.stability >= 70 ? "Low rotation behavior." : (intel.stability >= 45 ? "Mixed rotation." : "High rotation.");
+    pctBar($("bStab"), intel.stability);
+
+    const vtxt = intel.venuesTop.map(x=>x.k).join(", ") || "UNKNOWN";
+    $("sVen").textContent = `${intel.venue}/100`;
+    $("mVen").textContent = `Top venues: ${vtxt}`;
+    pctBar($("bVen"), intel.venue);
+
+    $("summary").textContent = intel.summary;
+
+    // Transactions table
+    fillTxTable(wallet, txs);
+
+    // Token intel
+    await fillTokenIntel(sosHold);
+
+    // Share
+    const text = buildShareText(wallet, intel, solBal, sosHold, sos);
+    const u = new URL("https://x.com/intent/tweet");
+    u.searchParams.set("text", text);
+    setShareEnabled(true, u.toString());
+
+    $("status").textContent = `Scan complete: ${intel.verdict.label} • ${intel.archetype}`;
+
+  }catch(e){
+    console.error(e);
+    $("status").textContent = "Scan failed: " + (e?.message || "unknown error");
+  }
+}
+
+$("btnScan").addEventListener("click", scan);
+$("wallet").addEventListener("keydown", (e)=>{ if(e.key==="Enter") scan(); });
+</script>
+</body>
+</html>
