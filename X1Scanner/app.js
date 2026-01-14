@@ -1,92 +1,86 @@
-// === CONFIG ===
+// ==============================
+// X1 Scanner Frontend Logic
+// ==============================
+
+// !!! WICHTIG: DAS IST DEINE CLOUDFLARE WORKER URL !!!
 const API = "https://fancy-sky-11bc.simon-kaggwa-why.workers.dev";
 
-// === ELEMENTS ===
+// ------------------------------
+// Elements
+// ------------------------------
 const mintInput = document.getElementById("mintInput");
 const scanBtn = document.getElementById("scanBtn");
 const statusEl = document.getElementById("scanStatus");
 const resultBox = document.getElementById("result");
 const resultContent = document.getElementById("resultContent");
 const trendingBox = document.getElementById("trending");
+
 document.getElementById("y").textContent = new Date().getFullYear();
 
-// === HELPERS ===
-function esc(s) {
-  return String(s ?? "").replace(/[&<>"']/g, (m) => ({
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",
-    '"': "&quot;",
-    "'": "&#39;",
-  }[m]));
+// ------------------------------
+// Helpers
+// ------------------------------
+function riskClass(risk) {
+  if (!risk) return "med";
+  const r = risk.toUpperCase();
+  if (r === "LOW") return "low";
+  if (r === "HIGH") return "high";
+  return "med";
 }
 
-function short(addr) {
-  const s = String(addr || "");
-  if (s.length <= 12) return s;
-  return `${s.slice(0, 6)}…${s.slice(-6)}`;
-}
-
-function riskBadge(risk) {
-  const r = (risk || "HIGH").toUpperCase();
-  const cls = r === "LOW" ? "low" : r === "MEDIUM" ? "med" : "high";
-  return `<span class="badge ${cls}">${esc(r)}</span>`;
-}
-
-async function safeFetchJson(url) {
-  const res = await fetch(url);
-  let data = null;
-  try { data = await res.json(); } catch (_) {}
-  if (!res.ok) {
-    const msg = data?.error || `HTTP ${res.status}`;
-    throw new Error(msg);
-  }
-  return data;
-}
-
-// === TRENDING ===
+// ------------------------------
+// Load Trending Tokens
+// ------------------------------
 async function loadTrending() {
-  trendingBox.innerHTML = `<div class="mutedSmall">Loading trending…</div>`;
+  trendingBox.innerHTML = `<div class="mutedSmall">Loading trending tokens…</div>`;
+
   try {
-    const data = await safeFetchJson(`${API}/trending`);
-    if (!data?.items?.length) {
+    const res = await fetch(`${API}/trending`);
+    if (!res.ok) throw new Error("HTTP " + res.status);
+
+    const data = await res.json();
+
+    if (!data.items || data.items.length === 0) {
       trendingBox.innerHTML = `<div class="mutedSmall">No trending tokens yet</div>`;
       return;
     }
 
-    trendingBox.innerHTML = data.items.map(t => `
-      <button class="tokenCard tokenBtn" data-mint="${esc(t.mint)}">
-        <div class="tokenTop">
-          <div class="tokenTitle">
-            <div class="tokenName">${esc(t.name || "Unknown")}</div>
-            <div class="tokenSub">${esc(t.symbol || "?")} • ${short(t.mint)}</div>
-          </div>
-          ${riskBadge(t.risk)}
-        </div>
-        <div class="tokenMeta">
-          <div><span>Supply</span><b>${t.supplyUi ?? "—"}</b></div>
-          <div><span>Decimals</span><b>${t.decimals ?? "—"}</b></div>
-        </div>
-      </button>
-    `).join("");
+    trendingBox.innerHTML = "";
 
-    // click-to-scan
-    document.querySelectorAll(".tokenBtn").forEach(btn => {
-      btn.addEventListener("click", () => {
-        mintInput.value = btn.dataset.mint;
+    data.items.forEach(t => {
+      const div = document.createElement("div");
+      div.className = "tokenCard tokenBtn";
+      div.innerHTML = `
+        <div class="tokenTop">
+          <div>
+            <div class="tokenName">${t.name || "Unknown"}</div>
+            <div class="tokenSub">${t.symbol || "—"}</div>
+          </div>
+          <span class="badge ${riskClass(t.risk)}">${t.risk || "MED"}</span>
+        </div>
+        <div class="tokenSub" style="margin-top:10px;word-break:break-all">
+          ${t.mint}
+        </div>
+      `;
+      div.onclick = () => {
+        mintInput.value = t.mint;
         scanBtn.click();
-        window.scrollTo({ top: 0, behavior: "smooth" });
-      });
+      };
+      trendingBox.appendChild(div);
     });
 
-  } catch (e) {
-    trendingBox.innerHTML = `<div class="mutedSmall">Trending error: ${esc(e.message)}</div>`;
+  } catch (err) {
+    trendingBox.innerHTML = `<div class="errorBox">Failed to load trending</div>`;
+    console.error("Trending error:", err);
   }
 }
 
-// === SCAN ===
-async function runScan() {
+// ------------------------------
+// Scan Token
+// ------------------------------
+scanBtn.onclick = async () => {
   const mint = mintInput.value.trim();
+
   if (!mint) {
     statusEl.textContent = "Paste a token mint address.";
     return;
@@ -94,71 +88,67 @@ async function runScan() {
 
   statusEl.textContent = "Scanning on-chain…";
   resultBox.classList.add("hidden");
-  resultContent.innerHTML = "";
 
   try {
-    const data = await safeFetchJson(`${API}/scan?mint=${encodeURIComponent(mint)}`);
+    const res = await fetch(`${API}/scan?mint=${mint}`);
+    if (!res.ok) throw new Error("HTTP " + res.status);
 
-    statusEl.textContent = "Scan complete.";
+    const data = await res.json();
+
+    statusEl.textContent = "";
     resultBox.classList.remove("hidden");
 
-    const holders = (data.topHolders || []).slice(0, 6);
+    const risk = (data.risk || "MED").toUpperCase();
 
     resultContent.innerHTML = `
       <div class="report">
         <div class="reportHead">
           <div>
-            <div class="rTitle">${esc(data.name || "Unknown")} <span class="sym">(${esc(data.symbol || "?")})</span></div>
-            <div class="rSub">Mint: <code>${esc(data.mint)}</code></div>
+            <div class="rTitle">
+              ${data.name || "Unknown"}
+              <span class="sym">${data.symbol ? "• " + data.symbol : ""}</span>
+            </div>
+            <div class="rSub">
+              Mint: <code>${data.mint || mint}</code>
+            </div>
           </div>
-          <div class="rRight">
-            ${riskBadge(data.risk)}
-          </div>
+          <span class="badge ${riskClass(risk)}">${risk}</span>
         </div>
 
         <div class="reportGrid">
-          <div class="kpi">
-            <span>Supply</span>
-            <b>${data.supply?.ui ?? "—"}</b>
-          </div>
           <div class="kpi">
             <span>Decimals</span>
             <b>${data.decimals ?? "—"}</b>
           </div>
           <div class="kpi">
-            <span>Top holders (shown)</span>
-            <b>${holders.length}</b>
+            <span>Supply</span>
+            <b>${data.supply ?? "—"}</b>
+          </div>
+          <div class="kpi">
+            <span>Top Holder Share</span>
+            <b>${data.topHolderShare ?? "—"}</b>
           </div>
         </div>
 
-        <div class="sectionTitle">Top Holders</div>
-        <div class="holders">
-          ${holders.length ? holders.map(h => `
-            <div class="holderRow">
-              <div class="holderAddr">${esc(short(h.address))}</div>
-              <div class="holderAmt">${h.uiAmount ?? "—"}</div>
-            </div>
-          `).join("") : `<div class="mutedSmall">No holder data available.</div>`}
-        </div>
-
         <div class="note">
-          This is the “fast engine” version. Next step is adding your real Guardian logic:
-          clusters, snipers, authority checks, liquidity, mint/freeze authority, etc.
+          ${data.note || "Advanced holder, sniper, liquidity and authority analysis coming next."}
         </div>
       </div>
     `;
 
-  } catch (e) {
+  } catch (err) {
     statusEl.textContent = "";
     resultBox.classList.remove("hidden");
-    resultContent.innerHTML = `<div class="errorBox">Scan error: ${esc(e.message)}</div>`;
+    resultContent.innerHTML = `
+      <div class="errorBox">
+        Scan failed. Check token or backend.
+      </div>
+    `;
+    console.error("Scan error:", err);
   }
-}
+};
 
-scanBtn.addEventListener("click", runScan);
-mintInput.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") runScan();
-});
-
-// boot
+// ------------------------------
+// Init
+// ------------------------------
 loadTrending();
