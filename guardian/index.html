@@ -2,19 +2,28 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
+  <!-- keeps it clean on mobile (no zoom) -->
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
   <meta name="theme-color" content="#070711" />
   <title>$SOS — Guardian Check</title>
   <meta name="description" content="Guardian Approved — Solana token risk score + launch readiness checklist." />
 
   <style>
-  .li .d{
-  overflow-wrap: anywhere;
-}
+    /* ===== MOBILE FIXES (no horizontal freeze) ===== */
+    html, body { width:100%; overflow-x:hidden; }
+    body{
+      -webkit-text-size-adjust: 100%;
+      overscroll-behavior-x: none;
+      touch-action: pan-y;
+    }
 
-.mono{
-  overflow-wrap: anywhere;
-}
+    /* force long strings to wrap (URLs / base58 / long words) */
+    .li .d,
+    .mono{
+      overflow-wrap:anywhere;
+      word-break:break-word;
+    }
+
     :root{
       --bg:#070711;
       --panel: rgba(255,255,255,.06);
@@ -186,6 +195,8 @@
       background: rgba(0,0,0,.18);
       border-radius: 18px;
       padding:16px;
+      max-width:100%;
+      overflow:hidden; /* IMPORTANT: prevents horizontal jitter on iOS */
     }
 
     label{
@@ -206,7 +217,8 @@
       outline:none;
       font-weight:900;
       letter-spacing:.2px;
-      font-size:16px;
+      font-size:16px; /* prevents iOS auto-zoom */
+      -webkit-appearance:none;
     }
     input:focus{
       border-color: rgba(0,209,255,.45);
@@ -251,7 +263,7 @@
       font-weight:900;
       color: rgba(255,255,255,.86);
       margin-top:6px;
-      word-break: break-all;
+      max-width:100%;
     }
 
     .metricStack{margin-top:12px; display:grid; gap:10px;}
@@ -260,6 +272,7 @@
       background: rgba(255,255,255,.04);
       border-radius: 16px;
       padding:12px 12px;
+      overflow:hidden;
     }
     .metricK{
       display:flex; align-items:center; justify-content:space-between;
@@ -318,10 +331,20 @@
       gap:10px;
       align-items:flex-start;
       justify-content:space-between;
+      overflow:hidden;     /* IMPORTANT */
+      max-width:100%;      /* IMPORTANT */
     }
-    .li .left{min-width:0;}
+    .li .left{min-width:0; max-width:100%;}
     .li .t{font-weight:1000; font-size:13px; letter-spacing:.2px;}
-    .li .d{margin-top:4px; color: rgba(255,255,255,.70); font-weight:750; font-size:12.5px; line-height:1.35;}
+    .li .d{
+      margin-top:4px;
+      color: rgba(255,255,255,.70);
+      font-weight:750;
+      font-size:12.5px;
+      line-height:1.35;
+      max-width:100%;
+    }
+
     .pill{
       flex:0 0 auto;
       padding:6px 10px;
@@ -331,6 +354,8 @@
       font-weight:1000;
       font-size:12px;
       white-space:nowrap;
+      cursor:pointer;
+      -webkit-tap-highlight-color: transparent;
     }
     .pill.ok{border:0; background: linear-gradient(90deg,var(--g),var(--c),var(--p)); color:#061012}
     .pill.warn{border-color: rgba(255,220,130,.35); background: rgba(255,220,130,.08); color: rgba(255,240,210,.92)}
@@ -358,6 +383,8 @@
       border-radius: 16px;
       padding:12px 12px;
       cursor:pointer;
+      overflow:hidden;
+      max-width:100%;
     }
     .copyMono{
       font-family: ui-monospace, Menlo, Consolas, monospace;
@@ -384,6 +411,57 @@
       font-weight:650;
       text-align:center;
       font-size:12px;
+    }
+
+    /* ===== WATCH/FAIL POPUP (clickable pills) ===== */
+    .pillModal{
+      position:fixed; inset:0;
+      display:none;
+      align-items:flex-end;
+      justify-content:center;
+      padding:16px;
+      background: rgba(0,0,0,.55);
+      z-index:9999;
+    }
+    .pillModal.show{ display:flex; }
+    .pillSheet{
+      width:min(720px, 100%);
+      border-radius: 18px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(7,7,17,.92);
+      backdrop-filter: blur(18px);
+      box-shadow: 0 20px 60px rgba(0,0,0,.55);
+      overflow:hidden;
+    }
+    .pillSheetTop{
+      display:flex; align-items:center; justify-content:space-between;
+      gap:10px;
+      padding:12px 14px;
+      border-bottom:1px solid rgba(255,255,255,.10);
+    }
+    .pillSheetTitle{
+      font-weight:1000;
+      letter-spacing:.2px;
+      font-size:13px;
+      color: rgba(255,255,255,.90);
+    }
+    .pillClose{
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      color: rgba(255,255,255,.88);
+      border-radius: 999px;
+      padding:7px 10px;
+      font-weight:950;
+      cursor:pointer;
+    }
+    .pillSheetBody{
+      padding:14px;
+      color: rgba(255,255,255,.82);
+      font-weight:750;
+      font-size:13.5px;
+      line-height:1.45;
+      overflow-wrap:anywhere;
+      word-break:break-word;
     }
   </style>
 </head>
@@ -429,19 +507,18 @@
             <input id="mint" placeholder="Paste token mint (Solana)..." autocomplete="off" spellcheck="false" />
             <div class="statusLine" id="status"></div>
 
-            <!-- Share/Badge is hidden behind a dropdown -->
             <details class="shareBox" id="sharePanel" style="display:none;">
               <summary>Share & Badge</summary>
               <div class="shareInner">
                 <div class="copyBox" id="badgeCopy" role="button" tabindex="0" aria-label="Copy Badge HTML">
-                  <div style="min-width:0">
+                  <div style="min-width:0; max-width:100%">
                     <div style="font-weight:1000; font-size:12px; letter-spacing:.35px; color:rgba(255,255,255,.78); text-transform:uppercase;">Badge Embed (HTML)</div>
                     <div class="copyMono" id="badgeHtml">—</div>
                   </div>
                   <div class="hint" id="badgeHint">Click to copy</div>
                 </div>
                 <div class="copyBox" id="linkCopy" role="button" tabindex="0" aria-label="Copy Scan Link">
-                  <div style="min-width:0">
+                  <div style="min-width:0; max-width:100%">
                     <div style="font-weight:1000; font-size:12px; letter-spacing:.35px; color:rgba(255,255,255,.78); text-transform:uppercase;">Scan Link</div>
                     <div class="copyMono" id="scanLink">—</div>
                   </div>
@@ -464,10 +541,7 @@
               </div>
             </div>
 
-            <div class="metricStack" id="metrics">
-              <!-- injected -->
-            </div>
-
+            <div class="metricStack" id="metrics"></div>
             <div class="statusLine" id="summary">—</div>
           </div>
         </div>
@@ -529,6 +603,17 @@
     <footer>© <span id="y"></span> $SOS • Guardian Check</footer>
   </main>
 
+  <!-- WATCH/FAIL popup -->
+  <div class="pillModal" id="pillModal" aria-hidden="true">
+    <div class="pillSheet" role="dialog" aria-modal="true" aria-labelledby="pillTitle">
+      <div class="pillSheetTop">
+        <div class="pillSheetTitle" id="pillTitle">Guardian Details</div>
+        <button class="pillClose" id="pillClose" type="button">Close</button>
+      </div>
+      <div class="pillSheetBody" id="pillBody">—</div>
+    </div>
+  </div>
+
 <script>
 /* ===================== CONFIG ===================== */
 const HELIUS_KEY = "a16897d9-ee14-46e0-aacd-7d3c7a7d3421"; // your key
@@ -542,7 +627,6 @@ $("y").textContent = new Date().getFullYear();
 function setStatus(msg){ const el = $("status"); if(el) el.textContent = msg || ""; }
 function setText(id, v){ const el=$(id); if(el) el.textContent = v; }
 function clamp(n,min,max){ return Math.max(min, Math.min(max, n)); }
-function pctBar(el, val){ if(el) el.style.width = clamp(val,0,100) + "%"; }
 function looksBase58(s){
   return typeof s === "string"
     && s.length >= 32 && s.length <= 52
@@ -569,6 +653,30 @@ function updateStampTime(){
 }
 updateStampTime();
 setInterval(updateStampTime, 1000);
+
+/* ===== WATCH/FAIL modal ===== */
+function openPillModal(title, msg){
+  const modal = $("pillModal");
+  const body = $("pillBody");
+  const t = $("pillTitle");
+  if(!modal || !body || !t) return;
+
+  t.textContent = title || "Guardian Details";
+  body.textContent = msg || "—";
+
+  modal.classList.add("show");
+  modal.setAttribute("aria-hidden", "false");
+}
+function closePillModal(){
+  const modal = $("pillModal");
+  if(!modal) return;
+  modal.classList.remove("show");
+  modal.setAttribute("aria-hidden", "true");
+}
+$("pillClose").addEventListener("click", closePillModal);
+$("pillModal").addEventListener("click", (e)=>{
+  if(e.target === $("pillModal")) closePillModal();
+});
 
 /* ===== Clipboard helpers ===== */
 async function copyText(text){
@@ -660,40 +768,87 @@ function scoreModel(sig){
 
   if(sig.freezeActive){
     score -= 35;
-    checks.push({k:"Freeze Authority active", sev:"bad", d:"Freeze authority can block transfers. High-risk for buyers."});
+    checks.push({
+      k:"Freeze Authority active",
+      sev:"bad",
+      d:"Freeze authority can block transfers. High-risk for buyers.",
+      clickMsg:"Freeze Authority ACTIVE: Owner can freeze token accounts and block transfers. To fix: set freezeAuthority to null via SPL Token instruction. This is one of the strongest rug signals."
+    });
   }else{
-    checks.push({k:"Freeze Authority removed", sev:"ok", d:"No freeze power detected (good)."});
+    checks.push({
+      k:"Freeze Authority removed",
+      sev:"ok",
+      d:"No freeze power detected (good)."
+    });
   }
 
   if(sig.mintAuthActive){
     score -= 30;
-    checks.push({k:"Mint Authority active", sev:"bad", d:"Mint authority can increase supply. High-risk unless justified."});
+    checks.push({
+      k:"Mint Authority active",
+      sev:"bad",
+      d:"Mint authority can increase supply. High-risk unless justified.",
+      clickMsg:"Mint Authority ACTIVE: Owner can mint more supply any time. To fix: set mintAuthority to null. If the project needs emissions, publish the emission policy + timelock and be transparent."
+    });
   }else{
-    checks.push({k:"Mint Authority renounced", sev:"ok", d:"Supply cannot be minted further (good)."});
+    checks.push({
+      k:"Mint Authority renounced",
+      sev:"ok",
+      d:"Supply cannot be minted further (good)."
+    });
   }
 
   const t20 = Number(sig.top20 || 0);
   if(t20 >= 75){
     score -= 28;
-    checks.push({k:"Top 20 concentration very high", sev:"bad", d:`Top20 holds ~${t20.toFixed(2)}% of supply. Rug/sell risk.`});
+    checks.push({
+      k:"Top 20 concentration very high",
+      sev:"bad",
+      d:`Top20 holds ~${t20.toFixed(2)}% of supply. Rug/sell risk.`,
+      clickMsg:`Top20 VERY HIGH (${t20.toFixed(2)}%): Too much supply is concentrated. Buyers risk large dumps. Fix: distribute via liquidity, airdrops, vesting, and avoid multi-wallet sybil clusters.`
+    });
   }else if(t20 >= 55){
     score -= 18;
-    checks.push({k:"Top 20 concentration high", sev:"warn", d:`Top20 holds ~${t20.toFixed(2)}% of supply. Watch distribution.`});
+    checks.push({
+      k:"Top 20 concentration high",
+      sev:"warn",
+      d:`Top20 holds ~${t20.toFixed(2)}% of supply. Watch distribution.`,
+      clickMsg:`Top20 HIGH (${t20.toFixed(2)}%): Not instantly fatal, but distribution is risky. Consider wider spread, vesting, public wallets, and avoid hidden team wallets.`
+    });
   }else if(t20 >= 35){
     score -= 8;
-    checks.push({k:"Top 20 concentration moderate", sev:"warn", d:`Top20 holds ~${t20.toFixed(2)}% of supply.`});
+    checks.push({
+      k:"Top 20 concentration moderate",
+      sev:"warn",
+      d:`Top20 holds ~${t20.toFixed(2)}% of supply.`,
+      clickMsg:`Top20 MODERATE (${t20.toFixed(2)}%): Acceptable for many launches, but still monitor whales and early wallets.`
+    });
   }else{
-    checks.push({k:"Distribution looks healthier", sev:"ok", d:`Top20 holds ~${t20.toFixed(2)}% of supply.`});
+    checks.push({
+      k:"Distribution looks healthier",
+      sev:"ok",
+      d:`Top20 holds ~${t20.toFixed(2)}% of supply.`
+    });
   }
 
   if(sig.programType === "TOKEN_2022"){
     score -= 8;
-    checks.push({k:"Token-2022 detected", sev:"warn", d:"Token-2022 can include extensions (fees/delegates). We add deeper checks next."});
+    checks.push({
+      k:"Token-2022 detected",
+      sev:"warn",
+      d:"Token-2022 can include extensions (fees/delegates). We add deeper checks next.",
+      clickMsg:"Token-2022: Some extensions can add transfer fees, delegates, or other controls. Next update: we’ll decode extensions on-chain and flag risky ones."
+    });
   }else if(sig.programType === "SPL_TOKEN"){
     checks.push({k:"SPL Token program", sev:"ok", d:"Standard SPL Token program detected."});
   }else{
     score -= 10;
-    checks.push({k:"Unknown token program", sev:"warn", d:"Mint not owned by common token programs. Verify carefully."});
+    checks.push({
+      k:"Unknown token program",
+      sev:"warn",
+      d:"Mint not owned by common token programs. Verify carefully.",
+      clickMsg:"Unknown program owner: This mint isn't owned by SPL Token or Token-2022. It could be a custom program. Treat as high-risk until verified."
+    });
   }
 
   score = clamp(Math.round(score), 0, 100);
@@ -703,19 +858,18 @@ function scoreModel(sig){
 
 function buildTodo(sig){
   const todos = [];
-  if(sig.freezeActive) todos.push({t:"Remove Freeze Authority", sev:"bad", d:"Set freeze authority to null for trust."});
+  if(sig.freezeActive) todos.push({t:"Remove Freeze Authority", sev:"bad", d:"Set freeze authority to null for trust.", clickMsg:"To-do: Remove Freeze Authority (set to null). This prevents freezing user accounts."});
   else todos.push({t:"Freeze Authority", sev:"ok", d:"Already removed (good)."});
-  if(sig.mintAuthActive) todos.push({t:"Renounce Mint Authority", sev:"bad", d:"Set mint authority to null so supply cannot be increased."});
+  if(sig.mintAuthActive) todos.push({t:"Renounce Mint Authority", sev:"bad", d:"Set mint authority to null so supply cannot be increased.", clickMsg:"To-do: Renounce Mint Authority (set to null). This prevents infinite minting."});
   else todos.push({t:"Mint Authority", sev:"ok", d:"Already renounced (good)."});
   const t20 = Number(sig.top20 || 0);
-  if(t20 >= 55) todos.push({t:"Improve Distribution", sev:"warn", d:`Top20 holds ~${t20.toFixed(2)}%. Reduce concentration.`});
+  if(t20 >= 55) todos.push({t:"Improve Distribution", sev:"warn", d:`Top20 holds ~${t20.toFixed(2)}%. Reduce concentration.`, clickMsg:"To-do: Improve distribution. Reduce top-holder concentration (vesting, LP distribution, transparent wallets)."});
   else todos.push({t:"Distribution", sev:"ok", d:`Top20 concentration ~${t20.toFixed(2)}% (OK for MVP).`});
-  if(sig.programType === "TOKEN_2022") todos.push({t:"Audit Token-2022 Extensions", sev:"warn", d:"Confirm no fees/delegates/extensions that harm buyers."});
+  if(sig.programType === "TOKEN_2022") todos.push({t:"Audit Token-2022 Extensions", sev:"warn", d:"Confirm no fees/delegates/extensions that harm buyers.", clickMsg:"To-do: Audit Token-2022 extensions. Confirm no transfer fees or delegates that can trap buyers."});
   else todos.push({t:"Program Type", sev:"ok", d:"Standard token program detected."});
 
-  // transparent roadmap items (not pretending)
-  todos.push({t:"Liquidity & Venues (Next)", sev:"warn", d:"We’ll add DEX liquidity + venue routing checks next."});
-  todos.push({t:"Metadata Authority (Next)", sev:"warn", d:"We’ll add Metaplex metadata mutability checks next."});
+  todos.push({t:"Liquidity & Venues (Next)", sev:"warn", d:"We’ll add DEX liquidity + venue routing checks next.", clickMsg:"Next: We’ll detect DEX liquidity / venues and add stronger LP + routing checks."});
+  todos.push({t:"Metadata Authority (Next)", sev:"warn", d:"We’ll add Metaplex metadata mutability checks next.", clickMsg:"Next: We’ll detect metadata mutability / update authority signals."});
   return todos;
 }
 
@@ -729,15 +883,16 @@ function renderList(el, items){
     const pillCls = sev === "ok" ? "pill ok" : (sev === "bad" ? "pill bad" : "pill warn");
     const pillTxt = sev === "ok" ? "PASS" : (sev === "bad" ? "FAIL" : "WATCH");
 
-    // CLICK MESSAGE (for WATCH)
-    const clickMsg = it.clickMsg || (pillTxt === "WATCH" ? "WATCH = beobachtet/noch nicht voll verifiziert. Details kommen als nächstes Update." : "");
+    const clickMsg =
+      it.clickMsg ||
+      (pillTxt === "WATCH" ? "WATCH = beobachtet/noch nicht voll verifiziert. Details kommen als nächstes Update." : "");
 
     li.innerHTML = `
       <div class="left">
         <div class="t">${(it.k || it.t)}</div>
         <div class="d">${it.d}</div>
       </div>
-      <span class="${pillCls}" role="button" tabindex="0" data-msg="${clickMsg.replaceAll('"','&quot;')}">${pillTxt}</span>
+      <span class="${pillCls}" role="button" tabindex="0" data-msg="${String(clickMsg).replaceAll('"','&quot;')}">${pillTxt}</span>
     `;
     el.appendChild(li);
   }
@@ -816,7 +971,7 @@ function badgeHtmlSnippet(mint, verdictLabel, score){
 function renderHolders(mint, uiSupply, largest){
   const list = $("holdersList");
   if(!uiSupply || !Array.isArray(largest) || !largest.length){
-    renderList(list, [{t:"No holder data", sev:"warn", d:"Largest accounts not readable."}]);
+    renderList(list, [{t:"No holder data", sev:"warn", d:"Largest accounts not readable.", clickMsg:"Could not load largest accounts. This can happen if RPC rate-limits or the mint is not standard."}]);
     return;
   }
   const top = largest.slice(0,5);
@@ -827,7 +982,8 @@ function renderHolders(mint, uiSupply, largest){
     return {
       t: `#${i+1} ${shortAddr(addr)}`,
       sev: pct >= 10 ? "warn" : "ok",
-      d: `${fmtInt(amt)} tokens • ${pct.toFixed(2)}% • Solscan: https://solscan.io/account/${addr}`
+      d: `${fmtInt(amt)} tokens • ${pct.toFixed(2)}% • Solscan: https://solscan.io/account/${addr}`,
+      clickMsg: `Holder ${shortAddr(addr)} holds ${pct.toFixed(2)}% of supply.\n\nOpen Solscan:\nhttps://solscan.io/account/${addr}`
     };
   });
   renderList(list, items);
@@ -886,26 +1042,21 @@ async function scan(){
     const model = scoreModel(sig);
     const verdict = verdictFrom(model.score, model.critical);
 
-    // header
     setText("verdictTitle", verdict.title);
     setBadge($("verdictBadge"), verdict.label, verdict.mode);
     $("scoreBadge").textContent = `SCORE ${model.score}`;
 
-    // metrics (lines)
     renderMetrics(model.score, sig, uiSupply, top20Sum, owner);
 
-    // lists
     setText("scanHint", `Mint: ${shortAddr(mint)}`);
     renderList($("checksList"), model.checks);
     renderList($("todoList"), buildTodo(sig));
     renderHolders(mint, uiSupply, largest);
 
-    // summary
     const programText = programType === "SPL_TOKEN" ? "SPL Token" : (programType === "TOKEN_2022" ? "Token-2022" : "Unknown");
     const authLine = `${mintAuthority ? "MINT: ACTIVE" : "MINT: RENOUNCED"} • ${freezeAuthority ? "FREEZE: ACTIVE" : "FREEZE: REMOVED"}`;
     setText("summary", `${verdict.label} • Score ${model.score}/100 • ${authLine} • Top20 ${fmtPct(conc)} • Program ${programText} • Decimals ${decimals}`);
 
-    // share/badge panel
     const scanUrl = `https://solanax1.com/guardian?mint=${encodeURIComponent(mint)}`;
     setText("scanLink", scanUrl);
     setText("badgeHtml", badgeHtmlSnippet(mint, verdict.label, model.score));
@@ -924,11 +1075,31 @@ async function scan(){
 
 $("btnScan").addEventListener("click", scan);
 $("mint").addEventListener("keydown", (e)=>{ if(e.key==="Enter") scan(); });
+
+/* CLICK + KEYBOARD ON PILLS (WATCH/FAIL) */
 document.addEventListener("click", (e)=>{
   const pill = e.target.closest?.(".pill");
   if(!pill) return;
   const msg = pill.getAttribute("data-msg");
-  if(msg) setStatus(msg);
+  if(msg){
+    setStatus(msg);
+    openPillModal("Guardian Details", msg);
+  }
+});
+document.addEventListener("keydown", (e)=>{
+  const a = document.activeElement;
+  if(!a || !a.classList || !a.classList.contains("pill")) return;
+  if(e.key === "Enter" || e.key === " "){
+    e.preventDefault();
+    const msg = a.getAttribute("data-msg");
+    if(msg){
+      setStatus(msg);
+      openPillModal("Guardian Details", msg);
+    }
+  }
+});
+document.addEventListener("keydown", (e)=>{
+  if(e.key === "Escape") closePillModal();
 });
 
 (function(){
