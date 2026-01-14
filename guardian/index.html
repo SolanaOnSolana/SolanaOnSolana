@@ -253,6 +253,43 @@
       word-break:break-word;
     }
 
+    /* Token header (name/symbol/logo) */
+    .tokenHead{
+      display:flex;
+      gap:12px;
+      align-items:center;
+      flex-wrap:wrap;
+      margin-bottom:10px;
+    }
+    .tokenLogoWrap{
+      width:44px; height:44px;
+      border-radius:12px;
+      overflow:hidden;
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.18);
+      display:none; /* shown if we have a logo */
+      flex:0 0 auto;
+    }
+    .tokenLogoWrap img{
+      width:100%; height:100%;
+      object-fit:cover;
+      display:block;
+    }
+    .tokenName{
+      font-weight:1000;
+      font-size:16px;
+      letter-spacing:-.2px;
+      line-height:1.15;
+      overflow-wrap:anywhere;
+      word-break:break-word;
+    }
+    .tokenSymbol{
+      margin-top:2px;
+      color: rgba(255,255,255,.70);
+      font-weight:900;
+      font-size:12.5px;
+    }
+
     .metricStack{margin-top:12px; display:grid; gap:10px;}
     .metric{
       border:1px solid rgba(255,255,255,.10);
@@ -524,9 +561,22 @@
           <div class="panel" id="resultsPanel">
             <div class="resultTop">
               <div>
+                <!-- EXTENSION: token meta header (name/symbol/logo) -->
+                <div class="tokenHead">
+                  <div class="tokenLogoWrap" id="tokenLogoWrap">
+                    <img id="tokenLogo" alt="">
+                  </div>
+                  <div style="min-width:0">
+                    <div class="tokenName" id="tokenName">—</div>
+                    <div class="tokenSymbol" id="tokenSymbol">—</div>
+                  </div>
+                </div>
+
+                <!-- existing (unchanged) -->
                 <h3 class="resultTitle" id="verdictTitle">—</h3>
                 <div class="mono" id="mintShort">—</div>
               </div>
+
               <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
                 <span class="badge" id="verdictBadge">—</span>
                 <span class="badge good" id="scoreBadge">—</span>
@@ -583,6 +633,23 @@
               <div class="left">
                 <div class="t">No scan yet</div>
                 <div class="d">Extensions / token-standard details appear after scan.</div>
+              </div>
+              <span class="pill">—</span>
+            </li>
+          </ul>
+        </div>
+
+        <!-- Metadata / branding -->
+        <div class="panel" style="margin-top:16px;">
+          <div class="classified">
+            <div class="stamp">TOKEN METADATA</div>
+            <div class="stamp">DAS / RPC</div>
+          </div>
+          <ul class="list" id="metaList" style="margin-top:10px;">
+            <li class="li">
+              <div class="left">
+                <div class="t">No scan yet</div>
+                <div class="d">Name / symbol / image / metadata details appear after scan.</div>
               </div>
               <span class="pill">—</span>
             </li>
@@ -735,6 +802,8 @@ async function rpc(method, params){
   if(j.error) throw new Error(j.error.message || "RPC error");
   return j.result;
 }
+
+/* ===== Core on-chain reads ===== */
 async function getMintParsed(mint){
   const r = await rpc("getAccountInfo", [mint, { encoding:"jsonParsed", commitment:"confirmed" }]);
   const v = r?.value;
@@ -742,7 +811,6 @@ async function getMintParsed(mint){
   const owner = v.owner;
   const parsed = (v.data && typeof v.data === "object") ? v.data.parsed : null;
   const info = parsed?.info || null;
-  // Token-2022 parsed mints may include "extensions" or extra fields depending on RPC
   const rawParsed = parsed || null;
   return { owner, info, rawParsed };
 }
@@ -753,6 +821,82 @@ async function getTokenSupply(mint){
 async function getLargest(mint){
   const r = await rpc("getTokenLargestAccounts", [mint]);
   return r?.value || [];
+}
+
+/* ===== EXTENSION: Token Metadata (Name/Symbol/Logo) via Helius DAS =====
+   - Helius supports "getAsset" on the same endpoint.
+   - For fungible tokens, this usually returns content.metadata.name/symbol and sometimes an image.
+*/
+async function getAsset(mint){
+  try{
+    const r = await rpc("getAsset", [mint]);
+    return r || null;
+  }catch(e){
+    return null;
+  }
+}
+function pickTokenMetaFromAsset(asset){
+  // returns {name, symbol, image, uri, description, authorities, raw} best-effort
+  if(!asset) return null;
+
+  const md = asset?.content?.metadata || {};
+  const name = (md?.name || asset?.metadata?.name || "").trim();
+  const symbol = (md?.symbol || asset?.metadata?.symbol || "").trim();
+
+  // image candidates
+  let image = "";
+  const linksImg = asset?.content?.links?.image;
+  if(typeof linksImg === "string") image = linksImg;
+
+  if(!image && Array.isArray(asset?.content?.files)){
+    const f = asset.content.files.find(x => (x?.mime || "").includes("image") && x?.uri);
+    if(f?.uri) image = f.uri;
+  }
+
+  // metadata uri
+  const uri = (asset?.content?.json_uri || asset?.content?.links?.external_url || "").trim();
+
+  const description = (md?.description || asset?.content?.metadata?.description || "").trim();
+
+  const authorities = Array.isArray(asset?.authorities) ? asset.authorities : [];
+  return {
+    name: name || "",
+    symbol: symbol || "",
+    image: image || "",
+    uri: uri || "",
+    description: description || "",
+    authorities,
+    raw: asset
+  };
+}
+function applyTokenHeader(meta, mint){
+  // keep existing result header intact; just fill new fields
+  const nameEl = $("tokenName");
+  const symEl = $("tokenSymbol");
+  const logoWrap = $("tokenLogoWrap");
+  const logo = $("tokenLogo");
+
+  const fallbackName = "Token";
+  const fallbackSym = "";
+
+  const n = meta?.name ? meta.name : "";
+  const s = meta?.symbol ? meta.symbol : "";
+
+  nameEl.textContent = (n || fallbackName);
+  symEl.textContent = (s ? `$${s}` : `Mint: ${shortAddr(mint)}`);
+
+  // logo (optional)
+  if(meta?.image){
+    logo.src = meta.image;
+    logo.alt = (n || s || "Token");
+    logoWrap.style.display = "block";
+    // if image fails, hide gracefully
+    logo.onerror = ()=>{ logoWrap.style.display = "none"; };
+  }else{
+    logoWrap.style.display = "none";
+    logo.removeAttribute("src");
+    logo.alt = "";
+  }
 }
 
 /* ===== Verdict / scoring ===== */
@@ -811,6 +955,16 @@ function explainTokenStandard(programType, extReadable){
   `;
 }
 
+/* EXTENSION: Metadata quality checks (useful + not fake) */
+function explainMetadataQuality(){
+  return `
+    <b>Metadata quality check.</b><br><br>
+    Tokens usually publish a Name + Symbol and often an image/JSON metadata.<br>
+    Missing metadata doesn't prove a scam, but it reduces transparency and makes impersonation easier.<br>
+    <div class="small"><b>Action:</b> ensure name/symbol are present, metadata URI is reachable, and branding matches official channels.</div>
+  `;
+}
+
 function scoreModel(sig){
   let score = 100;
   const checks = [];
@@ -863,12 +1017,11 @@ function scoreModel(sig){
     checks.push({k:"Distribution looks healthier", sev:"ok", d:`Top20 holds ~${t20.toFixed(2)}% of supply.`, clickMsg: explainTop20(t20)});
   }
 
-  // Token standard check: never "next" — always explain what it implies.
   if(sig.programType === "TOKEN_2022"){
     score -= sig.extReadable ? 6 : 10;
     checks.push({
       k:"Token standard: Token-2022",
-      sev: sig.extReadable ? "warn" : "warn",
+      sev:"warn",
       d: sig.extReadable
         ? "Token-2022 supports extensions. We list what RPC exposed below."
         : "Token-2022 supports extensions, but extension list was not readable from parsed RPC here.",
@@ -888,6 +1041,24 @@ function scoreModel(sig){
       sev:"warn",
       d:"Mint not owned by common token programs. Verify carefully.",
       clickMsg: explainTokenStandard("UNKNOWN", false)
+    });
+  }
+
+  // EXTENSION: metadata quality signal (useful, not over-claiming)
+  if(sig.meta && (sig.meta.name || sig.meta.symbol)){
+    checks.push({
+      k:"Metadata present",
+      sev:"ok",
+      d:`Name/Symbol found: ${sig.meta.name || "—"} / ${sig.meta.symbol || "—"}.`,
+      clickMsg: explainMetadataQuality()
+    });
+  }else{
+    score -= 4;
+    checks.push({
+      k:"Metadata missing or unreadable",
+      sev:"warn",
+      d:"Name/Symbol not found via metadata endpoint.",
+      clickMsg: explainMetadataQuality()
     });
   }
 
@@ -920,7 +1091,6 @@ function buildTodo(sig){
     todos.push({t:"Distribution", sev:"ok", d:`Top20 concentration ~${t20.toFixed(2)}% (healthier).`, clickMsg: explainTop20(t20)});
   }
 
-  // Token standard in readiness
   if(sig.programType === "TOKEN_2022"){
     todos.push({
       t:"Token-2022 Extensions Review",
@@ -939,6 +1109,23 @@ function buildTodo(sig){
     });
   } else {
     todos.push({t:"Token Standard", sev:"ok", d:"Standard SPL Token program detected.", clickMsg: explainTokenStandard("SPL_TOKEN", true)});
+  }
+
+  // EXTENSION: metadata action item (only if missing)
+  if(!(sig.meta && (sig.meta.name || sig.meta.symbol))){
+    todos.push({
+      t:"Publish Token Metadata",
+      sev:"warn",
+      d:"Add name/symbol (and optionally image + JSON URI) for transparency and discovery.",
+      clickMsg: explainMetadataQuality()
+    });
+  }else{
+    todos.push({
+      t:"Metadata",
+      sev:"ok",
+      d:"Name/symbol present (good).",
+      clickMsg: explainMetadataQuality()
+    });
   }
 
   return todos;
@@ -989,6 +1176,11 @@ function renderMetrics(score, sig, uiSupply, top20Sum, owner, decimals){
     wrap.appendChild(d);
   };
 
+  // EXTENSION: show token name/symbol in metrics too (useful on mobile)
+  const nm = sig?.meta?.name || "—";
+  const sy = sig?.meta?.symbol || "—";
+  metric("Token", (sy && sy!=="—") ? `$${sy}` : "—", nm !== "—" ? `Name: ${nm}` : "Name: —");
+
   metric("Risk Score", `${score}/100`,
     score>=80 ? "Guardian-grade signals (based on on-chain checks below)." :
     (score>=50 ? "Mixed signals — read WATCH items carefully." : "High-risk signals detected — proceed with caution."),
@@ -1036,6 +1228,7 @@ function buildShareText(mint, verdict, score, sig){
     `🛡️ GUARDIAN CHECK — Token Risk (on-chain)`,
     ``,
     `Mint: ${shortAddr(mint)}`,
+    `Token: ${(sig?.meta?.symbol ? "$"+sig.meta.symbol : "—")} • ${(sig?.meta?.name || "—")}`,
     `Verdict: ${verdict.label}`,
     `Score: ${score}/100`,
     `Authorities: ${authLine}`,
@@ -1086,16 +1279,10 @@ function renderHolders(mint, uiSupply, largest){
 
 /* Token-2022 extensions / token-standard details */
 function parseExtensionsFromParsed(rawParsed){
-  // Different RPCs expose different fields; we try multiple known shapes.
-  // If nothing is available, return null.
   try{
     const info = rawParsed?.info || rawParsed?.parsed?.info || rawParsed?.data?.parsed?.info || null;
     if(!info) return null;
 
-    // Common candidates (depends on RPC version):
-    // - info.extensions: array
-    // - info.extensionTypes: array
-    // - info.mintExtensions: object/array
     const ex1 = info.extensions;
     const ex2 = info.extensionTypes;
     const ex3 = info.mintExtensions;
@@ -1118,7 +1305,6 @@ function parseExtensionsFromParsed(rawParsed){
       if(Array.isArray(ex3) && ex3.length){
         out = ex3.map(x=>({name: x?.type || x?.name || "Extension", details:x}));
       } else {
-        // object map
         out = Object.keys(ex3).map(k=>({name:k, details:ex3[k]}));
       }
     }
@@ -1128,7 +1314,6 @@ function parseExtensionsFromParsed(rawParsed){
     return null;
   }
 }
-
 function humanizeExtensionName(n){
   const s = String(n||"").toLowerCase();
   if(s.includes("transferfee") || s.includes("transfer_fee")) return "Transfer Fee (fee on transfers)";
@@ -1139,7 +1324,6 @@ function humanizeExtensionName(n){
   if(s.includes("metadata")) return "Metadata Extension";
   return n;
 }
-
 function renderTokenStandardDetails(programType, extReadable, extList){
   const el = $("extList");
   if(programType !== "TOKEN_2022"){
@@ -1169,7 +1353,6 @@ function renderTokenStandardDetails(programType, extReadable, extList){
     const nameHuman = humanizeExtensionName(x.name);
     const raw = x.details ? JSON.stringify(x.details, null, 2).slice(0, 1200) : null;
 
-    // Risk hint for some extension types
     let sev = "warn";
     let d = `Extension detected: ${nameHuman}.`;
     let msg = `<b>${nameHuman}</b><br><br>This extension is enabled on Token-2022.`;
@@ -1200,6 +1383,69 @@ function renderTokenStandardDetails(programType, extReadable, extList){
   renderList(el, items, "Token-2022 Extension Details");
 }
 
+/* EXTENSION: render metadata panel */
+function renderMetadataPanel(meta, mint){
+  const el = $("metaList");
+  if(!meta){
+    renderList(el, [{
+      t:"Metadata not available",
+      sev:"warn",
+      d:"Could not fetch metadata via getAsset (DAS).",
+      clickMsg: explainMetadataQuality() + `<div class="small">Action: retry later, or ensure the token has published metadata and your RPC allows getAsset.</div>`
+    }], "Token Metadata");
+    return;
+  }
+
+  const items = [];
+
+  items.push({
+    t:"Name / Symbol",
+    sev: (meta.name || meta.symbol) ? "ok" : "warn",
+    d: `${meta.name || "—"} • ${meta.symbol ? "$"+meta.symbol : "—"}`,
+    clickMsg: explainMetadataQuality() + `<code>${JSON.stringify({name: meta.name || null, symbol: meta.symbol || null}, null, 2)}</code>`
+  });
+
+  items.push({
+    t:"Metadata URI",
+    sev: meta.uri ? "ok" : "warn",
+    d: meta.uri ? meta.uri : "No metadata URI exposed.",
+    clickMsg: meta.uri
+      ? `<b>Metadata URI</b><br><br>This is where off-chain JSON is hosted (name/symbol/image).<div class="small">Action: verify the JSON is reachable and matches official socials.</div><code>${meta.uri}</code>`
+      : `<b>No metadata URI</b><br><br>This scan did not find a json_uri/external_url.<div class="small">Action: publish token metadata for transparency.</div>`
+  });
+
+  items.push({
+    t:"Image / Logo",
+    sev: meta.image ? "ok" : "warn",
+    d: meta.image ? "Logo found (displayed in header if loadable)." : "No logo image found.",
+    clickMsg: meta.image
+      ? `<b>Logo URL</b><br><br><code>${meta.image}</code><div class="small">Action: verify the image branding matches official sources.</div>`
+      : `<b>No logo</b><br><br>This scan did not find an image link. Optional, but helps prevent impersonation.`
+  });
+
+  if(meta.description){
+    items.push({
+      t:"Description",
+      sev:"ok",
+      d: meta.description.slice(0,120) + (meta.description.length>120 ? "…" : ""),
+      clickMsg: `<b>Description</b><br><br>${meta.description.replaceAll("<","&lt;").replaceAll(">","&gt;")}`
+    });
+  }
+
+  // Authority hints (best-effort, does NOT claim safety)
+  if(Array.isArray(meta.authorities) && meta.authorities.length){
+    const a = meta.authorities.map(x => `${x?.address || "—"} (${x?.scopes?.join(", ") || "scopes?"})`).slice(0,6);
+    items.push({
+      t:"Authorities (metadata)",
+      sev:"warn",
+      d:"Authority scopes exist on asset metadata (review).",
+      clickMsg: `<b>Authorities</b><br><br>These are authorities reported by the asset endpoint (best-effort).<div class="small">Action: verify authorities align with project claims.</div><code>${JSON.stringify(meta.authorities, null, 2).slice(0,1400)}</code>`
+    });
+  }
+
+  renderList(el, items, "Token Metadata");
+}
+
 /* ===== Scan ===== */
 async function scan(){
   const mint = $("mint").value.trim();
@@ -1215,6 +1461,11 @@ async function scan(){
   setText("summary","—");
   setText("scanHint","—");
   $("sharePanel").style.display = "none";
+
+  // EXTENSION: clear token header first
+  setText("tokenName","—");
+  setText("tokenSymbol","—");
+  $("tokenLogoWrap").style.display = "none";
 
   try{
     const mintParsed = await getMintParsed(mint);
@@ -1233,10 +1484,16 @@ async function scan(){
       owner === TOKEN_2022_PROGRAM ? "TOKEN_2022" :
       "UNKNOWN";
 
-    const [supply, largest] = await Promise.all([
+    // EXTENSION: fetch metadata in parallel (doesn't break if fails)
+    const [supply, largest, asset] = await Promise.all([
       getTokenSupply(mint),
-      getLargest(mint)
+      getLargest(mint),
+      getAsset(mint)
     ]);
+
+    const meta = pickTokenMetaFromAsset(asset);
+    applyTokenHeader(meta, mint);
+    renderMetadataPanel(meta, mint);
 
     const uiSupply = supply ? Number(supply.uiAmount ?? 0) : null;
     const top20 = (Array.isArray(largest) ? largest.slice(0,20) : []);
@@ -1252,13 +1509,14 @@ async function scan(){
       freezeActive: !!freezeAuthority,
       top20: conc,
       programType,
-      extReadable
+      extReadable,
+      meta: meta || null
     };
 
     const model = scoreModel(sig);
     const verdict = verdictFrom(model.score, model.critical);
 
-    // header
+    // header (existing)
     setText("verdictTitle", verdict.title);
     setBadge($("verdictBadge"), verdict.label, verdict.mode);
     $("scoreBadge").textContent = `SCORE ${model.score}`;
@@ -1279,7 +1537,8 @@ async function scan(){
     const extLine = (programType === "TOKEN_2022")
       ? (extReadable ? ` • Extensions: visible (${(extRaw||[]).length})` : ` • Extensions: not visible via parsed RPC`)
       : "";
-    setText("summary", `${verdict.label} • Score ${model.score}/100 • ${authLine} • Top20 ${fmtPct(conc)} • Standard ${programText}${extLine} • Decimals ${decimals}`);
+    const metaLine = (meta && (meta.name || meta.symbol)) ? ` • ${meta.symbol ? "$"+meta.symbol : ""} ${meta.name ? meta.name : ""}`.trim() : "";
+    setText("summary", `${verdict.label} • Score ${model.score}/100 • ${authLine} • Top20 ${fmtPct(conc)} • Standard ${programText}${extLine}${metaLine ? " • " + metaLine : ""} • Decimals ${decimals}`);
 
     // share/badge
     const scanUrl = `https://solanax1.com/guardian?mint=${encodeURIComponent(mint)}`;
