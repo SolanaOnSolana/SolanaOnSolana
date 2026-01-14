@@ -1,79 +1,66 @@
-// ==============================
-// CONFIG
-// ==============================
+// === CONFIG ===
 const API = "https://fancy-sky-11bc.simon-kaggwa-why.workers.dev";
 
-// ==============================
-// HELPERS
-// ==============================
-const $ = (id) => document.getElementById(id);
+// === ELEMENTS ===
+const mintInput = document.getElementById("mintInput");
+const scanBtn = document.getElementById("scanBtn");
+const statusEl = document.getElementById("scanStatus");
+const resultBox = document.getElementById("result");
+const resultContent = document.getElementById("resultContent");
+const trendingBox = document.getElementById("trending");
+document.getElementById("y").textContent = new Date().getFullYear();
 
-// ==============================
-// SCAN BUTTON
-// ==============================
-$("scanBtn").addEventListener("click", async () => {
-  const mint = $("mintInput").value.trim();
+// === SCAN ===
+scanBtn.onclick = async () => {
+  const mint = mintInput.value.trim();
   if (!mint) {
-    $("scanStatus").textContent = "Paste a token mint address.";
+    statusEl.textContent = "Paste a token mint address.";
     return;
   }
 
-  $("scanStatus").textContent = "Scanning on-chain…";
-  $("result").classList.add("hidden");
+  statusEl.textContent = "Scanning on-chain...";
+  resultBox.classList.add("hidden");
 
   try {
     const res = await fetch(`${API}/scan?mint=${mint}`);
     const data = await res.json();
 
-    $("scanStatus").textContent = "Scan complete.";
-    $("result").classList.remove("hidden");
+    statusEl.textContent = "";
+    resultBox.classList.remove("hidden");
 
-    $("resultContent").innerHTML = `
-      <pre>${JSON.stringify(data, null, 2)}</pre>
+    resultContent.innerHTML = `
+      <div class="tokenCard">
+        <b>Mint</b><br>${data.mint}<br><br>
+        <b>Name</b><br>${data.name}<br><br>
+        <b>Symbol</b><br>${data.symbol}<br><br>
+        <b>Risk</b><br><span style="color:red">${data.risk}</span>
+      </div>
     `;
-  } catch (err) {
-    $("scanStatus").textContent = "Scan failed.";
+  } catch (e) {
+    statusEl.textContent = "Scan failed.";
   }
-});
+};
 
-// ==============================
-// TRENDING TOKENS
-// ==============================
+// === TRENDING ===
 async function loadTrending() {
   try {
     const res = await fetch(`${API}/trending`);
     const data = await res.json();
 
-    const box = $("trending");
-    box.innerHTML = "";
-
     if (!data.items || data.items.length === 0) {
-      box.innerHTML = "<div class='tokenCard'>No trending tokens yet</div>";
+      trendingBox.innerHTML = "<i>No trending tokens yet</i>";
       return;
     }
 
-    data.items.forEach((t) => {
-      const el = document.createElement("div");
-      el.className = "tokenCard";
-      el.innerHTML = `
-        <strong>${t.name || "Unknown"}</strong><br/>
-        <code>${t.mint}</code><br/>
-        <small>Source: ${t.source}</small>
-      `;
-      el.onclick = () => {
-        $("mintInput").value = t.mint;
-        window.scrollTo({ top: 0, behavior: "smooth" });
-      };
-      box.appendChild(el);
-    });
-  } catch (e) {
-    $("trending").innerHTML =
-      "<div class='tokenCard'>Failed to load trending tokens</div>";
+    trendingBox.innerHTML = data.items.map(t => `
+      <div class="tokenCard">
+        <b>${t.mint}</b><br>
+        <small>${t.source}</small>
+      </div>
+    `).join("");
+  } catch {
+    trendingBox.innerHTML = "<i>Failed to load trending</i>";
   }
 }
 
-// ==============================
-// INIT
-// ==============================
 loadTrending();
-$("y").textContent = new Date().getFullYear();
