@@ -473,19 +473,9 @@
       overflow-wrap:anywhere;
       word-break:break-word;
     }
-    .modalBody .small{color: rgba(255,255,255,.62); font-weight:750; font-size:12.5px; margin-top:8px}
-    .modalBody code{
-      display:block;
-      margin-top:10px;
-      padding:10px 12px;
-      border-radius: 14px;
-      border: 1px solid rgba(255,255,255,.10);
-      background: rgba(0,0,0,.25);
-      color: rgba(255,255,255,.86);
-      font-family: ui-monospace, Menlo, Consolas, monospace;
-      font-weight:850;
-      white-space:pre-wrap;
-    }
+
+    /* IMPORTANT: no code blocks for amateurs */
+    .modalBody code{ display:none !important; }
 
     /* reduce motion */
     @media (prefers-reduced-motion: reduce){
@@ -823,10 +813,7 @@ async function getLargest(mint){
   return r?.value || [];
 }
 
-/* ===== EXTENSION: Token Metadata (Name/Symbol/Logo) via Helius DAS =====
-   - Helius supports "getAsset" on the same endpoint.
-   - For fungible tokens, this usually returns content.metadata.name/symbol and sometimes an image.
-*/
+/* ===== EXTENSION: Token Metadata (Name/Symbol/Logo) via Helius DAS ===== */
 async function getAsset(mint){
   try{
     const r = await rpc("getAsset", [mint]);
@@ -836,14 +823,12 @@ async function getAsset(mint){
   }
 }
 function pickTokenMetaFromAsset(asset){
-  // returns {name, symbol, image, uri, description, authorities, raw} best-effort
   if(!asset) return null;
 
   const md = asset?.content?.metadata || {};
   const name = (md?.name || asset?.metadata?.name || "").trim();
   const symbol = (md?.symbol || asset?.metadata?.symbol || "").trim();
 
-  // image candidates
   let image = "";
   const linksImg = asset?.content?.links?.image;
   if(typeof linksImg === "string") image = linksImg;
@@ -853,44 +838,29 @@ function pickTokenMetaFromAsset(asset){
     if(f?.uri) image = f.uri;
   }
 
-  // metadata uri
   const uri = (asset?.content?.json_uri || asset?.content?.links?.external_url || "").trim();
-
   const description = (md?.description || asset?.content?.metadata?.description || "").trim();
 
   const authorities = Array.isArray(asset?.authorities) ? asset.authorities : [];
-  return {
-    name: name || "",
-    symbol: symbol || "",
-    image: image || "",
-    uri: uri || "",
-    description: description || "",
-    authorities,
-    raw: asset
-  };
+  return { name, symbol, image, uri, description, authorities, raw: asset };
 }
 function applyTokenHeader(meta, mint){
-  // keep existing result header intact; just fill new fields
   const nameEl = $("tokenName");
   const symEl = $("tokenSymbol");
   const logoWrap = $("tokenLogoWrap");
   const logo = $("tokenLogo");
 
   const fallbackName = "Token";
-  const fallbackSym = "";
-
   const n = meta?.name ? meta.name : "";
   const s = meta?.symbol ? meta.symbol : "";
 
   nameEl.textContent = (n || fallbackName);
   symEl.textContent = (s ? `$${s}` : `Mint: ${shortAddr(mint)}`);
 
-  // logo (optional)
   if(meta?.image){
     logo.src = meta.image;
     logo.alt = (n || s || "Token");
     logoWrap.style.display = "block";
-    // if image fails, hide gracefully
     logo.onerror = ()=>{ logoWrap.style.display = "none"; };
   }else{
     logoWrap.style.display = "none";
@@ -907,114 +877,108 @@ function verdictFrom(score, critical){
   return {label:"FLAGGED", mode:"bad", title:"FLAGGED • High Risk"};
 }
 
-/* Explainers (what user should do) */
-function explainFreeze(){
+/* ===== SIMPLE, IDIOT-PROOF EXPLAINERS (NO CODE/NO JSON) ===== */
+function explainSimple(title, lines){
+  // grey-ish, simple block
+  const safe = (s)=>String(s||"").replaceAll("<","&lt;").replaceAll(">","&gt;");
   return `
-    <b>Freeze Authority is active.</b><br><br>
-    This means an authority wallet can freeze token accounts and block transfers.<br>
-    <div class="small"><b>Action:</b> set Freeze Authority to <code>null</code> (renounce). If the project refuses, treat as high-risk.</div>
+    <div style="font-weight:1000; font-size:18px; margin-bottom:10px">${safe(title)}</div>
+    <div style="color:rgba(255,255,255,.70); font-weight:850; line-height:1.55">
+      ${lines.map(l=>`<div style="margin:6px 0">${safe(l)}</div>`).join("")}
+    </div>
   `;
 }
+
+function explainFreeze(){
+  return explainSimple("Freeze Authority", [
+    "Meaning: Someone can freeze wallets so they can’t sell or move the token.",
+    "Why it matters: Buyers can get trapped.",
+    "What to do: Only trust if Freeze is removed (renounced)."
+  ]);
+}
 function explainMintAuth(){
-  return `
-    <b>Mint Authority is active.</b><br><br>
-    This means the supply can be increased (new tokens minted) at any time.<br>
-    <div class="small"><b>Action:</b> set Mint Authority to <code>null</code> (renounce), or provide a transparent, verifiable reason (e.g., scheduled emissions with public constraints).</div>
-  `;
+  return explainSimple("Mint Authority", [
+    "Meaning: Someone can mint (create) more tokens anytime.",
+    "Why it matters: More tokens can crash the price.",
+    "What to do: Only trust if Mint is renounced, or there is a clear public emission plan."
+  ]);
 }
 function explainTop20(pct){
   const p = Number(pct||0).toFixed(2);
-  return `
-    <b>Top holders concentration = ${p}%.</b><br><br>
-    Higher concentration means a small group can dump and crash price.<br>
-    <div class="small"><b>Action:</b> improve distribution (airdrop, vesting, LP incentives), and monitor whale wallets. For memes, anything above ~55% deserves caution.</div>
-  `;
+  return explainSimple("Top Holders Concentration", [
+    `Meaning: The biggest 20 wallets hold about ${p}% of the supply.`,
+    "Why it matters: A few wallets can dump and crash the chart.",
+    "What to do: High % = extra caution. Check holders and project transparency."
+  ]);
 }
 function explainTokenStandard(programType, extReadable){
   if(programType === "SPL_TOKEN"){
-    return `
-      <b>Token Standard: SPL Token (Legacy).</b><br><br>
-      This is the most common token program on Solana. It has fewer optional controls.<br>
-      <div class="small"><b>Action:</b> focus on authorities + distribution + liquidity signals.</div>
-    `;
+    return explainSimple("Token Standard: SPL Token", [
+      "Meaning: Normal Solana token program used by most tokens.",
+      "Why it matters: Fewer extra rules hidden inside the token.",
+      "What to do: Still check authorities and distribution."
+    ]);
   }
   if(programType === "TOKEN_2022"){
-    return `
-      <b>Token Standard: Token-2022.</b><br><br>
-      Token-2022 is an official Solana token program that supports optional <b>extensions</b> (extra rules like transfer fees, delegates, extra controls).<br><br>
-      ${extReadable
-        ? `<div class="small"><b>Good news:</b> your RPC returned extension data below, so we can show exactly what's enabled.</div>`
-        : `<div class="small"><b>Important:</b> your RPC response did <u>not</u> include a readable extension list. We cannot verify which extensions are enabled from parsed data here. Treat as <b>WATCH</b> unless you verify via a dedicated Token-2022 extension decoder or program logs.</div>`
-      }
-    `;
+    return explainSimple("Token Standard: Token-2022", [
+      "Meaning: Official Solana token program with optional extra rules (extensions).",
+      "Why it matters: Some extensions can add fees or restrictions.",
+      extReadable ? "What to do: Read the Token Standard Details list and be careful with WATCH items."
+                : "What to do: If extensions are not visible, treat as WATCH until verified elsewhere."
+    ]);
   }
-  return `
-    <b>Token Standard: Unknown owner program.</b><br><br>
-    The mint is not owned by the standard SPL Token programs.<br>
-    <div class="small"><b>Action:</b> verify the mint program carefully. Unknown programs can hide custom rules.</div>
-  `;
+  return explainSimple("Token Standard: Unknown Program", [
+    "Meaning: Token mint is not using the common Solana token programs.",
+    "Why it matters: Custom programs can add hidden rules.",
+    "What to do: Treat as WATCH and verify carefully."
+  ]);
 }
-
-/* EXTENSION: Metadata quality checks (useful + not fake) */
 function explainMetadataQuality(){
-  return `
-    <b>Metadata quality check.</b><br><br>
-    Tokens usually publish a Name + Symbol and often an image/JSON metadata.<br>
-    Missing metadata doesn't prove a scam, but it reduces transparency and makes impersonation easier.<br>
-    <div class="small"><b>Action:</b> ensure name/symbol are present, metadata URI is reachable, and branding matches official channels.</div>
-  `;
+  return explainSimple("Token Metadata", [
+    "Meaning: Name, symbol and logo help you identify the real token.",
+    "Why it matters: Missing metadata makes impersonation easier.",
+    "What to do: Verify name/symbol/logo match official socials and listings."
+  ]);
+}
+function explainHolders(addr, pct){
+  return explainSimple("Top Holder", [
+    `Meaning: This wallet holds about ${pct}% of the supply.`,
+    "Why it matters: Big holders can dump suddenly.",
+    "What to do: Watch big wallets and avoid extreme concentration."
+  ]);
 }
 
+/* ===== EXTENSION: Metadata quality checks ===== */
 function scoreModel(sig){
   let score = 100;
   const checks = [];
 
   if(sig.freezeActive){
     score -= 35;
-    checks.push({
-      k:"Freeze Authority active",
-      sev:"bad",
-      d:"Freeze authority can block transfers. High-risk for buyers.",
-      clickMsg: explainFreeze()
-    });
+    checks.push({ k:"Freeze Authority active", sev:"bad", d:"Transfers can be frozen. High risk.", clickMsg: explainFreeze() });
   }else{
-    checks.push({
-      k:"Freeze Authority removed",
-      sev:"ok",
-      d:"No freeze power detected (good).",
-      clickMsg:"Freeze authority is null — no account-freezing power."
-    });
+    checks.push({ k:"Freeze Authority removed", sev:"ok", d:"No freeze power detected (good).", clickMsg: explainFreeze() });
   }
 
   if(sig.mintAuthActive){
     score -= 30;
-    checks.push({
-      k:"Mint Authority active",
-      sev:"bad",
-      d:"Mint authority can increase supply. High-risk unless justified.",
-      clickMsg: explainMintAuth()
-    });
+    checks.push({ k:"Mint Authority active", sev:"bad", d:"More supply can be minted. High risk.", clickMsg: explainMintAuth() });
   }else{
-    checks.push({
-      k:"Mint Authority renounced",
-      sev:"ok",
-      d:"Supply cannot be minted further (good).",
-      clickMsg:"Mint authority is null — supply cannot be increased."
-    });
+    checks.push({ k:"Mint Authority renounced", sev:"ok", d:"Supply can’t be increased (good).", clickMsg: explainMintAuth() });
   }
 
   const t20 = Number(sig.top20 || 0);
   if(t20 >= 75){
     score -= 28;
-    checks.push({k:"Top 20 concentration very high", sev:"bad", d:`Top20 holds ~${t20.toFixed(2)}% of supply. Rug/sell risk.`, clickMsg: explainTop20(t20)});
+    checks.push({k:"Top 20 concentration very high", sev:"bad", d:`Top20 holds ~${t20.toFixed(2)}%.`, clickMsg: explainTop20(t20)});
   }else if(t20 >= 55){
     score -= 18;
-    checks.push({k:"Top 20 concentration high", sev:"warn", d:`Top20 holds ~${t20.toFixed(2)}% of supply. Watch distribution.`, clickMsg: explainTop20(t20)});
+    checks.push({k:"Top 20 concentration high", sev:"warn", d:`Top20 holds ~${t20.toFixed(2)}%.`, clickMsg: explainTop20(t20)});
   }else if(t20 >= 35){
     score -= 8;
-    checks.push({k:"Top 20 concentration moderate", sev:"warn", d:`Top20 holds ~${t20.toFixed(2)}% of supply.`, clickMsg: explainTop20(t20)});
+    checks.push({k:"Top 20 concentration moderate", sev:"warn", d:`Top20 holds ~${t20.toFixed(2)}%.`, clickMsg: explainTop20(t20)});
   }else{
-    checks.push({k:"Distribution looks healthier", sev:"ok", d:`Top20 holds ~${t20.toFixed(2)}% of supply.`, clickMsg: explainTop20(t20)});
+    checks.push({k:"Distribution looks healthier", sev:"ok", d:`Top20 holds ~${t20.toFixed(2)}%.`, clickMsg: explainTop20(t20)});
   }
 
   if(sig.programType === "TOKEN_2022"){
@@ -1022,44 +986,21 @@ function scoreModel(sig){
     checks.push({
       k:"Token standard: Token-2022",
       sev:"warn",
-      d: sig.extReadable
-        ? "Token-2022 supports extensions. We list what RPC exposed below."
-        : "Token-2022 supports extensions, but extension list was not readable from parsed RPC here.",
+      d: sig.extReadable ? "Can include extra rules (extensions)." : "Extensions not visible in this scan.",
       clickMsg: explainTokenStandard("TOKEN_2022", sig.extReadable)
     });
   }else if(sig.programType === "SPL_TOKEN"){
-    checks.push({
-      k:"Token standard: SPL Token",
-      sev:"ok",
-      d:"Standard SPL Token program detected.",
-      clickMsg: explainTokenStandard("SPL_TOKEN", true)
-    });
+    checks.push({ k:"Token standard: SPL Token", sev:"ok", d:"Standard token program.", clickMsg: explainTokenStandard("SPL_TOKEN", true) });
   }else{
     score -= 10;
-    checks.push({
-      k:"Token standard: Unknown program",
-      sev:"warn",
-      d:"Mint not owned by common token programs. Verify carefully.",
-      clickMsg: explainTokenStandard("UNKNOWN", false)
-    });
+    checks.push({ k:"Token standard: Unknown program", sev:"warn", d:"Not a common token program.", clickMsg: explainTokenStandard("UNKNOWN", false) });
   }
 
-  // EXTENSION: metadata quality signal (useful, not over-claiming)
   if(sig.meta && (sig.meta.name || sig.meta.symbol)){
-    checks.push({
-      k:"Metadata present",
-      sev:"ok",
-      d:`Name/Symbol found: ${sig.meta.name || "—"} / ${sig.meta.symbol || "—"}.`,
-      clickMsg: explainMetadataQuality()
-    });
+    checks.push({ k:"Metadata present", sev:"ok", d:`Name/Symbol found.`, clickMsg: explainMetadataQuality() });
   }else{
     score -= 4;
-    checks.push({
-      k:"Metadata missing or unreadable",
-      sev:"warn",
-      d:"Name/Symbol not found via metadata endpoint.",
-      clickMsg: explainMetadataQuality()
-    });
+    checks.push({ k:"Metadata missing or unreadable", sev:"warn", d:"Name/Symbol not found via metadata endpoint.", clickMsg: explainMetadataQuality() });
   }
 
   score = clamp(Math.round(score), 0, 100);
@@ -1067,71 +1008,53 @@ function scoreModel(sig){
   return { score, checks, critical };
 }
 
-/* Launch readiness: ONLY actionable items, no placeholders */
+/* Launch readiness */
 function buildTodo(sig){
   const todos = [];
   if(sig.freezeActive){
-    todos.push({t:"Remove Freeze Authority", sev:"bad", d:"Set freeze authority to null so transfers cannot be frozen.", clickMsg: explainFreeze()});
+    todos.push({t:"Remove Freeze Authority", sev:"bad", d:"Freezing can trap buyers.", clickMsg: explainFreeze()});
   }else{
-    todos.push({t:"Freeze Authority", sev:"ok", d:"Already removed (good).", clickMsg:"Freeze authority is null."});
+    todos.push({t:"Freeze Authority", sev:"ok", d:"Already removed (good).", clickMsg: explainFreeze()});
   }
 
   if(sig.mintAuthActive){
-    todos.push({t:"Renounce Mint Authority", sev:"bad", d:"Set mint authority to null so supply cannot be increased.", clickMsg: explainMintAuth()});
+    todos.push({t:"Renounce Mint Authority", sev:"bad", d:"Minting more tokens can crash price.", clickMsg: explainMintAuth()});
   }else{
-    todos.push({t:"Mint Authority", sev:"ok", d:"Already renounced (good).", clickMsg:"Mint authority is null."});
+    todos.push({t:"Mint Authority", sev:"ok", d:"Already renounced (good).", clickMsg: explainMintAuth()});
   }
 
   const t20 = Number(sig.top20 || 0);
   if(t20 >= 55){
-    todos.push({t:"Reduce Whale Concentration", sev:"warn", d:`Top20 holds ~${t20.toFixed(2)}%. Consider wider distribution + transparent vesting.`, clickMsg: explainTop20(t20)});
+    todos.push({t:"Reduce Whale Concentration", sev:"warn", d:`Top20 holds ~${t20.toFixed(2)}%.`, clickMsg: explainTop20(t20)});
   }else if(t20 >= 35){
-    todos.push({t:"Monitor Distribution", sev:"warn", d:`Top20 holds ~${t20.toFixed(2)}%. Watch whale wallets.`, clickMsg: explainTop20(t20)});
+    todos.push({t:"Monitor Distribution", sev:"warn", d:`Top20 holds ~${t20.toFixed(2)}%.`, clickMsg: explainTop20(t20)});
   }else{
-    todos.push({t:"Distribution", sev:"ok", d:`Top20 concentration ~${t20.toFixed(2)}% (healthier).`, clickMsg: explainTop20(t20)});
+    todos.push({t:"Distribution", sev:"ok", d:`Top20 ~${t20.toFixed(2)}% (healthier).`, clickMsg: explainTop20(t20)});
   }
 
   if(sig.programType === "TOKEN_2022"){
     todos.push({
-      t:"Token-2022 Extensions Review",
+      t:"Token-2022 Safety Review",
       sev:"warn",
-      d: sig.extReadable
-        ? "Extensions are listed in Token Standard Details. Ensure none are harmful (e.g., transfer fees)."
-        : "Extensions were not readable from parsed RPC here. Verify extensions with a dedicated decoder before trusting.",
+      d:"Token-2022 can include extra rules.",
       clickMsg: explainTokenStandard("TOKEN_2022", sig.extReadable)
     });
   } else if(sig.programType === "UNKNOWN"){
-    todos.push({
-      t:"Verify Mint Program",
-      sev:"warn",
-      d:"Mint is not owned by standard SPL programs. Confirm program is safe and expected.",
-      clickMsg: explainTokenStandard("UNKNOWN", false)
-    });
+    todos.push({ t:"Verify Mint Program", sev:"warn", d:"Unknown program = extra caution.", clickMsg: explainTokenStandard("UNKNOWN", false) });
   } else {
-    todos.push({t:"Token Standard", sev:"ok", d:"Standard SPL Token program detected.", clickMsg: explainTokenStandard("SPL_TOKEN", true)});
+    todos.push({ t:"Token Standard", sev:"ok", d:"Standard SPL Token.", clickMsg: explainTokenStandard("SPL_TOKEN", true) });
   }
 
-  // EXTENSION: metadata action item (only if missing)
   if(!(sig.meta && (sig.meta.name || sig.meta.symbol))){
-    todos.push({
-      t:"Publish Token Metadata",
-      sev:"warn",
-      d:"Add name/symbol (and optionally image + JSON URI) for transparency and discovery.",
-      clickMsg: explainMetadataQuality()
-    });
+    todos.push({ t:"Publish Token Metadata", sev:"warn", d:"Missing name/symbol makes fake copies easier.", clickMsg: explainMetadataQuality() });
   }else{
-    todos.push({
-      t:"Metadata",
-      sev:"ok",
-      d:"Name/symbol present (good).",
-      clickMsg: explainMetadataQuality()
-    });
+    todos.push({ t:"Metadata", sev:"ok", d:"Name/symbol present (good).", clickMsg: explainMetadataQuality() });
   }
 
   return todos;
 }
 
-/* Render list with clickable pills (PASS/WATCH/FAIL) */
+/* Render list with clickable pills */
 function renderList(el, items, listTitle="Guardian Details"){
   el.innerHTML = "";
   for(const it of items){
@@ -1176,19 +1099,18 @@ function renderMetrics(score, sig, uiSupply, top20Sum, owner, decimals){
     wrap.appendChild(d);
   };
 
-  // EXTENSION: show token name/symbol in metrics too (useful on mobile)
   const nm = sig?.meta?.name || "—";
   const sy = sig?.meta?.symbol || "—";
   metric("Token", (sy && sy!=="—") ? `$${sy}` : "—", nm !== "—" ? `Name: ${nm}` : "Name: —");
 
   metric("Risk Score", `${score}/100`,
-    score>=80 ? "Guardian-grade signals (based on on-chain checks below)." :
-    (score>=50 ? "Mixed signals — read WATCH items carefully." : "High-risk signals detected — proceed with caution."),
+    score>=80 ? "Looks safer than average (still not guaranteed)." :
+    (score>=50 ? "Mixed signals — read WATCH items." : "High risk signals — be careful."),
     score
   );
 
   metric("Authorities", authLine,
-    sig.mintAuthActive||sig.freezeActive ? "Authorities present = trust risk. Click FAIL for actions." : "No mint/freeze authority (good)."
+    sig.mintAuthActive||sig.freezeActive ? "Authorities present = higher trust risk." : "No mint/freeze authority (good)."
   );
 
   metric("Top 20 Concentration", fmtPct(sig.top20),
@@ -1253,7 +1175,11 @@ function badgeHtmlSnippet(mint, verdictLabel, score){
 function renderHolders(mint, uiSupply, largest){
   const list = $("holdersList");
   if(!uiSupply || !Array.isArray(largest) || !largest.length){
-    renderList(list, [{t:"No holder data", sev:"warn", d:"Largest accounts not readable from RPC.", clickMsg:"This can happen if RPC is rate-limited or the mint is unusual. Try again."}]);
+    renderList(list, [{t:"No holder data", sev:"warn", d:"Largest accounts not readable from RPC.", clickMsg: explainSimple("Top Holders", [
+      "Meaning: We could not read the biggest holders right now.",
+      "Why it matters: Holder distribution is important for risk.",
+      "What to do: Try again later or use another RPC."
+    ])}]);
     return;
   }
   const top = largest.slice(0,5);
@@ -1265,19 +1191,14 @@ function renderHolders(mint, uiSupply, largest){
     return {
       t: `#${i+1} ${shortAddr(addr)}`,
       sev,
-      d: `${fmtInt(amt)} tokens • ${pct.toFixed(2)}% • Solscan: https://solscan.io/account/${addr}`,
-      clickMsg: `
-        <b>Holder ${i+1}</b><br><br>
-        Address: <code>${addr}</code><br>
-        Share: <b>${pct.toFixed(2)}%</b> of UI supply.<br>
-        <div class="small">Action: if one wallet holds a huge %, watch for dumps. Check wallet history on Solscan.</div>
-      `
+      d: `${fmtInt(amt)} tokens • ${pct.toFixed(2)}%`,
+      clickMsg: explainHolders(addr, pct.toFixed(2))
     };
   });
   renderList(list, items, "Top Holder Details");
 }
 
-/* Token-2022 extensions / token-standard details */
+/* Token-2022 extensions / token-standard details (NO JSON) */
 function parseExtensionsFromParsed(rawParsed){
   try{
     const info = rawParsed?.info || rawParsed?.parsed?.info || rawParsed?.data?.parsed?.info || null;
@@ -1294,8 +1215,7 @@ function parseExtensionsFromParsed(rawParsed){
         if(typeof x === "string") return { name:x, details:null };
         if(typeof x === "object" && x){
           const name = x.extension || x.type || x.name || "Extension";
-          const details = x.state || x.value || x;
-          return { name, details };
+          return { name, details:null };
         }
         return { name:String(x), details:null };
       });
@@ -1303,9 +1223,9 @@ function parseExtensionsFromParsed(rawParsed){
       out = ex2.map(x=>({name:String(x), details:null}));
     } else if(ex3 && typeof ex3 === "object"){
       if(Array.isArray(ex3) && ex3.length){
-        out = ex3.map(x=>({name: x?.type || x?.name || "Extension", details:x}));
+        out = ex3.map(x=>({name: x?.type || x?.name || "Extension", details:null}));
       } else {
-        out = Object.keys(ex3).map(k=>({name:k, details:ex3[k]}));
+        out = Object.keys(ex3).map(k=>({name:k, details:null}));
       }
     }
 
@@ -1343,55 +1263,71 @@ function renderTokenStandardDetails(programType, extReadable, extList){
     renderList(el, [{
       t:"Token-2022 extensions",
       sev:"warn",
-      d:"Extension list was not exposed by parsed RPC data in this scan.",
-      clickMsg: explainTokenStandard("TOKEN_2022", false) + `<div class="small">Why: some RPC parsers do not return Token-2022 extension state. This is a visibility limitation, not proof of safety.</div>`
+      d:"Extensions not visible in this scan.",
+      clickMsg: explainTokenStandard("TOKEN_2022", false)
     }]);
     return;
   }
 
   const items = extList.map((x)=>{
     const nameHuman = humanizeExtensionName(x.name);
-    const raw = x.details ? JSON.stringify(x.details, null, 2).slice(0, 1200) : null;
+    const lname = String(x.name||"").toLowerCase();
 
     let sev = "warn";
     let d = `Extension detected: ${nameHuman}.`;
-    let msg = `<b>${nameHuman}</b><br><br>This extension is enabled on Token-2022.`;
+    let lines = [
+      "Meaning: Token-2022 can add extra rules.",
+      "Why it matters: Some rules can add fees or restrictions.",
+      "What to do: If you don’t understand it, treat as WATCH."
+    ];
 
-    const lname = String(x.name||"").toLowerCase();
-    if(lname.includes("transferfee")) {
-      d = "Transfer fee can take a % of each transfer.";
-      msg += `<div class="small"><b>Action:</b> verify fee rate + who receives it. Hidden transfer fees can harm buyers.</div>`;
-    } else if(lname.includes("nontransferable")) {
+    if(lname.includes("transferfee")){
+      lines = [
+        "Meaning: Transfers may charge a fee.",
+        "Why it matters: Fees can hurt buyers/sellers.",
+        "What to do: Treat as WATCH unless fee is clearly disclosed."
+      ];
+    } else if(lname.includes("nontransferable")){
       sev = "bad";
-      d = "Non-transferable tokens cannot be transferred (severe restriction).";
-      msg += `<div class="small"><b>Action:</b> avoid unless the token is intentionally non-transferable (bad for memecoins).</div>`;
-    } else if(lname.includes("permanentdelegate")) {
-      d = "A delegate can have special control rights.";
-      msg += `<div class="small"><b>Action:</b> verify delegate address and what control it has.</div>`;
-    } else {
-      d = "Token-2022 extension enabled. Review details.";
-      msg += `<div class="small"><b>Action:</b> understand what this extension does before trusting the token.</div>`;
+      lines = [
+        "Meaning: Token cannot be transferred normally.",
+        "Why it matters: You may not be able to sell/send it.",
+        "What to do: Avoid for memecoins. Treat as FAIL."
+      ];
+    } else if(lname.includes("permanentdelegate")){
+      lines = [
+        "Meaning: A delegate may have special control.",
+        "Why it matters: Could enable unexpected behavior.",
+        "What to do: Treat as WATCH unless explained clearly."
+      ];
+    } else if(lname.includes("metadata")){
+      lines = [
+        "Meaning: Token stores metadata rules on-chain.",
+        "Why it matters: May allow updates depending on authority.",
+        "What to do: Verify metadata matches official sources."
+      ];
     }
 
-    if(raw){
-      msg += `<code>${raw}</code>`;
-    }
-
-    return { t: nameHuman, sev, d, clickMsg: msg };
+    return {
+      t: nameHuman,
+      sev,
+      d,
+      clickMsg: explainSimple(nameHuman, lines)
+    };
   });
 
   renderList(el, items, "Token-2022 Extension Details");
 }
 
-/* EXTENSION: render metadata panel */
+/* Metadata panel (NO JSON) */
 function renderMetadataPanel(meta, mint){
   const el = $("metaList");
   if(!meta){
     renderList(el, [{
       t:"Metadata not available",
       sev:"warn",
-      d:"Could not fetch metadata via getAsset (DAS).",
-      clickMsg: explainMetadataQuality() + `<div class="small">Action: retry later, or ensure the token has published metadata and your RPC allows getAsset.</div>`
+      d:"Could not fetch metadata via getAsset.",
+      clickMsg: explainMetadataQuality()
     }], "Token Metadata");
     return;
   }
@@ -1402,25 +1338,29 @@ function renderMetadataPanel(meta, mint){
     t:"Name / Symbol",
     sev: (meta.name || meta.symbol) ? "ok" : "warn",
     d: `${meta.name || "—"} • ${meta.symbol ? "$"+meta.symbol : "—"}`,
-    clickMsg: explainMetadataQuality() + `<code>${JSON.stringify({name: meta.name || null, symbol: meta.symbol || null}, null, 2)}</code>`
+    clickMsg: explainMetadataQuality()
   });
 
   items.push({
-    t:"Metadata URI",
+    t:"Metadata Link",
     sev: meta.uri ? "ok" : "warn",
-    d: meta.uri ? meta.uri : "No metadata URI exposed.",
-    clickMsg: meta.uri
-      ? `<b>Metadata URI</b><br><br>This is where off-chain JSON is hosted (name/symbol/image).<div class="small">Action: verify the JSON is reachable and matches official socials.</div><code>${meta.uri}</code>`
-      : `<b>No metadata URI</b><br><br>This scan did not find a json_uri/external_url.<div class="small">Action: publish token metadata for transparency.</div>`
+    d: meta.uri ? "Metadata link found." : "No metadata link found.",
+    clickMsg: explainSimple("Metadata Link", [
+      "Meaning: A link where token info (name/logo) is hosted.",
+      "Why it matters: Helps confirm you’re looking at the real token.",
+      "What to do: Check it matches the official socials/listings."
+    ])
   });
 
   items.push({
     t:"Image / Logo",
     sev: meta.image ? "ok" : "warn",
-    d: meta.image ? "Logo found (displayed in header if loadable)." : "No logo image found.",
-    clickMsg: meta.image
-      ? `<b>Logo URL</b><br><br><code>${meta.image}</code><div class="small">Action: verify the image branding matches official sources.</div>`
-      : `<b>No logo</b><br><br>This scan did not find an image link. Optional, but helps prevent impersonation.`
+    d: meta.image ? "Logo found (shown above if loadable)." : "No logo found.",
+    clickMsg: explainSimple("Token Logo", [
+      "Meaning: Token picture/logo used in wallets and sites.",
+      "Why it matters: Helps you avoid fake copies.",
+      "What to do: Verify the logo matches official sources."
+    ])
   });
 
   if(meta.description){
@@ -1428,18 +1368,22 @@ function renderMetadataPanel(meta, mint){
       t:"Description",
       sev:"ok",
       d: meta.description.slice(0,120) + (meta.description.length>120 ? "…" : ""),
-      clickMsg: `<b>Description</b><br><br>${meta.description.replaceAll("<","&lt;").replaceAll(">","&gt;")}`
+      clickMsg: explainSimple("Description", [
+        meta.description
+      ])
     });
   }
 
-  // Authority hints (best-effort, does NOT claim safety)
   if(Array.isArray(meta.authorities) && meta.authorities.length){
-    const a = meta.authorities.map(x => `${x?.address || "—"} (${x?.scopes?.join(", ") || "scopes?"})`).slice(0,6);
     items.push({
       t:"Authorities (metadata)",
       sev:"warn",
-      d:"Authority scopes exist on asset metadata (review).",
-      clickMsg: `<b>Authorities</b><br><br>These are authorities reported by the asset endpoint (best-effort).<div class="small">Action: verify authorities align with project claims.</div><code>${JSON.stringify(meta.authorities, null, 2).slice(0,1400)}</code>`
+      d:"Metadata authorities exist (review).",
+      clickMsg: explainSimple("Metadata Authorities", [
+        "Meaning: Someone may be able to update token metadata.",
+        "Why it matters: They could change name/logo/link later.",
+        "What to do: Treat as WATCH unless authority is removed or clearly explained."
+      ])
     });
   }
 
@@ -1462,7 +1406,7 @@ async function scan(){
   setText("scanHint","—");
   $("sharePanel").style.display = "none";
 
-  // EXTENSION: clear token header first
+  // clear token header
   setText("tokenName","—");
   setText("tokenSymbol","—");
   $("tokenLogoWrap").style.display = "none";
@@ -1484,7 +1428,6 @@ async function scan(){
       owner === TOKEN_2022_PROGRAM ? "TOKEN_2022" :
       "UNKNOWN";
 
-    // EXTENSION: fetch metadata in parallel (doesn't break if fails)
     const [supply, largest, asset] = await Promise.all([
       getTokenSupply(mint),
       getLargest(mint),
@@ -1500,7 +1443,6 @@ async function scan(){
     const top20Sum = top20.reduce((acc,x)=> acc + Number(x.uiAmount || 0), 0);
     const conc = (uiSupply && uiSupply > 0) ? (top20Sum / uiSupply) * 100 : 0;
 
-    // Token-2022 extensions visibility
     const extRaw = programType === "TOKEN_2022" ? parseExtensionsFromParsed(rawParsed) : null;
     const extReadable = !!(extRaw && extRaw.length);
 
@@ -1516,31 +1458,26 @@ async function scan(){
     const model = scoreModel(sig);
     const verdict = verdictFrom(model.score, model.critical);
 
-    // header (existing)
     setText("verdictTitle", verdict.title);
     setBadge($("verdictBadge"), verdict.label, verdict.mode);
     $("scoreBadge").textContent = `SCORE ${model.score}`;
 
-    // metrics
     renderMetrics(model.score, sig, uiSupply, top20Sum, owner, decimals);
 
-    // lists
     setText("scanHint", `Mint: ${shortAddr(mint)}`);
     renderList($("checksList"), model.checks, "Guardian Check Details");
     renderList($("todoList"), buildTodo(sig), "Launch Readiness Details");
     renderTokenStandardDetails(programType, extReadable, extRaw || []);
     renderHolders(mint, uiSupply, largest);
 
-    // summary
     const programText = programType === "SPL_TOKEN" ? "SPL Token" : (programType === "TOKEN_2022" ? "Token-2022" : "Unknown");
     const authLine = `${mintAuthority ? "MINT: ACTIVE" : "MINT: RENOUNCED"} • ${freezeAuthority ? "FREEZE: ACTIVE" : "FREEZE: REMOVED"}`;
     const extLine = (programType === "TOKEN_2022")
-      ? (extReadable ? ` • Extensions: visible (${(extRaw||[]).length})` : ` • Extensions: not visible via parsed RPC`)
+      ? (extReadable ? ` • Extensions: visible (${(extRaw||[]).length})` : ` • Extensions: not visible`)
       : "";
     const metaLine = (meta && (meta.name || meta.symbol)) ? ` • ${meta.symbol ? "$"+meta.symbol : ""} ${meta.name ? meta.name : ""}`.trim() : "";
     setText("summary", `${verdict.label} • Score ${model.score}/100 • ${authLine} • Top20 ${fmtPct(conc)} • Standard ${programText}${extLine}${metaLine ? " • " + metaLine : ""} • Decimals ${decimals}`);
 
-    // share/badge
     const scanUrl = `https://solanax1.com/guardian?mint=${encodeURIComponent(mint)}`;
     setText("scanLink", scanUrl);
     setText("badgeHtml", badgeHtmlSnippet(mint, verdict.label, model.score));
@@ -1557,14 +1494,14 @@ async function scan(){
   }
 }
 
-/* Click handling for pills: open modal with full info */
+/* Click handling for pills: open modal with ONLY simple explanation */
 document.addEventListener("click", (e)=>{
   const pill = e.target.closest?.(".pill");
   if(!pill) return;
   const msg = pill.getAttribute("data-msg");
   const title = pill.getAttribute("data-title") || "Guardian Details";
   if(msg && msg.trim() && msg.trim() !== "—"){
-    openModal("Guardian Details", `<div style="font-weight:950;margin-bottom:8px">${title}</div>${msg}`);
+    openModal(title, msg); // IMPORTANT: no extra title duplication inside body
   }
 });
 document.addEventListener("keydown", (e)=>{
@@ -1574,7 +1511,7 @@ document.addEventListener("keydown", (e)=>{
     const msg = pill.getAttribute("data-msg");
     const title = pill.getAttribute("data-title") || "Guardian Details";
     if(msg && msg.trim() && msg.trim() !== "—"){
-      openModal("Guardian Details", `<div style="font-weight:950;margin-bottom:8px">${title}</div>${msg}`);
+      openModal(title, msg); // IMPORTANT: no extra title duplication inside body
     }
   }
 });
