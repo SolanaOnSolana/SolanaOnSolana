@@ -1,80 +1,510 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>X1 Scanner — Guardian Risk Engine</title>
-  <meta name="theme-color" content="#070711"/>
-  <link rel="stylesheet" href="style.css"/>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+  <meta name="theme-color" content="#070711" />
+  <title>$SOS — X1 Contract Scanner</title>
+  <meta name="description" content="X1 Contract Scanner — risk score, holders, clusters, liquidity, market data." />
+
+  <!-- Optional: if you want to reuse your existing style.css in X1Scanner/ -->
+  <link rel="stylesheet" href="style.css" />
+
+  <style>
+    /* If style.css already contains your full theme, you can delete this <style> block.
+       This block is a safe minimal fallback that matches your Guardian look. */
+
+    :root{
+      --bg:#070711;
+      --panel: rgba(255,255,255,.06);
+      --panel2: rgba(255,255,255,.08);
+      --stroke: rgba(255,255,255,.12);
+      --text: rgba(255,255,255,.92);
+      --muted: rgba(255,255,255,.70);
+
+      --g:#14F195;
+      --c:#00D1FF;
+      --p:#9945FF;
+
+      --radius: 22px;
+      --shadow: 0 10px 30px rgba(0,0,0,.35);
+      --max: 1180px;
+    }
+
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      color:var(--text);
+      font: 15.5px/1.55 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      background: var(--bg);
+      overflow-x:hidden;
+      position:relative;
+    }
+    body::before{
+      content:"";
+      position:fixed; inset:0; z-index:-1; pointer-events:none;
+      background:
+        radial-gradient(1200px 700px at 10% 5%, rgba(153,69,255,.22), transparent 60%),
+        radial-gradient(1000px 650px at 90% 10%, rgba(20,241,149,.18), transparent 55%),
+        radial-gradient(900px 600px at 70% 85%, rgba(0,209,255,.14), transparent 55%),
+        var(--bg);
+      transform: translateZ(0);
+    }
+
+    a{color:inherit; text-decoration:none}
+    .wrap{max-width:var(--max); margin:0 auto; padding:0 18px}
+
+    .topbar{
+      position:sticky; top:0; z-index:20;
+      backdrop-filter: blur(14px);
+      background: rgba(7,7,17,.62);
+      border-bottom: 1px solid rgba(255,255,255,.08);
+    }
+    .row{
+      display:flex; align-items:center; justify-content:space-between;
+      gap:12px;
+      padding:12px 0;
+      flex-wrap:wrap;
+    }
+    .brand{
+      display:flex; align-items:center; gap:12px;
+      min-width: 240px;
+      user-select:none;
+    }
+    .brand img{
+      width:40px; height:40px; object-fit:contain;
+      filter: drop-shadow(0 10px 25px rgba(0,0,0,.45));
+    }
+    .bt{display:flex; flex-direction:column; line-height:1.05}
+    .bt .t{font-weight:1000; letter-spacing:-.2px; font-size:16px}
+    .bt .s{font-weight:850; color:var(--muted); font-size:12.5px}
+
+    .actions{
+      display:flex; gap:10px; align-items:center; flex-wrap:wrap;
+      justify-content:flex-end;
+      width:100%;
+    }
+    @media (min-width: 980px){ .actions{width:auto} }
+
+    .btn{
+      display:inline-flex; align-items:center; justify-content:center;
+      padding:9px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      color: rgba(255,255,255,.88);
+      font-weight:950;
+      font-size:13px;
+      transition: .15s ease;
+      user-select:none;
+      cursor:pointer;
+      -webkit-tap-highlight-color: transparent;
+      white-space:nowrap;
+    }
+    .btn:hover{background: rgba(255,255,255,.10); transform: translateY(-1px)}
+    .btn.grad{
+      border:0;
+      background: linear-gradient(90deg, var(--g), var(--c), var(--p));
+      color:#061012;
+      box-shadow: 0 10px 24px rgba(0,0,0,.25);
+    }
+
+    main{padding:22px 0 42px}
+    .card{
+      background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.05));
+      border: 1px solid rgba(255,255,255,.10);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+    }
+    .inner{padding:22px}
+
+    .hero{
+      position:relative;
+      overflow:hidden;
+      isolation:isolate;
+    }
+    .hero::before{
+      content:"";
+      position:absolute;
+      inset:-70px -40px;
+      background:
+        radial-gradient(900px 520px at 18% 28%, rgba(20,241,149,.16), transparent 60%),
+        radial-gradient(900px 520px at 82% 20%, rgba(0,209,255,.12), transparent 60%),
+        radial-gradient(900px 520px at 70% 86%, rgba(153,69,255,.14), transparent 60%);
+      z-index:0; pointer-events:none;
+    }
+    .hero > *{position:relative; z-index:1}
+
+    .h1{
+      margin:0;
+      font-weight:1000;
+      letter-spacing:-1px;
+      line-height:1.05;
+      font-size: clamp(34px, 4.6vw, 62px);
+    }
+    .gradText{
+      background: linear-gradient(90deg, var(--g), var(--c), var(--p));
+      -webkit-background-clip:text; background-clip:text; color:transparent;
+    }
+    .sub{
+      margin-top:10px;
+      color: rgba(255,255,255,.76);
+      font-weight:850;
+      max-width: 980px;
+    }
+
+    .grid2{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:16px;
+      margin-top:16px;
+      align-items:start;
+    }
+    @media (max-width: 980px){ .grid2{grid-template-columns:1fr} }
+
+    .panel{
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.18);
+      border-radius: 18px;
+      padding:16px;
+    }
+
+    label{
+      display:block;
+      font-weight:950;
+      font-size:12.5px;
+      letter-spacing:.35px;
+      color: rgba(255,255,255,.82);
+      margin-bottom:8px
+    }
+    input{
+      width:100%;
+      padding:14px 14px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.22);
+      color: rgba(255,255,255,.92);
+      outline:none;
+      font-weight:900;
+      letter-spacing:.2px;
+      font-size:16px;
+    }
+    input:focus{
+      border-color: rgba(0,209,255,.45);
+      box-shadow: 0 0 0 3px rgba(0,209,255,.12);
+    }
+
+    .classified{
+      display:flex; align-items:center; justify-content:space-between;
+      gap:10px; flex-wrap:wrap;
+    }
+    .stamp{
+      font-weight:1000;
+      font-size:12px;
+      letter-spacing: .45px;
+      text-transform:uppercase;
+      color: rgba(255,255,255,.76);
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      border-radius: 999px;
+      padding:7px 10px;
+    }
+
+    .big{
+      display:flex; align-items:flex-start; justify-content:space-between;
+      gap:12px; flex-wrap:wrap;
+      margin-top:10px;
+    }
+    .tokenRow{
+      display:flex;
+      align-items:center;
+      gap:12px;
+      min-width: 260px;
+    }
+    .tokenRow img{
+      width:52px; height:52px;
+      border-radius:16px;
+      object-fit:contain;
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.10);
+      padding:6px;
+      display:none;
+    }
+    .title2{
+      margin:0;
+      font-weight:1000;
+      font-size:22px;
+      letter-spacing:-.4px;
+    }
+    .mono{
+      font-family: ui-monospace, Menlo, Consolas, monospace;
+      font-weight:900;
+      color: rgba(255,255,255,.86);
+      margin-top:6px;
+    }
+
+    .badge{
+      display:inline-flex; align-items:center; justify-content:center;
+      padding:7px 11px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      font-weight:1000;
+      font-size:12px;
+      white-space:nowrap;
+    }
+    .badge.good{border:0; background: linear-gradient(90deg,var(--g),var(--c),var(--p)); color:#061012}
+    .badge.warn{border-color: rgba(255,220,130,.35); background: rgba(255,220,130,.08); color: rgba(255,240,210,.92)}
+    .badge.bad{border-color: rgba(255,120,150,.35); background: rgba(255,120,150,.10); color: rgba(255,190,205,.95)}
+
+    .kpiGrid{
+      display:grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap:12px;
+      margin-top:12px;
+    }
+    @media (max-width: 980px){ .kpiGrid{grid-template-columns: repeat(2,1fr)} }
+    @media (max-width: 520px){ .kpiGrid{grid-template-columns: 1fr} }
+
+    .kpi{
+      padding:14px;
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.04);
+    }
+    .kpi .k{
+      color: rgba(255,255,255,.70);
+      font-weight:900;
+      font-size:12px;
+      letter-spacing:.45px;
+      text-transform:uppercase;
+    }
+    .kpi .v{margin-top:8px; font-weight:1000; font-size:20px}
+    .kpi .mini{margin-top:6px; font-weight:850; font-size:12px; color: rgba(255,255,255,.62)}
+
+    .statusLine{
+      margin-top:12px;
+      color: rgba(255,255,255,.72);
+      font-weight:900;
+      min-height: 18px;
+      font-size:13px;
+    }
+
+    .table{
+      margin-top:12px;
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.16);
+      overflow:hidden;
+    }
+    .tr{
+      display:grid;
+      grid-template-columns: 70px 1fr 120px;
+      gap:12px;
+      padding:12px 14px;
+      border-top: 1px solid rgba(255,255,255,.08);
+      align-items:center;
+    }
+    .tr:first-child{border-top:0}
+    @media (max-width: 860px){
+      .tr{grid-template-columns: 70px 1fr; }
+      .tr .col3{display:none}
+    }
+    .th{
+      background: rgba(255,255,255,.04);
+      font-weight:1000;
+      color: rgba(255,255,255,.75);
+      letter-spacing:.3px;
+      text-transform:uppercase;
+      font-size:11.5px;
+    }
+    .cellMain{font-weight:950}
+    .cellSub{font-size:12px; font-weight:850; color: rgba(255,255,255,.62); margin-top:3px}
+    .link{
+      text-decoration:underline;
+      text-underline-offset: 3px;
+      opacity:.95;
+    }
+
+    footer{
+      padding: 18px 0 34px;
+      color: rgba(255,255,255,.45);
+      font-weight:650;
+      text-align:center;
+      font-size:12px;
+    }
+  </style>
 </head>
 
 <body>
-  <!-- HEADER -->
-  <header class="topbar">
-    <div class="wrap row">
-      <div class="brand">
-        <img src="logo.png" alt="X1"/>
-        <div>
-          <div class="t">X1 Scanner</div>
-          <div class="s">Guardian Risk Engine</div>
+  <div class="topbar">
+    <div class="wrap">
+      <div class="row">
+        <div class="brand">
+          <img src="logo.png" alt="$SOS" onerror="this.style.display='none'">
+          <div class="bt">
+            <div class="t">$SOS</div>
+            <div class="s">X1 Contract Scanner</div>
+          </div>
+        </div>
+
+        <div class="actions">
+          <a class="btn" href="https://solanax1.com/" rel="noreferrer">← Back to Main</a>
+          <button class="btn grad" id="btnScan">Scan Contract</button>
         </div>
       </div>
-
-      <a class="btn" href="https://solanax1.com">← Back</a>
-    </div>
-  </header>
-
-  <!-- MAIN -->
-  <main class="wrap">
-
-    <!-- HERO -->
-    <section class="card hero">
-      <h1>
-        Scan any Solana token.<br/>
-        <span class="grad">Expose the risks.</span>
-      </h1>
-      <p>
-        Contract intelligence, holder behavior, clusters, snipers,
-        and Guardian risk classification — live on-chain.
-      </p>
-
-      <div class="scanBox">
-        <input id="mintInput" placeholder="Paste token mint address…"/>
-        <button id="scanBtn" class="btn grad">Scan</button>
-      </div>
-
-      <div id="scanStatus" class="status"></div>
-    </section>
-
-    <!-- TRENDING -->
-    <section class="card">
-  <h2>Trending Tokens</h2>
-
-  <div class="trendWrap">
-    <div class="trendBox">
-      <div class="trendTitle">DexScreener Trending</div>
-      <div id="trendingDex" class="grid"></div>
-    </div>
-
-    <div class="trendBox">
-      <div class="trendTitle">Pump.fun Trending</div>
-      <div id="trendingPump" class="grid"></div>
     </div>
   </div>
-</section>
 
-    <!-- RESULT -->
-    <section id="result" class="card hidden">
-      <h2>Guardian Report</h2>
-      <div id="resultContent"></div>
+  <main class="wrap">
+    <section class="card hero">
+      <div class="inner">
+        <div class="classified">
+          <div class="stamp">GUARDIAN SYSTEM • SOLANA • CONTRACT SCAN</div>
+          <div class="stamp" id="stampTime">—</div>
+        </div>
+
+        <h1 class="h1" style="margin-top:12px;">
+          <span class="gradText">X1</span> Contract Scanner
+        </h1>
+        <div class="sub">
+          Paste a Solana token mint address. We’ll pull on-chain signals + market data and classify risk.
+          No paid APIs. No wallet connect.
+        </div>
+
+        <div class="grid2">
+          <!-- Input -->
+          <div class="panel">
+            <label for="mint">Token Mint Address</label>
+            <input id="mint" placeholder="Paste SPL mint address…" autocomplete="off" spellcheck="false" />
+            <div class="statusLine" id="status"></div>
+          </div>
+
+          <!-- Headline -->
+          <div class="panel">
+            <div class="big">
+              <div class="tokenRow">
+                <img id="tokenLogo" alt="Token logo" />
+                <div>
+                  <h3 class="title2"><span id="tokenName">—</span> <span style="opacity:.75">(<span id="tokenSymbol">—</span>)</span></h3>
+                  <div class="mono" id="mintShort">—</div>
+                </div>
+              </div>
+
+              <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                <span class="badge" id="riskBadge">—</span>
+                <span class="badge" id="riskReason">—</span>
+              </div>
+            </div>
+
+            <!-- KPIs -->
+            <div class="kpiGrid">
+              <div class="kpi">
+                <div class="k">Price</div>
+                <div class="v" id="kPrice">—</div>
+                <div class="mini">DexScreener (best pair)</div>
+              </div>
+              <div class="kpi">
+                <div class="k">Liquidity</div>
+                <div class="v" id="kLiq">—</div>
+                <div class="mini">USD liquidity (best pair)</div>
+              </div>
+              <div class="kpi">
+                <div class="k">Market Cap</div>
+                <div class="v" id="kMc">—</div>
+                <div class="mini">If available</div>
+              </div>
+              <div class="kpi">
+                <div class="k">FDV</div>
+                <div class="v" id="kFdv">—</div>
+                <div class="mini">If available</div>
+              </div>
+              <div class="kpi">
+                <div class="k">Supply</div>
+                <div class="v" id="kSupply">—</div>
+                <div class="mini">On-chain token supply</div>
+              </div>
+              <div class="kpi">
+                <div class="k">Decimals</div>
+                <div class="v" id="kDec">—</div>
+                <div class="mini">On-chain</div>
+              </div>
+            </div>
+
+            <div class="statusLine" style="margin-top:12px;">
+              <span style="opacity:.85;">Authorities:</span> <span id="kAuthorities">—</span>
+            </div>
+
+            <div class="panel" style="margin-top:14px;">
+              <div class="stamp" style="display:inline-flex;">RISK REASONS</div>
+              <div id="riskReasons" style="margin-top:10px; color: rgba(255,255,255,.82); font-weight:750;">
+                —
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Top holders -->
+        <div class="panel" style="margin-top:16px;">
+          <div class="classified">
+            <div class="stamp">TOP HOLDERS (TOP 20 TOKEN ACCOUNTS)</div>
+            <div class="stamp" id="holdersHint">Solana RPC</div>
+          </div>
+
+          <div class="table" id="holdersTable" style="margin-top:10px;">
+            <div class="tr th">
+              <div>#</div>
+              <div>Amount / Token Account / Owner</div>
+              <div class="col3">Link</div>
+            </div>
+          </div>
+
+          <!-- app.js will inject rows here -->
+          <div class="table" id="holdersList" style="margin-top:10px;"></div>
+        </div>
+
+        <!-- Clusters -->
+        <div class="panel" style="margin-top:16px;">
+          <div class="classified">
+            <div class="stamp">CLUSTERS (SAME OWNER IN TOP 20)</div>
+            <div class="stamp">Heuristic</div>
+          </div>
+          <div id="clustersList" style="margin-top:10px;"></div>
+        </div>
+
+      </div>
     </section>
 
+    <footer>© <span id="y"></span> $SOS</footer>
   </main>
 
-  <footer>
-    © <span id="y"></span> X1 • Solana Intelligence
-  </footer>
+  <script>
+    // footer year + stamp time (UI only)
+    const y = document.getElementById("y");
+    if (y) y.textContent = new Date().getFullYear();
 
-<script src="app.js"></script>
+    const st = document.getElementById("stampTime");
+    function tick(){
+      if(st) st.textContent = new Date().toISOString().replace("T"," ").slice(0,19) + " UTC";
+    }
+    tick();
+    setInterval(tick, 1000);
+
+    // show short mint on input
+    const mint = document.getElementById("mint");
+    const mintShort = document.getElementById("mintShort");
+    function shortAddr(a){ return a ? (a.slice(0,4)+"…"+a.slice(-4)) : "—"; }
+    function updateShort(){
+      const v = (mint?.value || "").trim();
+      if(mintShort) mintShort.textContent = v ? shortAddr(v) : "—";
+    }
+    mint?.addEventListener("input", updateShort);
+    updateShort();
+  </script>
+
+  <!-- Your scanner logic -->
+  <script src="app.js"></script>
 </body>
 </html>
