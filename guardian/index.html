@@ -8,6 +8,13 @@
   <meta name="description" content="Guardian Approved — Solana token risk score + launch readiness checklist." />
 
   <style>
+  .li .d{
+  overflow-wrap: anywhere;
+}
+
+.mono{
+  overflow-wrap: anywhere;
+}
     :root{
       --bg:#070711;
       --panel: rgba(255,255,255,.06);
@@ -712,20 +719,25 @@ function buildTodo(sig){
   return todos;
 }
 
-function renderList(el, items, mode="check"){
+function renderList(el, items){
   el.innerHTML = "";
   for(const it of items){
     const li = document.createElement("li");
     li.className = "li";
+
     const sev = it.sev || "warn";
     const pillCls = sev === "ok" ? "pill ok" : (sev === "bad" ? "pill bad" : "pill warn");
     const pillTxt = sev === "ok" ? "PASS" : (sev === "bad" ? "FAIL" : "WATCH");
+
+    // CLICK MESSAGE (for WATCH)
+    const clickMsg = it.clickMsg || (pillTxt === "WATCH" ? "WATCH = beobachtet/noch nicht voll verifiziert. Details kommen als nächstes Update." : "");
+
     li.innerHTML = `
       <div class="left">
-        <div class="t">${it.k || it.t}</div>
+        <div class="t">${(it.k || it.t)}</div>
         <div class="d">${it.d}</div>
       </div>
-      <span class="${pillCls}">${pillTxt}</span>
+      <span class="${pillCls}" role="button" tabindex="0" data-msg="${clickMsg.replaceAll('"','&quot;')}">${pillTxt}</span>
     `;
     el.appendChild(li);
   }
@@ -912,6 +924,12 @@ async function scan(){
 
 $("btnScan").addEventListener("click", scan);
 $("mint").addEventListener("keydown", (e)=>{ if(e.key==="Enter") scan(); });
+document.addEventListener("click", (e)=>{
+  const pill = e.target.closest?.(".pill");
+  if(!pill) return;
+  const msg = pill.getAttribute("data-msg");
+  if(msg) setStatus(msg);
+});
 
 (function(){
   const q = new URLSearchParams(location.search);
