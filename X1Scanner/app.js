@@ -22,7 +22,7 @@ scanBtn.onclick = async () => {
   resultBox.classList.add("hidden");
 
   try {
-    const res = await fetch(`${API}/scan?mint=${mint}`);
+    const res = await fetch(`${API}/scan?mint=${encodeURIComponent(mint)}`, { cache: "no-store" });
     const data = await res.json();
 
     statusEl.textContent = "";
@@ -44,7 +44,7 @@ scanBtn.onclick = async () => {
 // === TRENDING ===
 async function loadTrending() {
   try {
-    const res = await fetch(`${API}/trending`);
+    const res = await ffetch(`${API}/trending`, { cache: "no-store" })
     const data = await res.json();
 
     if (!data.items || data.items.length === 0) {
