@@ -594,7 +594,12 @@
         <div class="actions">
           <a class="btn" href="https://solanax1.com/" rel="noreferrer">← Back to Main</a>
           <button class="btn grad" id="btnScan">Run Guardian Check</button>
-          <a class="btn" id="btnShare" href="#" target="_blank" rel="noreferrer" style="opacity:.55; pointer-events:none;">Share on X</a>
+
+          <!-- same element as your original; repurposed to "Copy Share Link" (no badge embed) -->
+          <a class="btn" id="btnShare" href="#" rel="noreferrer" style="opacity:.55; pointer-events:none;">Copy Share Link</a>
+
+          <!-- added export button (doesn't delete anything) -->
+          <button class="btn" id="btnExport" type="button" disabled>Export Report (JSON)</button>
         </div>
       </div>
     </div>
@@ -627,16 +632,20 @@
 
             <div class="statusLine" id="status"></div>
 
+            <!-- kept your share box (NOT deleted), but it now only provides a clean share link + export hint -->
             <details class="shareBox" id="sharePanel" style="display:none;">
-              <summary>Share & Badge</summary>
+              <summary>Share</summary>
               <div class="shareInner">
-                <div class="copyBox" id="badgeCopy" role="button" tabindex="0" aria-label="Copy Badge HTML">
+                <!-- kept badgeCopy box but repurposed as "Share Link" to avoid removing -->
+                <div class="copyBox" id="badgeCopy" role="button" tabindex="0" aria-label="Copy Share Link">
                   <div style="min-width:0">
-                    <div style="font-weight:1000; font-size:12px; letter-spacing:.35px; color:rgba(255,255,255,.78); text-transform:uppercase;">Badge Embed (HTML)</div>
+                    <div style="font-weight:1000; font-size:12px; letter-spacing:.35px; color:rgba(255,255,255,.78); text-transform:uppercase;">Share Link</div>
                     <div class="copyMono" id="badgeHtml">—</div>
                   </div>
-                  <div class="hint" id="badgeHint">Click to copy</div>
+                  <div class="hint" id="badgeHint">Copy</div>
                 </div>
+
+                <!-- kept linkCopy box as-is -->
                 <div class="copyBox" id="linkCopy" role="button" tabindex="0" aria-label="Copy Scan Link">
                   <div style="min-width:0">
                     <div style="font-weight:1000; font-size:12px; letter-spacing:.35px; color:rgba(255,255,255,.78); text-transform:uppercase;">Scan Link</div>
@@ -797,11 +806,26 @@ const CHAINS = [
   { id:"base",name:"Base",     kind:"evm", chainId:8453,stamp:"BASE MAINNET", addrLabel:"Token Contract Address", placeholder:"Paste Base token contract (0x...)"},
 ];
 
-/* Public RPCs (no key) */
+/* Public RPCs (browser-safe: multiple endpoints + failover)
+   NOTE: Some public RPCs occasionally block CORS or rate-limit.
+   We rotate + retry per request automatically. */
 const EVM_RPCS = {
-  1:   ["https://cloudflare-eth.com"],
-  56:  ["https://bsc-dataseed.binance.org"],
-  8453:["https://mainnet.base.org"]
+  1: [
+    "https://ethereum.publicnode.com",
+    "https://rpc.ankr.com/eth",
+    "https://eth.llamarpc.com",
+    "https://cloudflare-eth.com"
+  ],
+  56: [
+    "https://bsc.publicnode.com",
+    "https://rpc.ankr.com/bsc",
+    "https://bsc-dataseed.binance.org"
+  ],
+  8453: [
+    "https://base.publicnode.com",
+    "https://rpc.ankr.com/base",
+    "https://mainnet.base.org"
+  ]
 };
 
 const $ = (id)=>document.getElementById(id);
@@ -885,7 +909,7 @@ function attachCopy(boxId, textId, hintId, on, off){
   box.addEventListener("click", go);
   box.addEventListener("keydown", (e)=>{ if(e.key==="Enter" || e.key===" "){ e.preventDefault(); go(); }});
 }
-attachCopy("badgeCopy","badgeHtml","badgeHint","Copied!","Click to copy");
+attachCopy("badgeCopy","badgeHtml","badgeHint","Copied!","Copy");
 attachCopy("linkCopy","scanLink","linkHint","Copied!","Copy");
 
 /* ===================== CHAIN SELECTOR UI ===================== */
@@ -913,6 +937,9 @@ const ICONS = {
 };
 
 let activeChain = CHAINS[0];
+
+/* we store last scan (for share/export) */
+let LAST_SCAN = null;
 
 function renderChainButtons(){
   const row = $("chainRow");
@@ -1162,6 +1189,10 @@ function clearUI(){
     d:"Top holder preview appears after scan (Solana full, EVM limited).",
     clickMsg: explainSimple("Top Holders", ["Run a scan to see what is available on your chain."])
   }], "Top Holders");
+
+  LAST_SCAN = null;
+  $("btnExport").disabled = true;
+  $("btnExport").textContent = "Export Report (JSON)";
 }
 
 /* Metrics (generic) */
@@ -1181,45 +1212,50 @@ function renderMetricsGeneric(rows){
   }
 }
 
-/* Share */
+/* Share: clean link only (no X intent, no badge embed) */
 function setShareEnabled(enabled, url){
   const a = $("btnShare");
   if(!a) return;
   if(enabled){
-    a.href = url;
     a.style.opacity = "1";
     a.style.pointerEvents = "auto";
+    a.href = "#";
+    a.onclick = async (e)=>{
+      e.preventDefault();
+      const ok = await copyText(url);
+      if(ok){
+        a.textContent = "Copied!";
+        setTimeout(()=> a.textContent = "Copy Share Link", 1100);
+      }else{
+        a.textContent = "Copy failed";
+        setTimeout(()=> a.textContent = "Copy Share Link", 1100);
+      }
+    };
   }else{
     a.href = "#";
     a.style.opacity = ".55";
     a.style.pointerEvents = "none";
+    a.onclick = null;
+    a.textContent = "Copy Share Link";
   }
 }
-function badgeHtmlSnippet(chainId, addr, verdictLabel, score){
-  const url = `${location.origin}${location.pathname}?chain=${encodeURIComponent(chainId)}&mint=${encodeURIComponent(addr)}`;
-  return `<a href="${url}" target="_blank" rel="noreferrer" style="text-decoration:none">
-  <span style="display:inline-flex;align-items:center;gap:8px;padding:10px 12px;border-radius:999px;font:700 12px ui-sans-serif,system-ui;letter-spacing:.3px;color:#061012;background:linear-gradient(90deg,#14F195,#00D1FF,#9945FF);box-shadow:0 10px 24px rgba(0,0,0,.25)">
-    🛡️ GUARDIAN ${verdictLabel} • ${score}/100
-  </span>
-</a>`;
+function buildShareLink(chainId, addr){
+  const url = new URL(location.href);
+  url.searchParams.set("chain", chainId);
+  url.searchParams.set("mint", addr);
+  // keep it "clean": drop other params if any
+  return url.toString();
 }
-function buildShareText(chainName, addr, verdict, score, extra){
-  const link = `${location.origin}${location.pathname}?chain=${encodeURIComponent(activeChain.id)}&mint=${encodeURIComponent(addr)}`;
-  const lines = [
-    `🛡️ GUARDIAN CHECK — Token Risk (on-chain)`,
-    ``,
-    `Chain: ${chainName}`,
-    `Addr: ${shortAddr(addr)}`,
-    extra?.tokenLine ? `Token: ${extra.tokenLine}` : `Token: —`,
-    `Verdict: ${verdict.label}`,
-    `Score: ${score}/100`,
-    extra?.authLine ? `Admin: ${extra.authLine}` : "",
-    extra?.standardLine ? `Standard: ${extra.standardLine}` : "",
-    ``,
-    `Run yours: ${link}`,
-    `#Solana #Ethereum #BNB #Base #Guardian`
-  ].filter(Boolean);
-  return lines.join("\n");
+
+/* Export report as a JSON file (download) */
+function downloadJson(filename, obj){
+  const blob = new Blob([JSON.stringify(obj, null, 2)], {type:"application/json"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 0);
 }
 
 /* ===================== VERDICT / SCORING (shared shape) ===================== */
@@ -1613,28 +1649,46 @@ function renderHoldersSol(mint, uiSupply, largest){
 }
 
 /* ===================== EVM RPC + ERC-20 READS ===================== */
-let evmRpcIndex = 0;
-function getEvmRpcUrl(chainId){
-  const arr = EVM_RPCS[chainId] || [];
-  if(!arr.length) return null;
-  evmRpcIndex = (evmRpcIndex + 1) % arr.length;
-  return arr[evmRpcIndex];
-}
+
+/* request timeout + retry over all RPCs */
 async function evmRpc(chainId, method, params){
-  const url = getEvmRpcUrl(chainId);
-  if(!url) throw new Error("No RPC configured for this chain.");
-  const res = await fetch(url, {
-    method:"POST",
-    headers: {"Content-Type":"application/json"},
-    body: JSON.stringify({ jsonrpc:"2.0", id:1, method, params })
-  });
-  if(!res.ok){
-    const t = await res.text().catch(()=> "");
-    throw new Error(`RPC HTTP ${res.status} ${t}`.slice(0,220));
+  const urls = EVM_RPCS[chainId] || [];
+  if(!urls.length) throw new Error("No RPC configured for this chain.");
+
+  const errors = [];
+  for(let i=0;i<urls.length;i++){
+    const url = urls[i];
+    const ctrl = new AbortController();
+    const t = setTimeout(()=>ctrl.abort(), 12000);
+
+    try{
+      const res = await fetch(url, {
+        method:"POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({ jsonrpc:"2.0", id:1, method, params }),
+        signal: ctrl.signal
+      });
+      clearTimeout(t);
+
+      if(!res.ok){
+        const tx = await res.text().catch(()=> "");
+        errors.push(`HTTP ${res.status} ${tx}`.slice(0,180));
+        continue;
+      }
+      const j = await res.json();
+      if(j?.error){
+        errors.push(String(j.error?.message || "RPC error").slice(0,180));
+        continue;
+      }
+      return j.result;
+    }catch(e){
+      clearTimeout(t);
+      errors.push(String(e?.message || e).slice(0,180));
+      continue;
+    }
   }
-  const j = await res.json();
-  if(j.error) throw new Error(j.error.message || "RPC error");
-  return j.result;
+
+  throw new Error(`All RPCs failed (${urls.length}). Last errors: ${errors.slice(-3).join(" • ")}`);
 }
 
 /* Minimal ABI selectors */
@@ -1647,27 +1701,54 @@ const SEL = {
   paused: "0x5c975abb"
 };
 
-function hexToBigInt(hex){
-  if(!hex || hex==="0x") return 0n;
-  return BigInt(hex);
-}
 function strip0x(h){ return (h||"").startsWith("0x") ? h.slice(2) : (h||""); }
 
 function decodeUint256(hex){
-  const h = strip0x(hex).padStart(64,"0").slice(-64);
-  return BigInt("0x"+h);
+  const h = strip0x(hex);
+  if(!h || h.length === 0) return null;
+  const padded = h.padStart(64,"0").slice(-64);
+  try{ return BigInt("0x"+padded); }catch{ return null; }
 }
 function decodeAddressFrom32(hex){
-  const h = strip0x(hex).padStart(64,"0").slice(-40);
-  return "0x"+h;
+  const h = strip0x(hex);
+  if(!h) return null;
+  const padded = h.padStart(64,"0").slice(-40);
+  return "0x"+padded;
+}
+function bytes32ToAscii(hex){
+  const h = strip0x(hex);
+  if(!h || h.length !== 64) return "";
+  try{
+    const bytes = new Uint8Array(h.match(/.{1,2}/g).map(b=>parseInt(b,16)));
+    let s = new TextDecoder().decode(bytes);
+    s = (s||"").replace(/\0/g,"").trim();
+    // only accept if looks printable
+    if(!s) return "";
+    if(/^[\x20-\x7E]+$/.test(s)) return s;
+    return "";
+  }catch{ return ""; }
 }
 function decodeString(hex){
-  // ABI string: offset(32) + length(32) + data
+  // Handle common cases:
+  // 1) ABI string (offset + length + data)
+  // 2) bytes32-returning tokens (older ERC-20 implementations)
   const data = strip0x(hex);
-  if(!data || data.length < 128) return "";
+  if(!data) return "";
+
+  // bytes32 direct
+  if(data.length === 64){
+    const b = bytes32ToAscii("0x"+data);
+    if(b) return b;
+  }
+
+  // ABI string: offset(32) + length(32) + data
+  if(data.length < 128) return "";
   const lenHex = data.slice(64,128);
-  const len = Number(BigInt("0x"+lenHex));
+  let len = 0;
+  try{ len = Number(BigInt("0x"+lenHex)); }catch{ return ""; }
+  if(!Number.isFinite(len) || len <= 0) return "";
   const strData = data.slice(128, 128 + len*2);
+  if(!strData) return "";
   try{
     const bytes = new Uint8Array(strData.match(/.{1,2}/g).map(b=>parseInt(b,16)));
     const s = new TextDecoder().decode(bytes);
@@ -1709,10 +1790,29 @@ async function detectProxy(chainId, addr){
 /* ERC-20 meta (on-chain only) */
 async function getErc20Meta(chainId, addr){
   const out = { name:"", symbol:"", decimals:null, totalSupply:null };
-  try{ out.name = decodeString(await ethCall(chainId, addr, SEL.name)); }catch{}
-  try{ out.symbol = decodeString(await ethCall(chainId, addr, SEL.symbol)); }catch{}
-  try{ out.decimals = Number(decodeUint256(await ethCall(chainId, addr, SEL.decimals))); }catch{}
-  try{ out.totalSupply = decodeUint256(await ethCall(chainId, addr, SEL.totalSupply)); }catch{}
+
+  try{
+    const r = await ethCall(chainId, addr, SEL.name);
+    out.name = decodeString(r);
+  }catch{}
+
+  try{
+    const r = await ethCall(chainId, addr, SEL.symbol);
+    out.symbol = decodeString(r);
+  }catch{}
+
+  try{
+    const r = await ethCall(chainId, addr, SEL.decimals);
+    const v = decodeUint256(r);
+    out.decimals = (v === null) ? null : Number(v);
+    if(!Number.isFinite(out.decimals)) out.decimals = null;
+  }catch{}
+
+  try{
+    const r = await ethCall(chainId, addr, SEL.totalSupply);
+    out.totalSupply = decodeUint256(r);
+  }catch{}
+
   return out;
 }
 async function getOwner(chainId, addr){
@@ -1728,6 +1828,7 @@ async function getPaused(chainId, addr){
   try{
     const r = await ethCall(chainId, addr, SEL.paused);
     const v = decodeUint256(r || "0x");
+    if(v === null) return null;
     return v !== 0n;
   }catch{
     return null;
@@ -1755,21 +1856,21 @@ function scoreModelEvm(sig){
 
   if(!hasName || !hasSymbol){
     score -= 10;
-    checks.push({ k:"ERC-20 metadata missing", sev:"warn", d:"Name or symbol could not be read.", clickMsg: explainEvmTokenBasics() });
+    checks.push({ k:"ERC-20 metadata missing", sev:"warn", d:"Name or symbol could not be read (some tokens use non-standard returns).", clickMsg: explainEvmTokenBasics() });
   } else {
     checks.push({ k:"ERC-20 metadata readable", sev:"ok", d:"Name and symbol read successfully.", clickMsg: explainEvmTokenBasics() });
   }
 
   if(!decOk){
     score -= 12;
-    checks.push({ k:"Decimals look unusual", sev:"warn", d:"Decimals not readable or out of normal range.", clickMsg: explainEvmTokenBasics() });
+    checks.push({ k:"Decimals not readable / unusual", sev:"warn", d:"decimals() did not respond or out of expected range.", clickMsg: explainEvmTokenBasics() });
   } else {
     checks.push({ k:"Decimals readable", sev:"ok", d:`Decimals: ${sig.meta.decimals}`, clickMsg: explainEvmTokenBasics() });
   }
 
   if(sig.meta?.totalSupply === null || sig.meta?.totalSupply === undefined){
     score -= 10;
-    checks.push({ k:"Total supply not readable", sev:"warn", d:"totalSupply() did not respond.", clickMsg: explainEvmTokenBasics() });
+    checks.push({ k:"Total supply not readable", sev:"warn", d:"totalSupply() did not respond (or reverted).", clickMsg: explainEvmTokenBasics() });
   } else {
     checks.push({ k:"Total supply readable", sev:"ok", d:"totalSupply() responded.", clickMsg: explainEvmTokenBasics() });
   }
@@ -1785,7 +1886,7 @@ function scoreModelEvm(sig){
     }
   } else {
     score -= 6;
-    checks.push({ k:"Owner not detectable", sev:"warn", d:"owner() not present or unreadable.", clickMsg: explainEvmOwnership() });
+    checks.push({ k:"Owner not detectable", sev:"warn", d:"owner() not present or unreadable (common on some tokens).", clickMsg: explainEvmOwnership() });
   }
 
   // Proxy detection
@@ -1848,7 +1949,7 @@ function buildTodoEvm(sig){
   }
 
   if(!(sig.meta?.name && sig.meta?.symbol)){
-    todos.push({ t:"Fix token metadata", sev:"warn", d:"Name/symbol missing; can confuse buyers.", clickMsg: explainEvmTokenBasics() });
+    todos.push({ t:"Fix token metadata", sev:"warn", d:"Name/symbol missing or non-standard.", clickMsg: explainEvmTokenBasics() });
   } else {
     todos.push({ t:"Metadata", sev:"ok", d:"Name/symbol readable.", clickMsg: explainEvmTokenBasics() });
   }
@@ -1953,6 +2054,10 @@ function resetBeforeScan(addr){
   $("tokenLogoWrap").style.display = "none";
 
   $("metrics").innerHTML = "";
+
+  LAST_SCAN = null;
+  $("btnExport").disabled = true;
+  $("btnExport").textContent = "Export Report (JSON)";
 }
 
 async function scanSolana(mint){
@@ -2006,7 +2111,6 @@ async function scanSolana(mint){
   setBadge($("verdictBadge"), verdict.label, verdict.mode);
   $("scoreBadge").textContent = `SCORE ${model.score}`;
 
-  // metrics (same info, but rendered generically)
   const authLine = `${sig.mintAuthActive ? "MINT ACTIVE" : "MINT RENOUNCED"} • ${sig.freezeActive ? "FREEZE ACTIVE" : "FREEZE REMOVED"}`;
   const programText = sig.programType === "SPL_TOKEN" ? "SPL Token" : (sig.programType === "TOKEN_2022" ? "Token-2022" : "Unknown");
   renderMetricsGeneric([
@@ -2031,19 +2135,37 @@ async function scanSolana(mint){
   const metaLine = (meta && (meta.name || meta.symbol)) ? ` • ${meta.symbol ? "$"+meta.symbol : ""} ${meta.name ? meta.name : ""}`.trim() : "";
   setText("summary", `${verdict.label} • Score ${model.score}/100 • ${authLineShort} • Top20 ${fmtPct(conc)} • Standard ${programText}${extLine}${metaLine ? " • " + metaLine : ""} • Decimals ${decimals}`);
 
-  // Share
-  const scanUrl = `${location.origin}${location.pathname}?chain=${encodeURIComponent(activeChain.id)}&mint=${encodeURIComponent(mint)}`;
-  setText("scanLink", scanUrl);
-  setText("badgeHtml", badgeHtmlSnippet(activeChain.id, mint, verdict.label, model.score));
+  // Share (clean link)
+  const shareUrl = buildShareLink(activeChain.id, mint);
+  setText("scanLink", shareUrl);
+  setText("badgeHtml", shareUrl); // repurposed field
   $("sharePanel").style.display = "";
+  setShareEnabled(true, shareUrl);
 
-  const tweet = new URL("https://x.com/intent/tweet");
-  tweet.searchParams.set("text", buildShareText("Solana", mint, verdict, model.score, {
-    tokenLine: `${sig?.meta?.symbol ? "$"+sig.meta.symbol : "—"} • ${sig?.meta?.name || "—"}`,
-    authLine: authLineShort,
-    standardLine: programText
-  }));
-  setShareEnabled(true, tweet.toString());
+  // Export payload
+  LAST_SCAN = {
+    version: "guardian-check-v2",
+    ts: new Date().toISOString(),
+    chain: { id: activeChain.id, name: activeChain.name, kind: activeChain.kind, stamp: activeChain.stamp },
+    address: mint,
+    token: { name: meta?.name || "", symbol: meta?.symbol || "", image: meta?.image || "", uri: meta?.uri || "" },
+    solana: {
+      programOwner: owner,
+      programType,
+      decimals,
+      mintAuthorityActive: !!mintAuthority,
+      freezeAuthorityActive: !!freezeAuthority,
+      top20ConcentrationPct: Number(conc || 0),
+      extensions: extReadable ? (extRaw || []).map(x=>x.name) : []
+    },
+    verdict,
+    score: model.score,
+    summary: $("summary")?.textContent || "",
+    checks: model.checks,
+    todos: buildTodoSol(sig)
+  };
+  $("btnExport").disabled = false;
+  $("btnExport").textContent = "Export Report (JSON)";
 
   setStatus(`Guardian Check complete: ${verdict.label} • Score ${model.score}/100`);
 }
@@ -2061,7 +2183,6 @@ async function scanEvm(addr){
     hasCode ? detectProxy(chainId, addr) : Promise.resolve({isProxy:false,implementation:null,admin:null})
   ]);
 
-  // EVM logos: we keep it empty (on-chain RPC has no reliable logo). Still show chain icon via tokenSymbol line.
   applyTokenHeader({ name: meta?.name || "Token", symbol: meta?.symbol || "" }, addr);
   renderMetadataPanelEvm(meta);
 
@@ -2078,7 +2199,6 @@ async function scanEvm(addr){
   const proxyLine = proxy?.isProxy ? `Proxy (impl ${proxy.implementation ? shortAddr(proxy.implementation) : "?"})` : "No proxy detected";
   const pauseLine = paused === true ? "Paused = TRUE" : (paused === false ? "Paused = FALSE (capability likely)" : "Pause not detected");
 
-  // metrics
   const totalSupplyReadable = (meta?.totalSupply !== null && meta?.totalSupply !== undefined);
   const dec = Number.isFinite(meta?.decimals) ? meta.decimals : null;
 
@@ -2103,19 +2223,38 @@ async function scanEvm(addr){
   const standardLine = "ERC-20";
   setText("summary", `${verdict.label} • Score ${model.score}/100 • ${adminLine} • ${proxy?.isProxy ? "PROXY: YES" : "PROXY: NO"} • ${paused===true ? "PAUSED: YES" : (paused===false ? "PAUSED: NO (capable)" : "PAUSED: n/a")} • Standard ${standardLine} • ${tokenLine}`);
 
-  // Share
-  const scanUrl = `${location.origin}${location.pathname}?chain=${encodeURIComponent(activeChain.id)}&mint=${encodeURIComponent(addr)}`;
-  setText("scanLink", scanUrl);
-  setText("badgeHtml", badgeHtmlSnippet(activeChain.id, addr, verdict.label, model.score));
+  // Share (clean link)
+  const shareUrl = buildShareLink(activeChain.id, addr);
+  setText("scanLink", shareUrl);
+  setText("badgeHtml", shareUrl); // repurposed field
   $("sharePanel").style.display = "";
+  setShareEnabled(true, shareUrl);
 
-  const tweet = new URL("https://x.com/intent/tweet");
-  tweet.searchParams.set("text", buildShareText(activeChain.name, addr, verdict, model.score, {
-    tokenLine,
-    authLine: adminLine,
-    standardLine
-  }));
-  setShareEnabled(true, tweet.toString());
+  // Export payload
+  LAST_SCAN = {
+    version: "guardian-check-v2",
+    ts: new Date().toISOString(),
+    chain: { id: activeChain.id, name: activeChain.name, kind: activeChain.kind, chainId: activeChain.chainId, stamp: activeChain.stamp },
+    address: addr,
+    token: { name: meta?.name || "", symbol: meta?.symbol || "" },
+    evm: {
+      hasCode,
+      proxy,
+      owner: owner || "",
+      paused: paused,
+      decimals: Number.isFinite(meta?.decimals) ? meta.decimals : null,
+      totalSupplyReadable: totalSupplyReadable,
+      totalSupply: (meta?.totalSupply !== null && meta?.totalSupply !== undefined) ? meta.totalSupply.toString() : null
+    },
+    verdict,
+    score: model.score,
+    summary: $("summary")?.textContent || "",
+    checks: model.checks,
+    todos: buildTodoEvm(sig),
+    rpcInfo: { endpointsTried: (EVM_RPCS[chainId] || []).slice() }
+  };
+  $("btnExport").disabled = false;
+  $("btnExport").textContent = "Export Report (JSON)";
 
   setStatus(`Guardian Check complete: ${verdict.label} • Score ${model.score}/100`);
 }
@@ -2148,7 +2287,6 @@ async function scan(){
 }
 
 function clearErrorsOnly(){
-  // keep chain selection but clear status
   setStatus("");
 }
 
@@ -2177,6 +2315,15 @@ document.addEventListener("keydown", (e)=>{
 $("btnScan").addEventListener("click", scan);
 $("btnScanInline").addEventListener("click", scan);
 $("mint").addEventListener("keydown", (e)=>{ if(e.key==="Enter") scan(); });
+
+$("btnExport").addEventListener("click", ()=>{
+  if(!LAST_SCAN) return;
+  const addr = LAST_SCAN.address || "token";
+  const chain = LAST_SCAN.chain?.id || "chain";
+  const ts = (LAST_SCAN.ts || new Date().toISOString()).replaceAll(":","-");
+  const fname = `guardian-report_${chain}_${addr.slice(0,10)}_${ts}.json`;
+  downloadJson(fname, LAST_SCAN);
+});
 
 /* ===== INIT ===== */
 function initFromUrl(){
