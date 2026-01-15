@@ -2,11 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <!-- Mobile: kein erzwungenes Zoom-Lock, aber iOS-Input-Zoom wird durch 16px verhindert -->
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="theme-color" content="#070711" />
-  <title>$SOS — Guardian Check</title>
-  <meta name="description" content="Guardian Approved — Solana token risk score + launch readiness checklist (on-chain verifiable)." />
+  <title>$SOS — Guardian Check (Multi-Chain)</title>
+  <meta name="description" content="Guardian Approved — token risk score + launch readiness checklist (on-chain verifiable)." />
 
   <style>
     :root{
@@ -46,12 +45,7 @@
     }
 
     a{color:inherit; text-decoration:none}
-    .wrap{
-  max-width:var(--max);
-  margin:0 auto;
-  padding:0 18px;
-  width:100%;
-}
+    .wrap{max-width:var(--max); margin:0 auto; padding:0 18px; width:100%;}
     main{padding:22px 0 42px}
 
     .topbar{
@@ -178,75 +172,66 @@
       align-items:start;
     }
     @media (max-width: 980px){ .layout{grid-template-columns:1fr} }
+
     /* ===== MOBILE LAYOUT: clean stacked (no horizontal scroll) ===== */
-@media (max-width: 980px){
+    @media (max-width: 980px){
+      .wrap{ padding: 0 14px; }
+      .inner{ padding: 16px; }
+      .panel{ padding: 14px; }
 
-  /* more breathing room on small screens */
-  .wrap{ padding: 0 14px; }
-  .inner{ padding: 16px; }
-  .panel{ padding: 14px; }
+      .brand{ min-width: 0; width: 100%; }
+      .actions{ width: 100%; justify-content: flex-start; }
+      .actions .btn,
+      .actions button.btn{
+        width: 100%;
+        justify-content: center;
+        padding: 12px 14px;
+        font-size: 14px;
+      }
 
-  /* topbar: buttons stacked full width */
-  .brand{ min-width: 0; width: 100%; }
-  .actions{ width: 100%; justify-content: flex-start; }
-  .actions .btn,
-  .actions button.btn{
-    width: 100%;
-    justify-content: center;
-    padding: 12px 14px;
-    font-size: 14px;
-  }
+      .resultTop{ flex-direction: column; align-items: stretch; }
+      .resultTop > div:last-child{
+        width: 100%;
+        justify-content: flex-start;
+      }
+      .resultTop .badge{ width: fit-content; }
 
-  /* results header: stack nicely */
-  .resultTop{ flex-direction: column; align-items: stretch; }
-  .resultTop > div:last-child{
-    width: 100%;
-    justify-content: flex-start;
-  }
-  .resultTop .badge{ width: fit-content; }
+      .tokenHead{ flex-wrap: nowrap; }
+      .tokenName{ font-size: 18px; }
+      .tokenSymbol{ font-size: 13px; }
 
-  /* token header: allow wrapping cleanly */
-  .tokenHead{ flex-wrap: nowrap; }
-  .tokenName{ font-size: 18px; }
-  .tokenSymbol{ font-size: 13px; }
+      .metricV{
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 6px;
+        font-size: 22px;
+      }
+      .metricK{
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .metricK .badge{
+        margin-left: auto;
+      }
 
-  /* metrics: tighter + no weird stretching */
-  .metricV{
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 6px;
-    font-size: 22px;
-  }
-  .metricK{
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-  .metricK .badge{
-    margin-left: auto;
-  }
+      .li{
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+      }
+      .pill{ align-self: flex-start; }
 
-  /* list items: text above pill (no long horizontal look) */
-  .li{
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 10px;
-  }
-  .pill{
-    align-self: flex-start;
-  }
-
-  /* copy boxes: allow wrapping (no cut) */
-  .copyBox{
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 10px;
-  }
-  .copyMono{
-    white-space: normal;
-    overflow: visible;
-    text-overflow: initial;
-  }
-}
+      .copyBox{
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+      }
+      .copyMono{
+        white-space: normal;
+        overflow: visible;
+        text-overflow: initial;
+      }
+    }
 
     .panel{
       border:1px solid rgba(255,255,255,.10);
@@ -545,19 +530,52 @@
       overflow-wrap:anywhere;
       word-break:break-word;
     }
-
-    /* IMPORTANT: no code blocks for amateurs */
     .modalBody code{ display:none !important; }
 
+    /* ===== Chain selector ===== */
+    .chainRow{ margin-top:10px; display:flex; gap:10px; flex-wrap:wrap; }
+    .chainBtn{
+      display:inline-flex; align-items:center; gap:10px;
+      padding:10px 12px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      cursor:pointer;
+      user-select:none;
+      font-weight:1000;
+      font-size:13px;
+      color: rgba(255,255,255,.88);
+      -webkit-tap-highlight-color: transparent;
+    }
+    .chainBtn:hover{ background: rgba(255,255,255,.10); }
+    .chainBtn.active{
+      border:0;
+      background: linear-gradient(90deg, var(--g), var(--c), var(--p));
+      color:#061012;
+      box-shadow: 0 10px 24px rgba(0,0,0,.25);
+    }
+    .chainIcon{
+      width:18px; height:18px; border-radius:6px;
+      display:inline-flex; align-items:center; justify-content:center;
+      overflow:hidden;
+      background: rgba(0,0,0,.25);
+      border:1px solid rgba(255,255,255,.10);
+      flex:0 0 auto;
+    }
+    .chainIcon svg{ width:14px; height:14px; display:block; }
+    .chainMiniHint{
+      margin-top:10px;
+      font-size:12.5px;
+      color: rgba(255,255,255,.62);
+      font-weight:850;
+      line-height:1.35;
+    }
+
     /* reduce motion */
+    @media (prefers-reduced-motion: reduce){
       .btn:hover{transform:none}
       .bar > div{transition:none}
     }
-    @media (prefers-reduced-motion: reduce){
-  .btn:hover{transform:none}
-  .bar > div{transition:none}
-}
-    
   </style>
 </head>
 
@@ -569,7 +587,7 @@
           <img src="../assets/logo.png" alt="$SOS" onerror="this.style.display='none'">
           <div class="bt">
             <div class="t">$SOS</div>
-            <div class="s">Guardian Check • Token Risk</div>
+            <div class="s">Contract Scanner • Token Risk</div>
           </div>
         </div>
 
@@ -592,16 +610,19 @@
 
         <h1 class="h1" style="margin-top:12px;"><span class="gradText">Guardian Contract</span> Scanner</h1>
         <div class="sub">
-          On-chain scan: authorities + holder concentration + token standard + supply. WATCH/FAIL items are clickable and explain exactly what it means and what to do.
+          Multi-chain scan: Solana + ETH + BNB + Base. WATCH/FAIL items are clickable and explain exactly what it means and what to do.
         </div>
 
         <div class="layout">
           <!-- INPUT -->
           <div class="panel">
-            <label for="mint">Token Mint Address</label>
-            <input id="mint" placeholder="Paste token mint (Solana)..." autocomplete="off" spellcheck="false" inputmode="text" />
+            <label>Choose Chain</label>
+            <div class="chainRow" id="chainRow"></div>
+            <div class="chainMiniHint" id="chainHint">—</div>
 
-            <!-- ✅ NEW NOOB BUTTON (same style as wallet scan) -->
+            <label for="mint" style="margin-top:14px;" id="addrLabel">Token Address</label>
+            <input id="mint" placeholder="Paste token address..." autocomplete="off" spellcheck="false" inputmode="text" />
+
             <button class="btn grad" id="btnScanInline" type="button" style="width:100%; margin-top:12px;">Run Guardian Check</button>
 
             <div class="statusLine" id="status"></div>
@@ -631,7 +652,6 @@
           <div class="panel" id="resultsPanel">
             <div class="resultTop">
               <div>
-                <!-- EXTENSION: token meta header (name/symbol/logo) -->
                 <div class="tokenHead">
                   <div class="tokenLogoWrap" id="tokenLogoWrap">
                     <img id="tokenLogo" alt="">
@@ -642,7 +662,6 @@
                   </div>
                 </div>
 
-                <!-- existing (unchanged) -->
                 <h3 class="resultTitle" id="verdictTitle">—</h3>
                 <div class="mono" id="mintShort">—</div>
               </div>
@@ -668,14 +687,14 @@
             <li class="li">
               <div class="left">
                 <div class="t">No scan yet</div>
-                <div class="d">Paste a mint address and run the Guardian Check.</div>
+                <div class="d">Paste an address and run the Guardian Check.</div>
               </div>
               <span class="pill">—</span>
             </li>
           </ul>
         </div>
 
-        <!-- Launch readiness (only actionable items, no "next") -->
+        <!-- Launch readiness -->
         <div class="panel" style="margin-top:16px;">
           <div class="classified">
             <div class="stamp">LAUNCH READINESS</div>
@@ -692,7 +711,7 @@
           </ul>
         </div>
 
-        <!-- Token-2022 details -->
+        <!-- Token standard details -->
         <div class="panel" style="margin-top:16px;">
           <div class="classified">
             <div class="stamp">TOKEN STANDARD DETAILS</div>
@@ -702,7 +721,7 @@
             <li class="li">
               <div class="left">
                 <div class="t">No scan yet</div>
-                <div class="d">Extensions / token-standard details appear after scan.</div>
+                <div class="d">Standard details appear after scan.</div>
               </div>
               <span class="pill">—</span>
             </li>
@@ -713,7 +732,7 @@
         <div class="panel" style="margin-top:16px;">
           <div class="classified">
             <div class="stamp">TOKEN METADATA</div>
-            <div class="stamp">DAS / RPC</div>
+            <div class="stamp">RPC / ON-CHAIN</div>
           </div>
           <ul class="list" id="metaList" style="margin-top:10px;">
             <li class="li">
@@ -726,17 +745,17 @@
           </ul>
         </div>
 
-        <!-- Top holders -->
+        <!-- Top holders (note: limited on EVM without indexers) -->
         <div class="panel" style="margin-top:16px;">
           <div class="classified">
             <div class="stamp">TOP HOLDERS (PREVIEW)</div>
-            <div class="stamp">MAINNET</div>
+            <div class="stamp" id="holdersStamp">MAINNET</div>
           </div>
           <ul class="list" id="holdersList" style="margin-top:10px;">
             <li class="li">
               <div class="left">
                 <div class="t">No scan yet</div>
-                <div class="d">Top holder preview will appear after scan.</div>
+                <div class="d">Top holder preview will appear after scan (Solana full, EVM limited).</div>
               </div>
               <span class="pill">—</span>
             </li>
@@ -762,19 +781,33 @@
 
 <script>
 /* ===================== CONFIG ===================== */
-const HELIUS_KEY = "a16897d9-ee14-46e0-aacd-7d3c7a7d3421"; // <-- replace this
+
+/* Solana: Helius key is already embedded in your original file.
+   ETH/BNB/Base: we use public RPC endpoints (no key required). */
+const HELIUS_KEY = "a16897d9-ee14-46e0-aacd-7d3c7a7d3421";
+
 const TOKEN_PROGRAM = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
 const TOKEN_2022_PROGRAM = "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb";
+
+/* Chain list: Solana FIRST as requested */
+const CHAINS = [
+  { id:"sol", name:"Solana", kind:"solana", stamp:"MAINNET", addrLabel:"Token Mint Address", placeholder:"Paste token mint (Solana)..."},
+  { id:"eth", name:"Ethereum", kind:"evm", chainId:1,   stamp:"ETH MAINNET",  addrLabel:"Token Contract Address", placeholder:"Paste ERC-20 contract (0x...)"},
+  { id:"bnb", name:"BNB",      kind:"evm", chainId:56,  stamp:"BNB MAINNET",  addrLabel:"Token Contract Address", placeholder:"Paste BEP-20 contract (0x...)"},
+  { id:"base",name:"Base",     kind:"evm", chainId:8453,stamp:"BASE MAINNET", addrLabel:"Token Contract Address", placeholder:"Paste Base token contract (0x...)"},
+];
+
+/* Public RPCs (no key) */
+const EVM_RPCS = {
+  1:   ["https://cloudflare-eth.com"],
+  56:  ["https://bsc-dataseed.binance.org"],
+  8453:["https://mainnet.base.org"]
+};
 
 const $ = (id)=>document.getElementById(id);
 $("y").textContent = new Date().getFullYear();
 
 function clamp(n,min,max){ return Math.max(min, Math.min(max, n)); }
-function looksBase58(s){
-  return typeof s === "string"
-    && s.length >= 32 && s.length <= 52
-    && /^[1-9A-HJ-NP-Za-km-z]+$/.test(s);
-}
 function shortAddr(a){ return a ? (a.slice(0,4)+"…"+a.slice(-4)) : "—"; }
 function fmtInt(n){
   if(n === null || n === undefined || Number.isNaN(n)) return "—";
@@ -855,76 +888,83 @@ function attachCopy(boxId, textId, hintId, on, off){
 attachCopy("badgeCopy","badgeHtml","badgeHint","Copied!","Click to copy");
 attachCopy("linkCopy","scanLink","linkHint","Copied!","Copy");
 
-/* ===== RPC (Helius) ===== */
-const HELIUS_RPC = ()=> `https://mainnet.helius-rpc.com/?api-key=${encodeURIComponent(HELIUS_KEY)}`;
-async function rpc(method, params){
-  if(!HELIUS_KEY || HELIUS_KEY === "REPLACE_WITH_YOUR_HELIUS_KEY") throw new Error("Helius key missing.");
-  const res = await fetch(HELIUS_RPC(), {
-    method:"POST",
-    headers: {"Content-Type":"application/json"},
-    body: JSON.stringify({ jsonrpc:"2.0", id:1, method, params })
-  });
-  if(!res.ok){
-    const t = await res.text().catch(()=> "");
-    throw new Error(`RPC HTTP ${res.status} ${t}`.slice(0,220));
-  }
-  const j = await res.json();
-  if(j.error) throw new Error(j.error.message || "RPC error");
-  return j.result;
-}
+/* ===================== CHAIN SELECTOR UI ===================== */
+const ICONS = {
+  sol: `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <path d="M6 7.5c.3-.4.7-.6 1.2-.6h14.3c.9 0 1.3 1.1.7 1.7l-2 2.2c-.3.4-.7.6-1.2.6H4.7c-.9 0-1.3-1.1-.7-1.7l2-2.2Z" fill="currentColor" opacity=".9"/>
+    <path d="M6 16.5c.3-.4.7-.6 1.2-.6h14.3c.9 0 1.3 1.1.7 1.7l-2 2.2c-.3.4-.7.6-1.2.6H4.7c-.9 0-1.3-1.1-.7-1.7l2-2.2Z" fill="currentColor" opacity=".6"/>
+    <path d="M18 12c-.3.4-.7.6-1.2.6H2.5c-.9 0-1.3-1.1-.7-1.7l2-2.2c.3-.4.7-.6 1.2-.6h14.3c.9 0 1.3 1.1.7 1.7l-2 2.2Z" fill="currentColor"/>
+  </svg>`,
+  eth: `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <path d="M12 2l6 10-6 3-6-3 6-10Z" fill="currentColor" opacity=".9"/>
+    <path d="M12 22l6-8-6 3-6-3 6 8Z" fill="currentColor" opacity=".7"/>
+  </svg>`,
+  bnb: `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <path d="M12 2l4 4-4 4-4-4 4-4Z" fill="currentColor"/>
+    <path d="M6 8l4 4-4 4-4-4 4-4Z" fill="currentColor" opacity=".8"/>
+    <path d="M18 8l4 4-4 4-4-4 4-4Z" fill="currentColor" opacity=".8"/>
+    <path d="M12 14l4 4-4 4-4-4 4-4Z" fill="currentColor" opacity=".6"/>
+    <path d="M12 10l2 2-2 2-2-2 2-2Z" fill="currentColor" opacity=".9"/>
+  </svg>`,
+  base: `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <path d="M12 4.5c4.4 0 8 3.6 8 8s-3.6 8-8 8-8-3.6-8-8 3.6-8 8-8Z" fill="currentColor" opacity=".9"/>
+    <path d="M10.2 9.2h3.1c1.9 0 3.5 1.5 3.5 3.4 0 1.9-1.6 3.4-3.5 3.4h-3.1V9.2Zm1.6 1.6v3.6h1.4c1 0 1.9-.8 1.9-1.8s-.8-1.8-1.9-1.8h-1.4Z" fill="#070711"/>
+  </svg>`
+};
 
-/* ===== Core on-chain reads ===== */
-async function getMintParsed(mint){
-  const r = await rpc("getAccountInfo", [mint, { encoding:"jsonParsed", commitment:"confirmed" }]);
-  const v = r?.value;
-  if(!v) return null;
-  const owner = v.owner;
-  const parsed = (v.data && typeof v.data === "object") ? v.data.parsed : null;
-  const info = parsed?.info || null;
-  const rawParsed = parsed || null;
-  return { owner, info, rawParsed };
-}
-async function getTokenSupply(mint){
-  const r = await rpc("getTokenSupply", [mint]);
-  return r?.value || null;
-}
-async function getLargest(mint){
-  const r = await rpc("getTokenLargestAccounts", [mint]);
-  return r?.value || [];
-}
+let activeChain = CHAINS[0];
 
-/* ===== EXTENSION: Token Metadata (Name/Symbol/Logo) via Helius DAS ===== */
-async function getAsset(mint){
-  try{
-    const r = await rpc("getAsset", [mint]);
-    return r || null;
-  }catch(e){
-    return null;
+function renderChainButtons(){
+  const row = $("chainRow");
+  row.innerHTML = "";
+  for(const c of CHAINS){
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "chainBtn" + (c.id === activeChain.id ? " active" : "");
+    b.setAttribute("data-chain", c.id);
+    b.innerHTML = `<span class="chainIcon">${ICONS[c.id] || ""}</span><span>${c.name}</span>`;
+    b.addEventListener("click", ()=> setActiveChain(c.id, true));
+    row.appendChild(b);
   }
 }
-function pickTokenMetaFromAsset(asset){
-  if(!asset) return null;
 
-  const md = asset?.content?.metadata || {};
-  const name = (md?.name || asset?.metadata?.name || "").trim();
-  const symbol = (md?.symbol || asset?.metadata?.symbol || "").trim();
+function setActiveChain(chainId, pushUrl){
+  const found = CHAINS.find(x=>x.id===chainId) || CHAINS[0];
+  activeChain = found;
+  renderChainButtons();
 
-  let image = "";
-  const linksImg = asset?.content?.links?.image;
-  if(typeof linksImg === "string") image = linksImg;
+  $("holdersStamp").textContent = activeChain.stamp || "MAINNET";
+  $("addrLabel").textContent = activeChain.addrLabel || "Token Address";
+  $("mint").placeholder = activeChain.placeholder || "Paste token address...";
+  $("chainHint").textContent =
+    activeChain.kind === "solana"
+      ? "Solana scan = full (mint authorities, freeze, top holders via RPC + metadata via Helius DAS)."
+      : "EVM scan = fully on-chain (ERC-20 basics + ownership/proxy/pause heuristics). Top holders needs indexers, so preview is limited.";
 
-  if(!image && Array.isArray(asset?.content?.files)){
-    const f = asset.content.files.find(x => (x?.mime || "").includes("image") && x?.uri);
-    if(f?.uri) image = f.uri;
+  // reset input validation hints
+  setStatus("");
+  clearUI();
+
+  if(pushUrl){
+    const url = new URL(location.href);
+    url.searchParams.set("chain", activeChain.id);
+    history.replaceState({}, "", url.toString());
   }
-
-  const uri = (asset?.content?.json_uri || asset?.content?.links?.external_url || "").trim();
-  const description = (md?.description || asset?.content?.metadata?.description || "").trim();
-
-  const authorities = Array.isArray(asset?.authorities) ? asset.authorities : [];
-  return { name, symbol, image, uri, description, authorities, raw: asset };
 }
-function applyTokenHeader(meta, mint){
+
+/* ===================== VALIDATION ===================== */
+function looksBase58(s){
+  return typeof s === "string"
+    && s.length >= 32 && s.length <= 52
+    && /^[1-9A-HJ-NP-Za-km-z]+$/.test(s);
+}
+function looksEvmAddress(s){
+  return typeof s === "string"
+    && /^0x[0-9a-fA-F]{40}$/.test(s.trim());
+}
+
+/* ===================== TOKEN HEADER (shared) ===================== */
+function applyTokenHeader(meta, addr){
   const nameEl = $("tokenName");
   const symEl = $("tokenSymbol");
   const logoWrap = $("tokenLogoWrap");
@@ -935,7 +975,7 @@ function applyTokenHeader(meta, mint){
   const s = meta?.symbol ? meta.symbol : "";
 
   nameEl.textContent = (n || fallbackName);
-  symEl.textContent = (s ? `$${s}` : `Mint: ${shortAddr(mint)}`);
+  symEl.textContent = (s ? `$${s}` : `Addr: ${shortAddr(addr)}`);
 
   if(meta?.image){
     logo.src = meta.image;
@@ -949,17 +989,8 @@ function applyTokenHeader(meta, mint){
   }
 }
 
-/* ===== Verdict / scoring ===== */
-function verdictFrom(score, critical){
-  if(critical) return {label:"FLAGGED", mode:"bad", title:"FLAGGED • High Risk"};
-  if(score >= 80) return {label:"APPROVED", mode:"good", title:"APPROVED • Guardian Grade"};
-  if(score >= 50) return {label:"OBSERVED", mode:"warn", title:"OBSERVED • Mixed Signals"};
-  return {label:"FLAGGED", mode:"bad", title:"FLAGGED • High Risk"};
-}
-
-/* ===== SIMPLE, IDIOT-PROOF EXPLAINERS (NO CODE/NO JSON) ===== */
+/* ===================== SIMPLE EXPLAINERS (NO CODE/NO JSON) ===================== */
 function explainSimple(title, lines){
-  // grey-ish, simple block
   const safe = (s)=>String(s||"").replaceAll("<","&lt;").replaceAll(">","&gt;");
   return `
     <div style="font-weight:1000; font-size:18px; margin-bottom:10px">${safe(title)}</div>
@@ -969,6 +1000,7 @@ function explainSimple(title, lines){
   `;
 }
 
+/* Solana explainers */
 function explainFreeze(){
   return explainSimple("Freeze Authority", [
     "Meaning: Someone can freeze wallets so they can’t sell or move the token.",
@@ -1028,8 +1060,293 @@ function explainHolders(addr, pct){
   ]);
 }
 
-/* ===== EXTENSION: Metadata quality checks ===== */
-function scoreModel(sig){
+/* EVM explainers */
+function explainEvmOwnership(){
+  return explainSimple("Contract Owner", [
+    "Meaning: Many ERC-20 contracts have an owner/admin with special permissions.",
+    "Why it matters: The owner may change fees, pause transfers, blacklist wallets, or upgrade logic (if proxy).",
+    "What to do: Safer if owner is renounced or controlled by a trusted multi-sig with public transparency."
+  ]);
+}
+function explainEvmProxy(){
+  return explainSimple("Proxy / Upgradeable Contract", [
+    "Meaning: The contract may be a proxy that points to an implementation contract.",
+    "Why it matters: Logic can be upgraded (behavior can change after launch).",
+    "What to do: Treat as WATCH unless upgrades are locked or transparently governed."
+  ]);
+}
+function explainEvmPause(){
+  return explainSimple("Pause / Freeze Capability (Heuristic)", [
+    "Meaning: Contract may support pausing transfers (paused state).",
+    "Why it matters: Users can get blocked from transferring/selling.",
+    "What to do: Treat as WATCH unless you trust the admin and the rules are publicly explained."
+  ]);
+}
+function explainEvmTokenBasics(){
+  return explainSimple("ERC-20 Basics", [
+    "Meaning: We check if the contract responds to standard ERC-20 calls (name/symbol/decimals/totalSupply).",
+    "Why it matters: Non-standard tokens can hide surprises.",
+    "What to do: Treat non-standard behavior as FAIL for memecoin launches."
+  ]);
+}
+function explainEvmHoldersLimit(){
+  return explainSimple("Top Holders (EVM)", [
+    "Meaning: On EVM chains, 'top holders' is not directly queryable from raw RPC.",
+    "Why it matters: Holder concentration is still a major risk factor.",
+    "What to do: Use an indexer (Covalent/Bitquery/Alchemy/Etherscan APIs) if you want holder distribution inside this page."
+  ]);
+}
+
+/* ===================== RENDER HELPERS ===================== */
+function renderList(el, items, listTitle="Guardian Details"){
+  el.innerHTML = "";
+  for(const it of items){
+    const li = document.createElement("li");
+    li.className = "li";
+
+    const sev = it.sev || "warn";
+    const pillCls = sev === "ok" ? "pill ok" : (sev === "bad" ? "pill bad" : "pill warn");
+    const pillTxt = sev === "ok" ? "PASS" : (sev === "bad" ? "FAIL" : "WATCH");
+
+    const msgHtml = (it.clickMsg || it.msg || "").trim();
+    li.innerHTML = `
+      <div class="left">
+        <div class="t">${(it.k || it.t || "—")}</div>
+        <div class="d">${(it.d || "—")}</div>
+      </div>
+      <span class="${pillCls}" role="button" tabindex="0"
+        data-title="${(it.k || it.t || listTitle).replaceAll('"','&quot;')}"
+        data-msg="${msgHtml.replaceAll('"','&quot;')}">${pillTxt}</span>
+    `;
+    el.appendChild(li);
+  }
+}
+
+function clearUI(){
+  setShareEnabled(false);
+  setText("mintShort","—");
+  setText("verdictTitle","—");
+  setBadge($("verdictBadge"),"—");
+  setText("scoreBadge","—");
+  setText("summary","—");
+  setText("scanHint","—");
+  $("sharePanel").style.display = "none";
+
+  setText("tokenName","—");
+  setText("tokenSymbol","—");
+  $("tokenLogoWrap").style.display = "none";
+
+  $("metrics").innerHTML = "";
+  renderList($("checksList"), [{
+    t:"No scan yet", sev:"warn",
+    d:"Paste an address and run the Guardian Check.",
+    clickMsg: explainSimple("No Scan Yet", ["Paste an address, then run the scan."])
+  }], "Guardian Check Details");
+  renderList($("todoList"), [{
+    t:"Waiting for scan", sev:"warn",
+    d:"We generate a checklist only from verified on-chain signals.",
+    clickMsg: explainSimple("Launch Readiness", ["Run a scan to generate your action list."])
+  }], "Launch Readiness Details");
+  renderList($("extList"), [{
+    t:"No scan yet", sev:"warn",
+    d:"Standard details appear after scan.",
+    clickMsg: explainSimple("Token Standard Details", ["Run a scan to see standard details."])
+  }], "Token Standard Details");
+  renderList($("metaList"), [{
+    t:"No scan yet", sev:"warn",
+    d:"Name / symbol / image / metadata details appear after scan.",
+    clickMsg: explainMetadataQuality()
+  }], "Token Metadata");
+  renderList($("holdersList"), [{
+    t:"No scan yet", sev:"warn",
+    d:"Top holder preview appears after scan (Solana full, EVM limited).",
+    clickMsg: explainSimple("Top Holders", ["Run a scan to see what is available on your chain."])
+  }], "Top Holders");
+}
+
+/* Metrics (generic) */
+function renderMetricsGeneric(rows){
+  const wrap = $("metrics");
+  wrap.innerHTML = "";
+  for(const r of rows){
+    const d = document.createElement("div");
+    d.className = "metric";
+    d.innerHTML = `
+      <div class="metricK"><span>${r.label}</span><span class="badge" style="opacity:.9">${r.badge || r.value || "—"}</span></div>
+      <div class="metricV">${r.value || "—"}</div>
+      <div class="metricMini">${r.mini || ""}</div>
+      ${typeof r.barPct === "number" ? `<div class="bar"><div style="width:${clamp(r.barPct,0,100)}%"></div></div>` : ""}
+    `;
+    wrap.appendChild(d);
+  }
+}
+
+/* Share */
+function setShareEnabled(enabled, url){
+  const a = $("btnShare");
+  if(!a) return;
+  if(enabled){
+    a.href = url;
+    a.style.opacity = "1";
+    a.style.pointerEvents = "auto";
+  }else{
+    a.href = "#";
+    a.style.opacity = ".55";
+    a.style.pointerEvents = "none";
+  }
+}
+function badgeHtmlSnippet(chainId, addr, verdictLabel, score){
+  const url = `${location.origin}${location.pathname}?chain=${encodeURIComponent(chainId)}&mint=${encodeURIComponent(addr)}`;
+  return `<a href="${url}" target="_blank" rel="noreferrer" style="text-decoration:none">
+  <span style="display:inline-flex;align-items:center;gap:8px;padding:10px 12px;border-radius:999px;font:700 12px ui-sans-serif,system-ui;letter-spacing:.3px;color:#061012;background:linear-gradient(90deg,#14F195,#00D1FF,#9945FF);box-shadow:0 10px 24px rgba(0,0,0,.25)">
+    🛡️ GUARDIAN ${verdictLabel} • ${score}/100
+  </span>
+</a>`;
+}
+function buildShareText(chainName, addr, verdict, score, extra){
+  const link = `${location.origin}${location.pathname}?chain=${encodeURIComponent(activeChain.id)}&mint=${encodeURIComponent(addr)}`;
+  const lines = [
+    `🛡️ GUARDIAN CHECK — Token Risk (on-chain)`,
+    ``,
+    `Chain: ${chainName}`,
+    `Addr: ${shortAddr(addr)}`,
+    extra?.tokenLine ? `Token: ${extra.tokenLine}` : `Token: —`,
+    `Verdict: ${verdict.label}`,
+    `Score: ${score}/100`,
+    extra?.authLine ? `Admin: ${extra.authLine}` : "",
+    extra?.standardLine ? `Standard: ${extra.standardLine}` : "",
+    ``,
+    `Run yours: ${link}`,
+    `#Solana #Ethereum #BNB #Base #Guardian`
+  ].filter(Boolean);
+  return lines.join("\n");
+}
+
+/* ===================== VERDICT / SCORING (shared shape) ===================== */
+function verdictFrom(score, critical){
+  if(critical) return {label:"FLAGGED", mode:"bad", title:"FLAGGED • High Risk"};
+  if(score >= 80) return {label:"APPROVED", mode:"good", title:"APPROVED • Guardian Grade"};
+  if(score >= 50) return {label:"OBSERVED", mode:"warn", title:"OBSERVED • Mixed Signals"};
+  return {label:"FLAGGED", mode:"bad", title:"FLAGGED • High Risk"};
+}
+
+/* ===================== SOLANA RPC (Helius) ===================== */
+const HELIUS_RPC = ()=> `https://mainnet.helius-rpc.com/?api-key=${encodeURIComponent(HELIUS_KEY)}`;
+async function solRpc(method, params){
+  if(!HELIUS_KEY) throw new Error("Helius key missing.");
+  const res = await fetch(HELIUS_RPC(), {
+    method:"POST",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify({ jsonrpc:"2.0", id:1, method, params })
+  });
+  if(!res.ok){
+    const t = await res.text().catch(()=> "");
+    throw new Error(`RPC HTTP ${res.status} ${t}`.slice(0,220));
+  }
+  const j = await res.json();
+  if(j.error) throw new Error(j.error.message || "RPC error");
+  return j.result;
+}
+async function getMintParsed(mint){
+  const r = await solRpc("getAccountInfo", [mint, { encoding:"jsonParsed", commitment:"confirmed" }]);
+  const v = r?.value;
+  if(!v) return null;
+  const owner = v.owner;
+  const parsed = (v.data && typeof v.data === "object") ? v.data.parsed : null;
+  const info = parsed?.info || null;
+  const rawParsed = parsed || null;
+  return { owner, info, rawParsed };
+}
+async function getTokenSupply(mint){
+  const r = await solRpc("getTokenSupply", [mint]);
+  return r?.value || null;
+}
+async function getLargest(mint){
+  const r = await solRpc("getTokenLargestAccounts", [mint]);
+  return r?.value || [];
+}
+
+/* Helius DAS metadata */
+async function getAsset(mint){
+  try{
+    const r = await solRpc("getAsset", [mint]);
+    return r || null;
+  }catch(e){
+    return null;
+  }
+}
+function pickTokenMetaFromAsset(asset){
+  if(!asset) return null;
+
+  const md = asset?.content?.metadata || {};
+  const name = (md?.name || asset?.metadata?.name || "").trim();
+  const symbol = (md?.symbol || asset?.metadata?.symbol || "").trim();
+
+  let image = "";
+  const linksImg = asset?.content?.links?.image;
+  if(typeof linksImg === "string") image = linksImg;
+
+  if(!image && Array.isArray(asset?.content?.files)){
+    const f = asset.content.files.find(x => (x?.mime || "").includes("image") && x?.uri);
+    if(f?.uri) image = f.uri;
+  }
+
+  const uri = (asset?.content?.json_uri || asset?.content?.links?.external_url || "").trim();
+  const description = (md?.description || asset?.content?.metadata?.description || "").trim();
+
+  const authorities = Array.isArray(asset?.authorities) ? asset.authorities : [];
+  return { name, symbol, image, uri, description, authorities, raw: asset };
+}
+
+/* Token-2022 extensions */
+function parseExtensionsFromParsed(rawParsed){
+  try{
+    const info = rawParsed?.info || rawParsed?.parsed?.info || rawParsed?.data?.parsed?.info || null;
+    if(!info) return null;
+
+    const ex1 = info.extensions;
+    const ex2 = info.extensionTypes;
+    const ex3 = info.mintExtensions;
+
+    let out = null;
+
+    if(Array.isArray(ex1) && ex1.length){
+      out = ex1.map(x=>{
+        if(typeof x === "string") return { name:x, details:null };
+        if(typeof x === "object" && x){
+          const name = x.extension || x.type || x.name || "Extension";
+          return { name, details:null };
+        }
+        return { name:String(x), details:null };
+      });
+    } else if(Array.isArray(ex2) && ex2.length){
+      out = ex2.map(x=>({name:String(x), details:null}));
+    } else if(ex3 && typeof ex3 === "object"){
+      if(Array.isArray(ex3) && ex3.length){
+        out = ex3.map(x=>({name: x?.type || x?.name || "Extension", details:null}));
+      } else {
+        out = Object.keys(ex3).map(k=>({name:k, details:null}));
+      }
+    }
+
+    return out && out.length ? out : null;
+  }catch{
+    return null;
+  }
+}
+function humanizeExtensionName(n){
+  const s = String(n||"").toLowerCase();
+  if(s.includes("transferfee") || s.includes("transfer_fee")) return "Transfer Fee (fee on transfers)";
+  if(s.includes("permanentdelegate") || s.includes("permanent_delegate")) return "Permanent Delegate (delegate control)";
+  if(s.includes("nontransferable") || s.includes("non_transferable")) return "Non-Transferable (cannot be transferred)";
+  if(s.includes("interestbearing") || s.includes("interest_bearing")) return "Interest-Bearing (yield mechanics)";
+  if(s.includes("confidential") ) return "Confidential Transfers (privacy mode)";
+  if(s.includes("metadata")) return "Metadata Extension";
+  return n;
+}
+
+/* ===================== SOLANA SCORING (same as your original) ===================== */
+function scoreModelSol(sig){
   let score = 100;
   const checks = [];
 
@@ -1088,8 +1405,7 @@ function scoreModel(sig){
   return { score, checks, critical };
 }
 
-/* Launch readiness */
-function buildTodo(sig){
+function buildTodoSol(sig){
   const todos = [];
   if(sig.freezeActive){
     todos.push({t:"Remove Freeze Authority", sev:"bad", d:"Freezing can trap buyers.", clickMsg: explainFreeze()});
@@ -1113,12 +1429,7 @@ function buildTodo(sig){
   }
 
   if(sig.programType === "TOKEN_2022"){
-    todos.push({
-      t:"Token-2022 Safety Review",
-      sev:"warn",
-      d:"Token-2022 can include extra rules.",
-      clickMsg: explainTokenStandard("TOKEN_2022", sig.extReadable)
-    });
+    todos.push({ t:"Token-2022 Safety Review", sev:"warn", d:"Token-2022 can include extra rules.", clickMsg: explainTokenStandard("TOKEN_2022", sig.extReadable) });
   } else if(sig.programType === "UNKNOWN"){
     todos.push({ t:"Verify Mint Program", sev:"warn", d:"Unknown program = extra caution.", clickMsg: explainTokenStandard("UNKNOWN", false) });
   } else {
@@ -1134,197 +1445,7 @@ function buildTodo(sig){
   return todos;
 }
 
-/* Render list with clickable pills */
-function renderList(el, items, listTitle="Guardian Details"){
-  el.innerHTML = "";
-  for(const it of items){
-    const li = document.createElement("li");
-    li.className = "li";
-
-    const sev = it.sev || "warn";
-    const pillCls = sev === "ok" ? "pill ok" : (sev === "bad" ? "pill bad" : "pill warn");
-    const pillTxt = sev === "ok" ? "PASS" : (sev === "bad" ? "FAIL" : "WATCH");
-
-    const msgHtml = (it.clickMsg || it.msg || "").trim();
-    li.innerHTML = `
-      <div class="left">
-        <div class="t">${(it.k || it.t || "—")}</div>
-        <div class="d">${(it.d || "—")}</div>
-      </div>
-      <span class="${pillCls}" role="button" tabindex="0"
-        data-title="${(it.k || it.t || listTitle).replaceAll('"','&quot;')}"
-        data-msg="${msgHtml.replaceAll('"','&quot;')}">${pillTxt}</span>
-    `;
-    el.appendChild(li);
-  }
-}
-
-/* Metrics */
-function renderMetrics(score, sig, uiSupply, top20Sum, owner, decimals){
-  const wrap = $("metrics");
-  wrap.innerHTML = "";
-
-  const authLine = `${sig.mintAuthActive ? "MINT ACTIVE" : "MINT RENOUNCED"} • ${sig.freezeActive ? "FREEZE ACTIVE" : "FREEZE REMOVED"}`;
-  const programText = sig.programType === "SPL_TOKEN" ? "SPL Token" : (sig.programType === "TOKEN_2022" ? "Token-2022" : "Unknown");
-
-  const metric = (label, value, mini, barPct=null)=>{
-    const d = document.createElement("div");
-    d.className = "metric";
-    d.innerHTML = `
-      <div class="metricK"><span>${label}</span><span class="badge" style="opacity:.9">${value}</span></div>
-      <div class="metricV">${label === "Risk Score" ? `<span>${score}/100</span><span class="badge good">SCORE</span>` : `<span>${value}</span>`}</div>
-      <div class="metricMini">${mini || ""}</div>
-      ${barPct===null ? "" : `<div class="bar"><div style="width:${clamp(barPct,0,100)}%"></div></div>`}
-    `;
-    wrap.appendChild(d);
-  };
-
-  const nm = sig?.meta?.name || "—";
-  const sy = sig?.meta?.symbol || "—";
-  metric("Token", (sy && sy!=="—") ? `$${sy}` : "—", nm !== "—" ? `Name: ${nm}` : "Name: —");
-
-  metric("Risk Score", `${score}/100`,
-    score>=80 ? "Looks safer than average (still not guaranteed)." :
-    (score>=50 ? "Mixed signals — read WATCH items." : "High risk signals — be careful."),
-    score
-  );
-
-  metric("Authorities", authLine,
-    sig.mintAuthActive||sig.freezeActive ? "Authorities present = higher trust risk." : "No mint/freeze authority (good)."
-  );
-
-  metric("Top 20 Concentration", fmtPct(sig.top20),
-    (uiSupply ? `Top20: ${fmtInt(top20Sum)} / ${fmtInt(uiSupply)} • Decimals ${decimals}` : `Decimals ${decimals}`),
-    sig.top20
-  );
-
-  metric("Token Standard", programText,
-    owner ? `Mint program owner: ${shortAddr(owner)}` : "—"
-  );
-
-  metric("Supply", uiSupply ? fmtInt(uiSupply) : "—",
-    "UI supply (RPC)"
-  );
-}
-
-/* Share */
-function setShareEnabled(enabled, url){
-  const a = $("btnShare");
-  if(!a) return;
-  if(enabled){
-    a.href = url;
-    a.style.opacity = "1";
-    a.style.pointerEvents = "auto";
-  }else{
-    a.href = "#";
-    a.style.opacity = ".55";
-    a.style.pointerEvents = "none";
-  }
-}
-function buildShareText(mint, verdict, score, sig){
-  const link = location.origin + location.pathname + `?mint=${encodeURIComponent(mint)}`;
-  const programText = sig.programType === "SPL_TOKEN" ? "SPL Token" : (sig.programType === "TOKEN_2022" ? "Token-2022" : "Unknown");
-  const authLine = `${sig.mintAuthActive ? "MINT: ACTIVE" : "MINT: RENOUNCED"} • ${sig.freezeActive ? "FREEZE: ACTIVE" : "FREEZE: REMOVED"}`;
-
-  const lines = [
-    `🛡️ GUARDIAN CHECK — Token Risk (on-chain)`,
-    ``,
-    `Mint: ${shortAddr(mint)}`,
-    `Token: ${(sig?.meta?.symbol ? "$"+sig.meta.symbol : "—")} • ${(sig?.meta?.name || "—")}`,
-    `Verdict: ${verdict.label}`,
-    `Score: ${score}/100`,
-    `Authorities: ${authLine}`,
-    `Top20: ${fmtPct(sig.top20)}`,
-    `Standard: ${programText}`,
-    ``,
-    `Run yours: ${link}`,
-    `#Solana #Memecoins #Guardian`
-  ];
-  return lines.join("\n");
-}
-function badgeHtmlSnippet(mint, verdictLabel, score){
-  const url = `https://solanax1.com/guardian?mint=${encodeURIComponent(mint)}`;
-  return `<a href="${url}" target="_blank" rel="noreferrer" style="text-decoration:none">
-  <span style="display:inline-flex;align-items:center;gap:8px;padding:10px 12px;border-radius:999px;font:700 12px ui-sans-serif,system-ui;letter-spacing:.3px;color:#061012;background:linear-gradient(90deg,#14F195,#00D1FF,#9945FF);box-shadow:0 10px 24px rgba(0,0,0,.25)">
-    🛡️ GUARDIAN ${verdictLabel} • ${score}/100
-  </span>
-</a>`;
-}
-
-/* Holders */
-function renderHolders(mint, uiSupply, largest){
-  const list = $("holdersList");
-  if(!uiSupply || !Array.isArray(largest) || !largest.length){
-    renderList(list, [{t:"No holder data", sev:"warn", d:"Largest accounts not readable from RPC.", clickMsg: explainSimple("Top Holders", [
-      "Meaning: We could not read the biggest holders right now.",
-      "Why it matters: Holder distribution is important for risk.",
-      "What to do: Try again later or use another RPC."
-    ])}]);
-    return;
-  }
-  const top = largest.slice(0,5);
-  const items = top.map((x,i)=>{
-    const addr = x?.address || "—";
-    const amt = Number(x?.uiAmount || 0);
-    const pct = uiSupply > 0 ? (amt / uiSupply) * 100 : 0;
-    const sev = pct >= 10 ? "warn" : "ok";
-    return {
-      t: `#${i+1} ${shortAddr(addr)}`,
-      sev,
-      d: `${fmtInt(amt)} tokens • ${pct.toFixed(2)}%`,
-      clickMsg: explainHolders(addr, pct.toFixed(2))
-    };
-  });
-  renderList(list, items, "Top Holder Details");
-}
-
-/* Token-2022 extensions / token-standard details (NO JSON) */
-function parseExtensionsFromParsed(rawParsed){
-  try{
-    const info = rawParsed?.info || rawParsed?.parsed?.info || rawParsed?.data?.parsed?.info || null;
-    if(!info) return null;
-
-    const ex1 = info.extensions;
-    const ex2 = info.extensionTypes;
-    const ex3 = info.mintExtensions;
-
-    let out = null;
-
-    if(Array.isArray(ex1) && ex1.length){
-      out = ex1.map(x=>{
-        if(typeof x === "string") return { name:x, details:null };
-        if(typeof x === "object" && x){
-          const name = x.extension || x.type || x.name || "Extension";
-          return { name, details:null };
-        }
-        return { name:String(x), details:null };
-      });
-    } else if(Array.isArray(ex2) && ex2.length){
-      out = ex2.map(x=>({name:String(x), details:null}));
-    } else if(ex3 && typeof ex3 === "object"){
-      if(Array.isArray(ex3) && ex3.length){
-        out = ex3.map(x=>({name: x?.type || x?.name || "Extension", details:null}));
-      } else {
-        out = Object.keys(ex3).map(k=>({name:k, details:null}));
-      }
-    }
-
-    return out && out.length ? out : null;
-  }catch{
-    return null;
-  }
-}
-function humanizeExtensionName(n){
-  const s = String(n||"").toLowerCase();
-  if(s.includes("transferfee") || s.includes("transfer_fee")) return "Transfer Fee (fee on transfers)";
-  if(s.includes("permanentdelegate") || s.includes("permanent_delegate")) return "Permanent Delegate (delegate control)";
-  if(s.includes("nontransferable") || s.includes("non_transferable")) return "Non-Transferable (cannot be transferred)";
-  if(s.includes("interestbearing") || s.includes("interest_bearing")) return "Interest-Bearing (yield mechanics)";
-  if(s.includes("confidential") ) return "Confidential Transfers (privacy mode)";
-  if(s.includes("metadata")) return "Metadata Extension";
-  return n;
-}
-function renderTokenStandardDetails(programType, extReadable, extList){
+function renderTokenStandardDetailsSol(programType, extReadable, extList){
   const el = $("extList");
   if(programType !== "TOKEN_2022"){
     const msg = programType === "SPL_TOKEN"
@@ -1335,7 +1456,7 @@ function renderTokenStandardDetails(programType, extReadable, extList){
       sev: programType === "SPL_TOKEN" ? "ok" : "warn",
       d: msg,
       clickMsg: explainTokenStandard(programType === "SPL_TOKEN" ? "SPL_TOKEN" : "UNKNOWN", extReadable)
-    }]);
+    }], "Token standard details");
     return;
   }
 
@@ -1345,7 +1466,7 @@ function renderTokenStandardDetails(programType, extReadable, extList){
       sev:"warn",
       d:"Extensions not visible in this scan.",
       clickMsg: explainTokenStandard("TOKEN_2022", false)
-    }]);
+    }], "Token-2022 extensions");
     return;
   }
 
@@ -1388,19 +1509,13 @@ function renderTokenStandardDetails(programType, extReadable, extList){
       ];
     }
 
-    return {
-      t: nameHuman,
-      sev,
-      d,
-      clickMsg: explainSimple(nameHuman, lines)
-    };
+    return { t: nameHuman, sev, d, clickMsg: explainSimple(nameHuman, lines) };
   });
 
   renderList(el, items, "Token-2022 Extension Details");
 }
 
-/* Metadata panel (NO JSON) */
-function renderMetadataPanel(meta, mint){
+function renderMetadataPanelSol(meta){
   const el = $("metaList");
   if(!meta){
     renderList(el, [{
@@ -1413,7 +1528,6 @@ function renderMetadataPanel(meta, mint){
   }
 
   const items = [];
-
   items.push({
     t:"Name / Symbol",
     sev: (meta.name || meta.symbol) ? "ok" : "warn",
@@ -1448,9 +1562,7 @@ function renderMetadataPanel(meta, mint){
       t:"Description",
       sev:"ok",
       d: meta.description.slice(0,120) + (meta.description.length>120 ? "…" : ""),
-      clickMsg: explainSimple("Description", [
-        meta.description
-      ])
+      clickMsg: explainSimple("Description", [ meta.description ])
     });
   }
 
@@ -1470,15 +1582,365 @@ function renderMetadataPanel(meta, mint){
   renderList(el, items, "Token Metadata");
 }
 
-/* ===== Scan ===== */
-async function scan(){
-  const mint = $("mint").value.trim();
+function renderHoldersSol(mint, uiSupply, largest){
+  const list = $("holdersList");
+  if(!uiSupply || !Array.isArray(largest) || !largest.length){
+    renderList(list, [{
+      t:"No holder data", sev:"warn",
+      d:"Largest accounts not readable from RPC.",
+      clickMsg: explainSimple("Top Holders", [
+        "Meaning: We could not read the biggest holders right now.",
+        "Why it matters: Holder distribution is important for risk.",
+        "What to do: Try again later or use another RPC."
+      ])
+    }], "Top Holders");
+    return;
+  }
+  const top = largest.slice(0,5);
+  const items = top.map((x,i)=>{
+    const addr = x?.address || "—";
+    const amt = Number(x?.uiAmount || 0);
+    const pct = uiSupply > 0 ? (amt / uiSupply) * 100 : 0;
+    const sev = pct >= 10 ? "warn" : "ok";
+    return {
+      t: `#${i+1} ${shortAddr(addr)}`,
+      sev,
+      d: `${fmtInt(amt)} tokens • ${pct.toFixed(2)}%`,
+      clickMsg: explainHolders(addr, pct.toFixed(2))
+    };
+  });
+  renderList(list, items, "Top Holder Details");
+}
+
+/* ===================== EVM RPC + ERC-20 READS ===================== */
+let evmRpcIndex = 0;
+function getEvmRpcUrl(chainId){
+  const arr = EVM_RPCS[chainId] || [];
+  if(!arr.length) return null;
+  evmRpcIndex = (evmRpcIndex + 1) % arr.length;
+  return arr[evmRpcIndex];
+}
+async function evmRpc(chainId, method, params){
+  const url = getEvmRpcUrl(chainId);
+  if(!url) throw new Error("No RPC configured for this chain.");
+  const res = await fetch(url, {
+    method:"POST",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify({ jsonrpc:"2.0", id:1, method, params })
+  });
+  if(!res.ok){
+    const t = await res.text().catch(()=> "");
+    throw new Error(`RPC HTTP ${res.status} ${t}`.slice(0,220));
+  }
+  const j = await res.json();
+  if(j.error) throw new Error(j.error.message || "RPC error");
+  return j.result;
+}
+
+/* Minimal ABI selectors */
+const SEL = {
+  name: "0x06fdde03",
+  symbol: "0x95d89b41",
+  decimals: "0x313ce567",
+  totalSupply: "0x18160ddd",
+  owner: "0x8da5cb5b",
+  paused: "0x5c975abb"
+};
+
+function hexToBigInt(hex){
+  if(!hex || hex==="0x") return 0n;
+  return BigInt(hex);
+}
+function strip0x(h){ return (h||"").startsWith("0x") ? h.slice(2) : (h||""); }
+
+function decodeUint256(hex){
+  const h = strip0x(hex).padStart(64,"0").slice(-64);
+  return BigInt("0x"+h);
+}
+function decodeAddressFrom32(hex){
+  const h = strip0x(hex).padStart(64,"0").slice(-40);
+  return "0x"+h;
+}
+function decodeString(hex){
+  // ABI string: offset(32) + length(32) + data
+  const data = strip0x(hex);
+  if(!data || data.length < 128) return "";
+  const lenHex = data.slice(64,128);
+  const len = Number(BigInt("0x"+lenHex));
+  const strData = data.slice(128, 128 + len*2);
+  try{
+    const bytes = new Uint8Array(strData.match(/.{1,2}/g).map(b=>parseInt(b,16)));
+    const s = new TextDecoder().decode(bytes);
+    return (s||"").replace(/\0/g,"").trim();
+  }catch{
+    return "";
+  }
+}
+
+async function ethCall(chainId, to, data){
+  return await evmRpc(chainId, "eth_call", [{ to, data }, "latest"]);
+}
+async function getCode(chainId, addr){
+  return await evmRpc(chainId, "eth_getCode", [addr, "latest"]);
+}
+
+/* Proxy detection (EIP-1967 slots) */
+const SLOT_IMPL = "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc";
+const SLOT_ADMIN= "0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103";
+async function getStorageAt(chainId, addr, slot){
+  return await evmRpc(chainId, "eth_getStorageAt", [addr, slot, "latest"]);
+}
+async function detectProxy(chainId, addr){
+  try{
+    const [implRaw, adminRaw] = await Promise.all([
+      getStorageAt(chainId, addr, SLOT_IMPL),
+      getStorageAt(chainId, addr, SLOT_ADMIN)
+    ]);
+    const impl = decodeAddressFrom32(implRaw || "0x");
+    const admin = decodeAddressFrom32(adminRaw || "0x");
+    const implNonZero = impl && impl.toLowerCase() !== "0x0000000000000000000000000000000000000000";
+    const adminNonZero = admin && admin.toLowerCase() !== "0x0000000000000000000000000000000000000000";
+    return { isProxy: implNonZero || adminNonZero, implementation: implNonZero ? impl : null, admin: adminNonZero ? admin : null };
+  }catch{
+    return { isProxy:false, implementation:null, admin:null };
+  }
+}
+
+/* ERC-20 meta (on-chain only) */
+async function getErc20Meta(chainId, addr){
+  const out = { name:"", symbol:"", decimals:null, totalSupply:null };
+  try{ out.name = decodeString(await ethCall(chainId, addr, SEL.name)); }catch{}
+  try{ out.symbol = decodeString(await ethCall(chainId, addr, SEL.symbol)); }catch{}
+  try{ out.decimals = Number(decodeUint256(await ethCall(chainId, addr, SEL.decimals))); }catch{}
+  try{ out.totalSupply = decodeUint256(await ethCall(chainId, addr, SEL.totalSupply)); }catch{}
+  return out;
+}
+async function getOwner(chainId, addr){
+  try{
+    const r = await ethCall(chainId, addr, SEL.owner);
+    const o = decodeAddressFrom32(r || "0x");
+    return o;
+  }catch{
+    return null;
+  }
+}
+async function getPaused(chainId, addr){
+  try{
+    const r = await ethCall(chainId, addr, SEL.paused);
+    const v = decodeUint256(r || "0x");
+    return v !== 0n;
+  }catch{
+    return null;
+  }
+}
+
+/* ===================== EVM SCORING (safe, on-chain only, no indexers) ===================== */
+function scoreModelEvm(sig){
+  let score = 100;
+  const checks = [];
+
+  // Contract exists
+  if(!sig.hasCode){
+    score = 0;
+    checks.push({ k:"Contract not found", sev:"bad", d:"No bytecode at this address.", clickMsg: explainEvmTokenBasics() });
+    return { score:0, checks, critical:true };
+  } else {
+    checks.push({ k:"Contract found", sev:"ok", d:"Bytecode exists at address.", clickMsg: explainEvmTokenBasics() });
+  }
+
+  // ERC-20 basics
+  const hasName = !!sig.meta?.name;
+  const hasSymbol = !!sig.meta?.symbol;
+  const decOk = Number.isFinite(sig.meta?.decimals) && sig.meta.decimals >= 0 && sig.meta.decimals <= 36;
+
+  if(!hasName || !hasSymbol){
+    score -= 10;
+    checks.push({ k:"ERC-20 metadata missing", sev:"warn", d:"Name or symbol could not be read.", clickMsg: explainEvmTokenBasics() });
+  } else {
+    checks.push({ k:"ERC-20 metadata readable", sev:"ok", d:"Name and symbol read successfully.", clickMsg: explainEvmTokenBasics() });
+  }
+
+  if(!decOk){
+    score -= 12;
+    checks.push({ k:"Decimals look unusual", sev:"warn", d:"Decimals not readable or out of normal range.", clickMsg: explainEvmTokenBasics() });
+  } else {
+    checks.push({ k:"Decimals readable", sev:"ok", d:`Decimals: ${sig.meta.decimals}`, clickMsg: explainEvmTokenBasics() });
+  }
+
+  if(sig.meta?.totalSupply === null || sig.meta?.totalSupply === undefined){
+    score -= 10;
+    checks.push({ k:"Total supply not readable", sev:"warn", d:"totalSupply() did not respond.", clickMsg: explainEvmTokenBasics() });
+  } else {
+    checks.push({ k:"Total supply readable", sev:"ok", d:"totalSupply() responded.", clickMsg: explainEvmTokenBasics() });
+  }
+
+  // Owner (heuristic)
+  if(sig.owner){
+    const zero = "0x0000000000000000000000000000000000000000";
+    if(sig.owner.toLowerCase() === zero){
+      checks.push({ k:"Owner renounced", sev:"ok", d:"owner() is zero address.", clickMsg: explainEvmOwnership() });
+    } else {
+      score -= 22;
+      checks.push({ k:"Owner active", sev:"warn", d:`owner(): ${shortAddr(sig.owner)}`, clickMsg: explainEvmOwnership() });
+    }
+  } else {
+    score -= 6;
+    checks.push({ k:"Owner not detectable", sev:"warn", d:"owner() not present or unreadable.", clickMsg: explainEvmOwnership() });
+  }
+
+  // Proxy detection
+  if(sig.proxy?.isProxy){
+    score -= 18;
+    checks.push({
+      k:"Upgradeable / Proxy detected",
+      sev:"warn",
+      d:`Implementation: ${sig.proxy.implementation ? shortAddr(sig.proxy.implementation) : "unknown"} • Admin: ${sig.proxy.admin ? shortAddr(sig.proxy.admin) : "unknown"}`,
+      clickMsg: explainEvmProxy()
+    });
+  } else {
+    checks.push({ k:"No proxy detected (heuristic)", sev:"ok", d:"No EIP-1967 slots set (best-effort).", clickMsg: explainEvmProxy() });
+  }
+
+  // Pausable heuristic
+  if(sig.paused === true){
+    score -= 25;
+    checks.push({ k:"Paused state: TRUE", sev:"bad", d:"Contract appears paused (transfers may be blocked).", clickMsg: explainEvmPause() });
+  } else if(sig.paused === false){
+    score -= 6;
+    checks.push({ k:"Pause capability detected", sev:"warn", d:"paused() exists and is false (capability may exist).", clickMsg: explainEvmPause() });
+  } else {
+    checks.push({ k:"Pause not detectable", sev:"ok", d:"paused() not present (or unreadable).", clickMsg: explainEvmPause() });
+  }
+
+  score = clamp(Math.round(score), 0, 100);
+  const critical = !!(sig.paused === true || !sig.hasCode);
+  return { score, checks, critical };
+}
+
+function buildTodoEvm(sig){
+  const todos = [];
+
+  if(!sig.hasCode){
+    todos.push({ t:"Fix address", sev:"bad", d:"No contract at this address.", clickMsg: explainEvmTokenBasics() });
+    return todos;
+  }
+
+  if(sig.owner && sig.owner.toLowerCase() !== "0x0000000000000000000000000000000000000000"){
+    todos.push({ t:"Renounce / Secure Owner", sev:"warn", d:"Owner/admin is active.", clickMsg: explainEvmOwnership() });
+  } else if(sig.owner && sig.owner.toLowerCase() === "0x0000000000000000000000000000000000000000"){
+    todos.push({ t:"Owner", sev:"ok", d:"Owner appears renounced.", clickMsg: explainEvmOwnership() });
+  } else {
+    todos.push({ t:"Owner review", sev:"warn", d:"Owner not detectable; review admin controls.", clickMsg: explainEvmOwnership() });
+  }
+
+  if(sig.proxy?.isProxy){
+    todos.push({ t:"Upgradeability review", sev:"warn", d:"Proxy detected; upgrades can change behavior.", clickMsg: explainEvmProxy() });
+  } else {
+    todos.push({ t:"Upgradeability", sev:"ok", d:"No proxy detected (best-effort).", clickMsg: explainEvmProxy() });
+  }
+
+  if(sig.paused === true){
+    todos.push({ t:"Unpause transfers", sev:"bad", d:"Token appears paused.", clickMsg: explainEvmPause() });
+  } else if(sig.paused === false){
+    todos.push({ t:"Pause capability disclosure", sev:"warn", d:"Pausable pattern detected; disclose rules.", clickMsg: explainEvmPause() });
+  } else {
+    todos.push({ t:"Transfer controls", sev:"ok", d:"Pause not detectable.", clickMsg: explainEvmPause() });
+  }
+
+  if(!(sig.meta?.name && sig.meta?.symbol)){
+    todos.push({ t:"Fix token metadata", sev:"warn", d:"Name/symbol missing; can confuse buyers.", clickMsg: explainEvmTokenBasics() });
+  } else {
+    todos.push({ t:"Metadata", sev:"ok", d:"Name/symbol readable.", clickMsg: explainEvmTokenBasics() });
+  }
+
+  // Holders note (EVM limitation)
+  todos.push({ t:"Holders distribution", sev:"warn", d:"Top holders need an indexer on EVM.", clickMsg: explainEvmHoldersLimit() });
+
+  return todos;
+}
+
+function renderStandardDetailsEvm(sig){
+  const el = $("extList");
+  const items = [];
+
+  items.push({
+    t:"Token standard",
+    sev:"ok",
+    d:"ERC-20 (checked by on-chain calls).",
+    clickMsg: explainEvmTokenBasics()
+  });
+
+  items.push({
+    t:"Proxy / upgradeability",
+    sev: sig.proxy?.isProxy ? "warn" : "ok",
+    d: sig.proxy?.isProxy ? "Proxy detected (upgradeable)." : "No proxy detected (best-effort).",
+    clickMsg: explainEvmProxy()
+  });
+
+  items.push({
+    t:"Pause capability (heuristic)",
+    sev: sig.paused === true ? "bad" : (sig.paused === false ? "warn" : "ok"),
+    d: sig.paused === true ? "Token appears paused." : (sig.paused === false ? "paused() exists (capability likely)." : "paused() not detected."),
+    clickMsg: explainEvmPause()
+  });
+
+  renderList(el, items, "Token Standard Details");
+}
+
+function renderMetadataPanelEvm(meta){
+  const el = $("metaList");
+  const items = [];
+
+  items.push({
+    t:"Name / Symbol",
+    sev: (meta?.name && meta?.symbol) ? "ok" : "warn",
+    d: `${meta?.name || "—"} • ${meta?.symbol ? "$"+meta.symbol : "—"}`,
+    clickMsg: explainEvmTokenBasics()
+  });
+
+  items.push({
+    t:"Decimals",
+    sev: Number.isFinite(meta?.decimals) ? "ok" : "warn",
+    d: Number.isFinite(meta?.decimals) ? String(meta.decimals) : "Not readable",
+    clickMsg: explainEvmTokenBasics()
+  });
+
+  items.push({
+    t:"Total Supply",
+    sev: (meta?.totalSupply !== null && meta?.totalSupply !== undefined) ? "ok" : "warn",
+    d: (meta?.totalSupply !== null && meta?.totalSupply !== undefined) ? "Readable on-chain" : "Not readable",
+    clickMsg: explainEvmTokenBasics()
+  });
+
+  // Note: logos are not reliably on-chain for EVM tokens without token lists or explorers.
+  items.push({
+    t:"Logo / Image",
+    sev:"warn",
+    d:"EVM logos are not reliably on-chain via raw RPC.",
+    clickMsg: explainSimple("Token Logo (EVM)", [
+      "Meaning: Most EVM tokens do not store a logo URI on-chain.",
+      "Why it matters: UIs typically use token lists or explorer metadata.",
+      "What to do: If you want logos here, add a tokenlist integration or an explorer API."
+    ])
+  });
+
+  renderList(el, items, "Token Metadata");
+}
+
+function renderHoldersEvm(){
+  renderList($("holdersList"), [{
+    t:"Top holders not available via raw RPC",
+    sev:"warn",
+    d:"EVM holder ranking requires an indexer (not RPC).",
+    clickMsg: explainEvmHoldersLimit()
+  }], "Top Holders");
+}
+
+/* ===================== SCAN DISPATCH ===================== */
+function resetBeforeScan(addr){
   setShareEnabled(false);
-
-  if(!looksBase58(mint)){ setStatus("Invalid mint address."); return; }
-
   setStatus("Running Guardian Check…");
-  setText("mintShort", shortAddr(mint));
+  setText("mintShort", shortAddr(addr));
   setText("verdictTitle","—");
   setBadge($("verdictBadge"),"—");
   setText("scoreBadge","—");
@@ -1486,92 +1948,208 @@ async function scan(){
   setText("scanHint","—");
   $("sharePanel").style.display = "none";
 
-  // clear token header
   setText("tokenName","—");
   setText("tokenSymbol","—");
   $("tokenLogoWrap").style.display = "none";
 
+  $("metrics").innerHTML = "";
+}
+
+async function scanSolana(mint){
+  const mintParsed = await getMintParsed(mint);
+  if(!mintParsed || !mintParsed.info) throw new Error("Mint not readable (not a token mint).");
+
+  const owner = mintParsed.owner;
+  const info = mintParsed.info;
+  const rawParsed = mintParsed.rawParsed;
+
+  const mintAuthority = info.mintAuthority ?? null;
+  const freezeAuthority = info.freezeAuthority ?? null;
+  const decimals = Number(info.decimals ?? 0);
+
+  const programType =
+    owner === TOKEN_PROGRAM ? "SPL_TOKEN" :
+    owner === TOKEN_2022_PROGRAM ? "TOKEN_2022" :
+    "UNKNOWN";
+
+  const [supply, largest, asset] = await Promise.all([
+    getTokenSupply(mint),
+    getLargest(mint),
+    getAsset(mint)
+  ]);
+
+  const meta = pickTokenMetaFromAsset(asset);
+  applyTokenHeader(meta, mint);
+  renderMetadataPanelSol(meta);
+
+  const uiSupply = supply ? Number(supply.uiAmount ?? 0) : null;
+  const top20 = (Array.isArray(largest) ? largest.slice(0,20) : []);
+  const top20Sum = top20.reduce((acc,x)=> acc + Number(x.uiAmount || 0), 0);
+  const conc = (uiSupply && uiSupply > 0) ? (top20Sum / uiSupply) * 100 : 0;
+
+  const extRaw = programType === "TOKEN_2022" ? parseExtensionsFromParsed(rawParsed) : null;
+  const extReadable = !!(extRaw && extRaw.length);
+
+  const sig = {
+    mintAuthActive: !!mintAuthority,
+    freezeActive: !!freezeAuthority,
+    top20: conc,
+    programType,
+    extReadable,
+    meta: meta || null
+  };
+
+  const model = scoreModelSol(sig);
+  const verdict = verdictFrom(model.score, model.critical);
+
+  setText("verdictTitle", verdict.title);
+  setBadge($("verdictBadge"), verdict.label, verdict.mode);
+  $("scoreBadge").textContent = `SCORE ${model.score}`;
+
+  // metrics (same info, but rendered generically)
+  const authLine = `${sig.mintAuthActive ? "MINT ACTIVE" : "MINT RENOUNCED"} • ${sig.freezeActive ? "FREEZE ACTIVE" : "FREEZE REMOVED"}`;
+  const programText = sig.programType === "SPL_TOKEN" ? "SPL Token" : (sig.programType === "TOKEN_2022" ? "Token-2022" : "Unknown");
+  renderMetricsGeneric([
+    { label:"Chain", value:"Solana", badge:"SOL", mini:"Mainnet" },
+    { label:"Risk Score", value:`${model.score}/100`, badge:"SCORE", mini: model.score>=80 ? "Looks safer than average (still not guaranteed)." : (model.score>=50 ? "Mixed signals — read WATCH items." : "High risk signals — be careful."), barPct:model.score },
+    { label:"Authorities", value:authLine, badge:"AUTH", mini: (sig.mintAuthActive||sig.freezeActive) ? "Authorities present = higher trust risk." : "No mint/freeze authority (good)." },
+    { label:"Top 20 Concentration", value:fmtPct(sig.top20), badge:"TOP20", mini:(uiSupply ? `Top20: ${fmtInt(top20Sum)} / ${fmtInt(uiSupply)} • Decimals ${decimals}` : `Decimals ${decimals}`), barPct:sig.top20 },
+    { label:"Token Standard", value:programText, badge:"STD", mini: owner ? `Mint program owner: ${shortAddr(owner)}` : "—" },
+    { label:"Supply", value: uiSupply ? fmtInt(uiSupply) : "—", badge:"UI", mini:"UI supply (RPC)" },
+  ]);
+
+  setText("scanHint", `Chain: Solana • Mint: ${shortAddr(mint)}`);
+  renderList($("checksList"), model.checks, "Guardian Check Details");
+  renderList($("todoList"), buildTodoSol(sig), "Launch Readiness Details");
+  renderTokenStandardDetailsSol(programType, extReadable, extRaw || []);
+  renderHoldersSol(mint, uiSupply, largest);
+
+  const authLineShort = `${mintAuthority ? "MINT: ACTIVE" : "MINT: RENOUNCED"} • ${freezeAuthority ? "FREEZE: ACTIVE" : "FREEZE: REMOVED"}`;
+  const extLine = (programType === "TOKEN_2022")
+    ? (extReadable ? ` • Extensions: visible (${(extRaw||[]).length})` : ` • Extensions: not visible`)
+    : "";
+  const metaLine = (meta && (meta.name || meta.symbol)) ? ` • ${meta.symbol ? "$"+meta.symbol : ""} ${meta.name ? meta.name : ""}`.trim() : "";
+  setText("summary", `${verdict.label} • Score ${model.score}/100 • ${authLineShort} • Top20 ${fmtPct(conc)} • Standard ${programText}${extLine}${metaLine ? " • " + metaLine : ""} • Decimals ${decimals}`);
+
+  // Share
+  const scanUrl = `${location.origin}${location.pathname}?chain=${encodeURIComponent(activeChain.id)}&mint=${encodeURIComponent(mint)}`;
+  setText("scanLink", scanUrl);
+  setText("badgeHtml", badgeHtmlSnippet(activeChain.id, mint, verdict.label, model.score));
+  $("sharePanel").style.display = "";
+
+  const tweet = new URL("https://x.com/intent/tweet");
+  tweet.searchParams.set("text", buildShareText("Solana", mint, verdict, model.score, {
+    tokenLine: `${sig?.meta?.symbol ? "$"+sig.meta.symbol : "—"} • ${sig?.meta?.name || "—"}`,
+    authLine: authLineShort,
+    standardLine: programText
+  }));
+  setShareEnabled(true, tweet.toString());
+
+  setStatus(`Guardian Check complete: ${verdict.label} • Score ${model.score}/100`);
+}
+
+async function scanEvm(addr){
+  const chainId = activeChain.chainId;
+
+  const code = await getCode(chainId, addr);
+  const hasCode = !!(code && code !== "0x");
+
+  const [meta, owner, paused, proxy] = await Promise.all([
+    hasCode ? getErc20Meta(chainId, addr) : Promise.resolve({name:"",symbol:"",decimals:null,totalSupply:null}),
+    hasCode ? getOwner(chainId, addr) : Promise.resolve(null),
+    hasCode ? getPaused(chainId, addr) : Promise.resolve(null),
+    hasCode ? detectProxy(chainId, addr) : Promise.resolve({isProxy:false,implementation:null,admin:null})
+  ]);
+
+  // EVM logos: we keep it empty (on-chain RPC has no reliable logo). Still show chain icon via tokenSymbol line.
+  applyTokenHeader({ name: meta?.name || "Token", symbol: meta?.symbol || "" }, addr);
+  renderMetadataPanelEvm(meta);
+
+  const sig = { hasCode, meta, owner, paused, proxy };
+
+  const model = scoreModelEvm(sig);
+  const verdict = verdictFrom(model.score, model.critical);
+
+  setText("verdictTitle", verdict.title);
+  setBadge($("verdictBadge"), verdict.label, verdict.mode);
+  $("scoreBadge").textContent = `SCORE ${model.score}`;
+
+  const ownerLine = owner ? shortAddr(owner) : "Unknown";
+  const proxyLine = proxy?.isProxy ? `Proxy (impl ${proxy.implementation ? shortAddr(proxy.implementation) : "?"})` : "No proxy detected";
+  const pauseLine = paused === true ? "Paused = TRUE" : (paused === false ? "Paused = FALSE (capability likely)" : "Pause not detected");
+
+  // metrics
+  const totalSupplyReadable = (meta?.totalSupply !== null && meta?.totalSupply !== undefined);
+  const dec = Number.isFinite(meta?.decimals) ? meta.decimals : null;
+
+  renderMetricsGeneric([
+    { label:"Chain", value: activeChain.name, badge: activeChain.id.toUpperCase(), mini: activeChain.stamp },
+    { label:"Risk Score", value:`${model.score}/100`, badge:"SCORE", mini: model.score>=80 ? "Looks safer than average (still not guaranteed)." : (model.score>=50 ? "Mixed signals — read WATCH items." : "High risk signals — be careful."), barPct:model.score },
+    { label:"Contract", value: hasCode ? "Bytecode present" : "No code", badge:"CODE", mini: hasCode ? "Contract exists on-chain." : "This address is not a contract." },
+    { label:"Owner/Admin", value: ownerLine, badge:"ADMIN", mini:"Heuristic via owner() if present." },
+    { label:"Proxy", value: proxyLine, badge:"PROXY", mini:"Heuristic via EIP-1967 slots." },
+    { label:"Transfers", value: pauseLine, badge:"CTRL", mini:"Heuristic via paused()." },
+    { label:"Supply", value: totalSupplyReadable ? "Readable on-chain" : "Not readable", badge:"SUP", mini: dec !== null ? `Decimals: ${dec}` : "Decimals: —" },
+  ]);
+
+  setText("scanHint", `Chain: ${activeChain.name} • Addr: ${shortAddr(addr)}`);
+  renderList($("checksList"), model.checks, "Guardian Check Details");
+  renderList($("todoList"), buildTodoEvm(sig), "Launch Readiness Details");
+  renderStandardDetailsEvm(sig);
+  renderHoldersEvm();
+
+  const tokenLine = `${meta?.symbol ? "$"+meta.symbol : "—"} • ${meta?.name || "—"}`;
+  const adminLine = owner ? `OWNER: ${shortAddr(owner)}` : "OWNER: UNKNOWN";
+  const standardLine = "ERC-20";
+  setText("summary", `${verdict.label} • Score ${model.score}/100 • ${adminLine} • ${proxy?.isProxy ? "PROXY: YES" : "PROXY: NO"} • ${paused===true ? "PAUSED: YES" : (paused===false ? "PAUSED: NO (capable)" : "PAUSED: n/a")} • Standard ${standardLine} • ${tokenLine}`);
+
+  // Share
+  const scanUrl = `${location.origin}${location.pathname}?chain=${encodeURIComponent(activeChain.id)}&mint=${encodeURIComponent(addr)}`;
+  setText("scanLink", scanUrl);
+  setText("badgeHtml", badgeHtmlSnippet(activeChain.id, addr, verdict.label, model.score));
+  $("sharePanel").style.display = "";
+
+  const tweet = new URL("https://x.com/intent/tweet");
+  tweet.searchParams.set("text", buildShareText(activeChain.name, addr, verdict, model.score, {
+    tokenLine,
+    authLine: adminLine,
+    standardLine
+  }));
+  setShareEnabled(true, tweet.toString());
+
+  setStatus(`Guardian Check complete: ${verdict.label} • Score ${model.score}/100`);
+}
+
+/* ===================== MAIN SCAN ===================== */
+async function scan(){
+  const addr = $("mint").value.trim();
+  clearErrorsOnly();
+
+  setShareEnabled(false);
+
+  if(activeChain.kind === "solana"){
+    if(!looksBase58(addr)){ setStatus("Invalid Solana mint address."); return; }
+  }else{
+    if(!looksEvmAddress(addr)){ setStatus("Invalid EVM address (must be 0x + 40 hex chars)."); return; }
+  }
+
+  resetBeforeScan(addr);
+
   try{
-    const mintParsed = await getMintParsed(mint);
-    if(!mintParsed || !mintParsed.info) throw new Error("Mint not readable (not a token mint).");
-
-    const owner = mintParsed.owner;
-    const info = mintParsed.info;
-    const rawParsed = mintParsed.rawParsed;
-
-    const mintAuthority = info.mintAuthority ?? null;
-    const freezeAuthority = info.freezeAuthority ?? null;
-    const decimals = Number(info.decimals ?? 0);
-
-    const programType =
-      owner === TOKEN_PROGRAM ? "SPL_TOKEN" :
-      owner === TOKEN_2022_PROGRAM ? "TOKEN_2022" :
-      "UNKNOWN";
-
-    const [supply, largest, asset] = await Promise.all([
-      getTokenSupply(mint),
-      getLargest(mint),
-      getAsset(mint)
-    ]);
-
-    const meta = pickTokenMetaFromAsset(asset);
-    applyTokenHeader(meta, mint);
-    renderMetadataPanel(meta, mint);
-
-    const uiSupply = supply ? Number(supply.uiAmount ?? 0) : null;
-    const top20 = (Array.isArray(largest) ? largest.slice(0,20) : []);
-    const top20Sum = top20.reduce((acc,x)=> acc + Number(x.uiAmount || 0), 0);
-    const conc = (uiSupply && uiSupply > 0) ? (top20Sum / uiSupply) * 100 : 0;
-
-    const extRaw = programType === "TOKEN_2022" ? parseExtensionsFromParsed(rawParsed) : null;
-    const extReadable = !!(extRaw && extRaw.length);
-
-    const sig = {
-      mintAuthActive: !!mintAuthority,
-      freezeActive: !!freezeAuthority,
-      top20: conc,
-      programType,
-      extReadable,
-      meta: meta || null
-    };
-
-    const model = scoreModel(sig);
-    const verdict = verdictFrom(model.score, model.critical);
-
-    setText("verdictTitle", verdict.title);
-    setBadge($("verdictBadge"), verdict.label, verdict.mode);
-    $("scoreBadge").textContent = `SCORE ${model.score}`;
-
-    renderMetrics(model.score, sig, uiSupply, top20Sum, owner, decimals);
-
-    setText("scanHint", `Mint: ${shortAddr(mint)}`);
-    renderList($("checksList"), model.checks, "Guardian Check Details");
-    renderList($("todoList"), buildTodo(sig), "Launch Readiness Details");
-    renderTokenStandardDetails(programType, extReadable, extRaw || []);
-    renderHolders(mint, uiSupply, largest);
-
-    const programText = programType === "SPL_TOKEN" ? "SPL Token" : (programType === "TOKEN_2022" ? "Token-2022" : "Unknown");
-    const authLine = `${mintAuthority ? "MINT: ACTIVE" : "MINT: RENOUNCED"} • ${freezeAuthority ? "FREEZE: ACTIVE" : "FREEZE: REMOVED"}`;
-    const extLine = (programType === "TOKEN_2022")
-      ? (extReadable ? ` • Extensions: visible (${(extRaw||[]).length})` : ` • Extensions: not visible`)
-      : "";
-    const metaLine = (meta && (meta.name || meta.symbol)) ? ` • ${meta.symbol ? "$"+meta.symbol : ""} ${meta.name ? meta.name : ""}`.trim() : "";
-    setText("summary", `${verdict.label} • Score ${model.score}/100 • ${authLine} • Top20 ${fmtPct(conc)} • Standard ${programText}${extLine}${metaLine ? " • " + metaLine : ""} • Decimals ${decimals}`);
-
-    const scanUrl = `https://solanax1.com/guardian?mint=${encodeURIComponent(mint)}`;
-    setText("scanLink", scanUrl);
-    setText("badgeHtml", badgeHtmlSnippet(mint, verdict.label, model.score));
-    $("sharePanel").style.display = "";
-
-    const tweet = new URL("https://x.com/intent/tweet");
-    tweet.searchParams.set("text", buildShareText(mint, verdict, model.score, sig));
-    setShareEnabled(true, tweet.toString());
-
-    setStatus(`Guardian Check complete: ${verdict.label} • Score ${model.score}/100`);
+    if(activeChain.kind === "solana"){
+      await scanSolana(addr);
+    }else{
+      await scanEvm(addr);
+    }
   }catch(e){
     console.error(e);
     setStatus("Scan failed: " + (e?.message || "unknown error"));
   }
+}
+
+function clearErrorsOnly(){
+  // keep chain selection but clear status
+  setStatus("");
 }
 
 /* Click handling for pills: open modal with ONLY simple explanation */
@@ -1581,7 +2159,7 @@ document.addEventListener("click", (e)=>{
   const msg = pill.getAttribute("data-msg");
   const title = pill.getAttribute("data-title") || "Guardian Details";
   if(msg && msg.trim() && msg.trim() !== "—"){
-    openModal(title, msg); // IMPORTANT: no extra title duplication inside body
+    openModal(title, msg);
   }
 });
 document.addEventListener("keydown", (e)=>{
@@ -1591,21 +2169,32 @@ document.addEventListener("keydown", (e)=>{
     const msg = pill.getAttribute("data-msg");
     const title = pill.getAttribute("data-title") || "Guardian Details";
     if(msg && msg.trim() && msg.trim() !== "—"){
-      openModal(title, msg); // IMPORTANT: no extra title duplication inside body
+      openModal(title, msg);
     }
   }
 });
 
 $("btnScan").addEventListener("click", scan);
-$("btnScanInline").addEventListener("click", scan); /* ✅ NEW: inline button triggers same scan */
+$("btnScanInline").addEventListener("click", scan);
 $("mint").addEventListener("keydown", (e)=>{ if(e.key==="Enter") scan(); });
 
-/* auto-scan from URL */
-(function(){
+/* ===== INIT ===== */
+function initFromUrl(){
   const q = new URLSearchParams(location.search);
+  const chain = (q.get("chain") || "sol").trim().toLowerCase();
   const m = (q.get("mint") || "").trim();
-  if(m){ $("mint").value = m; setTimeout(()=>scan(), 120); }
-})();
+
+  setActiveChain(chain, false);
+  if(m){
+    $("mint").value = m;
+    setTimeout(()=>scan(), 120);
+  }
+}
+
+renderChainButtons();
+setActiveChain("sol", false);
+clearUI();
+initFromUrl();
 </script>
 </body>
 </html>
