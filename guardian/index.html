@@ -595,11 +595,9 @@
           <a class="btn" href="https://solanax1.com/" rel="noreferrer">← Back to Main</a>
           <button class="btn grad" id="btnScan">Run Guardian Check</button>
 
-          <!-- same element as your original; repurposed to "Copy Share Link" (no badge embed) -->
-          <a class="btn" id="btnShare" href="#" rel="noreferrer" style="opacity:.55; pointer-events:none;">Copy Share Link</a>
-
-          <!-- added export button (doesn't delete anything) -->
-          <button class="btn" id="btnExport" type="button" disabled>Export Report (JSON)</button>
+          <button class="btn grad" id="btnExport" type="button" disabled>
+            Download Scan Report
+          </button>
         </div>
       </div>
     </div>
@@ -632,29 +630,7 @@
 
             <div class="statusLine" id="status"></div>
 
-            <!-- kept your share box (NOT deleted), but it now only provides a clean share link + export hint -->
-            <details class="shareBox" id="sharePanel" style="display:none;">
-              <summary>Share</summary>
-              <div class="shareInner">
-                <!-- kept badgeCopy box but repurposed as "Share Link" to avoid removing -->
-                <div class="copyBox" id="badgeCopy" role="button" tabindex="0" aria-label="Copy Share Link">
-                  <div style="min-width:0">
-                    <div style="font-weight:1000; font-size:12px; letter-spacing:.35px; color:rgba(255,255,255,.78); text-transform:uppercase;">Share Link</div>
-                    <div class="copyMono" id="badgeHtml">—</div>
-                  </div>
-                  <div class="hint" id="badgeHint">Copy</div>
-                </div>
-
-                <!-- kept linkCopy box as-is -->
-                <div class="copyBox" id="linkCopy" role="button" tabindex="0" aria-label="Copy Scan Link">
-                  <div style="min-width:0">
-                    <div style="font-weight:1000; font-size:12px; letter-spacing:.35px; color:rgba(255,255,255,.78); text-transform:uppercase;">Scan Link</div>
-                    <div class="copyMono" id="scanLink">—</div>
-                  </div>
-                  <div class="hint" id="linkHint">Copy</div>
-                </div>
-              </div>
-            </details>
+            <!-- Scan-Link Box entfernt (keine URL-Badges) -->
           </div>
 
           <!-- RESULTS -->
@@ -791,24 +767,28 @@
 <script>
 /* ===================== CONFIG ===================== */
 
-/* Solana: Helius key is already embedded in your original file.
-   ETH/BNB/Base: we use public RPC endpoints (no key required). */
+/* Solana: Helius key (dein Key) */
 const HELIUS_KEY = "a16897d9-ee14-46e0-aacd-7d3c7a7d3421";
 
+/* EVM Metadata (ETH/BNB/Base) via API-Key:
+   -> Browser-friendly Option: Moralis ERC20 Metadata API.
+   Trage hier deinen Moralis Key ein (oder lass leer, dann nur on-chain basics ohne Logo).
+*/
+const EVM_METADATA_KEY = ""; // <-- HIER DEIN KEY EINTRAGEN (z.B. Moralis x-api-key)
+
+/* Solana programs */
 const TOKEN_PROGRAM = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
 const TOKEN_2022_PROGRAM = "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb";
 
-/* Chain list: Solana FIRST as requested */
+/* Chain list: Solana FIRST */
 const CHAINS = [
-  { id:"sol", name:"Solana", kind:"solana", stamp:"MAINNET", addrLabel:"Token Mint Address", placeholder:"Paste token mint (Solana)..."},
-  { id:"eth", name:"Ethereum", kind:"evm", chainId:1,   stamp:"ETH MAINNET",  addrLabel:"Token Contract Address", placeholder:"Paste ERC-20 contract (0x...)"},
-  { id:"bnb", name:"BNB",      kind:"evm", chainId:56,  stamp:"BNB MAINNET",  addrLabel:"Token Contract Address", placeholder:"Paste BEP-20 contract (0x...)"},
-  { id:"base",name:"Base",     kind:"evm", chainId:8453,stamp:"BASE MAINNET", addrLabel:"Token Contract Address", placeholder:"Paste Base token contract (0x...)"},
+  { id:"sol", name:"Solana",   kind:"solana", stamp:"MAINNET",      addrLabel:"Token Mint Address",     placeholder:"Paste token mint (Solana)..."},
+  { id:"eth", name:"Ethereum", kind:"evm",    chainId:1,   stamp:"ETH MAINNET",  addrLabel:"Token Contract Address", placeholder:"Paste ERC-20 contract (0x...)"},
+  { id:"bnb", name:"BNB",      kind:"evm",    chainId:56,  stamp:"BNB MAINNET",  addrLabel:"Token Contract Address", placeholder:"Paste BEP-20 contract (0x...)"},
+  { id:"base",name:"Base",     kind:"evm",    chainId:8453,stamp:"BASE MAINNET", addrLabel:"Token Contract Address", placeholder:"Paste Base token contract (0x...)"},
 ];
 
-/* Public RPCs (browser-safe: multiple endpoints + failover)
-   NOTE: Some public RPCs occasionally block CORS or rate-limit.
-   We rotate + retry per request automatically. */
+/* Public RPCs (browser-safe: multiple endpoints + failover) */
 const EVM_RPCS = {
   1: [
     "https://ethereum.publicnode.com",
@@ -873,45 +853,6 @@ $("modalClose").addEventListener("click", closeModal);
 $("modalWrap").addEventListener("click", (e)=>{ if(e.target === $("modalWrap")) closeModal(); });
 document.addEventListener("keydown", (e)=>{ if(e.key==="Escape") closeModal(); });
 
-/* ===== Clipboard helpers ===== */
-async function copyText(text){
-  try{ await navigator.clipboard.writeText(text); return true; }
-  catch{
-    const ta = document.createElement("textarea");
-    ta.value = text; ta.setAttribute("readonly","");
-    ta.style.position="fixed"; ta.style.top="-9999px";
-    document.body.appendChild(ta);
-    ta.select();
-    try{ const ok = document.execCommand("copy"); document.body.removeChild(ta); return ok; }
-    catch{ document.body.removeChild(ta); return false; }
-  }
-}
-function hint(el, ok, on="Copied!", off="Copy"){
-  if(!el) return;
-  if(ok){
-    el.textContent = on;
-    el.classList.add("ok");
-    setTimeout(()=>{ el.textContent = off; el.classList.remove("ok"); }, 1200);
-  }else{
-    el.textContent = "Failed";
-    setTimeout(()=>{ el.textContent = off; }, 1200);
-  }
-}
-function attachCopy(boxId, textId, hintId, on, off){
-  const box = $(boxId), t = $(textId), h = $(hintId);
-  if(!box) return;
-  const go = async ()=>{
-    const txt = (t?.textContent || "").trim();
-    if(!txt || txt === "—") return;
-    const ok = await copyText(txt);
-    hint(h, ok, on, off);
-  };
-  box.addEventListener("click", go);
-  box.addEventListener("keydown", (e)=>{ if(e.key==="Enter" || e.key===" "){ e.preventDefault(); go(); }});
-}
-attachCopy("badgeCopy","badgeHtml","badgeHint","Copied!","Copy");
-attachCopy("linkCopy","scanLink","linkHint","Copied!","Copy");
-
 /* ===================== CHAIN SELECTOR UI ===================== */
 const ICONS = {
   sol: `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -937,8 +878,6 @@ const ICONS = {
 };
 
 let activeChain = CHAINS[0];
-
-/* we store last scan (for share/export) */
 let LAST_SCAN = null;
 
 function renderChainButtons(){
@@ -966,9 +905,10 @@ function setActiveChain(chainId, pushUrl){
   $("chainHint").textContent =
     activeChain.kind === "solana"
       ? "Solana scan = full (mint authorities, freeze, top holders via RPC + metadata via Helius DAS)."
-      : "EVM scan = fully on-chain (ERC-20 basics + ownership/proxy/pause heuristics). Top holders needs indexers, so preview is limited.";
+      : (EVM_METADATA_KEY
+          ? "EVM scan = on-chain + metadata via API key (logo/name/symbol). Top holders still needs indexers."
+          : "EVM scan = fully on-chain (ERC-20 basics + ownership/proxy/pause heuristics). Token logos need an API key integration.");
 
-  // reset input validation hints
   setStatus("");
   clearUI();
 
@@ -1150,14 +1090,12 @@ function renderList(el, items, listTitle="Guardian Details"){
 }
 
 function clearUI(){
-  setShareEnabled(false);
   setText("mintShort","—");
   setText("verdictTitle","—");
   setBadge($("verdictBadge"),"—");
   setText("scoreBadge","—");
   setText("summary","—");
   setText("scanHint","—");
-  $("sharePanel").style.display = "none";
 
   setText("tokenName","—");
   setText("tokenSymbol","—");
@@ -1192,7 +1130,7 @@ function clearUI(){
 
   LAST_SCAN = null;
   $("btnExport").disabled = true;
-  $("btnExport").textContent = "Export Report (JSON)";
+  $("btnExport").textContent = "Download Scan Report";
 }
 
 /* Metrics (generic) */
@@ -1212,41 +1150,6 @@ function renderMetricsGeneric(rows){
   }
 }
 
-/* Share: clean link only (no X intent, no badge embed) */
-function setShareEnabled(enabled, url){
-  const a = $("btnShare");
-  if(!a) return;
-  if(enabled){
-    a.style.opacity = "1";
-    a.style.pointerEvents = "auto";
-    a.href = "#";
-    a.onclick = async (e)=>{
-      e.preventDefault();
-      const ok = await copyText(url);
-      if(ok){
-        a.textContent = "Copied!";
-        setTimeout(()=> a.textContent = "Copy Share Link", 1100);
-      }else{
-        a.textContent = "Copy failed";
-        setTimeout(()=> a.textContent = "Copy Share Link", 1100);
-      }
-    };
-  }else{
-    a.href = "#";
-    a.style.opacity = ".55";
-    a.style.pointerEvents = "none";
-    a.onclick = null;
-    a.textContent = "Copy Share Link";
-  }
-}
-function buildShareLink(chainId, addr){
-  const url = new URL(location.href);
-  url.searchParams.set("chain", chainId);
-  url.searchParams.set("mint", addr);
-  // keep it "clean": drop other params if any
-  return url.toString();
-}
-
 /* Export report as a JSON file (download) */
 function downloadJson(filename, obj){
   const blob = new Blob([JSON.stringify(obj, null, 2)], {type:"application/json"});
@@ -1258,7 +1161,7 @@ function downloadJson(filename, obj){
   setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 0);
 }
 
-/* ===================== VERDICT / SCORING (shared shape) ===================== */
+/* ===================== VERDICT / SCORING ===================== */
 function verdictFrom(score, critical){
   if(critical) return {label:"FLAGGED", mode:"bad", title:"FLAGGED • High Risk"};
   if(score >= 80) return {label:"APPROVED", mode:"good", title:"APPROVED • Guardian Grade"};
@@ -1381,7 +1284,7 @@ function humanizeExtensionName(n){
   return n;
 }
 
-/* ===================== SOLANA SCORING (same as your original) ===================== */
+/* ===================== SOLANA SCORING ===================== */
 function scoreModelSol(sig){
   let score = 100;
   const checks = [];
@@ -1722,26 +1625,20 @@ function bytes32ToAscii(hex){
     const bytes = new Uint8Array(h.match(/.{1,2}/g).map(b=>parseInt(b,16)));
     let s = new TextDecoder().decode(bytes);
     s = (s||"").replace(/\0/g,"").trim();
-    // only accept if looks printable
     if(!s) return "";
     if(/^[\x20-\x7E]+$/.test(s)) return s;
     return "";
   }catch{ return ""; }
 }
 function decodeString(hex){
-  // Handle common cases:
-  // 1) ABI string (offset + length + data)
-  // 2) bytes32-returning tokens (older ERC-20 implementations)
   const data = strip0x(hex);
   if(!data) return "";
 
-  // bytes32 direct
   if(data.length === 64){
     const b = bytes32ToAscii("0x"+data);
     if(b) return b;
   }
 
-  // ABI string: offset(32) + length(32) + data
   if(data.length < 128) return "";
   const lenHex = data.slice(64,128);
   let len = 0;
@@ -1791,27 +1688,14 @@ async function detectProxy(chainId, addr){
 async function getErc20Meta(chainId, addr){
   const out = { name:"", symbol:"", decimals:null, totalSupply:null };
 
+  try{ out.name = decodeString(await ethCall(chainId, addr, SEL.name)); }catch{}
+  try{ out.symbol = decodeString(await ethCall(chainId, addr, SEL.symbol)); }catch{}
   try{
-    const r = await ethCall(chainId, addr, SEL.name);
-    out.name = decodeString(r);
-  }catch{}
-
-  try{
-    const r = await ethCall(chainId, addr, SEL.symbol);
-    out.symbol = decodeString(r);
-  }catch{}
-
-  try{
-    const r = await ethCall(chainId, addr, SEL.decimals);
-    const v = decodeUint256(r);
+    const v = decodeUint256(await ethCall(chainId, addr, SEL.decimals));
     out.decimals = (v === null) ? null : Number(v);
     if(!Number.isFinite(out.decimals)) out.decimals = null;
   }catch{}
-
-  try{
-    const r = await ethCall(chainId, addr, SEL.totalSupply);
-    out.totalSupply = decodeUint256(r);
-  }catch{}
+  try{ out.totalSupply = decodeUint256(await ethCall(chainId, addr, SEL.totalSupply)); }catch{}
 
   return out;
 }
@@ -1820,9 +1704,7 @@ async function getOwner(chainId, addr){
     const r = await ethCall(chainId, addr, SEL.owner);
     const o = decodeAddressFrom32(r || "0x");
     return o;
-  }catch{
-    return null;
-  }
+  }catch{ return null; }
 }
 async function getPaused(chainId, addr){
   try{
@@ -1830,26 +1712,68 @@ async function getPaused(chainId, addr){
     const v = decodeUint256(r || "0x");
     if(v === null) return null;
     return v !== 0n;
+  }catch{ return null; }
+}
+
+/* ===================== EVM METADATA VIA API KEY (Moralis) ===================== */
+function moralisChainParam(chainId){
+  if(chainId === 1) return "eth";
+  if(chainId === 56) return "bsc";
+  if(chainId === 8453) return "base";
+  return "eth";
+}
+
+async function getEvmMetaViaApi(chainId, addr){
+  // If no key configured, skip
+  if(!EVM_METADATA_KEY) return null;
+
+  // Moralis endpoint returns array of metadata objects
+  const chain = moralisChainParam(chainId);
+  const url = `https://deep-index.moralis.io/api/v2.2/erc20/metadata?chain=${encodeURIComponent(chain)}&addresses=${encodeURIComponent(addr)}`;
+
+  try{
+    const res = await fetch(url, {
+      method: "GET",
+      headers: {
+        "accept": "application/json",
+        "x-api-key": EVM_METADATA_KEY
+      }
+    });
+    if(!res.ok) return null;
+
+    const data = await res.json();
+    const item = Array.isArray(data) ? data[0] : null;
+    if(!item) return null;
+
+    // Moralis fields: name, symbol, decimals, logo, thumbnail, total_supply, total_supply_formatted, validated, etc.
+    const name = (item.name || "").trim();
+    const symbol = (item.symbol || "").trim();
+    const logo = (item.logo || item.thumbnail || "").trim();
+    const decimals = Number.isFinite(Number(item.decimals)) ? Number(item.decimals) : null;
+
+    return {
+      name,
+      symbol,
+      image: logo || "",
+      decimals
+    };
   }catch{
     return null;
   }
 }
 
-/* ===================== EVM SCORING (safe, on-chain only, no indexers) ===================== */
+/* ===================== EVM SCORING (on-chain only) ===================== */
 function scoreModelEvm(sig){
   let score = 100;
   const checks = [];
 
-  // Contract exists
   if(!sig.hasCode){
-    score = 0;
     checks.push({ k:"Contract not found", sev:"bad", d:"No bytecode at this address.", clickMsg: explainEvmTokenBasics() });
     return { score:0, checks, critical:true };
   } else {
     checks.push({ k:"Contract found", sev:"ok", d:"Bytecode exists at address.", clickMsg: explainEvmTokenBasics() });
   }
 
-  // ERC-20 basics
   const hasName = !!sig.meta?.name;
   const hasSymbol = !!sig.meta?.symbol;
   const decOk = Number.isFinite(sig.meta?.decimals) && sig.meta.decimals >= 0 && sig.meta.decimals <= 36;
@@ -1875,7 +1799,6 @@ function scoreModelEvm(sig){
     checks.push({ k:"Total supply readable", sev:"ok", d:"totalSupply() responded.", clickMsg: explainEvmTokenBasics() });
   }
 
-  // Owner (heuristic)
   if(sig.owner){
     const zero = "0x0000000000000000000000000000000000000000";
     if(sig.owner.toLowerCase() === zero){
@@ -1889,7 +1812,6 @@ function scoreModelEvm(sig){
     checks.push({ k:"Owner not detectable", sev:"warn", d:"owner() not present or unreadable (common on some tokens).", clickMsg: explainEvmOwnership() });
   }
 
-  // Proxy detection
   if(sig.proxy?.isProxy){
     score -= 18;
     checks.push({
@@ -1902,7 +1824,6 @@ function scoreModelEvm(sig){
     checks.push({ k:"No proxy detected (heuristic)", sev:"ok", d:"No EIP-1967 slots set (best-effort).", clickMsg: explainEvmProxy() });
   }
 
-  // Pausable heuristic
   if(sig.paused === true){
     score -= 25;
     checks.push({ k:"Paused state: TRUE", sev:"bad", d:"Contract appears paused (transfers may be blocked).", clickMsg: explainEvmPause() });
@@ -1954,9 +1875,7 @@ function buildTodoEvm(sig){
     todos.push({ t:"Metadata", sev:"ok", d:"Name/symbol readable.", clickMsg: explainEvmTokenBasics() });
   }
 
-  // Holders note (EVM limitation)
   todos.push({ t:"Holders distribution", sev:"warn", d:"Top holders need an indexer on EVM.", clickMsg: explainEvmHoldersLimit() });
-
   return todos;
 }
 
@@ -2013,17 +1932,29 @@ function renderMetadataPanelEvm(meta){
     clickMsg: explainEvmTokenBasics()
   });
 
-  // Note: logos are not reliably on-chain for EVM tokens without token lists or explorers.
-  items.push({
-    t:"Logo / Image",
-    sev:"warn",
-    d:"EVM logos are not reliably on-chain via raw RPC.",
-    clickMsg: explainSimple("Token Logo (EVM)", [
-      "Meaning: Most EVM tokens do not store a logo URI on-chain.",
-      "Why it matters: UIs typically use token lists or explorer metadata.",
-      "What to do: If you want logos here, add a tokenlist integration or an explorer API."
-    ])
-  });
+  if(meta?.image){
+    items.push({
+      t:"Logo / Image",
+      sev:"ok",
+      d:"Logo found via metadata API (shown above if loadable).",
+      clickMsg: explainSimple("Token Logo (EVM)", [
+        "Meaning: Logo is fetched from a metadata provider using your API key.",
+        "Why it matters: Helps users identify the correct token.",
+        "What to do: Verify logo/name/symbol match official sources."
+      ])
+    });
+  } else {
+    items.push({
+      t:"Logo / Image",
+      sev:"warn",
+      d: EVM_METADATA_KEY ? "No logo returned by metadata API for this token." : "EVM logos need an API key integration (set EVM_METADATA_KEY).",
+      clickMsg: explainSimple("Token Logo (EVM)", [
+        "Meaning: Most EVM tokens do not store a logo URI on-chain.",
+        "Why it matters: UIs use explorers/tokenlists/metadata providers.",
+        "What to do: Set EVM_METADATA_KEY to enable logo metadata in this page."
+      ])
+    });
+  }
 
   renderList(el, items, "Token Metadata");
 }
@@ -2039,7 +1970,6 @@ function renderHoldersEvm(){
 
 /* ===================== SCAN DISPATCH ===================== */
 function resetBeforeScan(addr){
-  setShareEnabled(false);
   setStatus("Running Guardian Check…");
   setText("mintShort", shortAddr(addr));
   setText("verdictTitle","—");
@@ -2047,7 +1977,6 @@ function resetBeforeScan(addr){
   setText("scoreBadge","—");
   setText("summary","—");
   setText("scanHint","—");
-  $("sharePanel").style.display = "none";
 
   setText("tokenName","—");
   setText("tokenSymbol","—");
@@ -2057,7 +1986,7 @@ function resetBeforeScan(addr){
 
   LAST_SCAN = null;
   $("btnExport").disabled = true;
-  $("btnExport").textContent = "Export Report (JSON)";
+  $("btnExport").textContent = "Download Scan Report";
 }
 
 async function scanSolana(mint){
@@ -2135,14 +2064,6 @@ async function scanSolana(mint){
   const metaLine = (meta && (meta.name || meta.symbol)) ? ` • ${meta.symbol ? "$"+meta.symbol : ""} ${meta.name ? meta.name : ""}`.trim() : "";
   setText("summary", `${verdict.label} • Score ${model.score}/100 • ${authLineShort} • Top20 ${fmtPct(conc)} • Standard ${programText}${extLine}${metaLine ? " • " + metaLine : ""} • Decimals ${decimals}`);
 
-  // Share (clean link)
-  const shareUrl = buildShareLink(activeChain.id, mint);
-  setText("scanLink", shareUrl);
-  setText("badgeHtml", shareUrl); // repurposed field
-  $("sharePanel").style.display = "";
-  setShareEnabled(true, shareUrl);
-
-  // Export payload
   LAST_SCAN = {
     version: "guardian-check-v2",
     ts: new Date().toISOString(),
@@ -2164,9 +2085,9 @@ async function scanSolana(mint){
     checks: model.checks,
     todos: buildTodoSol(sig)
   };
-  $("btnExport").disabled = false;
-  $("btnExport").textContent = "Export Report (JSON)";
 
+  $("btnExport").disabled = false;
+  $("btnExport").textContent = "Download Scan Report";
   setStatus(`Guardian Check complete: ${verdict.label} • Score ${model.score}/100`);
 }
 
@@ -2176,19 +2097,29 @@ async function scanEvm(addr){
   const code = await getCode(chainId, addr);
   const hasCode = !!(code && code !== "0x");
 
-  const [meta, owner, paused, proxy] = await Promise.all([
+  // on-chain reads
+  const [metaOnChain, owner, paused, proxy, metaApi] = await Promise.all([
     hasCode ? getErc20Meta(chainId, addr) : Promise.resolve({name:"",symbol:"",decimals:null,totalSupply:null}),
     hasCode ? getOwner(chainId, addr) : Promise.resolve(null),
     hasCode ? getPaused(chainId, addr) : Promise.resolve(null),
-    hasCode ? detectProxy(chainId, addr) : Promise.resolve({isProxy:false,implementation:null,admin:null})
+    hasCode ? detectProxy(chainId, addr) : Promise.resolve({isProxy:false,implementation:null,admin:null}),
+    hasCode ? getEvmMetaViaApi(chainId, addr) : Promise.resolve(null)
   ]);
 
-  applyTokenHeader({ name: meta?.name || "Token", symbol: meta?.symbol || "" }, addr);
-  renderMetadataPanelEvm(meta);
+  // merge: API fields win for name/symbol/decimals/logo if present
+  const mergedMeta = {
+    name: (metaApi?.name || metaOnChain?.name || "").trim(),
+    symbol: (metaApi?.symbol || metaOnChain?.symbol || "").trim(),
+    decimals: (Number.isFinite(metaApi?.decimals) ? metaApi.decimals : metaOnChain?.decimals),
+    totalSupply: metaOnChain?.totalSupply ?? null,
+    image: (metaApi?.image || "")
+  };
 
-  const sig = { hasCode, meta, owner, paused, proxy };
+  applyTokenHeader({ name: mergedMeta.name || "Token", symbol: mergedMeta.symbol || "", image: mergedMeta.image || "" }, addr);
+  renderMetadataPanelEvm(mergedMeta);
 
-  const model = scoreModelEvm(sig);
+  const sig = { hasCode, meta: mergedMeta, owner, paused, proxy };
+  const model = scoreModelEvm({ hasCode, meta: metaOnChain, owner, paused, proxy }); // scoring stays on-chain only
   const verdict = verdictFrom(model.score, model.critical);
 
   setText("verdictTitle", verdict.title);
@@ -2199,8 +2130,8 @@ async function scanEvm(addr){
   const proxyLine = proxy?.isProxy ? `Proxy (impl ${proxy.implementation ? shortAddr(proxy.implementation) : "?"})` : "No proxy detected";
   const pauseLine = paused === true ? "Paused = TRUE" : (paused === false ? "Paused = FALSE (capability likely)" : "Pause not detected");
 
-  const totalSupplyReadable = (meta?.totalSupply !== null && meta?.totalSupply !== undefined);
-  const dec = Number.isFinite(meta?.decimals) ? meta.decimals : null;
+  const totalSupplyReadable = (metaOnChain?.totalSupply !== null && metaOnChain?.totalSupply !== undefined);
+  const dec = Number.isFinite(metaOnChain?.decimals) ? metaOnChain.decimals : null;
 
   renderMetricsGeneric([
     { label:"Chain", value: activeChain.name, badge: activeChain.id.toUpperCase(), mini: activeChain.stamp },
@@ -2218,33 +2149,26 @@ async function scanEvm(addr){
   renderStandardDetailsEvm(sig);
   renderHoldersEvm();
 
-  const tokenLine = `${meta?.symbol ? "$"+meta.symbol : "—"} • ${meta?.name || "—"}`;
+  const tokenLine = `${mergedMeta?.symbol ? "$"+mergedMeta.symbol : "—"} • ${mergedMeta?.name || "—"}`;
   const adminLine = owner ? `OWNER: ${shortAddr(owner)}` : "OWNER: UNKNOWN";
   const standardLine = "ERC-20";
   setText("summary", `${verdict.label} • Score ${model.score}/100 • ${adminLine} • ${proxy?.isProxy ? "PROXY: YES" : "PROXY: NO"} • ${paused===true ? "PAUSED: YES" : (paused===false ? "PAUSED: NO (capable)" : "PAUSED: n/a")} • Standard ${standardLine} • ${tokenLine}`);
 
-  // Share (clean link)
-  const shareUrl = buildShareLink(activeChain.id, addr);
-  setText("scanLink", shareUrl);
-  setText("badgeHtml", shareUrl); // repurposed field
-  $("sharePanel").style.display = "";
-  setShareEnabled(true, shareUrl);
-
-  // Export payload
   LAST_SCAN = {
     version: "guardian-check-v2",
     ts: new Date().toISOString(),
     chain: { id: activeChain.id, name: activeChain.name, kind: activeChain.kind, chainId: activeChain.chainId, stamp: activeChain.stamp },
     address: addr,
-    token: { name: meta?.name || "", symbol: meta?.symbol || "" },
+    token: { name: mergedMeta?.name || "", symbol: mergedMeta?.symbol || "", image: mergedMeta?.image || "" },
     evm: {
       hasCode,
       proxy,
       owner: owner || "",
       paused: paused,
-      decimals: Number.isFinite(meta?.decimals) ? meta.decimals : null,
+      decimals: Number.isFinite(metaOnChain?.decimals) ? metaOnChain.decimals : null,
       totalSupplyReadable: totalSupplyReadable,
-      totalSupply: (meta?.totalSupply !== null && meta?.totalSupply !== undefined) ? meta.totalSupply.toString() : null
+      totalSupply: (metaOnChain?.totalSupply !== null && metaOnChain?.totalSupply !== undefined) ? metaOnChain.totalSupply.toString() : null,
+      metadataProvider: EVM_METADATA_KEY ? "api-key-enabled" : "none"
     },
     verdict,
     score: model.score,
@@ -2253,18 +2177,16 @@ async function scanEvm(addr){
     todos: buildTodoEvm(sig),
     rpcInfo: { endpointsTried: (EVM_RPCS[chainId] || []).slice() }
   };
-  $("btnExport").disabled = false;
-  $("btnExport").textContent = "Export Report (JSON)";
 
+  $("btnExport").disabled = false;
+  $("btnExport").textContent = "Download Scan Report";
   setStatus(`Guardian Check complete: ${verdict.label} • Score ${model.score}/100`);
 }
 
 /* ===================== MAIN SCAN ===================== */
 async function scan(){
   const addr = $("mint").value.trim();
-  clearErrorsOnly();
-
-  setShareEnabled(false);
+  setStatus("");
 
   if(activeChain.kind === "solana"){
     if(!looksBase58(addr)){ setStatus("Invalid Solana mint address."); return; }
@@ -2284,10 +2206,6 @@ async function scan(){
     console.error(e);
     setStatus("Scan failed: " + (e?.message || "unknown error"));
   }
-}
-
-function clearErrorsOnly(){
-  setStatus("");
 }
 
 /* Click handling for pills: open modal with ONLY simple explanation */
@@ -2318,11 +2236,13 @@ $("mint").addEventListener("keydown", (e)=>{ if(e.key==="Enter") scan(); });
 
 $("btnExport").addEventListener("click", ()=>{
   if(!LAST_SCAN) return;
-  const addr = LAST_SCAN.address || "token";
+
   const chain = LAST_SCAN.chain?.id || "chain";
-  const ts = (LAST_SCAN.ts || new Date().toISOString()).replaceAll(":","-");
-  const fname = `guardian-report_${chain}_${addr.slice(0,10)}_${ts}.json`;
-  downloadJson(fname, LAST_SCAN);
+  const addr  = (LAST_SCAN.address || "token").slice(0,10);
+  const ts    = new Date().toISOString().replaceAll(":","-");
+
+  const filename = `guardian-scan_${chain}_${addr}_${ts}.json`;
+  downloadJson(filename, LAST_SCAN);
 });
 
 /* ===== INIT ===== */
