@@ -629,8 +629,6 @@
             <button class="btn grad" id="btnScanInline" type="button" style="width:100%; margin-top:12px;">Run Guardian Check</button>
 
             <div class="statusLine" id="status"></div>
-
-            <!-- Scan-Link Box entfernt (keine URL-Badges) -->
           </div>
 
           <!-- RESULTS -->
@@ -730,7 +728,7 @@
           </ul>
         </div>
 
-        <!-- Top holders (note: limited on EVM without indexers) -->
+        <!-- Top holders -->
         <div class="panel" style="margin-top:16px;">
           <div class="classified">
             <div class="stamp">TOP HOLDERS (PREVIEW)</div>
@@ -767,14 +765,14 @@
 <script>
 /* ===================== CONFIG ===================== */
 
-/* Solana: Helius key (dein Key) */
-const HELIUS_KEY = "a16897d9-ee14-46e0-aacd-7d3c7a7d3421";
+/* Solana: Helius key (set yours) */
+const HELIUS_KEY = "b566a086-57d4-4433-8661-faed9ad07ba0";
 
-/* EVM Metadata (ETH/BNB/Base) via API-Key:
-   -> Browser-friendly Option: Moralis ERC20 Metadata API.
-   Trage hier deinen Moralis Key ein (oder lass leer, dann nur on-chain basics ohne Logo).
-*/
-const EVM_METADATA_KEY = ""; // <-- HIER DEIN KEY EINTRAGEN (z.B. Moralis x-api-key)
+/* EVM Metadata (Moralis) */
+const EVM_METADATA_KEY = ""; // optional: Moralis x-api-key
+
+/* ===================== GOLDRUSH (COVALENT) ===================== */
+const GOLDRUSH_API_KEY = "cqt_rQVTMTXwYkPJBrwf7ff6JWmdkywR";
 
 /* Solana programs */
 const TOKEN_PROGRAM = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
@@ -905,9 +903,11 @@ function setActiveChain(chainId, pushUrl){
   $("chainHint").textContent =
     activeChain.kind === "solana"
       ? "Solana scan = full (mint authorities, freeze, top holders via RPC + metadata via Helius DAS)."
-      : (EVM_METADATA_KEY
-          ? "EVM scan = on-chain + metadata via API key (logo/name/symbol). Top holders still needs indexers."
-          : "EVM scan = fully on-chain (ERC-20 basics + ownership/proxy/pause heuristics). Token logos need an API key integration.");
+      : (GOLDRUSH_API_KEY && GOLDRUSH_API_KEY !== "PUT_GOLDRUSH_KEY_HERE"
+          ? "EVM scan = on-chain + metadata (optional) + Top Holders via GoldRush (Covalent)."
+          : (EVM_METADATA_KEY
+              ? "EVM scan = on-chain + metadata via API key. Top holders need an indexer (enable GoldRush)."
+              : "EVM scan = fully on-chain (ERC-20 basics + ownership/proxy/pause heuristics). Top holders need an indexer (enable GoldRush)."));
 
   setStatus("");
   clearUI();
@@ -1060,7 +1060,7 @@ function explainEvmHoldersLimit(){
   return explainSimple("Top Holders (EVM)", [
     "Meaning: On EVM chains, 'top holders' is not directly queryable from raw RPC.",
     "Why it matters: Holder concentration is still a major risk factor.",
-    "What to do: Use an indexer (Covalent/Bitquery/Alchemy/Etherscan APIs) if you want holder distribution inside this page."
+    "What to do: Enable GoldRush (Covalent) key to fetch holders inside this page."
   ]);
 }
 
@@ -1150,17 +1150,6 @@ function renderMetricsGeneric(rows){
   }
 }
 
-/* Export report as a JSON file (download) */
-function downloadJson(filename, obj){
-  const blob = new Blob([JSON.stringify(obj, null, 2)], {type:"application/json"});
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 0);
-}
-
 /* ===================== VERDICT / SCORING ===================== */
 function verdictFrom(score, critical){
   if(critical) return {label:"FLAGGED", mode:"bad", title:"FLAGGED • High Risk"};
@@ -1172,7 +1161,7 @@ function verdictFrom(score, critical){
 /* ===================== SOLANA RPC (Helius) ===================== */
 const HELIUS_RPC = ()=> `https://mainnet.helius-rpc.com/?api-key=${encodeURIComponent(HELIUS_KEY)}`;
 async function solRpc(method, params){
-  if(!HELIUS_KEY) throw new Error("Helius key missing.");
+  if(!HELIUS_KEY || HELIUS_KEY === "DEIN_HELIUS_KEY") throw new Error("Helius key missing.");
   const res = await fetch(HELIUS_RPC(), {
     method:"POST",
     headers: {"Content-Type":"application/json"},
@@ -1724,10 +1713,8 @@ function moralisChainParam(chainId){
 }
 
 async function getEvmMetaViaApi(chainId, addr){
-  // If no key configured, skip
   if(!EVM_METADATA_KEY) return null;
 
-  // Moralis endpoint returns array of metadata objects
   const chain = moralisChainParam(chainId);
   const url = `https://deep-index.moralis.io/api/v2.2/erc20/metadata?chain=${encodeURIComponent(chain)}&addresses=${encodeURIComponent(addr)}`;
 
@@ -1745,7 +1732,6 @@ async function getEvmMetaViaApi(chainId, addr){
     const item = Array.isArray(data) ? data[0] : null;
     if(!item) return null;
 
-    // Moralis fields: name, symbol, decimals, logo, thumbnail, total_supply, total_supply_formatted, validated, etc.
     const name = (item.name || "").trim();
     const symbol = (item.symbol || "").trim();
     const logo = (item.logo || item.thumbnail || "").trim();
@@ -1759,6 +1745,27 @@ async function getEvmMetaViaApi(chainId, addr){
     };
   }catch{
     return null;
+  }
+}
+
+/* ===================== GOLDRUSH HELPERS (EVM HOLDERS) ===================== */
+function goldrushChain(chainId){
+  if(chainId === 1) return "eth-mainnet";
+  if(chainId === 56) return "bsc-mainnet";
+  if(chainId === 8453) return "base-mainnet";
+  return "eth-mainnet";
+}
+
+async function goldrushHolders(chainId, addr){
+  if(!GOLDRUSH_API_KEY || GOLDRUSH_API_KEY === "PUT_GOLDRUSH_KEY_HERE") return [];
+  const url = `https://api.covalenthq.com/v1/${goldrushChain(chainId)}/tokens/${addr}/token_holders/?page-size=10&key=${encodeURIComponent(GOLDRUSH_API_KEY)}`;
+  try{
+    const r = await fetch(url);
+    if(!r.ok) return [];
+    const j = await r.json();
+    return Array.isArray(j?.data?.items) ? j.data.items : [];
+  }catch{
+    return [];
   }
 }
 
@@ -1875,7 +1882,7 @@ function buildTodoEvm(sig){
     todos.push({ t:"Metadata", sev:"ok", d:"Name/symbol readable.", clickMsg: explainEvmTokenBasics() });
   }
 
-  todos.push({ t:"Holders distribution", sev:"warn", d:"Top holders need an indexer on EVM.", clickMsg: explainEvmHoldersLimit() });
+  todos.push({ t:"Holders distribution", sev:"warn", d:"Top holders are shown if GoldRush key is enabled.", clickMsg: explainEvmHoldersLimit() });
   return todos;
 }
 
@@ -1959,13 +1966,34 @@ function renderMetadataPanelEvm(meta){
   renderList(el, items, "Token Metadata");
 }
 
-function renderHoldersEvm(){
-  renderList($("holdersList"), [{
-    t:"Top holders not available via raw RPC",
-    sev:"warn",
-    d:"EVM holder ranking requires an indexer (not RPC).",
-    clickMsg: explainEvmHoldersLimit()
-  }], "Top Holders");
+/* ===== NEW: render holders on EVM via GoldRush ===== */
+function renderHoldersEvmFromGoldrush(items){
+  const list = $("holdersList");
+
+  if(!items || !items.length){
+    renderList(list, [{
+      t:"No holder data",
+      sev:"warn",
+      d: (!GOLDRUSH_API_KEY || GOLDRUSH_API_KEY === "PUT_GOLDRUSH_KEY_HERE")
+          ? "GoldRush key not set. Add your key to enable holders."
+          : "GoldRush returned no holders (or blocked by rate limits).",
+      clickMsg: explainEvmHoldersLimit()
+    }], "Top Holders");
+    return;
+  }
+
+  const parsed = items.slice(0,10).map((h, i)=>{
+    const address = h?.address || "—";
+    const pct = Number(h?.balance_percentage || 0);
+    return {
+      t: `#${i+1} ${shortAddr(address)}`,
+      sev: pct >= 10 ? "warn" : "ok",
+      d: `${pct.toFixed(2)}%`,
+      clickMsg: explainHolders(address, pct.toFixed(2))
+    };
+  });
+
+  renderList(list, parsed, "Top Holder Details");
 }
 
 /* ===================== SCAN DISPATCH ===================== */
@@ -2083,7 +2111,8 @@ async function scanSolana(mint){
     score: model.score,
     summary: $("summary")?.textContent || "",
     checks: model.checks,
-    todos: buildTodoSol(sig)
+    todos: buildTodoSol(sig),
+    holders: []
   };
 
   $("btnExport").disabled = false;
@@ -2097,21 +2126,20 @@ async function scanEvm(addr){
   const code = await getCode(chainId, addr);
   const hasCode = !!(code && code !== "0x");
 
-  // on-chain reads
-  const [metaOnChain, owner, paused, proxy, metaApi] = await Promise.all([
+  const [metaOnChain, owner, paused, proxy, metaApi, holdersGR] = await Promise.all([
     hasCode ? getErc20Meta(chainId, addr) : Promise.resolve({name:"",symbol:"",decimals:null,totalSupply:null}),
     hasCode ? getOwner(chainId, addr) : Promise.resolve(null),
     hasCode ? getPaused(chainId, addr) : Promise.resolve(null),
     hasCode ? detectProxy(chainId, addr) : Promise.resolve({isProxy:false,implementation:null,admin:null}),
-    hasCode ? getEvmMetaViaApi(chainId, addr) : Promise.resolve(null)
+    hasCode ? getEvmMetaViaApi(chainId, addr) : Promise.resolve(null),
+    hasCode ? goldrushHolders(chainId, addr) : Promise.resolve([])
   ]);
 
-  // merge: API fields win for name/symbol/decimals/logo if present
   const mergedMeta = {
     name: (metaApi?.name || metaOnChain?.name || "").trim(),
     symbol: (metaApi?.symbol || metaOnChain?.symbol || "").trim(),
     decimals: (Number.isFinite(metaApi?.decimals) ? metaApi.decimals : metaOnChain?.decimals),
-    totalSupply: metaOnChain?.totalSupply ?? null,
+    totalSupply: metaOnChain.totalSupply ?? null,
     image: (metaApi?.image || "")
   };
 
@@ -2119,7 +2147,7 @@ async function scanEvm(addr){
   renderMetadataPanelEvm(mergedMeta);
 
   const sig = { hasCode, meta: mergedMeta, owner, paused, proxy };
-  const model = scoreModelEvm({ hasCode, meta: metaOnChain, owner, paused, proxy }); // scoring stays on-chain only
+  const model = scoreModelEvm({ hasCode, meta: metaOnChain, owner, paused, proxy });
   const verdict = verdictFrom(model.score, model.critical);
 
   setText("verdictTitle", verdict.title);
@@ -2127,32 +2155,57 @@ async function scanEvm(addr){
   $("scoreBadge").textContent = `SCORE ${model.score}`;
 
   const ownerLine = owner ? shortAddr(owner) : "Unknown";
-  const proxyLine = proxy?.isProxy ? `Proxy (impl ${proxy.implementation ? shortAddr(proxy.implementation) : "?"})` : "No proxy detected";
-  const pauseLine = paused === true ? "Paused = TRUE" : (paused === false ? "Paused = FALSE (capability likely)" : "Pause not detected");
+  const proxyLine = proxy?.isProxy
+    ? `Proxy (impl ${proxy.implementation ? shortAddr(proxy.implementation) : "?"})`
+    : "No proxy detected";
+  const pauseLine = paused === true
+    ? "Paused = TRUE"
+    : (paused === false ? "Paused = FALSE (capability likely)" : "Pause not detected");
 
   const totalSupplyReadable = (metaOnChain?.totalSupply !== null && metaOnChain?.totalSupply !== undefined);
   const dec = Number.isFinite(metaOnChain?.decimals) ? metaOnChain.decimals : null;
 
   renderMetricsGeneric([
     { label:"Chain", value: activeChain.name, badge: activeChain.id.toUpperCase(), mini: activeChain.stamp },
-    { label:"Risk Score", value:`${model.score}/100`, badge:"SCORE", mini: model.score>=80 ? "Looks safer than average (still not guaranteed)." : (model.score>=50 ? "Mixed signals — read WATCH items." : "High risk signals — be careful."), barPct:model.score },
-    { label:"Contract", value: hasCode ? "Bytecode present" : "No code", badge:"CODE", mini: hasCode ? "Contract exists on-chain." : "This address is not a contract." },
+    { label:"Risk Score", value:`${model.score}/100`, badge:"SCORE",
+      mini: model.score>=80 ? "Looks safer than average (still not guaranteed)."
+        : (model.score>=50 ? "Mixed signals — read WATCH items." : "High risk signals — be careful."),
+      barPct:model.score
+    },
+    { label:"Contract", value: hasCode ? "Bytecode present" : "No code", badge:"CODE",
+      mini: hasCode ? "Contract exists on-chain." : "This address is not a contract."
+    },
     { label:"Owner/Admin", value: ownerLine, badge:"ADMIN", mini:"Heuristic via owner() if present." },
     { label:"Proxy", value: proxyLine, badge:"PROXY", mini:"Heuristic via EIP-1967 slots." },
     { label:"Transfers", value: pauseLine, badge:"CTRL", mini:"Heuristic via paused()." },
-    { label:"Supply", value: totalSupplyReadable ? "Readable on-chain" : "Not readable", badge:"SUP", mini: dec !== null ? `Decimals: ${dec}` : "Decimals: —" },
+    { label:"Supply", value: totalSupplyReadable ? "Readable on-chain" : "Not readable", badge:"SUP",
+      mini: dec !== null ? `Decimals: ${dec}` : "Decimals: —"
+    },
   ]);
 
   setText("scanHint", `Chain: ${activeChain.name} • Addr: ${shortAddr(addr)}`);
   renderList($("checksList"), model.checks, "Guardian Check Details");
   renderList($("todoList"), buildTodoEvm(sig), "Launch Readiness Details");
   renderStandardDetailsEvm(sig);
-  renderHoldersEvm();
+
+  // holders from GoldRush (if key set)
+  renderHoldersEvmFromGoldrush(holdersGR);
 
   const tokenLine = `${mergedMeta?.symbol ? "$"+mergedMeta.symbol : "—"} • ${mergedMeta?.name || "—"}`;
   const adminLine = owner ? `OWNER: ${shortAddr(owner)}` : "OWNER: UNKNOWN";
   const standardLine = "ERC-20";
-  setText("summary", `${verdict.label} • Score ${model.score}/100 • ${adminLine} • ${proxy?.isProxy ? "PROXY: YES" : "PROXY: NO"} • ${paused===true ? "PAUSED: YES" : (paused===false ? "PAUSED: NO (capable)" : "PAUSED: n/a")} • Standard ${standardLine} • ${tokenLine}`);
+  setText("summary",
+    `${verdict.label} • Score ${model.score}/100 • ${adminLine} • ` +
+    `${proxy?.isProxy ? "PROXY: YES" : "PROXY: NO"} • ` +
+    `${paused===true ? "PAUSED: YES" : (paused===false ? "PAUSED: NO (capable)" : "PAUSED: n/a")} • ` +
+    `Standard ${standardLine} • ${tokenLine}`
+  );
+
+  // store holders in LAST_SCAN too (for report)
+  const holders = (holdersGR || []).slice(0,10).map(h=>({
+    address: h?.address || "",
+    pct: Number(h?.balance_percentage || 0)
+  }));
 
   LAST_SCAN = {
     version: "guardian-check-v2",
@@ -2167,14 +2220,18 @@ async function scanEvm(addr){
       paused: paused,
       decimals: Number.isFinite(metaOnChain?.decimals) ? metaOnChain.decimals : null,
       totalSupplyReadable: totalSupplyReadable,
-      totalSupply: (metaOnChain?.totalSupply !== null && metaOnChain?.totalSupply !== undefined) ? metaOnChain.totalSupply.toString() : null,
-      metadataProvider: EVM_METADATA_KEY ? "api-key-enabled" : "none"
+      totalSupply: (metaOnChain?.totalSupply !== null && metaOnChain?.totalSupply !== undefined)
+        ? metaOnChain.totalSupply.toString()
+        : null,
+      metadataProvider: EVM_METADATA_KEY ? "api-key-enabled" : "none",
+      holdersProvider: (GOLDRUSH_API_KEY && GOLDRUSH_API_KEY !== "PUT_GOLDRUSH_KEY_HERE") ? "goldrush" : "none"
     },
     verdict,
     score: model.score,
     summary: $("summary")?.textContent || "",
     checks: model.checks,
     todos: buildTodoEvm(sig),
+    holders,
     rpcInfo: { endpointsTried: (EVM_RPCS[chainId] || []).slice() }
   };
 
@@ -2234,34 +2291,136 @@ $("btnScan").addEventListener("click", scan);
 $("btnScanInline").addEventListener("click", scan);
 $("mint").addEventListener("keydown", (e)=>{ if(e.key==="Enter") scan(); });
 
-$("btnExport").addEventListener("click", ()=>{
+/* ===================== HTML REPORT EXPORT (NO JSON) ===================== */
+function downloadHtmlReport(){
   if(!LAST_SCAN) return;
+  const s = LAST_SCAN;
 
-  const chain = LAST_SCAN.chain?.id || "chain";
-  const addr  = (LAST_SCAN.address || "token").slice(0,10);
-  const ts    = new Date().toISOString().replaceAll(":","-");
+  const safe = (x)=>String(x ?? "").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;");
 
-  const filename = `guardian-scan_${chain}_${addr}_${ts}.json`;
-  downloadJson(filename, LAST_SCAN);
-});
+  const tokenName = safe(s.token?.name || "Token");
+  const tokenSym  = safe(s.token?.symbol || "");
+  const chainName = safe(s.chain?.name || s.chain?.id || "Chain");
+  const addrFull  = safe(s.address || "");
+  const verdict   = safe(s.verdict?.label || "SCAN");
+  const score     = (typeof s.score === "number") ? `${s.score}` : safe(s.score || "");
+  const summary   = safe(s.summary || "");
 
-/* ===== INIT ===== */
-function initFromUrl(){
-  const q = new URLSearchParams(location.search);
-  const chain = (q.get("chain") || "sol").trim().toLowerCase();
-  const m = (q.get("mint") || "").trim();
+  const holders = Array.isArray(s.holders) ? s.holders : [];
+  const checks  = Array.isArray(s.checks) ? s.checks : [];
+  const todos   = Array.isArray(s.todos) ? s.todos : [];
 
-  setActiveChain(chain, false);
-  if(m){
-    $("mint").value = m;
-    setTimeout(()=>scan(), 120);
-  }
+  const html = `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Guardian Scan Report</title>
+<style>
+  :root{--bg:#070711;--text:rgba(255,255,255,.92);--muted:rgba(255,255,255,.70);--g:#14F195;--c:#00D1FF;--p:#9945FF;}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial}
+  .wrap{max-width:1100px;margin:0 auto;padding:22px}
+  .card{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.10);border-radius:18px;padding:16px;margin-bottom:12px}
+  .top{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:flex-start}
+  .h1{font-weight:1000;font-size:26px;margin:0}
+  .muted{color:var(--muted);font-weight:850}
+  .badge{display:inline-flex;align-items:center;justify-content:center;padding:7px 11px;border-radius:999px;font-weight:1000;font-size:12px;
+    background:linear-gradient(90deg,var(--g),var(--c),var(--p));color:#061012}
+  .kv{display:grid;grid-template-columns:180px 1fr;gap:8px;margin-top:10px}
+  .k{color:var(--muted);font-weight:950;text-transform:uppercase;letter-spacing:.35px;font-size:12px}
+  .v{font-weight:900;overflow-wrap:anywhere}
+  .li{padding:12px;border-radius:14px;background:rgba(0,0,0,.25);border:1px solid rgba(255,255,255,.10);margin-top:10px}
+  .li .t{font-weight:1000}
+  .li .d{color:var(--muted);font-weight:850;margin-top:4px;line-height:1.4}
+  h3{margin:0 0 6px;font-size:14px;letter-spacing:.35px;text-transform:uppercase;color:rgba(255,255,255,.80)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="card">
+    <div class="top">
+      <div>
+        <div class="h1">${tokenName}${tokenSym ? ` ($${tokenSym})` : ""}</div>
+        <div class="muted">${chainName} • ${safe(s.ts || "")}</div>
+      </div>
+      <div>
+        <div class="badge">${verdict}${score ? ` • SCORE ${safe(score)}` : ""}</div>
+      </div>
+    </div>
+    <div class="kv">
+      <div class="k">Address</div><div class="v">${addrFull}</div>
+      <div class="k">Summary</div><div class="v">${summary || "—"}</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Top Holders</h3>
+    ${
+      holders.length
+        ? holders.map(h=>`
+            <div class="li">
+              <div class="t">${safe(h.address || "")}</div>
+              <div class="d">${Number(h.pct||0).toFixed(2)}%</div>
+            </div>
+          `).join("")
+        : `<div class="muted">No holder data (or not enabled for this chain).</div>`
+    }
+  </div>
+
+  <div class="card">
+    <h3>Guardian Checks</h3>
+    ${
+      checks.length
+        ? checks.map(c=>`
+            <div class="li">
+              <div class="t">${safe(c.k || c.t || "")}</div>
+              <div class="d">${safe(c.d || "")}</div>
+            </div>
+          `).join("")
+        : `<div class="muted">No checks available.</div>`
+    }
+  </div>
+
+  <div class="card">
+    <h3>Launch Readiness</h3>
+    ${
+      todos.length
+        ? todos.map(t=>`
+            <div class="li">
+              <div class="t">${safe(t.t || "")}</div>
+              <div class="d">${safe(t.d || "")}</div>
+            </div>
+          `).join("")
+        : `<div class="muted">No action items.</div>`
+    }
+  </div>
+
+</div>
+</body>
+</html>`;
+
+  const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  const namePart = `${(s.chain?.id || "chain")}_${(s.token?.symbol || "token")}_${(s.address || "").slice(0,6)}`;
+  a.download = `guardian_report_${namePart}.html`;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 0);
 }
 
-renderChainButtons();
-setActiveChain("sol", false);
-clearUI();
-initFromUrl();
-</script>
-</body>
-</html>
+/* Export button */
+$("btnExport").addEventListener("click", downloadHtmlReport);
+
+/* ===================== INIT ===================== */
+(function init(){
+  // chain from URL (optional)
+  const p = new URLSearchParams(location.search);
+  const chain = p.get("chain");
+  if(chain && CHAINS.some(c=>c.id===chain)){
+    activeChain = CHAINS.find(c=>c.id===chain);
+  }
+  renderChainButtons();
+  setActiveChain(activeChain.id, false);
+})();
