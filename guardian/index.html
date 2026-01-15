@@ -20,6 +20,14 @@
       --radius: 22px;
       --shadow: 0 10px 30px rgba(0,0,0,.35);
       --max: 1180px;
+
+      /* brand-ish extras (for icons + report) */
+      --sol-g1:#14F195;
+      --sol-g2:#00D1FF;
+      --sol-g3:#9945FF;
+
+      --bnb-yellow:#F0B90B;
+      --base-blue:#0052FF;
     }
     *{box-sizing:border-box}
     html,body{height:100%}
@@ -29,7 +37,7 @@
       font: 15.5px/1.55 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
       background: var(--bg);
       position:relative;
-      overflow-x:hidden; /* mobile cut fix */
+      overflow-x:hidden;
     }
     body::before{
       content:"";
@@ -188,7 +196,6 @@
       .layout{grid-template-columns:1fr}
     }
 
-    /* Mobile clean stacked */
     @media (max-width: 980px){
       .wrap{ padding: 0 14px; }
       .inner{ padding: 16px; }
@@ -403,7 +410,6 @@
       word-break:break-word;
     }
 
-    /* PASS/WATCH/FAIL + info */
     .pillRow{
       display:flex;
       gap:8px;
@@ -447,7 +453,6 @@
     .infoBtn:active{ transform: translateY(0px); }
     .infoBtn span{ transform: translateY(-0.5px); }
 
-    /* Explorer button for Top Holders */
     .explorerBtn{
       display:inline-flex;
       align-items:center;
@@ -473,7 +478,6 @@
       font-size:12px;
     }
 
-    /* Modal */
     .modalWrap{
       position:fixed;
       inset:0;
@@ -510,7 +514,6 @@
       word-break:break-word;
     }
 
-    /* Chain selector */
     .chainRow{
       margin-top:10px;
       display:flex;
@@ -551,7 +554,7 @@
       border:1px solid rgba(255,255,255,.10);
       flex:0 0 auto;
     }
-    .chainIcon svg{ width:14px; height:14px; display:block; }
+    .chainIcon svg{ width:18px; height:18px; display:block; }
     .chainMiniHint{
       margin-top:10px;
       font-size:12.5px;
@@ -560,7 +563,6 @@
       line-height:1.35;
     }
 
-    /* Toast */
     .toast{
       position:fixed;
       top: max(16px, env(safe-area-inset-top));
@@ -742,20 +744,17 @@
         <div class="modalTitle" id="modalTitle">Guardian Details</div>
         <button class="btn" id="modalClose" type="button">Close</button>
       </div>
-            <div class="modalBody" id="modalBody"></div>
+      <div class="modalBody" id="modalBody"></div>
     </div>
   </div>
 
   <script>
   /* =========================================================
-     GUARDIAN CHECK v2.3 — CLEAN SINGLE-FILE (FINAL)
-     Changes requested:
-     ✅ Keep ALL features/chains/buttons (Solana + ETH + BNB + Base)
-     ✅ Translate German UI + explanations to English (no removals)
-     ✅ Clean scan report export (structured + readable)
-     Notes:
-     - No chain buttons removed.
-     - No scanning logic removed.
+     GUARDIAN CHECK v2.4 — CLEAN SINGLE-FILE (UPDATED)
+     Fixes included in this update (your requests):
+     ✅ Chain logos now "original-looking" (Solana/BNB/Base improved SVG)
+     ✅ EVM "No signal" spam will be hidden/cleaned (implemented in later parts)
+     ✅ Export report will be a branded HTML report (implemented in later parts)
      ========================================================= */
 
   /* ===================== CONFIG ===================== */
@@ -763,7 +762,6 @@
     HELIUS_KEY: "b566a086-57d4-4433-8661-faed9ad07ba0",
 
     // Optional: Moralis for EVM logos/metadata:
-    // EVM_METADATA_KEY: "YOUR_MORALIS_KEY",
     EVM_METADATA_KEY: "",
 
     // Optional: Covalent GoldRush (holders for EVM)
@@ -783,31 +781,67 @@
       1:    ["https://ethereum.publicnode.com", "https://rpc.ankr.com/eth",  "https://eth.llamarpc.com", "https://cloudflare-eth.com"],
       56:   ["https://bsc.publicnode.com",      "https://rpc.ankr.com/bsc",  "https://bsc-dataseed.binance.org"],
       8453: ["https://base.publicnode.com",     "https://rpc.ankr.com/base", "https://mainnet.base.org"]
+    },
+
+    /* NEW (v2.4): Clean UI toggles (no features removed — just display rules) */
+    UI: {
+      // If false: PASS-only "No proxy signal / no pause function" rows won't be shown in EVM standard details.
+      SHOW_PASS_DETAILS_EVM: false,
+
+      // If false: metric cards that are "no signal" will be omitted (still computed internally).
+      SHOW_NO_SIGNAL_METRICS: false
+    },
+
+    /* NEW (v2.4): export options */
+    EXPORT: {
+      // "html" looks like your website (branded) — requested.
+      // "txt" keeps old text export available as fallback (still in code).
+      DEFAULT_FORMAT: "html"
     }
   };
 
-  /* ===================== ICONS ===================== */
+  /* ===================== ICONS (UPDATED: more original-looking) ===================== */
   const ICONS = {
-    sol: `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M6 7.5c.3-.4.7-.6 1.2-.6h14.3c.9 0 1.3 1.1.7 1.7l-2 2.2c-.3.4-.7.6-1.2.6H4.7c-.9 0-1.3-1.1-.7-1.7l2-2.2Z" fill="currentColor" opacity=".9"/>
-      <path d="M6 16.5c.3-.4.7-.6 1.2-.6h14.3c.9 0 1.3 1.1.7 1.7l-2 2.2c-.3.4-.7.6-1.2.6H4.7c-.9 0-1.3-1.1-.7-1.7l2-2.2Z" fill="currentColor" opacity=".6"/>
-      <path d="M18 12c-.3.4-.7.6-1.2.6H2.5c-.9 0-1.3-1.1-.7-1.7l2-2.2c.3-.4.7-.6 1.2-.6h14.3c.9 0 1.3 1.1.7 1.7l-2 2.2Z" fill="currentColor"/>
-    </svg>`,
-    eth: `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M12 2l6 10-6 3-6-3 6-10Z" fill="currentColor" opacity=".9"/>
-      <path d="M12 22l6-8-6 3-6-3 6 8Z" fill="currentColor" opacity=".7"/>
-    </svg>`,
-    bnb: `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M12 2l4 4-4 4-4-4 4-4Z" fill="currentColor"/>
-      <path d="M6 8l4 4-4 4-4-4 4-4Z" fill="currentColor" opacity=".8"/>
-      <path d="M18 8l4 4-4 4-4-4 4-4Z" fill="currentColor" opacity=".8"/>
-      <path d="M12 14l4 4-4 4-4-4 4-4Z" fill="currentColor" opacity=".6"/>
-      <path d="M12 10l2 2-2 2-2-2 2-2Z" fill="currentColor" opacity=".9"/>
-    </svg>`,
-    base: `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M12 4.5c4.4 0 8 3.6 8 8s-3.6 8-8 8-8-3.6-8-8 3.6-8 8-8Z" fill="currentColor" opacity=".9"/>
-      <path d="M10.2 9.2h3.1c1.9 0 3.5 1.5 3.5 3.4 0 1.9-1.6 3.4-3.5 3.4h-3.1V9.2Zm1.6 1.6v3.6h1.4c1 0 1.9-.8 1.9-1.8s-.8-1.8-1.9-1.8h-1.4Z" fill="#070711"/>
-    </svg>`
+    /* Solana: proper 3-bar look with gradient */
+    sol: `
+      <svg viewBox="0 0 64 64" aria-hidden="true">
+        <defs>
+          <linearGradient id="solg" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="${getComputedStyle(document.documentElement).getPropertyValue('--sol-g1').trim() || '#14F195'}"/>
+            <stop offset="0.5" stop-color="${getComputedStyle(document.documentElement).getPropertyValue('--sol-g2').trim() || '#00D1FF'}"/>
+            <stop offset="1" stop-color="${getComputedStyle(document.documentElement).getPropertyValue('--sol-g3').trim() || '#9945FF'}"/>
+          </linearGradient>
+        </defs>
+        <path d="M14 18c1.6-1.8 3.5-2.7 5.7-2.7h33.6c3.3 0 5 4 2.8 6.5l-6.1 6.8c-1.6 1.8-3.5 2.7-5.7 2.7H10.7c-3.3 0-5-4-2.8-6.5L14 18Z" fill="url(#solg)"/>
+        <path d="M14 38.9c1.6-1.8 3.5-2.7 5.7-2.7h33.6c3.3 0 5 4 2.8 6.5l-6.1 6.8c-1.6 1.8-3.5 2.7-5.7 2.7H10.7c-3.3 0-5-4-2.8-6.5L14 38.9Z" fill="url(#solg)" opacity=".7"/>
+        <path d="M50 28.5c-1.6 1.8-3.5 2.7-5.7 2.7H10.7c-3.3 0-5-4-2.8-6.5L14 17.9c1.6-1.8 3.5-2.7 5.7-2.7h33.6c3.3 0 5 4 2.8 6.5L50 28.5Z" fill="url(#solg)" opacity=".9"/>
+      </svg>
+    `,
+
+    /* Ethereum: clean diamond */
+    eth: `
+      <svg viewBox="0 0 64 64" aria-hidden="true">
+        <path d="M32 6l16 26-16 9-16-9L32 6Z" fill="currentColor" opacity=".95"/>
+        <path d="M32 58l16-22-16 9-16-9 16 22Z" fill="currentColor" opacity=".75"/>
+      </svg>
+    `,
+
+    /* BNB: official-like geometric mark in yellow */
+    bnb: `
+      <svg viewBox="0 0 64 64" aria-hidden="true">
+        <path fill="${getComputedStyle(document.documentElement).getPropertyValue('--bnb-yellow').trim() || '#F0B90B'}"
+          d="M32 6l8.6 8.6L32 23.2l-8.6-8.6L32 6Zm15.4 15.4L56 30l-8.6 8.6-8.6-8.6L47.4 21.4ZM16.6 21.4 25.2 30l-8.6 8.6L8 30l8.6-8.6ZM32 32.8l8.6 8.6L32 50l-8.6-8.6L32 32.8Zm0-6.9 5.1 5.1L32 36.2 26.9 31 32 25.9Z"/>
+      </svg>
+    `,
+
+    /* Base: blue circle with white "b" (clean) */
+    base: `
+      <svg viewBox="0 0 64 64" aria-hidden="true">
+        <circle cx="32" cy="32" r="26" fill="${getComputedStyle(document.documentElement).getPropertyValue('--base-blue').trim() || '#0052FF'}"/>
+        <path d="M27.5 22h8.1c6.2 0 11.2 5 11.2 11.1S41.8 44.2 35.6 44.2h-8.1V22Zm5.3 5.1v12h2.4c3.3 0 6-2.7 6-6s-2.7-6-6-6h-2.4Z"
+              fill="#fff"/>
+      </svg>
+    `
   };
 
   /* ===================== SAFE DOM HELPERS ===================== */
@@ -863,7 +897,6 @@
   /* ===================== MODAL + TOAST ===================== */
   function openModal(title, bodyHtml){
     setText("modalTitle", title || "Guardian Details");
-    // Only inject HTML generated by this script (not user input)
     setHTML("modalBody", bodyHtml || "");
     const w = qs("modalWrap");
     if(w){
@@ -918,7 +951,6 @@
   }
 
   /* ===================== DATA-HTML BUG FIX ===================== */
-  // We do NOT shove raw HTML into attributes. We store an ID and keep HTML in a Map.
   const INFO_MAP = new Map();
   function newInfoId(){ return "i_" + Math.random().toString(36).slice(2) + Date.now().toString(36); }
   function registerInfo(html){
@@ -995,7 +1027,19 @@
     const wrap = qs("metrics");
     if(!wrap) return;
     wrap.innerHTML = "";
-    for(const r of rows){
+
+    /* NEW (v2.4): optionally hide "no signal" cards to avoid spam */
+    const filtered = (rows || []).filter(r => {
+      if(CFG.UI.SHOW_NO_SIGNAL_METRICS) return true;
+      const v = String(r?.value ?? "").toLowerCase();
+      const b = String(r?.badge ?? "").toLowerCase();
+      if(v.includes("no signal")) return false;
+      if(v.includes("not found")) return false;
+      if(v.includes("unknown") && b.includes("pass")) return false;
+      return true;
+    });
+
+    for(const r of filtered){
       const d = document.createElement("div");
       d.className = "metric";
       const bar = (typeof r.barPct === "number")
@@ -1182,6 +1226,16 @@
     if(score >= 50) return {label:"OBSERVED", mode:"warn", title:"OBSERVED • Mixed Signals"};
     return {label:"FLAGGED", mode:"bad", title:"FLAGGED • High Risk"};
   }
+
+  /* =========================================================
+     PART 2/3
+     - Solana RPC logic (unchanged behavior)
+     - EVM logic (unchanged behavior)
+     - FIX: "Proxy / Upgradeability: No proxy signal found." + "Pause function not found."
+            will NOT be shown as standalone spam rows in the EVM "Token standard details"
+            when CFG.UI.SHOW_PASS_DETAILS_EVM === false.
+       (Nothing removed: checks still run, score still uses results, report still includes.)
+     ========================================================= */
 
   /* ===================== SOLANA RPC (Helius) ===================== */
   function HELIUS_RPC(){
@@ -2064,7 +2118,7 @@
       });
     }
 
-    // Pause control check (clean, no spam)
+    // Pause control check
     if(sig.paused === true){
       score -= 25;
       checks.push({
@@ -2151,8 +2205,13 @@
     }));
   }
 
+  /* ===================== EVM STANDARD DETAILS (FIXED DISPLAY) ===================== */
   function renderStandardEvm(sig){
-    renderList(qs("extList"), [
+    // We still compute everything.
+    // But we hide pure PASS "no signal" rows to avoid the spam you showed in screenshots,
+    // unless CFG.UI.SHOW_PASS_DETAILS_EVM === true.
+
+    const rows = [
       {
         t:"Token standard",
         sev:"ok",
@@ -2169,20 +2228,59 @@
         d: sig.proxy?.isProxy ? "Upgradeable proxy detected." : "No proxy signal found.",
         why: sig.proxy?.isProxy ? "EIP-1967 non-zero." : "EIP-1967 empty.",
         infoHtml: explain("Proxy / upgradeability", [
-          sig.proxy?.isProxy ? "WATCH: upgrades possible." : "PASS: no upgrade signal found (best-effort)."
+          sig.proxy?.isProxy
+            ? "WATCH: upgrades possible."
+            : "PASS: no upgrade signal found (best-effort).",
+          "Note: Some proxies are not EIP-1967 — always verify source code."
         ])
       },
       {
         t:"Transfer controls (Pause)",
         sev: sig.paused===true ? "bad" : (sig.paused===false ? "warn" : "ok"),
-        d: sig.paused===true ? "Currently paused." : (sig.paused===false ? "Pause function exists." : "Pause function not found."),
+        d: sig.paused===true ? "Currently paused." : (sig.paused===false ? "Pause function exists." : "No pause function found."),
         why: sig.paused===true ? "paused()==true." : (sig.paused===false ? "paused()==false." : "no paused()."),
         infoHtml: explain("Pause", [
-          sig.paused===true ? "FAIL: transfers likely blocked."
+          sig.paused===true
+            ? "FAIL: transfers likely blocked."
             : (sig.paused===false ? "WATCH: pausable." : "PASS: no pausable signal.")
         ])
       }
-    ], "Token Standard Details");
+    ];
+
+    let out = rows;
+
+    if(!CFG.UI.SHOW_PASS_DETAILS_EVM){
+      // hide the rows that are only "PASS + No signal" (your screenshots 3/4)
+      out = rows.filter(r => {
+        // Always keep token standard row
+        if(r.t === "Token standard") return true;
+
+        const d = String(r.d || "").toLowerCase();
+        const passNoSignal = (r.sev === "ok") && (
+          d.includes("no proxy signal") ||
+          d.includes("no pause function") ||
+          d.includes("not found")
+        );
+
+        return !passNoSignal;
+      });
+
+      // If both were hidden, still keep ONE short combined row so the section isn't empty.
+      if(out.length === 1){
+        out.push({
+          t:"Standard signals",
+          sev:"ok",
+          d:"No proxy / pause red flags detected (best-effort).",
+          why:"PASS signals were condensed to keep UI clean.",
+          infoHtml: explain("Standard signals", [
+            "To keep the UI clean, PASS-only 'no signal' items are condensed.",
+            "All checks still run and affect scoring/report."
+          ])
+        });
+      }
+    }
+
+    renderList(qs("extList"), out, "Token Standard Details");
   }
 
   function renderMetaEvm(metaMerged, metaOnChain){
@@ -2259,7 +2357,6 @@
     const whole = x / base;
     const frac  = x % base;
 
-    // 6 decimals preview
     const fracStr = frac.toString().padStart(d,"0").slice(0,6).replace(/0+$/,"");
     return (neg ? "-" : "") + whole.toString() + (fracStr ? ("." + fracStr) : "");
   }
@@ -2269,7 +2366,7 @@
       if(s === null || s === undefined) return null;
       if(typeof s === "string"){
         if(s.trim() === "") return null;
-        if(s.includes(".")) return BigInt(s.split(".")[0]); // drop decimals safely
+        if(s.includes(".")) return BigInt(s.split(".")[0]);
         return BigInt(s);
       }
       if(typeof s === "number"){
@@ -2299,10 +2396,8 @@
       const balBI = safeBigIntFromStr(balRaw);
 
       let pct = null;
-
-      // Preferred: compute % using on-chain totalSupply
       if(supplyBI && balBI !== null && supplyBI > 0n){
-        const p = Number((balBI * 10000n) / supplyBI) / 100; // 2dp
+        const p = Number((balBI * 10000n) / supplyBI) / 100;
         pct = Number.isFinite(p) ? p : null;
       }else{
         const p2 = Number(h?.percentage ?? h?.pct ?? h?.share ?? NaN);
@@ -2327,73 +2422,7 @@
     renderHoldersWithExplorer(items, activeChain);
   }
 
-  /* ===================== CLEAN REPORT EXPORT (REQUESTED) ===================== */
-  function buildReportText(scan){
-    const L = [];
-    const dt = new Date(scan.time);
-
-    L.push("$SOS Guardian Scan Report");
-    L.push("========================================");
-    L.push(`Time (UTC): ${dt.toISOString().replace("T"," ").replace("Z","")}`);
-    L.push(`Chain: ${scan.chain.name} (${scan.chain.id})`);
-    L.push(`Address: ${scan.address}`);
-    L.push(`Verdict: ${scan.verdict.title}`);
-    L.push(`Score: ${scan.score}/100`);
-    L.push("");
-
-    // Metrics summary if present (best-effort)
-    if(scan.metrics && Array.isArray(scan.metrics) && scan.metrics.length){
-      L.push("Key Metrics");
-      L.push("----------------------------------------");
-      for(const m of scan.metrics){
-        const label = m?.label || "Metric";
-        const value = m?.value ?? "—";
-        L.push(`- ${label}: ${value}`);
-      }
-      L.push("");
-    }
-
-    L.push("Checks");
-    L.push("----------------------------------------");
-    for(const c of scan.checks){
-      L.push(`- [${pillLabel(c.sev)}] ${c.t}: ${c.d}`);
-    }
-    L.push("");
-
-    L.push("Launch Readiness");
-    L.push("----------------------------------------");
-    for(const t of scan.todos){
-      L.push(`- [${pillLabel(t.sev)}] ${t.t}: ${t.d}`);
-    }
-
-    L.push("");
-    L.push("Notes");
-    L.push("----------------------------------------");
-    L.push("- This report is heuristic and best-effort. Always verify liquidity, official links, and contract code.");
-    L.push("- PASS/WATCH/FAIL applies per-check only. It is not a guarantee of safety.");
-    return L.join("\n");
-  }
-
-  function downloadText(filename, text){
-    const blob = new Blob([text], {type:"text/plain;charset=utf-8"});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-  }
-
-  function enableExport(){
-    const b = qs("btnExport");
-    if(!b) return;
-    b.disabled = false;
-    b.textContent = "Download Scan Report";
-  }
-
-  /* ===================== MAIN SCAN FLOW ===================== */
+  /* ===================== MAIN SCAN FLOW (same, just calls updated display) ===================== */
   async function runScan(){
     if(SCANNING) return;
     SCANNING = true;
@@ -2405,7 +2434,6 @@
     setStatus("");
     clearUI();
 
-    // show address immediately
     setText("mintShort", addr ? shortAddr(addr) : "—");
 
     try{
@@ -2439,7 +2467,6 @@
         const extListRaw = parseExtensionsFromParsed(mintParsed.rawParsed);
         const extReadable = Array.isArray(extListRaw);
 
-        // Top20 % based on largest accounts (best-effort)
         let top20 = 0;
         if(Number.isFinite(uiSupply) && uiSupply > 0 && Array.isArray(largest)){
           top20 = largest.slice(0,20).reduce((acc, x) => acc + (Number(x?.uiAmount || 0) / uiSupply * 100), 0);
@@ -2501,10 +2528,9 @@
           metrics: metricRows
         };
 
-        enableExport();
+        enableExport(); /* defined in Part 3 (export system) */
         setStatus("Scan complete.");
       }else{
-        // EVM
         if(!looksEvmAddress(addr)) throw new Error("Invalid EVM address. Must be 0x + 40 hex chars.");
         const chainId = activeChain.chainId;
 
@@ -2515,7 +2541,6 @@
         setStatus("Reading ERC-20 on-chain metadata…");
         const metaOnChain = await getErc20Meta(chainId, addr);
 
-        // Optional provider logo/name if on-chain missing
         setStatus("Fetching optional metadata provider…");
         const metaApi = await getEvmMetaViaApi(chainId, addr);
 
@@ -2564,10 +2589,12 @@
         renderList(qs("checksList"), checks, "Guardian Checks");
         const todos = todoEvm(sig);
         renderList(qs("todoList"), todos, "Launch Readiness");
+
+        // FIXED DISPLAY HERE:
         renderStandardEvm(sig);
+
         renderMetaEvm(metaMerged, metaOnChain);
 
-        // holders (optional)
         setStatus("Fetching top holders (indexer)…");
         await renderHoldersEvm(chainId, addr, metaOnChain);
 
@@ -2582,7 +2609,7 @@
           metrics: metricRows
         };
 
-        enableExport();
+        enableExport(); /* defined in Part 3 (export system) */
         setStatus("Scan complete.");
       }
     }catch(err){
@@ -2593,6 +2620,477 @@
     }finally{
       SCANNING = false;
     }
+  }
+
+  /* ===================== BRANDED REPORT EXPORT (HTML, CLEAN) ===================== */
+  function fileSafe(s){
+    return String(s || "").replace(/[^a-zA-Z0-9_\-]/g, "").slice(0, 40) || "scan";
+  }
+
+  function chainNiceName(chain){
+    return chain?.stamp ? `${chain.name} • ${chain.stamp}` : `${chain?.name || "Chain"} (${chain?.id || "-"})`;
+  }
+
+  function sevLabel(sev){
+    return sev === "ok" ? "PASS" : (sev === "bad" ? "FAIL" : "WATCH");
+  }
+
+  function sevColor(sev){
+    // used only inside exported HTML report
+    if(sev === "ok")  return "linear-gradient(90deg, #14F195, #00D1FF, #9945FF)";
+    if(sev === "bad") return "rgba(255,120,150,.18)";
+    return "rgba(255,220,130,.14)";
+  }
+
+  function sevBorder(sev){
+    if(sev === "ok")  return "rgba(255,255,255,.10)";
+    if(sev === "bad") return "rgba(255,120,150,.35)";
+    return "rgba(255,220,130,.35)";
+  }
+
+  function escAttr(x){
+    return String(x ?? "")
+      .replaceAll("&","&amp;")
+      .replaceAll("<","&lt;")
+      .replaceAll(">","&gt;")
+      .replaceAll('"',"&quot;");
+  }
+
+  function buildBrandedReportHtml(scan){
+    const dt = new Date(scan.time);
+    const utc = dt.toISOString().replace("T"," ").replace("Z","");
+    const chainLine = chainNiceName(scan.chain);
+
+    // resolve logo (same path as your site; user can adjust)
+    // If your logo is hosted elsewhere, set CFG.UI.REPORT_LOGO_URL to an absolute URL in Part 1.
+    const logoUrl = (CFG?.UI?.REPORT_LOGO_URL && String(CFG.UI.REPORT_LOGO_URL).trim())
+      ? String(CFG.UI.REPORT_LOGO_URL).trim()
+      : "/assets/logo.png";
+
+    const metricsHtml = (Array.isArray(scan.metrics) ? scan.metrics : []).map(m => `
+      <div class="metric">
+        <div class="k">
+          <span>${escAttr(m.label || "Metric")}</span>
+          <span class="chip">${escAttr(m.badge || m.value || "—")}</span>
+        </div>
+        <div class="v">${escAttr(m.value || "—")}</div>
+        <div class="mini">${escAttr(m.mini || "")}</div>
+      </div>
+    `).join("");
+
+    const checksHtml = (Array.isArray(scan.checks) ? scan.checks : []).map(c => `
+      <div class="rowCard" style="border-color:${sevBorder(c.sev)}">
+        <div class="left">
+          <div class="t">${escAttr(c.t || "Check")}</div>
+          <div class="d">${escAttr(c.d || "—")}</div>
+        </div>
+        <div class="right">
+          <div class="pill ${c.sev === "ok" ? "ok" : (c.sev === "bad" ? "bad" : "warn")}">
+            ${sevLabel(c.sev)}
+          </div>
+        </div>
+      </div>
+    `).join("");
+
+    const todosHtml = (Array.isArray(scan.todos) ? scan.todos : []).map(t => `
+      <div class="rowCard" style="border-color:${sevBorder(t.sev)}">
+        <div class="left">
+          <div class="t">${escAttr(t.t || "Action")}</div>
+          <div class="d">${escAttr(t.d || "—")}</div>
+        </div>
+        <div class="right">
+          <div class="pill ${t.sev === "ok" ? "ok" : (t.sev === "bad" ? "bad" : "warn")}">
+            ${sevLabel(t.sev)}
+          </div>
+        </div>
+      </div>
+    `).join("");
+
+    const verdictMode = scan?.verdict?.mode || "good";
+    const verdictText = scan?.verdict?.title || "Guardian Report";
+    const verdictLabel = scan?.verdict?.label || "APPROVED";
+
+    const summaryLine = (qs("summary")?.textContent || "").trim() || "";
+
+    return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+  <meta name="theme-color" content="#070711"/>
+  <title>$SOS Guardian Scan Report</title>
+  <style>
+    :root{
+      --bg:#070711;
+      --panel: rgba(255,255,255,.06);
+      --stroke: rgba(255,255,255,.12);
+      --text: rgba(255,255,255,.92);
+      --muted: rgba(255,255,255,.70);
+      --g:#14F195;
+      --c:#00D1FF;
+      --p:#9945FF;
+      --radius: 22px;
+      --shadow: 0 10px 30px rgba(0,0,0,.35);
+      --max: 980px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      color:var(--text);
+      font: 15.5px/1.55 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      background: var(--bg);
+      overflow-x:hidden;
+    }
+    body::before{
+      content:"";
+      position:fixed;
+      inset:0;
+      z-index:-1;
+      pointer-events:none;
+      background:
+        radial-gradient(1200px 700px at 10% 5%, rgba(153,69,255,.22), transparent 60%),
+        radial-gradient(1000px 650px at 90% 10%, rgba(20,241,149,.18), transparent 55%),
+        radial-gradient(900px 600px at 70% 85%, rgba(0,209,255,.14), transparent 55%),
+        var(--bg);
+    }
+    .wrap{max-width:var(--max); margin:0 auto; padding:22px 16px 40px;}
+    .card{
+      background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.05));
+      border: 1px solid rgba(255,255,255,.10);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+    }
+    .inner{padding:18px}
+    .top{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:14px;
+      flex-wrap:wrap;
+    }
+    .brand{
+      display:flex;
+      align-items:center;
+      gap:12px;
+      min-width: 240px;
+    }
+    .brand img{width:44px;height:44px;object-fit:contain;filter: drop-shadow(0 10px 25px rgba(0,0,0,.45));}
+    .bt{display:flex; flex-direction:column; line-height:1.05}
+    .bt .t{font-weight:1000; letter-spacing:-.2px; font-size:16px}
+    .bt .s{font-weight:850; color:var(--muted); font-size:12.5px}
+    .stamp{
+      font-weight:1000;
+      font-size:12px;
+      letter-spacing: .45px;
+      text-transform:uppercase;
+      color: rgba(255,255,255,.76);
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      border-radius: 999px;
+      padding:7px 10px;
+      white-space:nowrap;
+    }
+    .h1{
+      margin:12px 0 0;
+      font-weight:1000;
+      letter-spacing:-1px;
+      line-height:1.05;
+      font-size: 36px;
+    }
+    .gradText{
+      background: linear-gradient(90deg, var(--g), var(--c), var(--p));
+      -webkit-background-clip:text;
+      background-clip:text;
+      color:transparent;
+    }
+    .sub{margin-top:8px; color: rgba(255,255,255,.76); font-weight:850}
+    .grid{
+      margin-top:14px;
+      display:grid;
+      grid-template-columns: 1fr;
+      gap:12px;
+    }
+    .panel{
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.18);
+      border-radius: 18px;
+      padding:14px;
+    }
+    .krow{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:12px;
+      flex-wrap:wrap;
+    }
+    .mono{font-family: ui-monospace, Menlo, Consolas, monospace; font-weight:900; color: rgba(255,255,255,.86); overflow-wrap:anywhere;}
+    .badge{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      padding:7px 11px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      font-weight:1000;
+      font-size:12px;
+      white-space:nowrap;
+    }
+    .badge.good{border:0; background: linear-gradient(90deg, var(--g), var(--c), var(--p)); color:#061012}
+    .badge.warn{border-color: rgba(255,220,130,.35); background: rgba(255,220,130,.08); color: rgba(255,240,210,.92)}
+    .badge.bad{border-color: rgba(255,120,150,.35); background: rgba(255,120,150,.10); color: rgba(255,190,205,.95)}
+    .sectionTitle{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-bottom:10px;
+    }
+    .sectionTitle .l{font-weight:1000; letter-spacing:.35px; font-size:12px; text-transform:uppercase; color: rgba(255,255,255,.72);}
+    .metricGrid{
+      display:grid;
+      grid-template-columns: repeat(2, minmax(0,1fr));
+      gap:10px;
+    }
+    @media (max-width:720px){ .metricGrid{grid-template-columns:1fr;} }
+    .metric{
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.04);
+      border-radius: 16px;
+      padding:12px 12px;
+    }
+    .metric .k{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      color: rgba(255,255,255,.70);
+      font-weight:1000;
+      font-size:12px;
+      letter-spacing:.45px;
+      text-transform:uppercase;
+    }
+    .metric .v{margin-top:8px; font-weight:1000; font-size:20px;}
+    .metric .mini{margin-top:6px; font-weight:850; font-size:12px; color: rgba(255,255,255,.62);}
+    .chip{
+      padding:6px 10px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      font-weight:1000;
+      font-size:12px;
+    }
+    .rowCard{
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.14);
+      border-radius: 16px;
+      padding:12px 12px;
+      display:flex;
+      gap:10px;
+      align-items:flex-start;
+      justify-content:space-between;
+    }
+    .rowCard .t{font-weight:1000; font-size:13px; letter-spacing:.2px;}
+    .rowCard .d{margin-top:4px; color: rgba(255,255,255,.70); font-weight:750; font-size:12.5px; line-height:1.35;}
+    .pill{
+      padding:6px 10px;
+      border-radius: 999px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.06);
+      font-weight:1000;
+      font-size:12px;
+      white-space:nowrap;
+      user-select:none;
+    }
+    .pill.ok{border:0; background: linear-gradient(90deg, var(--g), var(--c), var(--p)); color:#061012}
+    .pill.warn{border-color: rgba(255,220,130,.35); background: rgba(255,220,130,.08); color: rgba(255,240,210,.92)}
+    .pill.bad{border-color: rgba(255,120,150,.35); background: rgba(255,120,150,.10); color: rgba(255,190,205,.95)}
+    .footer{
+      margin-top:14px;
+      text-align:center;
+      color: rgba(255,255,255,.45);
+      font-weight:650;
+      font-size:12px;
+    }
+    .printHint{
+      margin-top:10px;
+      color: rgba(255,255,255,.60);
+      font-weight:850;
+      font-size:12px;
+      text-align:center;
+    }
+    @media print{
+      body::before{display:none}
+      .printHint{display:none}
+      .wrap{padding:0}
+      .card{box-shadow:none}
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <div class="inner">
+        <div class="top">
+          <div class="brand">
+            <img src="${escAttr(logoUrl)}" alt="$SOS" onerror="this.style.display='none'">
+            <div class="bt">
+              <div class="t">$SOS</div>
+              <div class="s">Guardian Scan Report</div>
+            </div>
+          </div>
+          <div style="display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end;">
+            <div class="stamp">${escAttr(chainLine)}</div>
+            <div class="stamp">${escAttr(utc)} UTC</div>
+          </div>
+        </div>
+
+        <div class="h1">
+          <span class="gradText">${escAttr(verdictText)}</span>
+        </div>
+
+        <div class="sub">
+          Address: <span class="mono">${escAttr(scan.address)}</span>
+        </div>
+
+        <div style="margin-top:12px; display:flex; gap:10px; flex-wrap:wrap;">
+          <span class="badge ${verdictMode === "good" ? "good" : (verdictMode === "bad" ? "bad" : "warn")}">${escAttr(verdictLabel)}</span>
+          <span class="badge good">${escAttr(scan.score)}/100</span>
+        </div>
+
+        ${summaryLine ? `<div class="sub" style="margin-top:10px;">${escAttr(summaryLine)}</div>` : ""}
+
+        <div class="grid">
+          <div class="panel">
+            <div class="sectionTitle">
+              <div class="l">Key Metrics</div>
+              <div class="l">On-Chain / Best-Effort</div>
+            </div>
+            <div class="metricGrid">
+              ${metricsHtml || `<div class="metric"><div class="k"><span>Metrics</span><span class="chip">—</span></div><div class="v">—</div><div class="mini">No metrics available.</div></div>`}
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="sectionTitle">
+              <div class="l">Checks</div>
+              <div class="l">PASS / WATCH / FAIL</div>
+            </div>
+            <div style="display:grid; gap:10px;">
+              ${checksHtml || `<div class="rowCard"><div><div class="t">No checks</div><div class="d">No check data available.</div></div><div class="pill warn">WATCH</div></div>`}
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="sectionTitle">
+              <div class="l">Launch Readiness</div>
+              <div class="l">Action List</div>
+            </div>
+            <div style="display:grid; gap:10px;">
+              ${todosHtml || `<div class="rowCard"><div><div class="t">No checklist</div><div class="d">No action list available.</div></div><div class="pill warn">WATCH</div></div>`}
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="sectionTitle">
+              <div class="l">Notes</div>
+              <div class="l">$SOS Guardian System</div>
+            </div>
+            <div style="color: rgba(255,255,255,.74); font-weight:850; font-size:12.5px; line-height:1.45;">
+              <div style="margin:6px 0;">• This report is heuristic and best-effort. Always verify liquidity, official links, and contract code.</div>
+              <div style="margin:6px 0;">• PASS/WATCH/FAIL applies per-check only. It is not a guarantee of safety.</div>
+              <div style="margin:6px 0;">• Tip: Use your browser “Print” → “Save as PDF” for a clean PDF export.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="printHint">Tip: Press Ctrl+P / Cmd+P → Save as PDF (keeps this design).</div>
+        <div class="footer">© ${new Date().getFullYear()} $SOS • Guardian Scan</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>`;
+  }
+
+  function downloadHtml(filename, html){
+    const blob = new Blob([html], { type:"text/html;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  // Keep TXT export too (not removed) — but now we prefer HTML.
+  function buildReportText(scan){
+    const L = [];
+    const dt = new Date(scan.time);
+
+    L.push("$SOS Guardian Scan Report");
+    L.push("========================================");
+    L.push(`Time (UTC): ${dt.toISOString().replace("T"," ").replace("Z","")}`);
+    L.push(`Chain: ${scan.chain.name} (${scan.chain.id})`);
+    L.push(`Address: ${scan.address}`);
+    L.push(`Verdict: ${scan.verdict.title}`);
+    L.push(`Score: ${scan.score}/100`);
+    L.push("");
+
+    if(scan.metrics && Array.isArray(scan.metrics) && scan.metrics.length){
+      L.push("Key Metrics");
+      L.push("----------------------------------------");
+      for(const m of scan.metrics){
+        const label = m?.label || "Metric";
+        const value = m?.value ?? "—";
+        L.push(`- ${label}: ${value}`);
+      }
+      L.push("");
+    }
+
+    L.push("Checks");
+    L.push("----------------------------------------");
+    for(const c of scan.checks){
+      L.push(`- [${pillLabel(c.sev)}] ${c.t}: ${c.d}`);
+    }
+    L.push("");
+
+    L.push("Launch Readiness");
+    L.push("----------------------------------------");
+    for(const t of scan.todos){
+      L.push(`- [${pillLabel(t.sev)}] ${t.t}: ${t.d}`);
+    }
+
+    L.push("");
+    L.push("Notes");
+    L.push("----------------------------------------");
+    L.push("- This report is heuristic and best-effort. Always verify liquidity, official links, and contract code.");
+    L.push("- PASS/WATCH/FAIL applies per-check only. It is not a guarantee of safety.");
+    return L.join("\n");
+  }
+
+  function downloadText(filename, text){
+    const blob = new Blob([text], {type:"text/plain;charset=utf-8"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  function enableExport(){
+    const b = qs("btnExport");
+    if(!b) return;
+    b.disabled = false;
+    b.textContent = "Download Scan Report";
   }
 
   /* ===================== EVENTS (modal + buttons) ===================== */
@@ -2609,7 +3107,6 @@
       }
     });
 
-    // keyboard open for pills
     document.addEventListener("keydown", (e) => {
       if(e.key !== "Enter" && e.key !== " ") return;
       const a = document.activeElement;
@@ -2642,9 +3139,18 @@
 
     on("btnExport", "click", () => {
       if(!LAST_SCAN) return;
-      const safeAddr = (LAST_SCAN.address || "").replace(/[^a-zA-Z0-9]/g,"").slice(0,14) || "addr";
-      const name = `guardian_scan_${LAST_SCAN.chain.id}_${safeAddr}.txt`;
-      downloadText(name, buildReportText(LAST_SCAN));
+
+      // Preferred: branded HTML (looks like your site)
+      const safeAddr = fileSafe((LAST_SCAN.address || "").replace(/^0x/i,"").slice(0, 16));
+      const htmlName = `guardian_scan_${LAST_SCAN.chain.id}_${safeAddr}.html`;
+      const html = buildBrandedReportHtml(LAST_SCAN);
+      downloadHtml(htmlName, html);
+
+      // Optional fallback TXT (kept, not removed) — enable if you want:
+      if(CFG?.UI?.EXPORT_TXT_FALLBACK){
+        const txtName = `guardian_scan_${LAST_SCAN.chain.id}_${safeAddr}.txt`;
+        downloadText(txtName, buildReportText(LAST_SCAN));
+      }
     });
 
     // URL chain param
@@ -2660,6 +3166,7 @@
   }
 
   init();
+
   </script>
 
 </body>
