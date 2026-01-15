@@ -876,15 +876,27 @@
     }
 
     function explainStatus(sev, why){
-      const head = sev==="ok" ? "PASS" : sev==="bad" ? "FAIL" : "WATCH";
-      const base = sev==="ok"
-        ? ["Bedeutung: Kein klares Red-Flag bei diesem Check.", "Wichtig: Das garantiert nichts – nur dieses Item ist unauffällig."]
-        : sev==="bad"
-          ? ["Bedeutung: Starkes Risiko-Signal bei diesem Check.", "Wichtig: Kann Käufer blockieren, ausnutzen oder Supply manipulieren."]
-          : ["Bedeutung: Misch-/Unsicherheits-Signal oder potenziell missbrauchbare Funktion.", "Wichtig: Muss verstanden & verifiziert werden."];
-      const extra = why ? ["Warum hier: " + why] : [];
-      return explain(head, [...base, ...extra]);
-    }
+  const head = sev==="ok" ? "PASS" : sev==="bad" ? "FAIL" : "WATCH";
+
+  const base =
+    sev==="ok"
+      ? [
+          "What this means: We didn't detect a clear red flag for this specific check.",
+          "Important: This does NOT guarantee safety — it only means this one item looks clean."
+        ]
+      : sev==="bad"
+        ? [
+            "What this means: Strong risk signal detected for this check.",
+            "Important: This can block selling/transfers, change supply, or enable admin abuse."
+          ]
+        : [
+            "What this means: Unclear or potentially abusable feature detected.",
+            "Important: You should understand it before buying — verify with the team/docs."
+          ];
+
+  const extra = why ? ["Why this matters here: " + why] : [];
+  return explain(head, [...base, ...extra]);
+}
 
     /* ===================== DATA-HTML BUG FIX ===================== */
     // We DON'T shove raw HTML into attributes. We store an ID and keep HTML in a Map.
@@ -1155,8 +1167,7 @@
       const hint = (activeChain.kind === "solana")
         ? "Solana: Mint Authorities + Freeze + Largest Holders (RPC) + Metadata (Helius)."
         : (CFG.GOLDRUSH_API_KEY
-            ? "EVM: ERC-20 Calls + Owner/Proxy/Controls. Holders via GoldRush (Indexer) + % aus Supply berechnet."
-            : "EVM: ERC-20 Calls + Owner/Proxy/Controls. Holders brauchen Indexer (GoldRush).");
+           : "EVM: ERC-20 Calls + Owner/Proxy/Controls. Holders brauchen Indexer (GoldRush).");
 
       setText("chainHint", hint);
 
