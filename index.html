@@ -73,7 +73,49 @@
       border-radius: 14px;
     }
 
-    /* ===== HEADER ===== */
+    /* ===== BASE UI ===== */
+    .btn{
+      display:inline-flex; align-items:center; justify-content:center;
+      padding:9px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      color: rgba(255,255,255,.90);
+      font-weight:900;
+      font-size:13px;
+      transition: transform .15s ease, background .15s ease, box-shadow .15s ease, border-color .15s ease;
+      white-space: nowrap;
+      user-select:none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .btn:hover{background: rgba(255,255,255,.10); transform: translateY(-1px)}
+    .btn:active{transform: translateY(0px) scale(.99)}
+    .btn.primary,
+    .btn.grad{
+      border: 0;
+      background: linear-gradient(90deg, var(--g), var(--c), var(--p));
+      color: #061012;
+      box-shadow: 0 14px 28px rgba(0,0,0,.28);
+    }
+    .btn.ghost{ background: rgba(255,255,255,.06); }
+
+    .card{
+      background: linear-gradient(180deg, rgba(255,255,255,.075), rgba(255,255,255,.045));
+      border: 1px solid rgba(255,255,255,.11);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow2);
+      position: relative;
+    }
+    .cardInner{padding:28px}
+
+    section{padding:34px 0}
+
+    .gradText{
+      background: linear-gradient(90deg, var(--g), var(--c), var(--p));
+      -webkit-background-clip:text; background-clip:text; color:transparent;
+    }
+
+    /* ===== HEADER (CLEAN, MOBILE FIX) ===== */
     .header{
       position:sticky; top:0; z-index:20;
       backdrop-filter: blur(14px);
@@ -81,10 +123,13 @@
       border-bottom: 1px solid rgba(255,255,255,.08);
     }
 
-    .headerTop{
-      display:flex; align-items:center; justify-content:space-between;
+    /* Desktop layout: brand | nav | actions */
+    .headerRow{
+      display:grid;
+      grid-template-columns: auto 1fr auto;
+      align-items:center;
       gap:12px;
-      padding:12px 0 10px;
+      padding:12px 0;
     }
 
     .brand{
@@ -103,52 +148,20 @@
     .nav{
       display:flex; align-items:center; justify-content:center;
       gap:10px;
-      flex: 1;
       min-width: 0;
-      overflow: hidden;
+      overflow:hidden;
     }
 
-    .btn{
-      display:inline-flex; align-items:center; justify-content:center;
-      padding:9px 12px;
-      border-radius: 999px;
-      border: 1px solid rgba(255,255,255,.14);
-      background: rgba(255,255,255,.06);
-      color: rgba(255,255,255,.90);
-      font-weight:900;
-      font-size:13px;
-      transition: transform .15s ease, background .15s ease, box-shadow .15s ease;
-      white-space: nowrap;
-      flex: 0 0 auto;
-      user-select:none;
-      -webkit-tap-highlight-color: transparent;
-    }
-    .btn:hover{background: rgba(255,255,255,.10); transform: translateY(-1px)}
-    .btn:active{transform: translateY(0px) scale(.99)}
-
-    .btn.primary,
-    .btn.grad{
-      border: 0;
-      background: linear-gradient(90deg, var(--g), var(--c), var(--p));
-      color: #061012;
-      box-shadow: 0 14px 28px rgba(0,0,0,.28);
-    }
-
-    /* SECOND BAR for external links */
-    .headerLinksRow{
-      padding: 0 0 12px;
-      border-top: 1px solid rgba(255,255,255,.06);
-    }
-    .headerLinks{
+    .headerActions{
       display:flex;
-      gap:10px;
-      justify-content:flex-end;
       align-items:center;
-      flex-wrap:wrap;
-      padding-top:10px;
+      justify-content:flex-end;
+      gap:10px;
+      min-width: 260px;
+      white-space: nowrap;
     }
 
-    /* ===== HEADER MENU (⋯) ===== */
+    /* Collapsed actions into a clean menu */
     .menu{ position:relative; display:inline-flex; }
     .menuBtn{
       width:44px;
@@ -156,7 +169,6 @@
       letter-spacing:2px;
       font-weight:1000;
     }
-
     .menuPop{
       position:absolute;
       top: calc(100% + 10px);
@@ -176,9 +188,11 @@
     .menuItem{
       display:flex;
       align-items:center;
+      justify-content:space-between;
+      gap:10px;
       padding:10px 12px;
       border-radius: 12px;
-      font-weight: 900;
+      font-weight: 950;
       color: rgba(255,255,255,.88);
       background: transparent;
       transition: .12s ease;
@@ -187,17 +201,18 @@
       background: rgba(255,255,255,.08);
       transform: translateY(-1px);
     }
-
-    /* ===== SECTIONS ===== */
-    section{padding:34px 0}
-    .card{
-      background: linear-gradient(180deg, rgba(255,255,255,.075), rgba(255,255,255,.045));
-      border: 1px solid rgba(255,255,255,.11);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow2);
-      position: relative;
+    .menuBadge{
+      font-size:11px;
+      font-weight:950;
+      padding:6px 9px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.06);
+      color: rgba(255,255,255,.70);
     }
-    .cardInner{padding:28px}
+
+    /* Optional: a compact row of 2 primary tools on desktop */
+    .toolLinksDesktop{ display:flex; gap:10px; align-items:center; }
 
     /* ===== HERO ===== */
     .hero{padding-top:22px}
@@ -241,10 +256,6 @@
       line-height: 1.02;
       font-size: clamp(56px, 7.2vw, 92px);
     }
-    .gradText{
-      background: linear-gradient(90deg, var(--g), var(--c), var(--p));
-      -webkit-background-clip:text; background-clip:text; color:transparent;
-    }
     .heroSubName{
       margin: 10px 0 0;
       font-weight: 950;
@@ -268,9 +279,11 @@
       display:flex; gap:12px; justify-content:center; flex-wrap:wrap;
     }
 
-    /* hero contract copy */
-    .heroCopyWrap{ margin-top: 16px; display:flex; justify-content:center; }
-    .heroCopy{ width: min(860px, 100%); text-align:left; }
+    /* Hero contract (copy) */
+    .heroContract{
+      margin: 18px auto 0;
+      max-width: 860px;
+    }
 
     /* ===== WHAT IS ===== */
     .twoCol{
@@ -321,7 +334,7 @@
     .stat .v{margin-top:8px; font-weight:1000; font-size:20px}
     .stat .v .grad{background: linear-gradient(90deg, var(--g), var(--c), var(--p)); -webkit-background-clip:text; background-clip:text; color:transparent;}
 
-    /* ✅ Clickable copy field */
+    /* ===== COPY BOX (shared) ===== */
     .copyBox{
       display:flex;
       align-items:center;
@@ -411,7 +424,7 @@
       text-align:center;
     }
 
-    /* ===== TOOLS (PREMIUM) ===== */
+    /* ===== TOOLS (PREMIUM) — FIXED FOR MOBILE (NOT LONG) ===== */
     .toolsGrid{
       display:grid;
       grid-template-columns: 1fr 1fr;
@@ -460,9 +473,10 @@
       pointer-events:none;
     }
     .dnaCard::before{ background-image: url("assets/dnalogo.png"); }
-    .guardianCard::before{ background-image: url("assets/guardian.png"); } /* ✅ requested name */
+    /* IMPORTANT: guardian watermark name is guardian.png */
+    .guardianCard::before{ background-image: url("assets/guardian.png"); }
 
-    .toolInner{ position:relative; z-index:1; padding:22px; } /* slightly tighter */
+    .toolInner{ position:relative; z-index:1; padding:24px; }
 
     .toolTop{
       display:flex;
@@ -499,11 +513,11 @@
       padding:7px 10px;
     }
 
-    /* ✅ make Tools content feel less “stretched” */
+    /* Desktop tools grid */
     .toolGrid{
       display:grid;
-      grid-template-columns: 1fr 340px; /* tighter box column */
-      gap:14px;
+      grid-template-columns: 1.05fr .95fr;
+      gap:16px;
       align-items:start;
     }
 
@@ -519,7 +533,7 @@
       margin-top:10px;
       color: rgba(255,255,255,.76);
       font-weight:700;
-      max-width: 52ch;          /* ✅ prevents ultra-long lines */
+      max-width: 62ch;
     }
 
     .featureChips{
@@ -527,7 +541,6 @@
       display:flex;
       flex-wrap:wrap;
       gap:10px;
-      max-width: 52ch;          /* ✅ keeps chips aligned */
     }
 
     .chip{
@@ -567,12 +580,11 @@
     .toolList li{ margin:8px 0; }
 
     .toolCTA{
-      margin-top:16px;
+      margin-top:14px;
       display:flex;
       gap:12px;
       flex-wrap:wrap;
       align-items:center;
-      max-width: 52ch; /* ✅ aligns with lead width */
     }
 
     .toolMini{
@@ -581,33 +593,83 @@
       font-size:13px;
     }
 
-    /* ===== RESPONSIVE ===== */
+    /* ===== RESPONSIVE (THE IMPORTANT FIXES) ===== */
+
+    /* Tablet: allow header to wrap nicely */
     @media (max-width: 980px){
-      .headerTop{flex-wrap:wrap}
-      .nav{
-        order:3; width:100%;
-        justify-content:flex-start;
-        flex-wrap:wrap;
-        overflow:visible
+      .headerRow{
+        grid-template-columns: 1fr;
+        gap:10px;
       }
-      .menu{order:2}
-      .headerLinks{justify-content:flex-start}
+      .nav{
+        justify-content:flex-start;
+        overflow:auto;
+        -webkit-overflow-scrolling: touch;
+        padding-bottom:2px;
+      }
+      .nav::-webkit-scrollbar{height:0}
+      .headerActions{
+        justify-content:flex-start;
+        min-width: 0;
+        flex-wrap:wrap;
+      }
+      .toolLinksDesktop{ width:100%; justify-content:flex-start; flex-wrap:wrap; }
     }
 
+    /* Mobile: FIX THE "COMPLETELY BROKEN" HEADER + TOOLS */
     @media (max-width: 860px){
       section{padding:28px 0}
-      .twoCol{grid-template-columns: 1fr}
-      .grid3{grid-template-columns: 1fr}
-      .steps{grid-template-columns: 1fr}
-      .toolsGrid{grid-template-columns:1fr}
-      .toolGrid{grid-template-columns:1fr}
 
-      .heroCard{padding:36px 18px}
+      /* Brand stays left, nav becomes a scroll row, actions collapse to menu */
+      .brand{ min-width: 0; }
+      .brandText .name{ font-size:13px; }
+
+      .nav{
+        gap:10px;
+        justify-content:flex-start;
+        overflow:auto;
+        white-space:nowrap;
+        padding-bottom:2px;
+      }
+
+      /* Hide the big action buttons on mobile; keep only a menu */
+      .toolLinksDesktop{ display:none; }
+
+      /* HERO spacing */
+      .heroCard{padding:34px 16px}
       .heroCard::before{
         background-position: 50% 28%;
         background-size: min(700px, 132%);
         opacity: .065;
       }
+
+      /* 2col -> 1col */
+      .twoCol{grid-template-columns: 1fr}
+      .grid3{grid-template-columns: 1fr}
+      .steps{grid-template-columns: 1fr}
+      .toolsGrid{grid-template-columns:1fr}
+
+      /* TOOLS: make them compact and NOT long */
+      .toolInner{ padding:18px; }
+      .toolGrid{ grid-template-columns: 1fr; gap:14px; }
+      .toolH{ font-size: clamp(26px, 7vw, 38px); }
+      .toolLead{
+        max-width: none;
+        display:-webkit-box;
+        -webkit-line-clamp: 5;      /* ✅ keep it compact */
+        -webkit-box-orient: vertical;
+        overflow:hidden;
+      }
+      .featureChips{ gap:8px; }
+      .chip{ font-size:12px; padding:8px 10px; }
+
+      .toolList{
+        display:grid;               /* ✅ compact list */
+        grid-template-columns: 1fr;
+        gap:8px;
+        padding-left: 16px;
+      }
+      .toolList li{ margin:0; }
 
       .dnaCard::before,
       .guardianCard::before{
@@ -616,19 +678,18 @@
         opacity: .075;
       }
 
-      /* ✅ on mobile: hide 2nd bar, use ⋯ menu */
-      .headerLinksRow{ display:none; }
-    }
-
-    @media (min-width: 861px){
-      /* ✅ on desktop: show 2nd bar, hide ⋯ menu */
-      .menu{ display:none; }
+      /* Copy boxes on mobile: stack nicely */
+      .copyBox{
+        flex-direction: column;
+        align-items:flex-start;
+      }
+      .copyHint{ align-self:flex-end; }
     }
 
     @media (max-width: 420px){
       .btn{padding:9px 11px}
-      .toolInner{padding:18px}
       .cardInner{padding:20px}
+      .menuPop{ min-width: 200px; }
     }
   </style>
 </head>
@@ -637,9 +698,7 @@
   <!-- HEADER -->
   <div class="header">
     <div class="wrap">
-
-      <!-- TOP ROW: brand + internal nav + menu (mobile) -->
-      <div class="headerTop">
+      <div class="headerRow">
         <a class="brand" href="#top" aria-label="Home">
           <img src="assets/logo.png" alt="$SOS Logo" />
           <div class="brandText">
@@ -648,6 +707,7 @@
           </div>
         </a>
 
+        <!-- MAIN NAV (only these buttons stay) -->
         <nav class="nav" aria-label="Main navigation">
           <a class="btn" href="#what">What is $SOS?</a>
           <a class="btn" href="#tools">Tools</a>
@@ -657,30 +717,36 @@
           <a class="btn" href="#socials">Socials</a>
         </nav>
 
-        <!-- ⋯ menu (mobile) -->
-        <div class="menu">
-          <button class="btn menuBtn" id="menuBtn" aria-haspopup="true" aria-expanded="false" aria-controls="menuPop">⋯</button>
-          <div class="menuPop" id="menuPop" role="menu" aria-label="External links">
-            <a class="menuItem" role="menuitem" href="https://solanax1.com/dna" target="_blank" rel="noreferrer">DNA Scanner</a>
-            <a class="menuItem" role="menuitem" href="https://solanax1.com/guardian" target="_blank" rel="noreferrer">Guardian Check</a>
-            <a class="menuItem" role="menuitem" href="https://x.com/Solana_X1" target="_blank" rel="noreferrer">X</a>
-            <a class="menuItem" role="menuitem" href="https://t.me/Solana_X1" target="_blank" rel="noreferrer">Telegram</a>
-            <a class="menuItem" role="menuitem" href="https://t.me/solanaonsolana_bot" target="_blank" rel="noreferrer">Bot</a>
+        <!-- ACTIONS: Desktop shows 2 key buttons + menu; Mobile only menu -->
+        <div class="headerActions">
+          <div class="toolLinksDesktop">
+            <a class="btn grad" href="https://solanax1.com/dna" target="_blank" rel="noreferrer">DNA Scanner</a>
+            <a class="btn grad" href="https://solanax1.com/guardian" target="_blank" rel="noreferrer">Guardian</a>
+          </div>
+
+          <div class="menu" id="menu">
+            <button class="btn ghost menuBtn" id="menuBtn" aria-haspopup="true" aria-expanded="false" aria-label="Open menu">⋯</button>
+            <div class="menuPop" id="menuPop" role="menu" aria-label="Quick links">
+              <a class="menuItem" role="menuitem" href="https://solanax1.com/dna" target="_blank" rel="noreferrer">
+                DNA Scanner <span class="menuBadge">Tool</span>
+              </a>
+              <a class="menuItem" role="menuitem" href="https://solanax1.com/guardian" target="_blank" rel="noreferrer">
+                Guardian <span class="menuBadge">Tool</span>
+              </a>
+              <a class="menuItem" role="menuitem" href="https://x.com/Solana_X1" target="_blank" rel="noreferrer">
+                X <span class="menuBadge">Social</span>
+              </a>
+              <a class="menuItem" role="menuitem" href="https://t.me/Solana_X1" target="_blank" rel="noreferrer">
+                Telegram <span class="menuBadge">Social</span>
+              </a>
+              <a class="menuItem" role="menuitem" href="https://t.me/solanaonsolana_bot" target="_blank" rel="noreferrer">
+                Bot <span class="menuBadge">Utility</span>
+              </a>
+            </div>
           </div>
         </div>
-      </div>
 
-      <!-- SECOND ROW: external links (desktop) -->
-      <div class="headerLinksRow">
-        <div class="headerLinks" aria-label="External links">
-          <a class="btn grad" href="https://solanax1.com/dna" target="_blank" rel="noreferrer">DNA Scanner</a>
-          <a class="btn grad" href="https://solanax1.com/guardian" target="_blank" rel="noreferrer">Guardian</a>
-          <a class="btn grad" href="https://x.com/Solana_X1" target="_blank" rel="noreferrer">X</a>
-          <a class="btn grad" href="https://t.me/Solana_X1" target="_blank" rel="noreferrer">Telegram</a>
-          <a class="btn grad" href="https://t.me/solanaonsolana_bot" target="_blank" rel="noreferrer">Bot</a>
-        </div>
       </div>
-
     </div>
   </div>
 
@@ -704,9 +770,9 @@
           <a class="btn" href="#buy">How to Buy</a>
         </div>
 
-        <!-- ✅ Contract Address directly under hero buttons -->
-        <div class="heroCopyWrap">
-          <div class="stat copyBox heroCopy" data-copy="XXXXXXXXXXXXXXXXXXXXXXXX" role="button" tabindex="0" aria-label="Copy Contract Address (Hero)">
+        <!-- ✅ Contract under hero -->
+        <div class="heroContract">
+          <div class="stat copyBox" data-copy="XXXXXXXXXXXXXXXXXXXXXXXX" role="button" tabindex="0" aria-label="Copy Contract Address">
             <div style="min-width:0">
               <div class="k">Contract Address</div>
               <div class="copyText">XXXXXXXXXXXXXXXXXXXXXXXX</div>
@@ -967,7 +1033,6 @@
           <h2 class="h2">Socials</h2>
 
           <div class="socialRow">
-            <!-- ✅ Tools button no longer “grey only” -->
             <a class="btn grad" href="#tools">Tools</a>
             <a class="btn grad" href="https://t.me/Solana_X1" target="_blank" rel="noreferrer">Telegram</a>
             <a class="btn grad" href="https://x.com/Solana_X1" target="_blank" rel="noreferrer">X (Twitter)</a>
@@ -993,9 +1058,10 @@
   </main>
 
   <script>
+    // Year
     document.getElementById("y").textContent = new Date().getFullYear();
 
-    // ===== COPY TO CLIPBOARD =====
+    // Copy helpers
     function setHint(el, ok){
       if(!el) return;
       if(ok){
@@ -1054,38 +1120,31 @@
       });
     });
 
-    // ===== MOBILE ⋯ MENU =====
+    // Header menu (⋯)
     const menuBtn = document.getElementById("menuBtn");
     const menuPop = document.getElementById("menuPop");
 
     function closeMenu(){
-      if(!menuPop) return;
       menuPop.classList.remove("open");
-      if(menuBtn) menuBtn.setAttribute("aria-expanded", "false");
+      menuBtn.setAttribute("aria-expanded","false");
+    }
+    function toggleMenu(){
+      const open = menuPop.classList.toggle("open");
+      menuBtn.setAttribute("aria-expanded", open ? "true" : "false");
     }
 
-    if(menuBtn && menuPop){
-      menuBtn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        const open = menuPop.classList.toggle("open");
-        menuBtn.setAttribute("aria-expanded", open ? "true" : "false");
-      });
+    menuBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      toggleMenu();
+    });
 
-      document.addEventListener("click", (e) => {
-        if(!menuPop.classList.contains("open")) return;
-        const within = menuPop.contains(e.target) || menuBtn.contains(e.target);
-        if(!within) closeMenu();
-      });
+    document.addEventListener("click", () => closeMenu());
+    document.addEventListener("keydown", (e) => {
+      if(e.key === "Escape") closeMenu();
+    });
 
-      document.addEventListener("keydown", (e) => {
-        if(e.key === "Escape") closeMenu();
-      });
-
-      // close after choosing an item
-      menuPop.querySelectorAll("a").forEach(a => {
-        a.addEventListener("click", () => closeMenu());
-      });
-    }
+    // Prevent closing when clicking inside menu
+    menuPop.addEventListener("click", (e) => e.stopPropagation());
   </script>
 </body>
 </html>
