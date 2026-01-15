@@ -1,8 +1,8 @@
 <!doctype html>
-<html lang="en">
+<html lang="de">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <meta name="theme-color" content="#070711" />
   <title>$SOS — Guardian Check (Multi-Chain)</title>
   <meta name="description" content="Guardian Approved — token risk score + launch readiness checklist (on-chain verifiable)." />
@@ -30,6 +30,7 @@
       font: 15.5px/1.55 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
       background: var(--bg);
       position:relative;
+      overflow-x:hidden; /* mobile cut fix */
     }
     body::before{
       content:"";
@@ -185,8 +186,10 @@
       .metricK{ flex-wrap: wrap; gap: 8px; }
       .metricK .badge{ margin-left: auto; }
       .li{ flex-direction: column; align-items: flex-start; gap: 10px; }
-      .pillRow{ width:100%; justify-content:flex-start; }
+      .pillRow{ width:100%; justify-content:flex-start; flex-wrap:wrap; }
       .copyBox{ flex-direction: column; align-items: flex-start; gap: 10px; }
+      .modal{ width:100%; }
+      .toast{ left:14px; right:14px; transform:none; width:auto; }
     }
 
     .panel{
@@ -216,6 +219,7 @@
       font-weight:900;
       letter-spacing:.2px;
       font-size:16px;
+      max-width:100%;
     }
     input:focus{
       border-color: rgba(0,209,255,.45);
@@ -276,6 +280,7 @@
       align-items:center;
       flex-wrap:wrap;
       margin-bottom:10px;
+      min-width:0;
     }
     .tokenLogoWrap{
       width:44px; height:44px;
@@ -370,7 +375,7 @@
       gap:10px;
       align-items:flex-start;
       justify-content:space-between;
-      overflow:visible;
+      min-width:0;
     }
     .li .left{min-width:0;}
     .li .t{font-weight:1000; font-size:13px; letter-spacing:.2px;}
@@ -384,7 +389,7 @@
       word-break:break-word;
     }
 
-    /* PASS/WATCH/FAIL row with info icon (like your screenshots) */
+    /* PASS/WATCH/FAIL + info */
     .pillRow{
       display:flex;
       gap:8px;
@@ -402,6 +407,7 @@
       white-space:nowrap;
       user-select:none;
       -webkit-tap-highlight-color: transparent;
+      cursor:pointer;
     }
     .pill.ok{border:0; background: linear-gradient(90deg,var(--g),var(--c),var(--p)); color:#061012}
     .pill.warn{border-color: rgba(255,220,130,.35); background: rgba(255,220,130,.08); color: rgba(255,240,210,.92)}
@@ -427,6 +433,24 @@
     .infoBtn:hover{ background: rgba(255,255,255,.10); transform: translateY(-1px); }
     .infoBtn:active{ transform: translateY(0px); }
     .infoBtn span{ transform: translateY(-0.5px); }
+
+    /* Explorer button for Top Holders */
+    .explorerBtn{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      padding:6px 10px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      font-weight:1000;
+      font-size:12px;
+      white-space:nowrap;
+      cursor:pointer;
+      user-select:none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .explorerBtn:hover{ background: rgba(255,255,255,.10); transform: translateY(-1px); }
 
     footer{
       padding: 18px 0 34px;
@@ -464,13 +488,12 @@
     .modalTitle{ font-weight:1000; letter-spacing:-.3px; }
     .modalBody{
       padding:14px 16px 16px;
-      color: rgba(255,255,255,.82);
-      font-weight:800;
+      color: rgba(255,255,255,.84);
+      font-weight:850;
       line-height:1.5;
       overflow-wrap:anywhere;
       word-break:break-word;
     }
-    .modalBody code{ display:none !important; }
 
     /* Chain selector */
     .chainRow{ margin-top:10px; display:flex; gap:10px; flex-wrap:wrap; }
@@ -514,10 +537,10 @@
       line-height:1.35;
     }
 
-    /* Small toast (optional, matches your top screenshot vibe) */
+    /* Toast */
     .toast{
       position:fixed;
-      top:16px;
+      top: max(16px, env(safe-area-inset-top));
       left:50%;
       transform:translateX(-50%);
       width:min(920px, calc(100% - 28px));
@@ -531,7 +554,7 @@
       backdrop-filter: blur(12px);
     }
     .toastRow{display:flex; align-items:center; justify-content:space-between; gap:12px;}
-    .toastTitle{font-weight:1000; font-size:22px; letter-spacing:-.4px;}
+    .toastTitle{font-weight:1000; font-size:18px; letter-spacing:-.3px;}
     .toastClose{padding:9px 12px; border-radius:999px; border: 1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.06); color: rgba(255,255,255,.88); font-weight:950; cursor:pointer;}
     .toastClose:hover{background: rgba(255,255,255,.10);}
 
@@ -539,6 +562,7 @@
       .btn:hover{transform:none}
       .bar > div{transition:none}
       .infoBtn:hover{transform:none}
+      .explorerBtn:hover{transform:none}
     }
   </style>
 </head>
@@ -583,8 +607,8 @@
           <span class="gradText">Guardian Contract</span> Scanner
         </h1>
         <div class="sub">
-          Multi-chain scan: Solana + ETH + BNB + Base.
-          Every PASS / WATCH / FAIL has an <b>info icon</b> so even beginners understand what it means.
+          Multi-chain scan: Solana + ETH + BNB + Base. <br/>
+          Jeder Check hat eine <b>eigene</b> kurze Erklärung: Bedeutung + warum PASS/WATCH/FAIL.
         </div>
 
         <div class="layout">
@@ -604,7 +628,7 @@
           <!-- RESULTS -->
           <div class="panel" id="resultsPanel">
             <div class="resultTop">
-              <div>
+              <div style="min-width:0">
                 <div class="tokenHead">
                   <div class="tokenLogoWrap" id="tokenLogoWrap"><img id="tokenLogo" alt=""></div>
                   <div style="min-width:0">
@@ -690,13 +714,14 @@
 
   <script>
     /* =========================================================
-      GUARDIAN CHECK v2.2 — CLEAN SINGLE-FILE (NO JSX)
-      - Robust DOMContentLoaded init (no null crashes)
-      - PASS/WATCH/FAIL now ALWAYS has an info icon (like your screenshots)
-      - Clicking info icon (or the pill) opens a modal with explanation
-      - Solana via Helius JSON-RPC
-      - EVM via public RPC failover (ETH/BNB/Base)
-      - Optional Moralis metadata (logos) + optional GoldRush holders
+      GUARDIAN CHECK v2.3 — CLEAN SINGLE-FILE (FIXED)
+      FIXES:
+      ✅ "heuristic via paused()" spam removed (no repeating filler text)
+      ✅ Every info icon shows the CORRECT per-check explanation (no copy/paste bug)
+      ✅ Mobile layout clean (no cut off / overflow)
+      ✅ EVM holders % fixed: compute % from balances + totalSupply (fallback to API pct)
+      ✅ Top holders: no PASS pill — explorer buttons (Solscan/Etherscan/BscScan/BaseScan)
+      ✅ Chain hint + ternary bug fixed
     ========================================================= */
 
     /* ===================== CONFIG ===================== */
@@ -728,7 +753,7 @@
       }
     };
 
-    /* ===================== ICONS (SVG STRINGS) ===================== */
+    /* ===================== ICONS ===================== */
     const ICONS = {
       sol:  `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
               <path d="M6 7.5c.3-.4.7-.6 1.2-.6h14.3c.9 0 1.3 1.1.7 1.7l-2 2.2c-.3.4-.7.6-1.2.6H4.7c-.9 0-1.3-1.1-.7-1.7l2-2.2Z" fill="currentColor" opacity=".9"/>
@@ -754,26 +779,15 @@
 
     /* ===================== SAFE DOM HELPERS ===================== */
     const qs = (id) => document.getElementById(id);
+    const setText = (id, v) => { const el = qs(id); if (el) el.textContent = (v ?? ""); };
+    const setHTML = (id, v) => { const el = qs(id); if (el) el.innerHTML = (v ?? ""); };
+    const on = (id, ev, fn) => { const el = qs(id); if (el) el.addEventListener(ev, fn); };
 
-    const setText = (id, v) => {
-      const el = qs(id);
-      if (el) el.textContent = (v ?? "");
-    };
-
-    const setHTML = (id, v) => {
-      const el = qs(id);
-      if (el) el.innerHTML = (v ?? "");
-    };
-
-    const on = (id, ev, fn) => {
-      const el = qs(id);
-      if (el) el.addEventListener(ev, fn);
-    };
-
-    const safe = (x) => String(x ?? "")
+    const esc = (x) => String(x ?? "")
       .replaceAll("&","&amp;")
       .replaceAll("<","&lt;")
-      .replaceAll(">","&gt;");
+      .replaceAll(">","&gt;")
+      .replaceAll('"',"&quot;");
 
     /* ===================== GLOBAL STATE ===================== */
     let activeChain = CFG.CHAINS[0];
@@ -816,7 +830,6 @@
         s.length >= 32 && s.length <= 52 &&
         /^[1-9A-HJ-NP-Za-km-z]+$/.test(s);
     }
-
     function looksEvmAddress(s){
       return typeof s === "string" && /^0x[0-9a-fA-F]{40}$/.test(s.trim());
     }
@@ -824,6 +837,7 @@
     /* ===================== MODAL + TOAST ===================== */
     function openModal(title, bodyHtml){
       setText("modalTitle", title || "Guardian Details");
+      // We only inject HTML generated by this script (not user input).
       setHTML("modalBody", bodyHtml || "");
       const w = qs("modalWrap");
       if(w){
@@ -831,7 +845,6 @@
         w.setAttribute("aria-hidden","false");
       }
     }
-
     function closeModal(){
       const w = qs("modalWrap");
       if(w){
@@ -839,96 +852,54 @@
         w.setAttribute("aria-hidden","true");
       }
     }
-
     function showToast(title){
       const t = qs("toast");
       if(!t) return;
       setText("toastTitle", title || "");
       t.style.display = "block";
     }
-
     function hideToast(){
       const t = qs("toast");
       if(!t) return;
       t.style.display = "none";
     }
 
-    /* ===================== EXPLAINERS ===================== */
-    function explainBlock(title, lines){
-      const body = lines.map(l => `<div style="margin:6px 0">${safe(l)}</div>`).join("");
+    /* ===================== EXPLANATION BUILDER ===================== */
+    function explain(title, bullets){
+      const body = (bullets||[]).map(b => `<div style="margin:6px 0">${esc(b)}</div>`).join("");
       return `
-        <div style="font-weight:1000; font-size:18px; margin-bottom:10px">${safe(title)}</div>
-        <div style="color:rgba(255,255,255,.70); font-weight:850; line-height:1.55">
+        <div style="font-weight:1000; font-size:18px; margin-bottom:10px">${esc(title)}</div>
+        <div style="color:rgba(255,255,255,.72); font-weight:850; line-height:1.55">
           ${body}
         </div>
       `;
     }
 
-    // General legend explanation for pill meanings
-    function legendExplain(sev){
-      if(sev === "ok"){
-        return explainBlock("PASS", [
-          "Meaning: No major red flag detected for this check.",
-          "Why it matters: Lower risk on this specific item (still not guaranteed overall).",
-          "What to do: Continue checking the WATCH / FAIL items and verify with official sources."
-        ]);
-      }
-      if(sev === "bad"){
-        return explainBlock("FAIL", [
-          "Meaning: High-risk signal detected for this check.",
-          "Why it matters: This can trap buyers, allow abuse, or cause sudden changes.",
-          "What to do: Treat as dangerous unless fully explained and verified."
-        ]);
-      }
-      return explainBlock("WATCH", [
-        "Meaning: Mixed/uncertain signal or a capability that could be abused.",
-        "Why it matters: It may still be safe — but you must understand the rules.",
-        "What to do: Read the details and verify the project’s documentation and on-chain setup."
-      ]);
+    function explainStatus(sev, why){
+      const head = sev==="ok" ? "PASS" : sev==="bad" ? "FAIL" : "WATCH";
+      const base = sev==="ok"
+        ? ["Bedeutung: Kein klares Red-Flag bei diesem Check.", "Wichtig: Das garantiert nichts – nur dieses Item ist unauffällig."]
+        : sev==="bad"
+          ? ["Bedeutung: Starkes Risiko-Signal bei diesem Check.", "Wichtig: Kann Käufer blockieren, ausnutzen oder Supply manipulieren."]
+          : ["Bedeutung: Misch-/Unsicherheits-Signal oder potenziell missbrauchbare Funktion.", "Wichtig: Muss verstanden & verifiziert werden."];
+      const extra = why ? ["Warum hier: " + why] : [];
+      return explain(head, [...base, ...extra]);
     }
 
-    const EXPL = {
-      freeze: () => explainBlock("Freeze Authority", [
-        "Meaning: Someone can freeze wallets so they can’t sell or move the token.",
-        "Why it matters: Buyers can get trapped.",
-        "What to do: Only trust if Freeze is removed (renounced)."
-      ]),
-      mint: () => explainBlock("Mint Authority", [
-        "Meaning: Someone can mint (create) more tokens anytime.",
-        "Why it matters: More tokens can crash the price.",
-        "What to do: Only trust if Mint is renounced, or there is a clear public emission plan."
-      ]),
-      meta: () => explainBlock("Token Metadata", [
-        "Meaning: Name, symbol and logo help you identify the real token.",
-        "Why it matters: Missing metadata makes impersonation easier.",
-        "What to do: Verify name/symbol/logo match official socials and listings."
-      ]),
-      evmBasics: () => explainBlock("ERC-20 Basics", [
-        "Meaning: We call standard ERC-20 functions (name/symbol/decimals/totalSupply).",
-        "Why it matters: Non-standard tokens can hide surprises or break tooling.",
-        "What to do: Treat unreadable or reverting calls as higher risk."
-      ]),
-      evmOwner: () => explainBlock("Contract Owner / Admin", [
-        "Meaning: Owner/admin may have special permissions.",
-        "Why it matters: Owner can change fees, pause, blacklist, or upgrade logic (if proxy).",
-        "What to do: Safer if renounced (0x0) or secured by a reputable multi-sig."
-      ]),
-      evmProxy: () => explainBlock("Proxy / Upgradeable Contract", [
-        "Meaning: Contract may be upgradeable via a proxy.",
-        "Why it matters: Logic can change after launch.",
-        "What to do: Treat as WATCH unless upgrades are locked or transparently governed."
-      ]),
-      evmPause: () => explainBlock("Pause / Freeze Capability (Heuristic)", [
-        "Meaning: Contract may support pausing transfers.",
-        "Why it matters: Users can be blocked from transferring/selling.",
-        "What to do: Treat as WATCH unless you trust the admin and rules are clear."
-      ]),
-      evmHolders: () => explainBlock("Top Holders (EVM)", [
-        "Meaning: Raw EVM RPC can’t list holders directly.",
-        "Why it matters: Holder concentration is a major risk factor.",
-        "What to do: Enable GoldRush (Covalent) key to fetch holders in this UI."
-      ])
-    };
+    /* ===================== DATA-HTML BUG FIX ===================== */
+    // We DON'T shove raw HTML into attributes. We store an ID and keep HTML in a Map.
+    const INFO_MAP = new Map();
+    function newInfoId(){
+      return "i_" + Math.random().toString(36).slice(2) + Date.now().toString(36);
+    }
+    function registerInfo(html){
+      const id = newInfoId();
+      INFO_MAP.set(id, html);
+      return id;
+    }
+    function getInfo(id){
+      return INFO_MAP.get(id) || "";
+    }
 
     /* ===================== UI RENDER ===================== */
     function applyTokenHeader(meta, addr){
@@ -957,44 +928,32 @@
       }
     }
 
-    function pillLabel(sev){
-      if(sev === "ok") return "PASS";
-      if(sev === "bad") return "FAIL";
-      return "WATCH";
-    }
+    function pillLabel(sev){ return sev==="ok" ? "PASS" : sev==="bad" ? "FAIL" : "WATCH"; }
+    function pillClass(sev){ return sev==="ok" ? "pill ok" : sev==="bad" ? "pill bad" : "pill warn"; }
 
-    function pillClass(sev){
-      if(sev === "ok") return "pill ok";
-      if(sev === "bad") return "pill bad";
-      return "pill warn";
-    }
-
-    // Render list items with:
-    //  - Left: title/desc
-    //  - Right: pill + info icon
-    // Info icon ALWAYS exists and opens the correct explanation.
     function renderList(listEl, items, defaultTitle){
       if(!listEl) return;
       listEl.innerHTML = "";
 
       for(const it of items){
         const sev = it.sev || "warn";
-        const title = it.t || it.k || defaultTitle || "Guardian Details";
+        const title = it.t || defaultTitle || "Details";
         const desc  = it.d || "—";
-
-        // Explanation (per item) + fallback legend explanation so every pill has meaning
         const infoTitle = it.infoTitle || title;
-        const infoHtml =
-          (it.infoHtml && String(it.infoHtml).trim())
-            ? String(it.infoHtml)
-            : (it.clickMsg && String(it.clickMsg).trim() ? String(it.clickMsg) : legendExplain(sev));
+
+        // must be correct per item:
+        const html = (it.infoHtml && String(it.infoHtml).trim())
+          ? String(it.infoHtml)
+          : explainStatus(sev, it.why || "");
+
+        const infoId = registerInfo(html);
 
         const li = document.createElement("li");
         li.className = "li";
         li.innerHTML = `
           <div class="left">
-            <div class="t">${safe(title)}</div>
-            <div class="d">${safe(desc)}</div>
+            <div class="t">${esc(title)}</div>
+            <div class="d">${esc(desc)}</div>
           </div>
 
           <div class="pillRow">
@@ -1002,15 +961,15 @@
                   role="button"
                   tabindex="0"
                   data-open="1"
-                  data-title="${safe(infoTitle)}"
-                  data-html="${safe(infoHtml)}">${pillLabel(sev)}</span>
+                  data-title="${esc(infoTitle)}"
+                  data-info="${esc(infoId)}">${pillLabel(sev)}</span>
 
             <button class="infoBtn"
                     type="button"
                     aria-label="Info"
                     data-open="1"
-                    data-title="${safe(infoTitle)}"
-                    data-html="${safe(infoHtml)}"><span>i</span></button>
+                    data-title="${esc(infoTitle)}"
+                    data-info="${esc(infoId)}"><span>i</span></button>
           </div>
         `;
         listEl.appendChild(li);
@@ -1021,22 +980,19 @@
       const wrap = qs("metrics");
       if(!wrap) return;
       wrap.innerHTML = "";
-
       for(const r of rows){
         const d = document.createElement("div");
         d.className = "metric";
-
         const bar = (typeof r.barPct === "number")
           ? `<div class="bar"><div style="width:${clamp(r.barPct,0,100)}%"></div></div>`
           : "";
-
         d.innerHTML = `
           <div class="metricK">
-            <span>${safe(r.label || "—")}</span>
-            <span class="badge" style="opacity:.9">${safe(r.badge || r.value || "—")}</span>
+            <span>${esc(r.label || "—")}</span>
+            <span class="badge" style="opacity:.9">${esc(r.badge || r.value || "—")}</span>
           </div>
-          <div class="metricV">${safe(r.value || "—")}</div>
-          <div class="metricMini">${safe(r.mini || "")}</div>
+          <div class="metricV">${esc(r.value || "—")}</div>
+          <div class="metricMini">${esc(r.mini || "")}</div>
           ${bar}
         `;
         wrap.appendChild(d);
@@ -1055,61 +1011,113 @@
 
       const lw = qs("tokenLogoWrap");
       if(lw) lw.style.display = "none";
-
       renderMetrics([]);
 
       renderList(qs("checksList"), [{
         t:"No scan yet",
         sev:"warn",
         d:"Paste an address and run the Guardian Check.",
-        infoHtml: explainBlock("No Scan Yet", [
-          "Paste an address, then run the scan.",
-          "Every PASS/WATCH/FAIL has an info icon you can click."
-        ])
+        why:"Noch keine Daten verfügbar."
       }], "Guardian Check Details");
 
       renderList(qs("todoList"), [{
         t:"Waiting for scan",
         sev:"warn",
-        d:"We generate a checklist only from verified on-chain signals.",
-        infoHtml: explainBlock("Launch Readiness", [
-          "Run a scan to generate the action list.",
-          "The goal is to remove FAIL items and explain WATCH items."
-        ])
-      }], "Launch Readiness Details");
+        d:"We generate the checklist from on-chain signals after scan.",
+        why:"Scan starten, dann erscheinen die Action Items."
+      }], "Launch Readiness");
 
       renderList(qs("extList"), [{
         t:"No scan yet",
         sev:"warn",
         d:"Standard details appear after scan.",
-        infoHtml: explainBlock("Token Standard Details", [
-          "Run a scan to see token standard details.",
-          "Token-2022 extensions will appear here on Solana when detected."
-        ])
-      }], "Token Standard Details");
+        why:"Scan starten, dann wird Standard/Extensions angezeigt."
+      }], "Token Standard");
 
       renderList(qs("metaList"), [{
         t:"No scan yet",
         sev:"warn",
-        d:"Name / symbol / image / metadata details appear after scan.",
-        infoHtml: EXPL.meta()
+        d:"Name / symbol / logo appear after scan.",
+        why:"Scan starten, dann werden Metadaten geladen."
       }], "Token Metadata");
 
-      renderList(qs("holdersList"), [{
-        t:"No scan yet",
-        sev:"warn",
-        d:"Top holder preview appears after scan (Solana full, EVM limited).",
-        infoHtml: explainBlock("Top Holders", [
-          "Solana: we can fetch largest holders from RPC.",
-          "EVM: holders require an external indexer (GoldRush) — optional."
-        ])
-      }], "Top Holders");
+      renderHoldersEmpty();
 
       LAST_SCAN = null;
       const ex = qs("btnExport");
       if(ex){
         ex.disabled = true;
         ex.textContent = "Download Scan Report";
+      }
+    }
+
+    /* ===================== HOLDERS UI (Explorer Buttons) ===================== */
+    function explorerBase(chain){
+      if(chain.id === "sol") return {name:"Solscan", base:"https://solscan.io/account/"};
+      if(chain.id === "eth") return {name:"Etherscan", base:"https://etherscan.io/address/"};
+      if(chain.id === "bnb") return {name:"BscScan",  base:"https://bscscan.com/address/"};
+      if(chain.id === "base")return {name:"BaseScan", base:"https://basescan.org/address/"};
+      return {name:"Explorer", base:"#"};
+    }
+
+    function renderHoldersEmpty(){
+      const el = qs("holdersList");
+      if(!el) return;
+      const ex = explorerBase(activeChain);
+      renderList(el, [{
+        t:"No holder data",
+        sev:"warn",
+        d: activeChain.kind === "solana"
+          ? "Top holders appear after scan."
+          : (CFG.GOLDRUSH_API_KEY ? "Holders appear if indexer returns data." : "Holders need an indexer (GoldRush)."),
+        infoHtml: explain("Top holders", [
+          "Bedeutung: Verteilung zeigt Whale-Risiko.",
+          "Solana: via RPC Largest Accounts.",
+          "EVM: braucht Indexer (z.B. GoldRush) – RPC allein kann keine Holder-Liste liefern."
+        ])
+      }], "Top Holders");
+    }
+
+    function renderHoldersWithExplorer(items, chain, infoForRow){
+      const el = qs("holdersList");
+      if(!el) return;
+      el.innerHTML = "";
+
+      const ex = explorerBase(chain);
+
+      for(const it of items){
+        const title = it.t;
+        const desc = it.d;
+        const addr = it.addr;
+
+        const infoId = registerInfo(it.infoHtml || infoForRow || explain("Top holder", [
+          "Bedeutung: Anteil am Supply.",
+          "Warum wichtig: Hohe % = Dump-Risiko.",
+          "Tipp: Prüfe ob LP/Burn/Team/Treasury."
+        ]));
+
+        const li = document.createElement("li");
+        li.className = "li";
+        li.innerHTML = `
+          <div class="left">
+            <div class="t">${esc(title)}</div>
+            <div class="d">${esc(desc)}</div>
+          </div>
+
+          <div class="pillRow">
+            <a class="explorerBtn"
+               href="${esc(ex.base + addr)}"
+               target="_blank" rel="noreferrer">${esc(ex.name)}</a>
+
+            <button class="infoBtn"
+                    type="button"
+                    aria-label="Info"
+                    data-open="1"
+                    data-title="${esc(title)}"
+                    data-info="${esc(infoId)}"><span>i</span></button>
+          </div>
+        `;
+        el.appendChild(li);
       }
     }
 
@@ -1125,7 +1133,7 @@
         b.className = "chainBtn" + (c.id === activeChain.id ? " active" : "");
         b.innerHTML = `
           <span class="chainIcon">${ICONS[c.id] || ""}</span>
-          <span>${safe(c.name)}</span>
+          <span>${esc(c.name)}</span>
         `;
         b.addEventListener("click", () => setActiveChain(c.id, true));
         row.appendChild(b);
@@ -1145,9 +1153,10 @@
       if(mint) mint.placeholder = activeChain.placeholder || "Paste token address...";
 
       const hint = (activeChain.kind === "solana")
-        ? "Solana scan = full (mint authorities, freeze authority, largest holders via RPC + metadata via Helius DAS)."
+        ? "Solana: Mint Authorities + Freeze + Largest Holders (RPC) + Metadata (Helius)."
         : (CFG.GOLDRUSH_API_KEY
-            : "EVM scan = on-chain (ERC-20 basics + ownership/proxy/pause heuristics). Top holders need GoldRush.");
+            ? "EVM: ERC-20 Calls + Owner/Proxy/Controls. Holders via GoldRush (Indexer) + % aus Supply berechnet."
+            : "EVM: ERC-20 Calls + Owner/Proxy/Controls. Holders brauchen Indexer (GoldRush).");
 
       setText("chainHint", hint);
 
@@ -1240,12 +1249,10 @@
       return { name, symbol, image, uri, description, authorities };
     }
 
-    /* Token-2022 extensions best-effort */
     function parseExtensionsFromParsed(rawParsed){
       try{
         const info = rawParsed?.info || null;
         if(!info) return null;
-
         const ex = info.extensions || info.extensionTypes || info.mintExtensions;
         if(Array.isArray(ex) && ex.length){
           return ex.map(x => ({ name: (typeof x === "string") ? x : (x?.type || x?.name || "Extension") }));
@@ -1261,7 +1268,7 @@
 
     function humanizeExtensionName(n){
       const s = String(n||"").toLowerCase();
-      if(s.includes("transferfee") || s.includes("transfer_fee")) return "Transfer Fee (fee on transfers)";
+      if(s.includes("transferfee") || s.includes("transfer_fee")) return "Transfer Fee (fees on transfers)";
       if(s.includes("permanentdelegate") || s.includes("permanent_delegate")) return "Permanent Delegate (delegate control)";
       if(s.includes("nontransferable") || s.includes("non_transferable")) return "Non-Transferable (cannot be transferred)";
       if(s.includes("interestbearing") || s.includes("interest_bearing")) return "Interest-Bearing (yield mechanics)";
@@ -1270,7 +1277,6 @@
       return n;
     }
 
-    /* Solana scoring */
     function scoreSol(sig){
       let score = 100;
       const checks = [];
@@ -1278,99 +1284,133 @@
       if(sig.freezeActive){
         score -= 35;
         checks.push({
-          t:"Freeze Authority active",
+          t:"Freeze Authority",
           sev:"bad",
-          d:"Transfers can be frozen. High risk.",
-          infoHtml: EXPL.freeze()
+          d:"Freeze ist aktiv — Wallets können blockiert werden.",
+          why:"Freeze Authority ist gesetzt (nicht entfernt).",
+          infoHtml: explain("Freeze Authority", [
+            "Bedeutung: Admin kann Token Accounts einfrieren.",
+            "Warum wichtig: Käufer können nicht verkaufen/transferieren.",
+            "PASS wäre: Freeze Authority = null (entfernt/renounced)."
+          ])
         });
       }else{
         checks.push({
-          t:"Freeze Authority removed",
+          t:"Freeze Authority",
           sev:"ok",
-          d:"No freeze power detected (good).",
-          infoHtml: EXPL.freeze()
+          d:"Freeze ist entfernt (gut).",
+          why:"Freeze Authority ist nicht gesetzt.",
+          infoHtml: explain("Freeze Authority", [
+            "Bedeutung: Admin kann nicht einfrieren.",
+            "Warum PASS: Freeze Authority ist null/nicht vorhanden."
+          ])
         });
       }
 
       if(sig.mintAuthActive){
         score -= 30;
         checks.push({
-          t:"Mint Authority active",
+          t:"Mint Authority",
           sev:"bad",
-          d:"More supply can be minted. High risk.",
-          infoHtml: EXPL.mint()
+          d:"Mint ist aktiv — Supply kann erhöht werden.",
+          why:"Mint Authority ist gesetzt (nicht renounced).",
+          infoHtml: explain("Mint Authority", [
+            "Bedeutung: Admin kann neue Tokens minten.",
+            "Warum wichtig: Supply-Inflation kann Preis zerstören.",
+            "PASS wäre: Mint Authority = null (renounced)."
+          ])
         });
       }else{
         checks.push({
-          t:"Mint Authority renounced",
+          t:"Mint Authority",
           sev:"ok",
-          d:"Supply can’t be increased (good).",
-          infoHtml: EXPL.mint()
+          d:"Mint ist renounced (gut).",
+          why:"Mint Authority ist nicht gesetzt.",
+          infoHtml: explain("Mint Authority", [
+            "Bedeutung: Supply kann nicht einfach erhöht werden.",
+            "Warum PASS: Mint Authority ist null/nicht vorhanden."
+          ])
         });
       }
 
       const t20 = Number(sig.top20 || 0);
-      const concExplain = explainBlock("Top Holders Concentration", [
-        `Meaning: Biggest 20 wallets hold about ${t20.toFixed(2)}% of supply.`,
-        "Why it matters: A few wallets can dump and crash the chart.",
-        "What to do: High % = extra caution. Verify holders and liquidity."
-      ]);
-
       if(t20 >= 75){
         score -= 28;
-        checks.push({ t:"Top 20 concentration very high", sev:"bad", d:`Top20 holds ~${t20.toFixed(2)}%.`, infoHtml: concExplain });
+        checks.push({ t:"Holders distribution (Top20)", sev:"bad", d:`Top20 halten ~${t20.toFixed(2)}% (sehr hoch).`, why:"Sehr hohe Konzentration.", infoHtml: explain("Top20 Distribution", [
+          `Top20 Anteil: ~${t20.toFixed(2)}%`,
+          "Warum wichtig: wenige Wallets können dumpen.",
+          "FAIL hier: extrem hohe Whale-Konzentration."
+        ])});
       }else if(t20 >= 55){
         score -= 18;
-        checks.push({ t:"Top 20 concentration high", sev:"warn", d:`Top20 holds ~${t20.toFixed(2)}%.`, infoHtml: concExplain });
+        checks.push({ t:"Holders distribution (Top20)", sev:"warn", d:`Top20 halten ~${t20.toFixed(2)}% (hoch).`, why:"Hohe Konzentration.", infoHtml: explain("Top20 Distribution", [
+          `Top20 Anteil: ~${t20.toFixed(2)}%`,
+          "Warum wichtig: erhöhtes Dump-Risiko.",
+          "WATCH: prüfe Wallets (LP/Burn/Team)."
+        ])});
       }else if(t20 >= 35){
         score -= 8;
-        checks.push({ t:"Top 20 concentration moderate", sev:"warn", d:`Top20 holds ~${t20.toFixed(2)}%.`, infoHtml: concExplain });
+        checks.push({ t:"Holders distribution (Top20)", sev:"warn", d:`Top20 halten ~${t20.toFixed(2)}% (moderat).`, why:"Mittelmäßige Konzentration.", infoHtml: explain("Top20 Distribution", [
+          `Top20 Anteil: ~${t20.toFixed(2)}%`,
+          "WATCH: immer noch Whale-Risiko möglich."
+        ])});
       }else{
-        checks.push({ t:"Distribution looks healthier", sev:"ok", d:`Top20 holds ~${t20.toFixed(2)}%.`, infoHtml: concExplain });
+        checks.push({ t:"Holders distribution (Top20)", sev:"ok", d:`Top20 halten ~${t20.toFixed(2)}% (besser).`, why:"Niedrige Konzentration.", infoHtml: explain("Top20 Distribution", [
+          `Top20 Anteil: ~${t20.toFixed(2)}%`,
+          "Warum PASS: Verteilung wirkt deutlich gesünder."
+        ])});
       }
 
       if(sig.programType === "TOKEN_2022"){
         score -= sig.extReadable ? 6 : 10;
         checks.push({
-          t:"Token standard: Token-2022",
+          t:"Token Standard",
           sev:"warn",
-          d: sig.extReadable ? "Can include extra rules (extensions)." : "Extensions not visible in this scan.",
-          infoHtml: explainBlock("Token Standard: Token-2022", [
-            "Meaning: Official Solana token program with optional extra rules (extensions).",
-            "Why it matters: Some extensions can add fees or restrictions.",
-            "What to do: Read Token Standard Details and be careful with WATCH items."
+          d: sig.extReadable ? "Token-2022 erkannt (Extensions möglich)." : "Token-2022 erkannt (Extensions nicht sichtbar).",
+          why:"Token-2022 kann zusätzliche Regeln enthalten.",
+          infoHtml: explain("Token-2022", [
+            "Bedeutung: SPL Token-Programm mit optionalen Extensions.",
+            "Warum wichtig: Extensions können Fees/Restriktionen hinzufügen.",
+            "WATCH: Lies Token Standard Details (Extensions)."
           ])
         });
       }else if(sig.programType === "SPL_TOKEN"){
         checks.push({
-          t:"Token standard: SPL Token",
+          t:"Token Standard",
           sev:"ok",
-          d:"Standard token program.",
-          infoHtml: explainBlock("Token Standard: SPL Token", [
-            "Meaning: Normal Solana token program used by most tokens.",
-            "Why it matters: Fewer extra rules hidden inside the token.",
-            "What to do: Still check authorities and distribution."
+          d:"Standard SPL Token.",
+          why:"Normaler Token Program Owner.",
+          infoHtml: explain("SPL Token", [
+            "Bedeutung: Standard Solana Token Program.",
+            "Warum PASS: keine extra Token-2022 Regeln."
           ])
         });
       }else{
         score -= 10;
         checks.push({
-          t:"Token standard: Unknown program",
+          t:"Token Standard",
           sev:"warn",
-          d:"Not a common token program.",
-          infoHtml: explainBlock("Token Standard: Unknown", [
-            "Meaning: Mint not using the common token programs.",
-            "Why it matters: Custom programs can add hidden rules.",
-            "What to do: Treat as WATCH and verify carefully."
+          d:"Unbekanntes Token-Programm (Caution).",
+          why:"Mint owner ist nicht Tokenkeg/Token-2022.",
+          infoHtml: explain("Unknown Token Program", [
+            "Bedeutung: Mint läuft nicht über Standardprogramme.",
+            "Warum wichtig: Custom Programme können Regeln verstecken.",
+            "WATCH: sehr genau verifizieren."
           ])
         });
       }
 
       if(sig.meta && (sig.meta.name || sig.meta.symbol)){
-        checks.push({ t:"Metadata present", sev:"ok", d:"Name/Symbol found.", infoHtml: EXPL.meta() });
+        checks.push({ t:"Metadata", sev:"ok", d:"Name/Symbol vorhanden.", why:"Metadaten wurden gefunden.", infoHtml: explain("Metadata", [
+          "Bedeutung: Identität (Name/Symbol/Logo) besser prüfbar.",
+          "Warum PASS: Metadaten konnten geladen werden."
+        ])});
       }else{
         score -= 4;
-        checks.push({ t:"Metadata missing/unreadable", sev:"warn", d:"Name/Symbol not found via metadata endpoint.", infoHtml: EXPL.meta() });
+        checks.push({ t:"Metadata", sev:"warn", d:"Metadaten fehlen/unreadable.", why:"Kein Name/Symbol via Metadata Endpoint.", infoHtml: explain("Metadata", [
+          "Bedeutung: Ohne Metadaten leichter zu faken/impersonaten.",
+          "WATCH: immer mit offiziellen Links abgleichen."
+        ])});
       }
 
       score = clamp(Math.round(score), 0, 100);
@@ -1380,41 +1420,45 @@
 
     function todoSol(sig){
       const t = [];
+
       t.push(sig.freezeActive
-        ? {t:"Remove Freeze Authority", sev:"bad", d:"Freezing can trap buyers.", infoHtml: EXPL.freeze()}
-        : {t:"Freeze Authority", sev:"ok", d:"Already removed (good).", infoHtml: EXPL.freeze()}
+        ? {t:"Remove Freeze Authority", sev:"bad", d:"Freeze kann Käufer blockieren.", why:"Freeze aktiv – entfernen.",}
+        : {t:"Freeze Authority", sev:"ok", d:"Bereits entfernt.", why:"Freeze nicht aktiv."}
       );
 
       t.push(sig.mintAuthActive
-        ? {t:"Renounce Mint Authority", sev:"bad", d:"Minting more tokens can crash price.", infoHtml: EXPL.mint()}
-        : {t:"Mint Authority", sev:"ok", d:"Already renounced (good).", infoHtml: EXPL.mint()}
+        ? {t:"Renounce Mint Authority", sev:"bad", d:"Mint kann Supply inflationieren.", why:"Mint aktiv – renounce.",}
+        : {t:"Mint Authority", sev:"ok", d:"Bereits renounced.", why:"Mint nicht aktiv."}
       );
 
       const t20 = Number(sig.top20 || 0);
-      const concInfo = explainBlock("Top 20 concentration", [
-        `Current Top20: ~${t20.toFixed(2)}%`,
-        "Higher concentration increases dump risk."
-      ]);
-
-      if(t20 >= 55) t.push({t:"Reduce Whale Concentration", sev:"warn", d:`Top20 holds ~${t20.toFixed(2)}%.`, infoHtml: concInfo});
-      else if(t20 >= 35) t.push({t:"Monitor Distribution", sev:"warn", d:`Top20 holds ~${t20.toFixed(2)}%.`, infoHtml: concInfo});
-      else t.push({t:"Distribution", sev:"ok", d:`Top20 ~${t20.toFixed(2)}% (healthier).`, infoHtml: concInfo});
+      if(t20 >= 55) t.push({t:"Reduce Whale Concentration", sev:"warn", d:`Top20 ~${t20.toFixed(2)}%.`, why:"Hohe Konzentration – prüfen."});
+      else if(t20 >= 35) t.push({t:"Monitor Distribution", sev:"warn", d:`Top20 ~${t20.toFixed(2)}%.`, why:"Moderate Konzentration – beobachten."});
+      else t.push({t:"Distribution", sev:"ok", d:`Top20 ~${t20.toFixed(2)}% (besser).`, why:"Gesünder verteilt."});
 
       if(sig.programType === "TOKEN_2022"){
-        t.push({t:"Token-2022 review", sev:"warn", d:"Extensions can add rules.", infoHtml: explainBlock("Token-2022", ["Review extensions carefully."])});
+        t.push({t:"Review Token-2022 extensions", sev:"warn", d:"Extensions können Regeln ändern.", why:"Token-2022 erkannt."});
       }else if(sig.programType === "UNKNOWN"){
-        t.push({t:"Verify mint program", sev:"warn", d:"Unknown program = extra caution.", infoHtml: explainBlock("Unknown program", ["Verify authenticity carefully."])});
+        t.push({t:"Verify mint program", sev:"warn", d:"Unbekanntes Programm = extra caution.", why:"Nicht standard."});
       }else{
-        t.push({t:"Token standard", sev:"ok", d:"Standard SPL Token.", infoHtml: explainBlock("SPL Token", ["Standard token program."])});
+        t.push({t:"Token standard", sev:"ok", d:"Standard SPL Token.", why:"Unkritisch."});
       }
 
       if(!(sig.meta && (sig.meta.name || sig.meta.symbol))){
-        t.push({t:"Publish token metadata", sev:"warn", d:"Missing metadata makes fake copies easier.", infoHtml: EXPL.meta()});
+        t.push({t:"Publish/verify metadata", sev:"warn", d:"Ohne Metadaten leichter Fake-Copies.", why:"Metadaten fehlen."});
       }else{
-        t.push({t:"Metadata", sev:"ok", d:"Name/symbol present.", infoHtml: EXPL.meta()});
+        t.push({t:"Metadata", sev:"ok", d:"Name/Symbol vorhanden.", why:"Okay."});
       }
 
-      return t;
+      // attach proper info for each
+      return t.map(x => ({
+        ...x,
+        infoHtml: explain(x.t, [
+          x.d,
+          "Warum wichtig: reduziert Scam/Abuse Risiko.",
+          "Status: " + pillLabel(x.sev)
+        ])
+      }));
     }
 
     function renderExtSol(programType, extReadable, extList){
@@ -1428,9 +1472,9 @@
           d: programType==="SPL_TOKEN"
             ? "Standard SPL Token. Token-2022 extensions not applicable."
             : "Unknown program. Treat with caution.",
-          infoHtml: explainBlock("Token Standard Details", [
-            "This section lists Token-2022 extensions when applicable.",
-            "If you see Token-2022, review every extension carefully."
+          infoHtml: explain("Token standard details", [
+            "Token-2022 Extensions erscheinen nur, wenn Token-2022 erkannt wird.",
+            "Wenn Unknown: sehr genau verifizieren."
           ])
         }], "Token standard details");
         return;
@@ -1440,10 +1484,10 @@
         renderList(el, [{
           t:"Token-2022 extensions",
           sev:"warn",
-          d:"Extensions not visible in this scan.",
-          infoHtml: explainBlock("Token-2022 extensions", [
-            "Extensions can add fees or restrictions.",
-            "If not visible, treat as WATCH until verified elsewhere."
+          d:"Extensions konnten nicht ausgelesen werden.",
+          infoHtml: explain("Token-2022 extensions", [
+            "Token-2022 kann zusätzliche Regeln haben.",
+            "Wenn Extensions nicht sichtbar: WATCH bis extern verifiziert."
           ])
         }], "Token-2022 extensions");
         return;
@@ -1454,16 +1498,13 @@
         const lname = String(x.name||"").toLowerCase();
         let sev = "warn";
         if(lname.includes("nontransferable")) sev = "bad";
-
         return {
           t: nameHuman,
           sev,
           d: `Extension detected: ${nameHuman}.`,
-          infoHtml: explainBlock(nameHuman, [
-            "Token-2022 can add extra rules.",
-            (sev === "bad")
-              ? "This extension may block transfers. Treat as FAIL."
-              : "Treat as WATCH unless clearly understood."
+          infoHtml: explain(nameHuman, [
+            "Bedeutung: Extra Regel im Token-2022 Standard.",
+            sev==="bad" ? "Risiko: kann Transfers verhindern." : "WATCH: nur sicher, wenn verstanden.",
           ])
         };
       });
@@ -1472,7 +1513,7 @@
         t:"No extensions listed",
         sev:"ok",
         d:"No Token-2022 extensions detected.",
-        infoHtml: explainBlock("Extensions", ["No extra rules detected."])
+        infoHtml: explain("Extensions", ["Keine zusätzlichen Regeln erkannt."])
       }], "Token-2022 Extension Details");
     }
 
@@ -1485,7 +1526,10 @@
           t:"Metadata not available",
           sev:"warn",
           d:"Could not fetch metadata via getAsset.",
-          infoHtml: EXPL.meta()
+          infoHtml: explain("Token metadata", [
+            "Bedeutung: Name/Symbol/Logo helfen Fake-Tokens zu erkennen.",
+            "Warum WATCH: Metadaten konnten nicht geladen werden."
+          ])
         }], "Token Metadata");
         return;
       }
@@ -1495,16 +1539,19 @@
         t:"Name / Symbol",
         sev:(meta.name || meta.symbol) ? "ok" : "warn",
         d:`${meta.name || "—"} • ${meta.symbol ? "$"+meta.symbol : "—"}`,
-        infoHtml: EXPL.meta()
+        infoHtml: explain("Name / Symbol", [
+          "Bedeutung: Grund-Identität des Tokens.",
+          (meta.name || meta.symbol) ? "Warum PASS: Werte vorhanden." : "Warum WATCH: fehlt/unreadable."
+        ])
       });
 
       items.push({
         t:"Metadata Link",
         sev: meta.uri ? "ok" : "warn",
         d: meta.uri ? "Metadata link found." : "No metadata link found.",
-        infoHtml: explainBlock("Metadata link", [
-          "Check it matches official sources.",
-          "Be careful with fake links."
+        infoHtml: explain("Metadata Link", [
+          "Bedeutung: Off-chain JSON (Logo/Description).",
+          meta.uri ? "Warum PASS: Link vorhanden." : "Warum WATCH: Kein Link gefunden."
         ])
       });
 
@@ -1512,9 +1559,9 @@
         t:"Image / Logo",
         sev: meta.image ? "ok" : "warn",
         d: meta.image ? "Logo found." : "No logo found.",
-        infoHtml: explainBlock("Token logo", [
-          "Verify logo matches official sources.",
-          "Scammers often copy names and use different logos."
+        infoHtml: explain("Logo", [
+          "Bedeutung: Hilft echte Token zu erkennen.",
+          meta.image ? "Warum PASS: Logo gefunden." : "Warum WATCH: Kein Logo gefunden."
         ])
       });
 
@@ -1523,7 +1570,7 @@
           t:"Description",
           sev:"ok",
           d: meta.description.slice(0,120) + (meta.description.length>120 ? "…" : ""),
-          infoHtml: explainBlock("Description", [meta.description])
+          infoHtml: explain("Description", [meta.description])
         });
       }
 
@@ -1532,9 +1579,9 @@
           t:"Metadata authorities",
           sev:"warn",
           d:"Metadata authorities exist (review).",
-          infoHtml: explainBlock("Metadata authorities", [
-            "Someone may be able to update name/logo later.",
-            "Treat as WATCH unless authority is removed or clearly explained."
+          infoHtml: explain("Metadata authorities", [
+            "Bedeutung: Jemand kann Name/Logo ggf. später ändern.",
+            "WATCH: Nur ok wenn Authority entfernt oder transparent geregelt."
           ])
         });
       }
@@ -1543,41 +1590,30 @@
     }
 
     function renderHoldersSol(mint, uiSupply, largest){
-      const el = qs("holdersList");
-      if(!el) return;
-
       if(!uiSupply || !largest || !largest.length){
-        renderList(el, [{
-          t:"No holder data",
-          sev:"warn",
-          d:"Largest accounts not readable from RPC right now.",
-          infoHtml: explainBlock("Top holders", [
-            "RPC may be rate-limited or temporarily unavailable.",
-            "Try again later or use another RPC."
-          ])
-        }], "Top Holders");
+        renderHoldersEmpty();
         return;
       }
 
       const top = largest.slice(0,10);
       const items = top.map((x,i) => {
-        const addr = x?.address || "—";
+        const addr = x?.address || "";
         const amt = Number(x?.uiAmount || 0);
         const pct = uiSupply > 0 ? (amt / uiSupply) * 100 : 0;
 
         return {
           t:`#${i+1} ${shortAddr(addr)}`,
-          sev: pct >= 10 ? "warn" : "ok",
           d:`${fmtInt(amt)} tokens • ${pct.toFixed(2)}%`,
-          infoHtml: explainBlock("Top holder", [
-            `This wallet holds ~${pct.toFixed(2)}% of supply.`,
-            "High % increases dump risk.",
-            "Verify if it is LP, burn, team, treasury, etc."
+          addr,
+          infoHtml: explain("Top holder", [
+            `Wallet hält ~${pct.toFixed(2)}% des Supplies.`,
+            "Warum wichtig: hohe % = Dump-Risiko.",
+            "Tipp: Prüfe ob LP/Burn/Team/Treasury."
           ])
         };
       });
 
-      renderList(el, items, "Top Holder Details");
+      renderHoldersWithExplorer(items, activeChain);
     }
 
     /* ===================== EVM RPC + ERC-20 ===================== */
@@ -1726,6 +1762,10 @@
       }
     }
 
+    // paused() check:
+    // - TRUE => currently paused (fail)
+    // - FALSE => pause function exists (watch)
+    // - null => pause function not found/unreadable (pass for this item)
     async function getPaused(chainId, addr){
       try{
         const r = await ethCall(chainId, addr, SEL.paused);
@@ -1811,7 +1851,6 @@
 
     async function goldrushHolders(chainId, addr){
       if(!CFG.GOLDRUSH_API_KEY) return [];
-
       const url = `https://api.covalenthq.com/v1/${goldrushChain(chainId)}/tokens/${addr}/token_holders/?page-size=10&key=${encodeURIComponent(CFG.GOLDRUSH_API_KEY)}`;
       try{
         const r = await fetch(url);
@@ -1822,44 +1861,88 @@
         return [];
       }
     }
-
-    /* EVM scoring */
+    
+    /* EVM scoring (clean explanations) */
     function scoreEvm(sig){
       let score = 100;
       const checks = [];
 
       if(!sig.hasCode){
-        checks.push({ t:"Contract not found", sev:"bad", d:"No bytecode at this address.", infoHtml: EXPL.evmBasics() });
+        checks.push({
+          t:"Contract found",
+          sev:"bad",
+          d:"Kein Bytecode an dieser Adresse.",
+          why:"Adresse ist kein Contract (oder falsche Chain).",
+          infoHtml: explain("Contract found", [
+            "Bedeutung: Es muss Bytecode existieren.",
+            "Warum FAIL: Address hat keinen Code."
+          ])
+        });
         return { score:0, checks, critical:true };
-      }else{
-        checks.push({ t:"Contract found", sev:"ok", d:"Bytecode exists at address.", infoHtml: EXPL.evmBasics() });
       }
+
+      checks.push({
+        t:"Contract found",
+        sev:"ok",
+        d:"Bytecode existiert (Contract).",
+        why:"eth_getCode != 0x",
+        infoHtml: explain("Contract found", [
+          "Bedeutung: Adresse ist ein Smart Contract.",
+          "Warum PASS: Bytecode vorhanden."
+        ])
+      });
 
       const hasName = !!sig.metaOnChain?.name;
       const hasSymbol = !!sig.metaOnChain?.symbol;
 
       if(!hasName || !hasSymbol){
         score -= 10;
-        checks.push({ t:"ERC-20 metadata missing", sev:"warn", d:"Name or symbol could not be read (some tokens are non-standard).", infoHtml: EXPL.evmBasics() });
-      }else{
-        checks.push({ t:"ERC-20 metadata readable", sev:"ok", d:"Name and symbol read successfully.", infoHtml: EXPL.evmBasics() });
-      }
-
-            const decOk = Number.isFinite(sig.metaOnChain?.decimals) && sig.metaOnChain.decimals >= 0 && sig.metaOnChain.decimals <= 36;
-      if(!decOk){
-        score -= 12;
         checks.push({
-          t:"Decimals not readable / unusual",
+          t:"ERC-20 metadata",
           sev:"warn",
-          d:"decimals() did not respond or out of expected range.",
-          infoHtml: EXPL.evmBasics()
+          d:"Name oder Symbol nicht sauber lesbar.",
+          why:"name()/symbol() reverted oder non-standard ABI.",
+          infoHtml: explain("ERC-20 metadata", [
+            "Bedeutung: name()/symbol() helfen Token zu identifizieren.",
+            "Warum WATCH: Calls haben nicht sauber geantwortet."
+          ])
         });
       }else{
         checks.push({
-          t:"Decimals readable",
+          t:"ERC-20 metadata",
+          sev:"ok",
+          d:"Name & Symbol lesbar.",
+          why:"name()/symbol() responded.",
+          infoHtml: explain("ERC-20 metadata", [
+            "Bedeutung: Standard calls funktionieren.",
+            "Warum PASS: name()/symbol() erfolgreich."
+          ])
+        });
+      }
+
+      const decOk = Number.isFinite(sig.metaOnChain?.decimals) && sig.metaOnChain.decimals >= 0 && sig.metaOnChain.decimals <= 36;
+      if(!decOk){
+        score -= 12;
+        checks.push({
+          t:"Decimals",
+          sev:"warn",
+          d:"decimals() nicht lesbar oder ungewöhnlich.",
+          why:"decimals() fehlt/reverted/Out-of-range.",
+          infoHtml: explain("Decimals", [
+            "Bedeutung: Dezimalstellen für UI & Supply Berechnung.",
+            "Warum WATCH: decimals() nicht sauber verfügbar."
+          ])
+        });
+      }else{
+        checks.push({
+          t:"Decimals",
           sev:"ok",
           d:`Decimals: ${sig.metaOnChain.decimals}`,
-          infoHtml: EXPL.evmBasics()
+          why:"decimals() responded.",
+          infoHtml: explain("Decimals", [
+            "Bedeutung: Normale ERC-20 Eigenschaft.",
+            "Warum PASS: decimals() erfolgreich."
+          ])
         });
       }
 
@@ -1867,87 +1950,136 @@
       if(!supplyReadable){
         score -= 10;
         checks.push({
-          t:"Total supply not readable",
+          t:"Total supply",
           sev:"warn",
-          d:"totalSupply() did not respond (or reverted).",
-          infoHtml: EXPL.evmBasics()
+          d:"totalSupply() nicht lesbar.",
+          why:"totalSupply() reverted/unavailable.",
+          infoHtml: explain("Total supply", [
+            "Bedeutung: Supply für Holder-% & Tokenomics.",
+            "Warum WATCH: totalSupply() nicht sauber verfügbar."
+          ])
         });
       }else{
         checks.push({
-          t:"Total supply readable",
+          t:"Total supply",
           sev:"ok",
-          d:"totalSupply() responded.",
-          infoHtml: EXPL.evmBasics()
+          d:"Supply on-chain lesbar.",
+          why:"totalSupply() responded.",
+          infoHtml: explain("Total supply", [
+            "Bedeutung: Supply ist Basis für Holder-%.",
+            "Warum PASS: totalSupply() erfolgreich."
+          ])
         });
       }
 
+      // Owner check
+      const zero = "0x0000000000000000000000000000000000000000";
       if(sig.owner){
-        const zero = "0x0000000000000000000000000000000000000000";
         if(sig.owner.toLowerCase() === zero){
           checks.push({
-            t:"Owner renounced",
+            t:"Owner / Admin",
             sev:"ok",
-            d:"owner() is zero address.",
-            infoHtml: EXPL.evmOwner()
+            d:"Owner ist renounced (0x0).",
+            why:"owner() == zero address.",
+            infoHtml: explain("Owner / Admin", [
+              "Bedeutung: Owner kann oft Sonderrechte haben (Fees/Blacklist/etc).",
+              "Warum PASS: Owner ist 0x0 (renounced)."
+            ])
           });
         }else{
           score -= 22;
           checks.push({
-            t:"Owner active",
+            t:"Owner / Admin",
             sev:"warn",
-            d:`owner(): ${shortAddr(sig.owner)}`,
-            infoHtml: EXPL.evmOwner()
+            d:`Owner aktiv: ${shortAddr(sig.owner)}`,
+            why:"owner() ist nicht 0x0.",
+            infoHtml: explain("Owner / Admin", [
+              "Bedeutung: Admin-Rechte möglich (je nach Contract).",
+              "Warum WATCH: Owner existiert & kann Funktionen haben.",
+              "Tipp: Multi-sig / timelock / renounce prüfen."
+            ])
           });
         }
       }else{
         score -= 6;
         checks.push({
-          t:"Owner not detectable",
+          t:"Owner / Admin",
           sev:"warn",
-          d:"owner() not present or unreadable.",
-          infoHtml: EXPL.evmOwner()
+          d:"owner() nicht gefunden / unreadable.",
+          why:"owner() function fehlt oder reverted.",
+          infoHtml: explain("Owner / Admin", [
+            "Bedeutung: Manche Tokens haben keinen owner() Standard.",
+            "Warum WATCH: Admin-Kontrolle kann anders implementiert sein."
+          ])
         });
       }
 
+      // Proxy check
       if(sig.proxy?.isProxy){
         score -= 18;
         checks.push({
-          t:"Upgradeable / Proxy detected",
+          t:"Proxy / Upgradeability",
           sev:"warn",
-          d:`Implementation: ${sig.proxy.implementation ? shortAddr(sig.proxy.implementation) : "unknown"} • Admin: ${sig.proxy.admin ? shortAddr(sig.proxy.admin) : "unknown"}`,
-          infoHtml: EXPL.evmProxy()
+          d:`Upgradeable Proxy erkannt.`,
+          why:"EIP-1967 Slots nicht-null.",
+          infoHtml: explain("Proxy / Upgradeability", [
+            "Bedeutung: Logik kann nachträglich geändert werden.",
+            "Warum WATCH: Upgrade möglich.",
+            `Implementation: ${sig.proxy.implementation ? sig.proxy.implementation : "unknown"}`,
+            `Admin: ${sig.proxy.admin ? sig.proxy.admin : "unknown"}`
+          ])
         });
       }else{
         checks.push({
-          t:"No proxy detected (heuristic)",
+          t:"Proxy / Upgradeability",
           sev:"ok",
-          d:"No EIP-1967 slots set (best-effort).",
-          infoHtml: EXPL.evmProxy()
+          d:"Kein Proxy-Signal gefunden.",
+          why:"EIP-1967 Slots leer (best-effort).",
+          infoHtml: explain("Proxy / Upgradeability", [
+            "Bedeutung: Proxy = upgradebare Logik.",
+            "Warum PASS: Keine EIP-1967 Hinweise gefunden.",
+            "Hinweis: Best-effort — es gibt andere Proxy Patterns."
+          ])
         });
       }
 
+      // Pause control check (clean, no spam)
       if(sig.paused === true){
         score -= 25;
         checks.push({
-          t:"Paused state: TRUE",
+          t:"Transfer controls (Pause)",
           sev:"bad",
-          d:"Contract appears paused (transfers may be blocked).",
-          infoHtml: EXPL.evmPause()
+          d:"paused() = TRUE — Transfers können blockiert sein.",
+          why:"paused() returned true.",
+          infoHtml: explain("Transfer controls (Pause)", [
+            "Bedeutung: Pausable kann Transfers stoppen.",
+            "Warum FAIL: paused() ist TRUE => vermutlich aktiv blockiert.",
+            "Tipp: Vorsicht – Käufer können nicht transferieren/sellen."
+          ])
         });
       }else if(sig.paused === false){
         score -= 6;
         checks.push({
-          t:"Pause capability detected",
+          t:"Transfer controls (Pause)",
           sev:"warn",
-          d:"paused() exists and is false (capability may exist).",
-          infoHtml: EXPL.evmPause()
+          d:"Pause-Funktion existiert (aktuell nicht aktiv).",
+          why:"paused() exists and returned false.",
+          infoHtml: explain("Transfer controls (Pause)", [
+            "Bedeutung: Pause-Mechanik ist vorhanden.",
+            "Warum WATCH: Admin könnte später pausieren.",
+            "Tipp: Prüfe Admin/Owner & Doku."
+          ])
         });
       }else{
         checks.push({
-          t:"Pause not detectable",
+          t:"Transfer controls (Pause)",
           sev:"ok",
-          d:"paused() not present (or unreadable).",
-          infoHtml: EXPL.evmPause()
+          d:"Keine Pause-Funktion gefunden.",
+          why:"paused() nicht vorhanden oder nicht lesbar.",
+          infoHtml: explain("Transfer controls (Pause)", [
+            "Bedeutung: Kein Standard-Pausable-Signal.",
+            "Warum PASS: paused() nicht auffindbar (best-effort)."
+          ])
         });
       }
 
@@ -1959,42 +2091,65 @@
     function todoEvm(sig){
       const t = [];
       if(!sig.hasCode){
-        t.push({ t:"Fix address", sev:"bad", d:"No contract at this address.", infoHtml: EXPL.evmBasics() });
-        return t;
-      }
-
-      const zero = "0x0000000000000000000000000000000000000000";
-      if(sig.owner && sig.owner.toLowerCase() !== zero){
-        t.push({ t:"Renounce / Secure Owner", sev:"warn", d:"Owner/admin is active.", infoHtml: EXPL.evmOwner() });
-      }else if(sig.owner && sig.owner.toLowerCase() === zero){
-        t.push({ t:"Owner", sev:"ok", d:"Owner appears renounced.", infoHtml: EXPL.evmOwner() });
+        t.push({ t:"Fix address / chain", sev:"bad", d:"Keine Contract-Bytecode gefunden.", why:"Falsche Adresse oder falsche Chain." });
       }else{
-        t.push({ t:"Owner review", sev:"warn", d:"Owner not detectable; review admin controls.", infoHtml: EXPL.evmOwner() });
+        const zero = "0x0000000000000000000000000000000000000000";
+
+        if(sig.owner && sig.owner.toLowerCase() !== zero){
+          t.push({ t:"Secure admin", sev:"warn", d:"Owner ist aktiv. Prüfe Rechte/Timelock/Multi-sig.", why:"Admin kann oft Parameter ändern." });
+        }else if(sig.owner && sig.owner.toLowerCase() === zero){
+          t.push({ t:"Owner", sev:"ok", d:"Owner scheint renounced.", why:"0x0." });
+        }else{
+          t.push({ t:"Admin review", sev:"warn", d:"Owner nicht sichtbar — prüfe alternative Admin Controls.", why:"owner() fehlt." });
+        }
+
+        if(sig.proxy?.isProxy){
+          t.push({ t:"Upgradeability review", sev:"warn", d:"Proxy erkannt — Logik kann geändert werden.", why:"Upgradeable." });
+        }else{
+          t.push({ t:"Upgradeability", sev:"ok", d:"Kein Proxy Signal.", why:"EIP-1967 leer." });
+        }
+
+        if(sig.paused === true){
+          t.push({ t:"Unpause transfers", sev:"bad", d:"Token wirkt pausiert.", why:"paused()==true." });
+        }else if(sig.paused === false){
+          t.push({ t:"Disclose pause rules", sev:"warn", d:"Pause-Funktion existiert.", why:"Admin kann pausieren." });
+        }else{
+          t.push({ t:"Transfer controls", sev:"ok", d:"Keine Pause-Funktion gefunden.", why:"paused() nicht detektierbar." });
+        }
+
+        t.push({ t:"Holders distribution", sev:"warn", d:"Top holders sind wichtiger Risiko-Faktor.", why:"Whale-Risiko prüfen." });
       }
 
-      if(sig.proxy?.isProxy){
-        t.push({ t:"Upgradeability review", sev:"warn", d:"Proxy detected; upgrades can change behavior.", infoHtml: EXPL.evmProxy() });
-      }else{
-        t.push({ t:"Upgradeability", sev:"ok", d:"No proxy detected (best-effort).", infoHtml: EXPL.evmProxy() });
-      }
-
-      if(sig.paused === true){
-        t.push({ t:"Unpause transfers", sev:"bad", d:"Token appears paused.", infoHtml: EXPL.evmPause() });
-      }else if(sig.paused === false){
-        t.push({ t:"Pause capability disclosure", sev:"warn", d:"Pausable pattern detected; disclose rules.", infoHtml: EXPL.evmPause() });
-      }else{
-        t.push({ t:"Transfer controls", sev:"ok", d:"Pause not detectable.", infoHtml: EXPL.evmPause() });
-      }
-
-      t.push({ t:"Holders distribution", sev:"warn", d:"Top holders shown if GoldRush is enabled.", infoHtml: EXPL.evmHolders() });
-      return t;
+      return t.map(x => ({
+        ...x,
+        infoHtml: explain(x.t, [
+          x.d,
+          "Warum wichtig: reduziert Rug/Manipulation Risiko.",
+          "Status: " + pillLabel(x.sev)
+        ])
+      }));
     }
 
     function renderStandardEvm(sig){
       renderList(qs("extList"), [
-        { t:"Token standard", sev:"ok", d:"ERC-20 (checked by on-chain calls).", infoHtml: EXPL.evmBasics() },
-        { t:"Proxy / upgradeability", sev: sig.proxy?.isProxy ? "warn" : "ok", d: sig.proxy?.isProxy ? "Proxy detected (upgradeable)." : "No proxy detected (best-effort).", infoHtml: EXPL.evmProxy() },
-        { t:"Pause capability (heuristic)", sev: sig.paused===true ? "bad" : (sig.paused===false ? "warn" : "ok"), d: sig.paused===true ? "Token appears paused." : (sig.paused===false ? "paused() exists (capability likely)." : "paused() not detected."), infoHtml: EXPL.evmPause() }
+        { t:"Token standard", sev:"ok", d:"ERC-20 (on-chain calls).", why:"name/symbol/decimals/totalSupply calls.", infoHtml: explain("ERC-20 standard", [
+          "Bedeutung: Standard Interface (name/symbol/decimals/totalSupply).",
+          "Warum wichtig: Non-standard tokens können tooling brechen."
+        ])},
+        { t:"Proxy / upgradeability", sev: sig.proxy?.isProxy ? "warn" : "ok",
+          d: sig.proxy?.isProxy ? "Upgradeable proxy detected." : "No proxy signal found.",
+          why: sig.proxy?.isProxy ? "EIP-1967 not-null." : "EIP-1967 slots empty.",
+          infoHtml: explain("Proxy / upgradeability", [
+            sig.proxy?.isProxy ? "WATCH: Upgrades möglich." : "PASS: kein Upgrade-Signal (best-effort)."
+          ])
+        },
+        { t:"Transfer controls (Pause)", sev: sig.paused===true ? "bad" : (sig.paused===false ? "warn" : "ok"),
+          d: sig.paused===true ? "Currently paused." : (sig.paused===false ? "Pause function exists." : "Pause function not found."),
+          why: sig.paused===true ? "paused()==true." : (sig.paused===false ? "paused()==false." : "no paused()."),
+          infoHtml: explain("Pause", [
+            sig.paused===true ? "FAIL: Transfers vermutlich blockiert." : (sig.paused===false ? "WATCH: pausierbar." : "PASS: kein Pausable Signal.")
+          ])
+        }
       ], "Token Standard Details");
     }
 
@@ -2004,19 +2159,32 @@
         t:"Name / Symbol",
         sev:(metaMerged?.name && metaMerged?.symbol) ? "ok" : "warn",
         d:`${metaMerged?.name || "—"} • ${metaMerged?.symbol ? ("$"+metaMerged.symbol) : "—"}`,
-        infoHtml: EXPL.evmBasics()
+        why: (metaMerged?.name && metaMerged?.symbol) ? "name/symbol readable (or via API)." : "missing/unreadable.",
+        infoHtml: explain("Name / Symbol", [
+          "Bedeutung: Token Identität.",
+          (metaMerged?.name && metaMerged?.symbol) ? "Warum PASS: vorhanden." : "Warum WATCH: fehlt/unreadable."
+        ])
       });
       items.push({
         t:"Decimals",
         sev:Number.isFinite(metaOnChain?.decimals) ? "ok" : "warn",
         d:Number.isFinite(metaOnChain?.decimals) ? String(metaOnChain.decimals) : "Not readable",
-        infoHtml: EXPL.evmBasics()
+        why: Number.isFinite(metaOnChain?.decimals) ? "decimals() ok." : "decimals() missing.",
+        infoHtml: explain("Decimals", [
+          "Bedeutung: UI/Supply Berechnung.",
+          Number.isFinite(metaOnChain?.decimals) ? "Warum PASS: vorhanden." : "Warum WATCH: nicht lesbar."
+        ])
       });
+      const supplyReadable = metaOnChain?.totalSupply!==null && metaOnChain?.totalSupply!==undefined;
       items.push({
         t:"Total Supply",
-        sev:(metaOnChain?.totalSupply!==null && metaOnChain?.totalSupply!==undefined) ? "ok" : "warn",
-        d:(metaOnChain?.totalSupply!==null && metaOnChain?.totalSupply!==undefined) ? "Readable on-chain" : "Not readable",
-        infoHtml: EXPL.evmBasics()
+        sev:supplyReadable ? "ok" : "warn",
+        d:supplyReadable ? "Readable on-chain" : "Not readable",
+        why: supplyReadable ? "totalSupply() ok." : "totalSupply() missing.",
+        infoHtml: explain("Total Supply", [
+          "Bedeutung: Basis für Holder-%.",
+          supplyReadable ? "Warum PASS: on-chain lesbar." : "Warum WATCH: nicht lesbar."
+        ])
       });
 
       if(metaMerged?.image){
@@ -2024,9 +2192,10 @@
           t:"Logo / Image",
           sev:"ok",
           d:"Logo via metadata provider (API key).",
-          infoHtml: explainBlock("Token Logo (EVM)", [
-            "Most EVM tokens do not store logos on-chain.",
-            "UIs rely on tokenlists/explorers/metadata providers."
+          why:"Logo is off-chain (normal for EVM).",
+          infoHtml: explain("Token Logo (EVM)", [
+            "EVM Tokens speichern Logos i.d.R. nicht on-chain.",
+            "UIs nutzen Tokenlists/Explorer/Metadata Provider."
           ])
         });
       }else{
@@ -2034,8 +2203,9 @@
           t:"Logo / Image",
           sev:"warn",
           d: CFG.EVM_METADATA_KEY ? "No logo returned by metadata API." : "EVM logos need an API key integration (optional).",
-          infoHtml: explainBlock("Token Logo (EVM)", [
-            "Set EVM_METADATA_KEY to enable logos (optional)."
+          why: CFG.EVM_METADATA_KEY ? "Provider returned none." : "No provider enabled.",
+          infoHtml: explain("Token Logo (EVM)", [
+            CFG.EVM_METADATA_KEY ? "Provider hat kein Logo geliefert." : "Optional: EVM_METADATA_KEY setzen (Moralis)."
           ])
         });
       }
@@ -2043,469 +2213,381 @@
       renderList(qs("metaList"), items, "Token Metadata");
     }
 
-    function renderHoldersEvm(items){
-      const el = qs("holdersList");
-      if(!el) return;
+    /* ===================== EVM HOLDERS (GoldRush -> compute %) ===================== */
+    function formatUnits(bigint, decimals){
+      if(bigint === null || bigint === undefined) return null;
+      const d = Number.isFinite(decimals) ? decimals : 18;
+      const neg = bigint < 0n;
+      let x = neg ? -bigint : bigint;
 
-      if(!items || !items.length){
-        renderList(el, [{
-          t:"No holder data",
-          sev:"warn",
-          d: CFG.GOLDRUSH_API_KEY ? "GoldRush returned no holders (or rate-limited)." : "GoldRush key not set.",
-          infoHtml: EXPL.evmHolders()
-        }], "Top Holders");
+      const base = 10n ** BigInt(d);
+      const whole = x / base;
+      const frac = x % base;
+
+      // 6 decimals preview
+      const fracStr = frac.toString().padStart(d,"0").slice(0,6).replace(/0+$/,"");
+      return (neg ? "-" : "") + whole.toString() + (fracStr ? ("." + fracStr) : "");
+    }
+
+    function safeBigIntFromStr(s){
+      try{
+        if(s === null || s === undefined) return null;
+        // GoldRush sometimes uses string numbers
+        if(typeof s === "string"){
+          if(s.trim() === "") return null;
+          if(s.includes(".")) {
+            // if decimal string, drop decimals safely
+            return BigInt(s.split(".")[0]);
+          }
+          return BigInt(s);
+        }
+        if(typeof s === "number"){
+          if(!Number.isFinite(s)) return null;
+          return BigInt(Math.trunc(s));
+        }
+        return BigInt(s);
+      }catch{
+        return null;
+      }
+    }
+
+    async function renderHoldersEvm(chainId, tokenAddr, metaOnChain){
+      const supplyBI = metaOnChain?.totalSupply ?? null;
+      const decimals = metaOnChain?.decimals ?? 18;
+
+      const holders = await goldrushHolders(chainId, tokenAddr);
+      if(!holders || !holders.length){
+        renderHoldersEmpty();
         return;
       }
 
-      const parsed = items.slice(0,10).map((h,i) => {
-        const address = h?.address || "—";
-        const pct = Number(h?.balance_percentage || 0);
+      const items = holders.slice(0,10).map((h, i) => {
+        const addr = (h?.address || "").trim();
+        const balRaw = h?.balance ?? h?.balance_quote ?? h?.token_balance ?? null;
+        const balBI = safeBigIntFromStr(balRaw);
+
+        let pct = null;
+
+        // Preferred: compute % using on-chain totalSupply
+        if(supplyBI && balBI !== null && supplyBI > 0n){
+          const p = Number((balBI * 10000n) / supplyBI) / 100; // 2dp
+          pct = Number.isFinite(p) ? p : null;
+        }else{
+          // Fallback: provider may deliver percent (not always)
+          const p2 = Number(h?.percentage ?? h?.pct ?? h?.share ?? NaN);
+          pct = Number.isFinite(p2) ? p2 : null;
+        }
+
+        const balFmt = (balBI !== null)
+          ? formatUnits(balBI, decimals)
+          : (typeof balRaw === "string" ? balRaw : "—");
+
+        const pctStr = (pct === null) ? "—" : pct.toFixed(2) + "%";
+
         return {
-          t:`#${i+1} ${shortAddr(address)}`,
-          sev: pct >= 10 ? "warn" : "ok",
-          d:`${pct.toFixed(2)}%`,
-          infoHtml: explainBlock("Top holder", [
-            `This wallet holds ~${pct.toFixed(2)}% of supply.`,
-            "High % increases dump risk."
+          t:`#${i+1} ${shortAddr(addr)}`,
+          d:`${balFmt} tokens • ${pctStr}`,
+          addr,
+          infoHtml: explain("Top holder", [
+            `Anteil: ${pctStr}`,
+            "Warum wichtig: hohe % = Whale/Dump Risiko.",
+            "Hinweis: % berechnet aus totalSupply (falls verfügbar)."
           ])
         };
       });
 
-      renderList(el, parsed, "Top Holder Details");
+      renderHoldersWithExplorer(items, activeChain);
     }
 
-    /* ===================== SCAN FLOW ===================== */
-    function setScanning(isOn){
-      SCANNING = isOn;
-      const b1 = qs("btnScan");
-      const b2 = qs("btnScanInline");
-      if(b1) b1.disabled = isOn;
-      if(b2) b2.disabled = isOn;
-    }
-
-    function resetBeforeScan(addr){
-      setStatus("Running Guardian Check…");
-      setText("mintShort", shortAddr(addr));
-      setText("verdictTitle","—");
-      setBadge(qs("verdictBadge"),"—");
-      setText("scoreBadge","—");
-      setText("summary","—");
-      setText("scanHint","—");
-      setText("tokenName","—");
-      setText("tokenSymbol","—");
-
-      const lw = qs("tokenLogoWrap");
-      if(lw) lw.style.display = "none";
-
-      renderMetrics([]);
-      LAST_SCAN = null;
-
-      const ex = qs("btnExport");
-      if(ex){
-        ex.disabled = true;
-        ex.textContent = "Download Scan Report";
+    /* ===================== EXPORT (REPORT) ===================== */
+    function buildReportText(scan){
+      const lines = [];
+      lines.push(`$SOS Guardian Scan Report`);
+      lines.push(`Time: ${new Date(scan.time).toISOString()}`);
+      lines.push(`Chain: ${scan.chain.name} (${scan.chain.id})`);
+      lines.push(`Address: ${scan.address}`);
+      lines.push(`Verdict: ${scan.verdict.title} (${scan.score}/100)`);
+      lines.push("");
+      lines.push("Checks:");
+      for(const c of scan.checks){
+        lines.push(`- [${pillLabel(c.sev)}] ${c.t}: ${c.d}`);
       }
+      lines.push("");
+      lines.push("Launch Readiness:");
+      for(const t of scan.todos){
+        lines.push(`- [${pillLabel(t.sev)}] ${t.t}: ${t.d}`);
+      }
+      return lines.join("\n");
     }
 
-    async function scanSolana(mint){
-      const mintParsed = await getMintParsed(mint);
-      if(!mintParsed?.info) throw new Error("Mint not readable (not a token mint).");
-
-      const owner = mintParsed.owner;
-      const info = mintParsed.info;
-
-      const mintAuthority = (info.mintAuthority ?? null);
-      const freezeAuthority = (info.freezeAuthority ?? null);
-      const decimals = Number(info.decimals ?? 0);
-
-      const programType =
-        (owner === CFG.TOKEN_PROGRAM) ? "SPL_TOKEN" :
-        (owner === CFG.TOKEN_2022_PROGRAM) ? "TOKEN_2022" :
-        "UNKNOWN";
-
-      const [supply, largest, asset] = await Promise.all([
-        getTokenSupply(mint),
-        getLargest(mint),
-        getAsset(mint)
-      ]);
-
-      const meta = pickTokenMetaFromAsset(asset);
-      applyTokenHeader(meta, mint);
-      renderMetaSol(meta);
-
-      const uiSupply = supply ? Number(supply.uiAmount ?? 0) : null;
-
-      const top20 = (Array.isArray(largest) ? largest.slice(0,20) : []);
-      const top20Sum = top20.reduce((acc,x)=> acc + Number(x.uiAmount || 0), 0);
-      const conc = (uiSupply && uiSupply > 0) ? (top20Sum / uiSupply) * 100 : 0;
-
-      const extRaw = (programType === "TOKEN_2022") ? parseExtensionsFromParsed(mintParsed.rawParsed) : null;
-      const extReadable = !!(extRaw && extRaw.length);
-
-      const sig = {
-        mintAuthActive: !!mintAuthority,
-        freezeActive: !!freezeAuthority,
-        top20: conc,
-        programType,
-        extReadable,
-        meta: meta || null
-      };
-
-      const model = scoreSol(sig);
-      const verdict = verdictFrom(model.score, model.critical);
-
-      setText("verdictTitle", verdict.title);
-      setBadge(qs("verdictBadge"), verdict.label, verdict.mode);
-      setText("scoreBadge", `SCORE ${model.score}`);
-
-      const authLine = `${sig.mintAuthActive ? "MINT ACTIVE" : "MINT RENOUNCED"} • ${sig.freezeActive ? "FREEZE ACTIVE" : "FREEZE REMOVED"}`;
-      const programText = (sig.programType === "SPL_TOKEN") ? "SPL Token" : (sig.programType === "TOKEN_2022" ? "Token-2022" : "Unknown");
-
-      renderMetrics([
-        { label:"Chain", value:"Solana", badge:"SOL", mini:"Mainnet" },
-        { label:"Risk Score", value:`${model.score}/100`, badge:"SCORE", mini: model.score>=80 ? "Looks safer than average (still not guaranteed)." : (model.score>=50 ? "Mixed signals — read WATCH items." : "High risk signals — be careful."), barPct:model.score },
-        { label:"Authorities", value:authLine, badge:"AUTH", mini:(sig.mintAuthActive||sig.freezeActive) ? "Authorities present = higher risk." : "No mint/freeze authority (good)." },
-        { label:"Top 20 Concentration", value:fmtPct(sig.top20), badge:"TOP20", mini:(uiSupply ? `Top20: ${fmtInt(top20Sum)} / ${fmtInt(uiSupply)} • Decimals ${decimals}` : `Decimals ${decimals}`), barPct:sig.top20 },
-        { label:"Token Standard", value:programText, badge:"STD", mini: owner ? `Mint program owner: ${shortAddr(owner)}` : "—" },
-        { label:"Supply", value: uiSupply ? fmtInt(uiSupply) : "—", badge:"UI", mini:"UI supply (RPC)" }
-      ]);
-
-      setText("scanHint", `Chain: Solana • Mint: ${shortAddr(mint)}`);
-
-      renderList(qs("checksList"), model.checks, "Guardian Check Details");
-      renderList(qs("todoList"), todoSol(sig), "Launch Readiness Details");
-      renderExtSol(programType, extReadable, extRaw || []);
-      renderHoldersSol(mint, uiSupply, largest);
-
-      setText("summary", `${verdict.label} • Score ${model.score}/100 • MINT: ${sig.mintAuthActive ? "ACTIVE" : "RENOUNCED"} • FREEZE: ${sig.freezeActive ? "ACTIVE" : "REMOVED"} • Top20 ${fmtPct(conc)} • Standard ${programText} • Decimals ${decimals}`);
-
-      LAST_SCAN = {
-        version:"guardian-check-v2.2",
-        ts:new Date().toISOString(),
-        chain:{id:activeChain.id,name:activeChain.name,kind:activeChain.kind,stamp:activeChain.stamp},
-        address:mint,
-        token:{name:meta?.name||"",symbol:meta?.symbol||"",image:meta?.image||"",uri:meta?.uri||""},
-        score:model.score,
-        verdict,
-        summary: qs("summary")?.textContent || "",
-        checks:model.checks,
-        todos:todoSol(sig),
-        holders: (Array.isArray(largest)?largest.slice(0,10):[]).map(x=>{
-          const amt = Number(x?.uiAmount||0);
-          const pct = (uiSupply && uiSupply>0) ? (amt/uiSupply)*100 : 0;
-          return { address: x?.address || "", pct };
-        }),
-        solana:{
-          programOwner:owner,
-          programType,
-          decimals,
-          mintAuthorityActive:!!mintAuthority,
-          freezeAuthorityActive:!!freezeAuthority,
-          top20ConcentrationPct:Number(conc||0),
-          extensions: extReadable ? (extRaw||[]).map(x=>x.name) : []
-        }
-      };
-
-      const ex = qs("btnExport");
-      if(ex){
-        ex.disabled = false;
-        ex.textContent = "Download Scan Report";
-      }
-
-      setStatus(`Guardian Check complete: ${verdict.label} • Score ${model.score}/100`);
-      showToast(sig.freezeActive ? "Freeze Authority active" : "Freeze Authority removed");
-    }
-
-    async function scanEvm(addr){
-      const chainId = activeChain.chainId;
-
-      const code = await getCode(chainId, addr);
-      const hasCode = !!(code && code !== "0x");
-
-      const [metaOnChain, owner, paused, proxy, metaApi, holdersGR] = await Promise.all([
-        hasCode ? getErc20Meta(chainId, addr) : Promise.resolve({name:"",symbol:"",decimals:null,totalSupply:null}),
-        hasCode ? getOwner(chainId, addr) : Promise.resolve(null),
-        hasCode ? getPaused(chainId, addr) : Promise.resolve(null),
-        hasCode ? detectProxy(chainId, addr) : Promise.resolve({isProxy:false,implementation:null,admin:null}),
-        hasCode ? getEvmMetaViaApi(chainId, addr) : Promise.resolve(null),
-        hasCode ? goldrushHolders(chainId, addr) : Promise.resolve([])
-      ]);
-
-      const metaMerged = {
-        name: (metaApi?.name || metaOnChain?.name || "").trim(),
-        symbol: (metaApi?.symbol || metaOnChain?.symbol || "").trim(),
-        image: (metaApi?.image || "").trim()
-      };
-
-      applyTokenHeader({name: metaMerged.name || "Token", symbol: metaMerged.symbol || "", image: metaMerged.image || ""}, addr);
-      renderMetaEvm(metaMerged, metaOnChain);
-
-      const sig = { hasCode, metaOnChain, owner, paused, proxy };
-      const model = scoreEvm(sig);
-      const verdict = verdictFrom(model.score, model.critical);
-
-      setText("verdictTitle", verdict.title);
-      setBadge(qs("verdictBadge"), verdict.label, verdict.mode);
-      setText("scoreBadge", `SCORE ${model.score}`);
-
-      const ownerLine = owner ? shortAddr(owner) : "Unknown";
-      const proxyLine = proxy?.isProxy ? `Proxy (impl ${proxy.implementation ? shortAddr(proxy.implementation) : "?"})` : "No proxy detected";
-      const pauseLine = paused === true ? "Paused = TRUE" : (paused === false ? "Paused = FALSE (capability likely)" : "Pause not detected");
-
-      const supplyReadable = metaOnChain?.totalSupply !== null && metaOnChain?.totalSupply !== undefined;
-      const dec = Number.isFinite(metaOnChain?.decimals) ? metaOnChain.decimals : null;
-
-      renderMetrics([
-        { label:"Chain", value: activeChain.name, badge: activeChain.id.toUpperCase(), mini: activeChain.stamp },
-        { label:"Risk Score", value:`${model.score}/100`, badge:"SCORE", mini: model.score>=80 ? "Looks safer than average (still not guaranteed)." : (model.score>=50 ? "Mixed signals — read WATCH items." : "High risk signals — be careful."), barPct:model.score },
-        { label:"Contract", value: hasCode ? "Bytecode present" : "No code", badge:"CODE", mini: hasCode ? "Contract exists on-chain." : "This address is not a contract." },
-        { label:"Owner/Admin", value: ownerLine, badge:"ADMIN", mini:"Heuristic via owner() if present." },
-        { label:"Proxy", value: proxyLine, badge:"PROXY", mini:"Heuristic via EIP-1967 slots." },
-        { label:"Transfers", value: pauseLine, badge:"CTRL", mini:"Heuristic via paused()." },
-        { label:"Supply", value: supplyReadable ? "Readable on-chain" : "Not readable", badge:"SUP", mini: dec !== null ? `Decimals: ${dec}` : "Decimals: —" }
-      ]);
-
-      setText("scanHint", `Chain: ${activeChain.name} • Addr: ${shortAddr(addr)}`);
-
-      renderList(qs("checksList"), model.checks, "Guardian Check Details");
-      renderList(qs("todoList"), todoEvm(sig), "Launch Readiness Details");
-      renderStandardEvm(sig);
-      renderHoldersEvm(holdersGR);
-
-      setText("summary",
-        `${verdict.label} • Score ${model.score}/100 • OWNER: ${owner ? shortAddr(owner) : "UNKNOWN"} • PROXY: ${proxy?.isProxy ? "YES" : "NO"} • PAUSED: ${paused===true ? "YES" : (paused===false ? "NO (capable)" : "n/a")} • ${metaMerged.symbol ? "$"+metaMerged.symbol : "—"} • ${metaMerged.name || "—"}`
-      );
-
-      LAST_SCAN = {
-        version:"guardian-check-v2.2",
-        ts:new Date().toISOString(),
-        chain:{id:activeChain.id,name:activeChain.name,kind:activeChain.kind,chainId:activeChain.chainId,stamp:activeChain.stamp},
-        address:addr,
-        token:{name:metaMerged.name||"",symbol:metaMerged.symbol||"",image:metaMerged.image||""},
-        score:model.score,
-        verdict,
-        summary: qs("summary")?.textContent || "",
-        checks:model.checks,
-        todos:todoEvm(sig),
-        holders: (holdersGR||[]).slice(0,10).map(h=>({address:h?.address||"", pct:Number(h?.balance_percentage||0)})),
-        evm:{
-          hasCode,
-          proxy,
-          owner: owner || "",
-          paused,
-          decimals: dec,
-          totalSupplyReadable: supplyReadable,
-          totalSupply: supplyReadable ? String(metaOnChain.totalSupply) : null,
-          holdersProvider: CFG.GOLDRUSH_API_KEY ? "goldrush" : "none"
-        }
-      };
-
-      const ex = qs("btnExport");
-      if(ex){
-        ex.disabled = false;
-        ex.textContent = "Download Scan Report";
-      }
-
-      setStatus(`Guardian Check complete: ${verdict.label} • Score ${model.score}/100`);
-    }
-
-    async function scan(){
-      if(SCANNING) return;
-
-      const mintEl = qs("mint");
-      const addr = (mintEl?.value || "").trim();
-      setStatus("");
-
-      if(activeChain.kind === "solana"){
-        if(!looksBase58(addr)){
-          setStatus("Invalid Solana mint address.");
-          return;
-        }
-      }else{
-        if(!looksEvmAddress(addr)){
-          setStatus("Invalid EVM address (must be 0x + 40 hex chars).");
-          return;
-        }
-      }
-
-      resetBeforeScan(addr);
-      setScanning(true);
-
-      try{
-        if(activeChain.kind === "solana") await scanSolana(addr);
-        else await scanEvm(addr);
-      }catch(e){
-        console.error(e);
-        setStatus("Scan failed: " + (e?.message || "unknown error"));
-      }finally{
-        setScanning(false);
-      }
-    }
-
-    /* ===================== EXPORT (HTML report) ===================== */
-    function downloadHtmlReport(){
-      if(!LAST_SCAN) return;
-
-      const s = LAST_SCAN;
-      const tokenName = safe(s.token?.name || "Token");
-      const tokenSym  = safe(s.token?.symbol || "");
-      const chainName = safe(s.chain?.name || s.chain?.id || "Chain");
-      const addrFull  = safe(s.address || "");
-      const verdict   = safe(s.verdict?.label || "SCAN");
-      const score     = (typeof s.score === "number") ? String(s.score) : safe(s.score || "");
-      const summary   = safe(s.summary || "");
-
-      const holders = Array.isArray(s.holders) ? s.holders : [];
-      const checks  = Array.isArray(s.checks) ? s.checks : [];
-      const todos   = Array.isArray(s.todos) ? s.todos : [];
-
-      const html = `<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Guardian Scan Report</title>
-<style>
-  :root{--bg:#070711;--text:rgba(255,255,255,.92);--muted:rgba(255,255,255,.70);--g:#14F195;--c:#00D1FF;--p:#9945FF;}
-  body{margin:0;background:varպիս:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial}
-  .wrap{max-width:1100px;margin:0 auto;padding:22px}
-  .card{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.10);border-radius:18px;padding:16px;margin-bottom:12px}
-  .top{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:flex-start}
-  .h1{font-weight:1000;font-size:26px;margin:0}
-  .muted{color:var(--muted);font-weight:850}
-  .badge{display:inline-flex;align-items:center;justify-content:center;padding:7px 11px;border-radius:999px;font-weight:1000;font-size:12px;background:linear-gradient(90deg,var(--g),var(--c),var(--p));color:#061012}
-  .kv{display:grid;grid-template-columns:180px 1fr;gap:8px;margin-top:10px}
-  .k{color:var(--muted);font-weight:950;text-transform:uppercase;letter-spacing:.35px;font-size:12px}
-  .v{font-weight:900;overflow-wrap:anywhere}
-  .li{padding:12px;border-radius:14px;background:rgba(0,0,0,.25);border:1px solid rgba(255,255,255,.10);margin-top:10px}
-  .li .t{font-weight:1000}
-  .li .d{color:var(--muted);font-weight:850;margin-top:4px;line-height:1.4}
-  h3{margin:0 0 6px;font-size:14px;letter-spacing:.35px;text-transform:uppercase;color:rgba(255,255,255,.80)}
-</style>
-</head>
-<body>
-<div class="wrap">
-  <div class="card">
-    <div class="top">
-      <div>
-        <div class="h1">${tokenName}${tokenSym ? ` ($${tokenSym})` : ""}</div>
-        <div class="muted">${chainName} • ${safe(s.ts || "")}</div>
-      </div>
-      <div><div class="badge">${verdict}${score ? ` • SCORE ${safe(score)}` : ""}</div></div>
-    </div>
-    <div class="kv">
-      <div class="k">Address</div><div class="v">${addrFull}</div>
-      <div class="k">Summary</div><div class="v">${summary || "—"}</div>
-    </div>
-  </div>
-
-  <div class="card">
-    <h3>Top Holders</h3>
-    ${holders.length ? holders.map(h => `
-      <div class="li">
-        <div class="t">${safe(h.address || "")}</div>
-        <div class="d">${Number(h.pct||0).toFixed(2)}%</div>
-      </div>`).join("") : `<div class="muted">No holder data available.</div>`}
-  </div>
-
-  <div class="card">
-    <h3>Guardian Checks</h3>
-    ${checks.length ? checks.map(c => `
-      <div class="li">
-        <div class="t">${safe(c.t || c.k || "")}</div>
-        <div class="d">${safe(c.d || "")}</div>
-      </div>`).join("") : `<div class="muted">No checks available.</div>`}
-  </div>
-
-  <div class="card">
-    <h3>Launch Readiness</h3>
-    ${todos.length ? todos.map(t => `
-      <div class="li">
-        <div class="t">${safe(t.t || "")}</div>
-        <div class="d">${safe(t.d || "")}</div>
-      </div>`).join("") : `<div class="muted">No action items.</div>`}
-  </div>
-</div>
-</body>
-</html>`;
-
-      const blob = new Blob([html], {type:"text/html;charset=utf-8"});
+    function downloadText(filename, text){
+      const blob = new Blob([text], {type:"text/plain;charset=utf-8"});
+      const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-
-      const namePart = `${(s.chain?.id || "chain")}_${(s.token?.symbol || "token")}_${(s.address || "").slice(0,6)}`;
-      a.download = `guardian_report_${namePart}.html`;
-
+      a.href = url;
+      a.download = filename;
       document.body.appendChild(a);
       a.click();
-      setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 0);
+      a.remove();
+      URL.revokeObjectURL(url);
     }
 
-    /* ===================== EVENTS ===================== */
-    function wireEvents(){
-      on("btnScan","click", scan);
-      on("btnScanInline","click", scan);
-      on("btnExport","click", downloadHtmlReport);
+    function enableExport(){
+      const b = qs("btnExport");
+      if(!b) return;
+      b.disabled = false;
+      b.textContent = "Download Scan Report";
+    }
 
-      on("mint","keydown",(e)=>{ if(e.key==="Enter") scan(); });
+    /* ===================== MAIN SCAN FLOW ===================== */
+    async function runScan(){
+      if(SCANNING) return;
+      SCANNING = true;
 
-      on("modalClose","click", closeModal);
+      hideToast();
+      updateStampTime();
 
-      const mw = qs("modalWrap");
-      if(mw){
-        mw.addEventListener("click",(e)=>{ if(e.target === mw) closeModal(); });
-      }
+      const addr = (qs("mint")?.value || "").trim();
+      setStatus("");
+      clearUI();
 
-      document.addEventListener("keydown",(e)=>{ if(e.key==="Escape") closeModal(); });
+      // show address immediately
+      setText("mintShort", addr ? shortAddr(addr) : "—");
 
-      // Open modal from ANY element that has data-open="1"
-      document.addEventListener("click",(e)=>{
-        const el = e.target.closest?.('[data-open="1"]');
-        if(!el) return;
-        const title = el.getAttribute("data-title") || "Guardian Details";
-        const html = el.getAttribute("data-html") || "";
-        if(html && html.trim()) openModal(title, html);
-      });
+      try{
+        if(activeChain.kind === "solana"){
+          if(!looksBase58(addr)) throw new Error("Invalid Solana mint. (Base58, 32-52 chars)");
 
-      // Keyboard open for pill
-      document.addEventListener("keydown",(e)=>{
-        if((e.key==="Enter" || e.key===" ") && document.activeElement){
-          const el = document.activeElement;
-          if(el.getAttribute && el.getAttribute("data-open")==="1"){
-            e.preventDefault();
-            const title = el.getAttribute("data-title") || "Guardian Details";
-            const html = el.getAttribute("data-html") || "";
-            if(html && html.trim()) openModal(title, html);
+          setStatus("Connecting to Solana RPC…");
+          const mintParsed = await getMintParsed(addr);
+          if(!mintParsed || !mintParsed.info) throw new Error("Mint not found or not parsable.");
+
+          const ownerProg = mintParsed.owner || "";
+          const programType =
+            ownerProg === CFG.TOKEN_2022_PROGRAM ? "TOKEN_2022" :
+            ownerProg === CFG.TOKEN_PROGRAM ? "SPL_TOKEN" :
+            "UNKNOWN";
+
+          setStatus("Fetching supply…");
+          const supply = await getTokenSupply(addr);
+          const uiSupply = Number(supply?.uiAmount ?? NaN);
+
+          setStatus("Fetching largest holders…");
+          const largest = await getLargest(addr);
+
+          setStatus("Fetching metadata (getAsset)…");
+          const asset = await getAsset(addr);
+          const meta = pickTokenMetaFromAsset(asset);
+
+          const mintAuth = mintParsed.info?.mintAuthority ?? null;
+          const freezeAuth = mintParsed.info?.freezeAuthority ?? null;
+
+          const extListRaw = parseExtensionsFromParsed(mintParsed.rawParsed);
+          const extReadable = Array.isArray(extListRaw);
+
+          // Top20 % based on largest accounts (best effort)
+          let top20 = 0;
+          if(Number.isFinite(uiSupply) && uiSupply > 0 && Array.isArray(largest)){
+            top20 = largest.slice(0,20).reduce((acc, x) => acc + (Number(x?.uiAmount || 0) / uiSupply * 100), 0);
           }
+
+          const sig = {
+            programType,
+            extReadable,
+            extensions: extListRaw || [],
+            mintAuthActive: !!mintAuth,
+            freezeActive: !!freezeAuth,
+            mintAuthority: mintAuth,
+            freezeAuthority: freezeAuth,
+            uiSupply: Number.isFinite(uiSupply) ? uiSupply : null,
+            top20,
+            meta
+          };
+
+          applyTokenHeader(meta, addr);
+
+          const {score, checks, critical} = scoreSol(sig);
+          const verdict = verdictFrom(score, critical);
+
+          setText("verdictTitle", verdict.title);
+          setBadge(qs("verdictBadge"), verdict.label, verdict.mode);
+          setText("scoreBadge", `${score}/100`);
+
+          setText("scanHint", programType === "TOKEN_2022" ? "Token-2022 • Extensions review" : "Standard checks");
+
+          // Metrics
+          renderMetrics([
+            { label:"Guardian Score", value:`${score}/100`, badge: verdict.label, barPct: score, mini:"Composite risk score (heuristic)." },
+            { label:"Token Standard", value: programType==="TOKEN_2022" ? "Token-2022" : (programType==="SPL_TOKEN" ? "SPL Token" : "Unknown"), badge:"On-chain", mini:"Mint owner program." },
+            { label:"Total Supply", value: Number.isFinite(uiSupply) ? fmtInt(uiSupply) : "—", badge:"Supply", mini:"From getTokenSupply." },
+            { label:"Top20 Concentration", value: Number.isFinite(top20) ? fmtPct(top20) : "—", badge:"Holders", mini:"Approx via largest accounts." , barPct: Number.isFinite(top20) ? clamp(top20,0,100) : undefined }
+          ]);
+
+          setText("summary",
+            critical
+              ? "Critical risk detected (mint/freeze authority)."
+              : (score>=80 ? "Looks strong — still verify liquidity/links." : "Mixed signals — verify admin/holders.")
+
+          );
+
+          renderList(qs("checksList"), checks, "Guardian Checks");
+          renderList(qs("todoList"), todoSol(sig), "Launch Readiness");
+          renderExtSol(programType, extReadable, sig.extensions);
+          renderMetaSol(meta);
+          renderHoldersSol(addr, uiSupply, largest);
+
+          LAST_SCAN = { time: Date.now(), chain: activeChain, address: addr, score, verdict, checks, todos: todoSol(sig) };
+          enableExport();
+          setStatus("Scan complete.");
+
+        } else {
+          // EVM
+          if(!looksEvmAddress(addr)) throw new Error("Invalid EVM address. Must be 0x + 40 hex chars.");
+          const chainId = activeChain.chainId;
+
+          setStatus("Connecting to EVM RPC…");
+          const code = await getCode(chainId, addr);
+          const hasCode = !!(code && code !== "0x" && code !== "0x0");
+
+          setStatus("Reading ERC-20 on-chain metadata…");
+          const metaOnChain = await getErc20Meta(chainId, addr);
+
+          // Optional provider logo/name if on-chain missing
+          setStatus("Fetching optional metadata provider…");
+          const metaApi = await getEvmMetaViaApi(chainId, addr);
+
+          const metaMerged = {
+            name: (metaOnChain?.name || metaApi?.name || "").trim(),
+            symbol: (metaOnChain?.symbol || metaApi?.symbol || "").trim(),
+            image: (metaApi?.image || "").trim()
+          };
+
+          applyTokenHeader(metaMerged, addr);
+
+          setStatus("Checking owner/proxy/controls…");
+          const [owner, proxy, paused] = await Promise.all([
+            getOwner(chainId, addr),
+            detectProxy(chainId, addr),
+            getPaused(chainId, addr)
+          ]);
+
+          const sig = { hasCode, metaOnChain, metaMerged, owner, proxy, paused };
+
+          const {score, checks, critical} = scoreEvm(sig);
+          const verdict = verdictFrom(score, critical);
+
+          setText("verdictTitle", verdict.title);
+          setBadge(qs("verdictBadge"), verdict.label, verdict.mode);
+          setText("scoreBadge", `${score}/100`);
+
+          setText("scanHint", `${activeChain.stamp} • ERC-20 checks`);
+
+          // Metrics
+          const supplyReadable = metaOnChain?.totalSupply !== null && metaOnChain?.totalSupply !== undefined;
+          const supplyText = supplyReadable
+            ? formatUnits(metaOnChain.totalSupply, metaOnChain.decimals ?? 18)
+            : "—";
+
+          renderMetrics([
+            { label:"Guardian Score", value:`${score}/100`, badge: verdict.label, barPct: score, mini:"Composite risk score (heuristic)." },
+            { label:"Owner", value: owner ? shortAddr(owner) : "—", badge: owner ? "Admin" : "Unknown", mini:"Best-effort owner() call." },
+            { label:"Proxy", value: proxy?.isProxy ? "Upgradeable" : "No signal", badge: proxy?.isProxy ? "WATCH" : "PASS", mini:"EIP-1967 slots check." },
+            { label:"Total Supply", value: supplyText || "—", badge: supplyReadable ? "On-chain" : "Unknown", mini:"From totalSupply()." }
+          ]);
+
+          setText("summary",
+            critical
+              ? "Critical risk detected (paused or contract missing)."
+              : (score>=80 ? "Looks strong — still verify liquidity/links." : "Mixed signals — verify admin/upgradeability/holders.")
+          );
+
+          renderList(qs("checksList"), checks, "Guardian Checks");
+          const todos = todoEvm(sig);
+          renderList(qs("todoList"), todos, "Launch Readiness");
+          renderStandardEvm(sig);
+          renderMetaEvm(metaMerged, metaOnChain);
+
+          // holders (optional)
+          setStatus("Fetching top holders (indexer)…");
+          await renderHoldersEvm(chainId, addr, metaOnChain);
+
+          LAST_SCAN = { time: Date.now(), chain: activeChain, address: addr, score, verdict, checks, todos };
+          enableExport();
+          setStatus("Scan complete.");
+        }
+      }catch(err){
+        const msg = String(err?.message || err);
+        setStatus("Error: " + msg);
+        showToast("Connection error: " + msg);
+        renderHoldersEmpty();
+      }finally{
+        SCANNING = false;
+      }
+    }
+
+    /* ===================== EVENTS (modal + buttons) ===================== */
+    function wireGlobalClick(){
+      document.addEventListener("click", (e) => {
+        const t = e.target;
+
+        // open info modal
+        const openEl = t?.closest?.("[data-open='1']");
+        if(openEl){
+          const title = openEl.getAttribute("data-title") || "Details";
+          const infoId = openEl.getAttribute("data-info") || "";
+          const html = getInfo(infoId);
+          if(html) openModal(title, html);
+          return;
         }
       });
 
-      on("toastClose","click", hideToast);
+      // keyboard open for pills
+      document.addEventListener("keydown", (e) => {
+        if(e.key !== "Enter" && e.key !== " ") return;
+        const a = document.activeElement;
+        if(a && a.matches && a.matches("[data-open='1']")){
+          e.preventDefault();
+          const title = a.getAttribute("data-title") || "Details";
+          const infoId = a.getAttribute("data-info") || "";
+          const html = getInfo(infoId);
+          if(html) openModal(title, html);
+        }
+      });
     }
 
-    /* ===================== INIT (SAFE) ===================== */
     function init(){
-      const y = qs("y");
-      if(y) y.textContent = new Date().getFullYear();
+      qs("y").textContent = String(new Date().getFullYear());
 
-      updateStampTime();
-      setInterval(updateStampTime, 1000);
+      on("modalClose", "click", closeModal);
+      on("toastClose", "click", hideToast);
+      on("modalWrap", "click", (e) => { if(e.target === qs("modalWrap")) closeModal(); });
 
-      const p = new URLSearchParams(location.search);
-      const chain = p.get("chain");
+      on("btnScan", "click", runScan);
+      on("btnScanInline", "click", runScan);
 
-      if(chain && CFG.CHAINS.some(c=>c.id===chain)){
-        activeChain = CFG.CHAINS.find(c=>c.id===chain);
-      }else{
-        activeChain = CFG.CHAINS[0];
+      on("mint", "keydown", (e) => {
+        if(e.key === "Enter") runScan();
+      });
+
+      on("btnExport", "click", () => {
+        if(!LAST_SCAN) return;
+        const name = `guardian_scan_${LAST_SCAN.chain.id}_${LAST_SCAN.address.slice(0,10)}.txt`;
+        downloadText(name, buildReportText(LAST_SCAN));
+      });
+
+      // URL chain param
+      const url = new URL(location.href);
+      const chainParam = url.searchParams.get("chain");
+      if(chainParam && CFG.CHAINS.some(c => c.id === chainParam)){
+        activeChain = CFG.CHAINS.find(c => c.id === chainParam);
       }
 
-      wireEvents();
-      renderChainButtons();
       setActiveChain(activeChain.id, false);
+      updateStampTime();
+      wireGlobalClick();
     }
 
-    document.addEventListener("DOMContentLoaded", init);
+    init();
   </script>
 </body>
 </html>
