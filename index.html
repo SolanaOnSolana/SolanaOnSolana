@@ -80,10 +80,11 @@
       background: rgba(7,7,17,.68);
       border-bottom: 1px solid rgba(255,255,255,.08);
     }
-    .headerRow{
+
+    .headerTop{
       display:flex; align-items:center; justify-content:space-between;
       gap:12px;
-      padding:12px 0;
+      padding:12px 0 10px;
     }
 
     .brand{
@@ -133,10 +134,58 @@
       box-shadow: 0 14px 28px rgba(0,0,0,.28);
     }
 
-    .headerRight{
-      display:flex; align-items:center; gap:10px; justify-content:flex-end;
-      min-width: 260px;
-      white-space: nowrap;
+    /* SECOND BAR for external links */
+    .headerLinksRow{
+      padding: 0 0 12px;
+      border-top: 1px solid rgba(255,255,255,.06);
+    }
+    .headerLinks{
+      display:flex;
+      gap:10px;
+      justify-content:flex-end;
+      align-items:center;
+      flex-wrap:wrap;
+      padding-top:10px;
+    }
+
+    /* ===== HEADER MENU (⋯) ===== */
+    .menu{ position:relative; display:inline-flex; }
+    .menuBtn{
+      width:44px;
+      padding:9px 0;
+      letter-spacing:2px;
+      font-weight:1000;
+    }
+
+    .menuPop{
+      position:absolute;
+      top: calc(100% + 10px);
+      right: 0;
+      min-width: 220px;
+      padding: 8px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(10,10,22,.92);
+      backdrop-filter: blur(16px);
+      box-shadow: 0 18px 60px rgba(0,0,0,.55);
+      display:none;
+      z-index: 50;
+    }
+    .menuPop.open{ display:block; }
+
+    .menuItem{
+      display:flex;
+      align-items:center;
+      padding:10px 12px;
+      border-radius: 12px;
+      font-weight: 900;
+      color: rgba(255,255,255,.88);
+      background: transparent;
+      transition: .12s ease;
+    }
+    .menuItem:hover{
+      background: rgba(255,255,255,.08);
+      transform: translateY(-1px);
     }
 
     /* ===== SECTIONS ===== */
@@ -218,6 +267,10 @@
       margin-top: 18px;
       display:flex; gap:12px; justify-content:center; flex-wrap:wrap;
     }
+
+    /* hero contract copy */
+    .heroCopyWrap{ margin-top: 16px; display:flex; justify-content:center; }
+    .heroCopy{ width: min(860px, 100%); text-align:left; }
 
     /* ===== WHAT IS ===== */
     .twoCol{
@@ -379,7 +432,6 @@
       box-shadow: 0 18px 60px rgba(0,0,0,.55);
     }
 
-    /* premium glow */
     .toolCard::after{
       content:"";
       position:absolute; inset:0;
@@ -408,9 +460,9 @@
       pointer-events:none;
     }
     .dnaCard::before{ background-image: url("assets/dnalogo.png"); }
-    .guardianCard::before{ background-image: url("assets/guardian.png"); }
+    .guardianCard::before{ background-image: url("assets/guardian.png"); } /* ✅ requested name */
 
-    .toolInner{ position:relative; z-index:1; padding:24px; }
+    .toolInner{ position:relative; z-index:1; padding:22px; } /* slightly tighter */
 
     .toolTop{
       display:flex;
@@ -418,7 +470,7 @@
       justify-content:space-between;
       gap:12px;
       flex-wrap:wrap;
-      margin-bottom:16px;
+      margin-bottom:14px;
     }
 
     .toolTag{
@@ -447,10 +499,11 @@
       padding:7px 10px;
     }
 
+    /* ✅ make Tools content feel less “stretched” */
     .toolGrid{
       display:grid;
-      grid-template-columns: 1.1fr .9fr;
-      gap:16px;
+      grid-template-columns: 1fr 340px; /* tighter box column */
+      gap:14px;
       align-items:start;
     }
 
@@ -459,21 +512,22 @@
       font-weight:1100;
       letter-spacing:-.9px;
       line-height:1.05;
-      font-size: clamp(30px, 3.6vw, 52px);
+      font-size: clamp(30px, 3.4vw, 50px);
     }
 
     .toolLead{
       margin-top:10px;
       color: rgba(255,255,255,.76);
       font-weight:700;
-      max-width: 62ch;
+      max-width: 52ch;          /* ✅ prevents ultra-long lines */
     }
 
     .featureChips{
-      margin-top:16px;
+      margin-top:14px;
       display:flex;
       flex-wrap:wrap;
       gap:10px;
+      max-width: 52ch;          /* ✅ keeps chips aligned */
     }
 
     .chip{
@@ -513,11 +567,12 @@
     .toolList li{ margin:8px 0; }
 
     .toolCTA{
-      margin-top:18px;
+      margin-top:16px;
       display:flex;
       gap:12px;
       flex-wrap:wrap;
       align-items:center;
+      max-width: 52ch; /* ✅ aligns with lead width */
     }
 
     .toolMini{
@@ -528,10 +583,17 @@
 
     /* ===== RESPONSIVE ===== */
     @media (max-width: 980px){
-      .headerRow{flex-wrap:wrap}
-      .nav{order:3; width:100%; justify-content:flex-start; flex-wrap:wrap; overflow:visible}
-      .headerRight{order:2; width:100%; justify-content:flex-start; flex-wrap:wrap}
+      .headerTop{flex-wrap:wrap}
+      .nav{
+        order:3; width:100%;
+        justify-content:flex-start;
+        flex-wrap:wrap;
+        overflow:visible
+      }
+      .menu{order:2}
+      .headerLinks{justify-content:flex-start}
     }
+
     @media (max-width: 860px){
       section{padding:28px 0}
       .twoCol{grid-template-columns: 1fr}
@@ -553,6 +615,14 @@
         background-size: min(740px, 140%);
         opacity: .075;
       }
+
+      /* ✅ on mobile: hide 2nd bar, use ⋯ menu */
+      .headerLinksRow{ display:none; }
+    }
+
+    @media (min-width: 861px){
+      /* ✅ on desktop: show 2nd bar, hide ⋯ menu */
+      .menu{ display:none; }
     }
 
     @media (max-width: 420px){
@@ -567,7 +637,9 @@
   <!-- HEADER -->
   <div class="header">
     <div class="wrap">
-      <div class="headerRow">
+
+      <!-- TOP ROW: brand + internal nav + menu (mobile) -->
+      <div class="headerTop">
         <a class="brand" href="#top" aria-label="Home">
           <img src="assets/logo.png" alt="$SOS Logo" />
           <div class="brandText">
@@ -585,7 +657,22 @@
           <a class="btn" href="#socials">Socials</a>
         </nav>
 
-        <div class="headerRight">
+        <!-- ⋯ menu (mobile) -->
+        <div class="menu">
+          <button class="btn menuBtn" id="menuBtn" aria-haspopup="true" aria-expanded="false" aria-controls="menuPop">⋯</button>
+          <div class="menuPop" id="menuPop" role="menu" aria-label="External links">
+            <a class="menuItem" role="menuitem" href="https://solanax1.com/dna" target="_blank" rel="noreferrer">DNA Scanner</a>
+            <a class="menuItem" role="menuitem" href="https://solanax1.com/guardian" target="_blank" rel="noreferrer">Guardian Check</a>
+            <a class="menuItem" role="menuitem" href="https://x.com/Solana_X1" target="_blank" rel="noreferrer">X</a>
+            <a class="menuItem" role="menuitem" href="https://t.me/Solana_X1" target="_blank" rel="noreferrer">Telegram</a>
+            <a class="menuItem" role="menuitem" href="https://t.me/solanaonsolana_bot" target="_blank" rel="noreferrer">Bot</a>
+          </div>
+        </div>
+      </div>
+
+      <!-- SECOND ROW: external links (desktop) -->
+      <div class="headerLinksRow">
+        <div class="headerLinks" aria-label="External links">
           <a class="btn grad" href="https://solanax1.com/dna" target="_blank" rel="noreferrer">DNA Scanner</a>
           <a class="btn grad" href="https://solanax1.com/guardian" target="_blank" rel="noreferrer">Guardian</a>
           <a class="btn grad" href="https://x.com/Solana_X1" target="_blank" rel="noreferrer">X</a>
@@ -593,6 +680,7 @@
           <a class="btn grad" href="https://t.me/solanaonsolana_bot" target="_blank" rel="noreferrer">Bot</a>
         </div>
       </div>
+
     </div>
   </div>
 
@@ -615,6 +703,18 @@
           <a class="btn grad" href="https://t.me/solanaonsolana_bot" target="_blank" rel="noreferrer">Use the Bot</a>
           <a class="btn" href="#buy">How to Buy</a>
         </div>
+
+        <!-- ✅ Contract Address directly under hero buttons -->
+        <div class="heroCopyWrap">
+          <div class="stat copyBox heroCopy" data-copy="XXXXXXXXXXXXXXXXXXXXXXXX" role="button" tabindex="0" aria-label="Copy Contract Address (Hero)">
+            <div style="min-width:0">
+              <div class="k">Contract Address</div>
+              <div class="copyText">XXXXXXXXXXXXXXXXXXXXXXXX</div>
+            </div>
+            <div class="copyHint">Click to copy</div>
+          </div>
+        </div>
+
       </div>
     </section>
 
@@ -867,7 +967,8 @@
           <h2 class="h2">Socials</h2>
 
           <div class="socialRow">
-            <a class="btn" href="#tools">Tools</a>
+            <!-- ✅ Tools button no longer “grey only” -->
+            <a class="btn grad" href="#tools">Tools</a>
             <a class="btn grad" href="https://t.me/Solana_X1" target="_blank" rel="noreferrer">Telegram</a>
             <a class="btn grad" href="https://x.com/Solana_X1" target="_blank" rel="noreferrer">X (Twitter)</a>
             <a class="btn grad" href="https://t.me/solanaonsolana_bot" target="_blank" rel="noreferrer">Telegram Bot</a>
@@ -894,6 +995,7 @@
   <script>
     document.getElementById("y").textContent = new Date().getFullYear();
 
+    // ===== COPY TO CLIPBOARD =====
     function setHint(el, ok){
       if(!el) return;
       if(ok){
@@ -951,6 +1053,39 @@
         }
       });
     });
+
+    // ===== MOBILE ⋯ MENU =====
+    const menuBtn = document.getElementById("menuBtn");
+    const menuPop = document.getElementById("menuPop");
+
+    function closeMenu(){
+      if(!menuPop) return;
+      menuPop.classList.remove("open");
+      if(menuBtn) menuBtn.setAttribute("aria-expanded", "false");
+    }
+
+    if(menuBtn && menuPop){
+      menuBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const open = menuPop.classList.toggle("open");
+        menuBtn.setAttribute("aria-expanded", open ? "true" : "false");
+      });
+
+      document.addEventListener("click", (e) => {
+        if(!menuPop.classList.contains("open")) return;
+        const within = menuPop.contains(e.target) || menuBtn.contains(e.target);
+        if(!within) closeMenu();
+      });
+
+      document.addEventListener("keydown", (e) => {
+        if(e.key === "Escape") closeMenu();
+      });
+
+      // close after choosing an item
+      menuPop.querySelectorAll("a").forEach(a => {
+        a.addEventListener("click", () => closeMenu());
+      });
+    }
   </script>
 </body>
 </html>
