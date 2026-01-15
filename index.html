@@ -98,6 +98,12 @@
       box-shadow: 0 14px 28px rgba(0,0,0,.28);
     }
     .btn.ghost{ background: rgba(255,255,255,.06); }
+    .btn.icon{
+      width:44px;
+      padding:9px 0;
+      letter-spacing:2px;
+      font-weight:1000;
+    }
 
     .card{
       background: linear-gradient(180deg, rgba(255,255,255,.075), rgba(255,255,255,.045));
@@ -115,15 +121,14 @@
       -webkit-background-clip:text; background-clip:text; color:transparent;
     }
 
-    /* ===== HEADER (CLEAN, MOBILE FIX) ===== */
+    /* ===== HEADER (CLEAN, NO CHAOS) ===== */
     .header{
-      position:sticky; top:0; z-index:20;
+      position:sticky; top:0; z-index:40;
       backdrop-filter: blur(14px);
       background: rgba(7,7,17,.68);
       border-bottom: 1px solid rgba(255,255,255,.08);
     }
 
-    /* Desktop layout: brand | nav | actions */
     .headerRow{
       display:grid;
       grid-template-columns: auto 1fr auto;
@@ -157,23 +162,20 @@
       align-items:center;
       justify-content:flex-end;
       gap:10px;
-      min-width: 260px;
+      min-width: 240px;
       white-space: nowrap;
     }
 
-    /* Collapsed actions into a clean menu */
+    /* Desktop: show 2 tool buttons + menu for socials/bot */
+    .toolLinksDesktop{ display:flex; gap:10px; align-items:center; }
+
+    /* Desktop menu (⋯) */
     .menu{ position:relative; display:inline-flex; }
-    .menuBtn{
-      width:44px;
-      padding:9px 0;
-      letter-spacing:2px;
-      font-weight:1000;
-    }
     .menuPop{
       position:absolute;
       top: calc(100% + 10px);
       right: 0;
-      min-width: 220px;
+      min-width: 240px;
       padding: 8px;
       border-radius: 16px;
       border: 1px solid rgba(255,255,255,.12);
@@ -181,7 +183,7 @@
       backdrop-filter: blur(16px);
       box-shadow: 0 18px 60px rgba(0,0,0,.55);
       display:none;
-      z-index: 50;
+      z-index: 60;
     }
     .menuPop.open{ display:block; }
 
@@ -211,8 +213,74 @@
       color: rgba(255,255,255,.70);
     }
 
-    /* Optional: a compact row of 2 primary tools on desktop */
-    .toolLinksDesktop{ display:flex; gap:10px; align-items:center; }
+    /* Mobile drawer */
+    .mToggle{ display:none; }
+    .mOverlay{
+      position:fixed;
+      inset:0;
+      background: rgba(0,0,0,.55);
+      backdrop-filter: blur(6px);
+      opacity:0;
+      pointer-events:none;
+      transition: .18s ease;
+      z-index: 80;
+    }
+    .mOverlay.open{
+      opacity:1;
+      pointer-events:auto;
+    }
+    .mDrawer{
+      position:fixed;
+      top:0; right:0;
+      height:100dvh;
+      width: min(92vw, 380px);
+      transform: translateX(110%);
+      transition: .22s ease;
+      z-index: 90;
+      padding: 14px 14px 18px;
+      background: rgba(10,10,22,.92);
+      border-left: 1px solid rgba(255,255,255,.10);
+      box-shadow: -20px 0 80px rgba(0,0,0,.55);
+      backdrop-filter: blur(16px);
+      overflow:auto;
+    }
+    .mDrawer.open{ transform: translateX(0); }
+
+    .mTop{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      padding: 6px 4px 12px;
+      border-bottom: 1px solid rgba(255,255,255,.10);
+      margin-bottom: 12px;
+    }
+    .mTitle{
+      font-weight:1000;
+      letter-spacing:-.2px;
+    }
+    .mGroup{
+      margin-top:12px;
+    }
+    .mLabel{
+      font-size:12px;
+      font-weight:950;
+      letter-spacing:.55px;
+      text-transform:uppercase;
+      color: rgba(255,255,255,.62);
+      margin: 10px 6px 8px;
+    }
+    .mList{
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+    }
+    .mList .btn{
+      width:100%;
+      justify-content:flex-start;
+      padding: 11px 14px;
+      border-radius: 16px;
+    }
 
     /* ===== HERO ===== */
     .hero{padding-top:22px}
@@ -278,8 +346,6 @@
       margin-top: 18px;
       display:flex; gap:12px; justify-content:center; flex-wrap:wrap;
     }
-
-    /* Hero contract (copy) */
     .heroContract{
       margin: 18px auto 0;
       max-width: 860px;
@@ -424,10 +490,10 @@
       text-align:center;
     }
 
-    /* ===== TOOLS (PREMIUM) — FIXED FOR MOBILE (NOT LONG) ===== */
+    /* ===== TOOLS (CLEAN + NOT LONG + ALWAYS STACKED) ===== */
     .toolsGrid{
       display:grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: 1fr;   /* ✅ always under each other */
       gap:18px;
       align-items:stretch;
     }
@@ -457,7 +523,7 @@
       pointer-events:none;
     }
 
-    /* Watermarks (keep your files) */
+    /* Watermarks */
     .dnaCard::before,
     .guardianCard::before{
       content:"";
@@ -473,10 +539,9 @@
       pointer-events:none;
     }
     .dnaCard::before{ background-image: url("assets/dnalogo.png"); }
-    /* IMPORTANT: guardian watermark name is guardian.png */
-    .guardianCard::before{ background-image: url("assets/guardian.png"); }
+    .guardianCard::before{ background-image: url("assets/guardian.png"); } /* ✅ guardian.png */
 
-    .toolInner{ position:relative; z-index:1; padding:24px; }
+    .toolInner{ position:relative; z-index:1; padding:22px; }
 
     .toolTop{
       display:flex;
@@ -484,7 +549,7 @@
       justify-content:space-between;
       gap:12px;
       flex-wrap:wrap;
-      margin-bottom:14px;
+      margin-bottom:12px;
     }
 
     .toolTag{
@@ -513,7 +578,6 @@
       padding:7px 10px;
     }
 
-    /* Desktop tools grid */
     .toolGrid{
       display:grid;
       grid-template-columns: 1.05fr .95fr;
@@ -529,11 +593,16 @@
       font-size: clamp(30px, 3.4vw, 50px);
     }
 
+    /* ✅ keep text compact (no “endless” cards) */
     .toolLead{
       margin-top:10px;
       color: rgba(255,255,255,.76);
       font-weight:700;
       max-width: 62ch;
+      display:-webkit-box;
+      -webkit-line-clamp: 5;
+      -webkit-box-orient: vertical;
+      overflow:hidden;
     }
 
     .featureChips{
@@ -554,13 +623,17 @@
       white-space:nowrap;
     }
 
+    /* ✅ keep “what you get” compact via internal scroll (content not removed) */
     .toolBox{
       border:1px solid rgba(255,255,255,.10);
       background: rgba(0,0,0,.18);
       border-radius:18px;
       padding:16px;
       box-shadow: var(--shadowSoft);
+      max-height: 210px;
+      overflow:auto;
     }
+    .toolBox::-webkit-scrollbar{ width:0; height:0; }
 
     .toolBoxTitle{
       font-weight:950;
@@ -569,6 +642,10 @@
       text-transform:uppercase;
       color: rgba(255,255,255,.72);
       margin-bottom:10px;
+      position: sticky;
+      top: 0;
+      background: rgba(0,0,0,.00);
+      backdrop-filter: blur(0px);
     }
 
     .toolList{
@@ -593,13 +670,11 @@
       font-size:13px;
     }
 
-    /* ===== RESPONSIVE (THE IMPORTANT FIXES) ===== */
+    /* ===== RESPONSIVE ===== */
 
-    /* Tablet: allow header to wrap nicely */
     @media (max-width: 980px){
       .headerRow{
-        grid-template-columns: 1fr;
-        gap:10px;
+        grid-template-columns: auto 1fr auto;
       }
       .nav{
         justify-content:flex-start;
@@ -608,34 +683,26 @@
         padding-bottom:2px;
       }
       .nav::-webkit-scrollbar{height:0}
-      .headerActions{
-        justify-content:flex-start;
-        min-width: 0;
-        flex-wrap:wrap;
-      }
-      .toolLinksDesktop{ width:100%; justify-content:flex-start; flex-wrap:wrap; }
     }
 
-    /* Mobile: FIX THE "COMPLETELY BROKEN" HEADER + TOOLS */
+    /* Mobile: no chaos → drawer menu */
     @media (max-width: 860px){
       section{padding:28px 0}
 
-      /* Brand stays left, nav becomes a scroll row, actions collapse to menu */
+      .headerRow{
+        grid-template-columns: 1fr auto;
+        gap:10px;
+      }
+
+      .nav{ display:none; } /* ✅ hide the button row on mobile */
+
+      .toolLinksDesktop{ display:none; } /* ✅ hide big buttons on mobile */
+      .menu{ display:none; }             /* ✅ hide desktop menu on mobile */
+      .mToggle{ display:inline-flex; }   /* ✅ show mobile toggle */
+
       .brand{ min-width: 0; }
       .brandText .name{ font-size:13px; }
 
-      .nav{
-        gap:10px;
-        justify-content:flex-start;
-        overflow:auto;
-        white-space:nowrap;
-        padding-bottom:2px;
-      }
-
-      /* Hide the big action buttons on mobile; keep only a menu */
-      .toolLinksDesktop{ display:none; }
-
-      /* HERO spacing */
       .heroCard{padding:34px 16px}
       .heroCard::before{
         background-position: 50% 28%;
@@ -643,33 +710,14 @@
         opacity: .065;
       }
 
-      /* 2col -> 1col */
       .twoCol{grid-template-columns: 1fr}
       .grid3{grid-template-columns: 1fr}
       .steps{grid-template-columns: 1fr}
-      .toolsGrid{grid-template-columns:1fr}
 
-      /* TOOLS: make them compact and NOT long */
       .toolInner{ padding:18px; }
       .toolGrid{ grid-template-columns: 1fr; gap:14px; }
       .toolH{ font-size: clamp(26px, 7vw, 38px); }
-      .toolLead{
-        max-width: none;
-        display:-webkit-box;
-        -webkit-line-clamp: 5;      /* ✅ keep it compact */
-        -webkit-box-orient: vertical;
-        overflow:hidden;
-      }
-      .featureChips{ gap:8px; }
-      .chip{ font-size:12px; padding:8px 10px; }
-
-      .toolList{
-        display:grid;               /* ✅ compact list */
-        grid-template-columns: 1fr;
-        gap:8px;
-        padding-left: 16px;
-      }
-      .toolList li{ margin:0; }
+      .toolBox{ max-height: 180px; }
 
       .dnaCard::before,
       .guardianCard::before{
@@ -678,7 +726,6 @@
         opacity: .075;
       }
 
-      /* Copy boxes on mobile: stack nicely */
       .copyBox{
         flex-direction: column;
         align-items:flex-start;
@@ -689,12 +736,49 @@
     @media (max-width: 420px){
       .btn{padding:9px 11px}
       .cardInner{padding:20px}
-      .menuPop{ min-width: 200px; }
     }
   </style>
 </head>
 
 <body>
+  <!-- MOBILE DRAWER -->
+  <div class="mOverlay" id="mOverlay" aria-hidden="true"></div>
+  <aside class="mDrawer" id="mDrawer" aria-label="Mobile menu" aria-hidden="true">
+    <div class="mTop">
+      <div class="mTitle">Menu</div>
+      <button class="btn ghost icon" id="mClose" aria-label="Close menu">✕</button>
+    </div>
+
+    <div class="mGroup">
+      <div class="mLabel">Navigation</div>
+      <div class="mList">
+        <a class="btn" href="#what">What is $SOS?</a>
+        <a class="btn" href="#tools">Tools</a>
+        <a class="btn" href="#tokenomics">Tokenomics</a>
+        <a class="btn" href="#buy">How to Buy</a>
+        <a class="btn" href="#faq">FAQ</a>
+        <a class="btn" href="#socials">Socials</a>
+      </div>
+    </div>
+
+    <div class="mGroup">
+      <div class="mLabel">Tools</div>
+      <div class="mList">
+        <a class="btn grad" href="https://solanax1.com/dna" target="_blank" rel="noreferrer">DNA Scanner</a>
+        <a class="btn grad" href="https://solanax1.com/guardian" target="_blank" rel="noreferrer">Guardian</a>
+      </div>
+    </div>
+
+    <div class="mGroup">
+      <div class="mLabel">Socials</div>
+      <div class="mList">
+        <a class="btn grad" href="https://x.com/Solana_X1" target="_blank" rel="noreferrer">X</a>
+        <a class="btn grad" href="https://t.me/Solana_X1" target="_blank" rel="noreferrer">Telegram</a>
+        <a class="btn grad" href="https://t.me/solanaonsolana_bot" target="_blank" rel="noreferrer">Bot</a>
+      </div>
+    </div>
+  </aside>
+
   <!-- HEADER -->
   <div class="header">
     <div class="wrap">
@@ -707,7 +791,7 @@
           </div>
         </a>
 
-        <!-- MAIN NAV (only these buttons stay) -->
+        <!-- MAIN NAV (desktop/tablet) -->
         <nav class="nav" aria-label="Main navigation">
           <a class="btn" href="#what">What is $SOS?</a>
           <a class="btn" href="#tools">Tools</a>
@@ -717,22 +801,17 @@
           <a class="btn" href="#socials">Socials</a>
         </nav>
 
-        <!-- ACTIONS: Desktop shows 2 key buttons + menu; Mobile only menu -->
         <div class="headerActions">
+          <!-- Desktop: 2 tool buttons -->
           <div class="toolLinksDesktop">
             <a class="btn grad" href="https://solanax1.com/dna" target="_blank" rel="noreferrer">DNA Scanner</a>
             <a class="btn grad" href="https://solanax1.com/guardian" target="_blank" rel="noreferrer">Guardian</a>
           </div>
 
+          <!-- Desktop: socials/bot menu -->
           <div class="menu" id="menu">
-            <button class="btn ghost menuBtn" id="menuBtn" aria-haspopup="true" aria-expanded="false" aria-label="Open menu">⋯</button>
+            <button class="btn ghost icon" id="menuBtn" aria-haspopup="true" aria-expanded="false" aria-label="Open menu">⋯</button>
             <div class="menuPop" id="menuPop" role="menu" aria-label="Quick links">
-              <a class="menuItem" role="menuitem" href="https://solanax1.com/dna" target="_blank" rel="noreferrer">
-                DNA Scanner <span class="menuBadge">Tool</span>
-              </a>
-              <a class="menuItem" role="menuitem" href="https://solanax1.com/guardian" target="_blank" rel="noreferrer">
-                Guardian <span class="menuBadge">Tool</span>
-              </a>
               <a class="menuItem" role="menuitem" href="https://x.com/Solana_X1" target="_blank" rel="noreferrer">
                 X <span class="menuBadge">Social</span>
               </a>
@@ -744,6 +823,9 @@
               </a>
             </div>
           </div>
+
+          <!-- Mobile: one clean button -->
+          <button class="btn ghost icon mToggle" id="mOpen" aria-label="Open menu">☰</button>
         </div>
 
       </div>
@@ -767,10 +849,10 @@
           <a class="btn primary" href="https://t.me/Solana_X1" target="_blank" rel="noreferrer">Join Telegram</a>
           <a class="btn grad" href="https://x.com/Solana_X1" target="_blank" rel="noreferrer">Follow on X</a>
           <a class="btn grad" href="https://t.me/solanaonsolana_bot" target="_blank" rel="noreferrer">Use the Bot</a>
-          <a class="btn" href="#buy">How to Buy</a>
+          <!-- ✅ removed “How to Buy” from here (still in header + section) -->
         </div>
 
-        <!-- ✅ Contract under hero -->
+        <!-- Contract under hero -->
         <div class="heroContract">
           <div class="stat copyBox" data-copy="XXXXXXXXXXXXXXXXXXXXXXXX" role="button" tabindex="0" aria-label="Copy Contract Address">
             <div style="min-width:0">
@@ -812,7 +894,7 @@
       </div>
     </section>
 
-    <!-- TOOLS (DNA + GUARDIAN) -->
+    <!-- TOOLS (STACKED + COMPACT) -->
     <section id="tools">
       <div class="toolsGrid">
 
@@ -850,7 +932,7 @@
 
                 <div class="toolCTA">
                   <a class="btn grad" href="https://solanax1.com/dna" target="_blank" rel="noreferrer">
-                    Open Guardian DNA Scanner
+                    Open guardian wallet scanner
                   </a>
                   <span class="toolMini">Instant readout • verifiable signals</span>
                 </div>
@@ -907,7 +989,7 @@
 
                 <div class="toolCTA">
                   <a class="btn grad" href="https://solanax1.com/guardian" target="_blank" rel="noreferrer">
-                    Open Guardian Check
+                    open GuardianGu contract scanner
                   </a>
                   <span class="toolMini">Fast verdict • shareable badge</span>
                 </div>
@@ -1120,31 +1202,65 @@
       });
     });
 
-    // Header menu (⋯)
+    // Desktop menu (⋯)
     const menuBtn = document.getElementById("menuBtn");
     const menuPop = document.getElementById("menuPop");
 
     function closeMenu(){
+      if(!menuPop) return;
       menuPop.classList.remove("open");
-      menuBtn.setAttribute("aria-expanded","false");
+      if(menuBtn) menuBtn.setAttribute("aria-expanded","false");
     }
     function toggleMenu(){
       const open = menuPop.classList.toggle("open");
       menuBtn.setAttribute("aria-expanded", open ? "true" : "false");
     }
 
-    menuBtn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      toggleMenu();
-    });
+    if(menuBtn && menuPop){
+      menuBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        toggleMenu();
+      });
+      document.addEventListener("click", () => closeMenu());
+      document.addEventListener("keydown", (e) => {
+        if(e.key === "Escape") closeMenu();
+      });
+      menuPop.addEventListener("click", (e) => e.stopPropagation());
+    }
 
-    document.addEventListener("click", () => closeMenu());
-    document.addEventListener("keydown", (e) => {
-      if(e.key === "Escape") closeMenu();
-    });
+    // Mobile drawer
+    const mOpen = document.getElementById("mOpen");
+    const mClose = document.getElementById("mClose");
+    const mDrawer = document.getElementById("mDrawer");
+    const mOverlay = document.getElementById("mOverlay");
 
-    // Prevent closing when clicking inside menu
-    menuPop.addEventListener("click", (e) => e.stopPropagation());
+    function openDrawer(){
+      mDrawer.classList.add("open");
+      mOverlay.classList.add("open");
+      mDrawer.setAttribute("aria-hidden","false");
+      mOverlay.setAttribute("aria-hidden","false");
+      document.body.style.overflow = "hidden";
+    }
+
+    function closeDrawer(){
+      mDrawer.classList.remove("open");
+      mOverlay.classList.remove("open");
+      mDrawer.setAttribute("aria-hidden","true");
+      mOverlay.setAttribute("aria-hidden","true");
+      document.body.style.overflow = "";
+    }
+
+    if(mOpen && mClose && mDrawer && mOverlay){
+      mOpen.addEventListener("click", (e) => { e.preventDefault(); openDrawer(); });
+      mClose.addEventListener("click", (e) => { e.preventDefault(); closeDrawer(); });
+      mOverlay.addEventListener("click", () => closeDrawer());
+      document.addEventListener("keydown", (e) => { if(e.key === "Escape") closeDrawer(); });
+
+      // close drawer on link click
+      mDrawer.querySelectorAll('a[href^="#"]').forEach(a=>{
+        a.addEventListener("click", ()=> closeDrawer());
+      });
+    }
   </script>
 </body>
 </html>
