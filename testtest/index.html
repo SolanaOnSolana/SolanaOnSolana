@@ -1679,8 +1679,8 @@
        CONFIG (keys stored locally — DO NOT hardcode secrets in prod)
        ========================================================= */
     const CFG_DEFAULT = {
-      HELIUS_KEY: "",
-      GOLDRUSH_API_KEY: "",
+  HELIUS_KEY: "b566a086-57d4-4433-8661-faed9ad07ba0",
+  GOLDRUSH_API_KEY: "cqt_rQVTMTXwYkPJBrwf7ff6JWmdkywR",
       EVM_RPCS: {
         1:    ["https://ethereum.publicnode.com", "https://rpc.ankr.com/eth", "https://cloudflare-eth.com"],
         56:   ["https://bsc.publicnode.com", "https://rpc.ankr.com/bsc", "https://bsc-dataseed.binance.org"],
@@ -1721,7 +1721,7 @@
         ])}
 
         <div class="field">
-          <label>Helius (Solana RPC key)</label>
+          <label>Helius (b566a086-57d4-4433-8661-faed9ad07ba0)</label>
           <input id="k_helius" placeholder="paste helius key..." value="${esc(CFG.HELIUS_KEY || "")}">
           <div class="help">Used for Solana RPC methods like getAccountInfo / getAsset. Without it, Solana scan may fail.</div>
         </div>
@@ -1841,26 +1841,46 @@
     /* =========================================================
        SOLANA ENGINE (Helius RPC)
        ========================================================= */
-    function SOL_RPC_URL(){
-  if(CFG.HELIUS_KEY){
-    return `https://mainnet.helius-rpc.com/?api-key=${encodeURIComponent(CFG.HELIUS_KEY)}`;
+    function SOL_RPC_URLS(){
+  const urls = [];
+  if(CFG.HELIUS_KEY && CFG.HELIUS_KEY.trim()){
+    urls.push(`https://mainnet.helius-rpc.com/?api-key=${encodeURIComponent(CFG.HELIUS_KEY.trim())}`);
   }
-  // best-effort fallback (rate-limited möglich)
-  return "https://api.mainnet-beta.solana.com";
+  // Fallbacks (best-effort, CORS/rate limits können je nach Provider variieren)
+  urls.push(
+    "https://api.mainnet-beta.solana.com",
+    "https://rpc.ankr.com/solana"
+  );
+  return urls;
 }
-    async function solRpc(method, params, signal){
-      const url = SOL_RPC_URL();
-if(!url) throw new Error("Solana RPC unavailable.");
+
+async function solRpc(method, params, signal){
+  const urls = SOL_RPC_URLS();
+  const errors = [];
+
+  for(const url of urls){
+    try{
       const res = await safeFetch(url, {
         method:"POST",
         headers:{ "Content-Type":"application/json" },
         body: JSON.stringify({ jsonrpc:"2.0", id:1, method, params }),
         signal
-      }, { timeoutMs: 20000 });
+      }, { timeoutMs: 20000, key: `${url}::${method}::${JSON.stringify(params)}` });
+
       const j = await res.json();
-      if(j?.error) throw new Error(j.error.message || "Solana RPC error");
+      if(j?.error){
+        const msg = String(j.error?.message || "Solana RPC error");
+        errors.push(`${url.split("/")[2]}: ${msg}`);
+        // wenn Helius 403 -> probier direkt Fallback
+        continue;
+      }
       return j.result;
+    }catch(e){
+      errors.push(`${url.split("/")[2]}: ${String(e?.message||e).slice(0,120)}`);
     }
+  }
+  throw new Error(`All Solana RPCs failed. ${errors.slice(-3).join(" • ")}`);
+}
 
     async function getMintParsed(mint, signal){
       const r = await solRpc("getAccountInfo", [mint, { encoding:"jsonParsed", commitment:"confirmed" }], signal);
@@ -3186,18 +3206,35 @@ if(!freezeAuth){
 
 
       const paused = await getPaused(chainId, tokenAddr, signal);
-      if(paused === true){
-        checks.push({ sev:"bad", weight:18, t:"Contract is paused", d:"Transfers may be blocked.", fix:"Verify pause control and whether it’s intended." });
-      }else if(paused === false){
-        checks.push({ sev:"ok", weight:6, t:"Paused()", d:"Not paused (best-effort)." });
-      }else{
-        checks.push({ sev:"warn", weight:8, t:"Paused()", d:"Unknown (method not found or unreadable).", fix:"Verify if contract has pause features." });
-      }
-      const ZERO = "0x0000000000000000000000000000000000000000";
+if(paused === true){
+  checks.push({ sev:"bad", weight:18, t:"Contract is paused", d:"Transfers may be blocked.", fix:"Verify pause control and whether it’s intended." });
+  keySignals.push({ k:"Paused", v:"YES", mini:"paused() returned true", src:"onchain", sev:"bad" });
+}else if(paused === false){
+  checks.push({ sev:"ok", weight:6, t:"Paused()", d:"Not paused (best-effort)." });
+  keySignals.push({ k:"Paused", v:"NO", mini:"paused() returned false", src:"onchain", sev:"ok" });
+}else{
+  checks.push({ sev:"warn", weight:8, t:"Paused()", d:"Unknown (method not found or unreadable).", fix:"Verify if contract has pause features." });
+  keySignals.push({ k:"Paused", v:"UNKNOWN", mini:"paused() missing/unreadable", src:"onchain", sev:"warn" });
+}
+
+// ✅ OWNER MUSS HIER DEFINIERT WERDEN:
+const owner = await getOwner(chainId, tokenAddr, signal);
+
+const ZERO = "0x0000000000000000000000000000000000000000";
 const DEAD = "0x000000000000000000000000000000000000dead";
 
 if(owner){
   const o = owner.toLowerCase();
+
+  // show as key signal
+  keySignals.push({
+    k:"Owner",
+    v: (o === ZERO || o === DEAD) ? "RENOUNCED" : shortAddr(owner),
+    mini: owner,
+    src:"onchain",
+    sev: (o === ZERO || o === DEAD) ? "ok" : "warn"
+  });
+
   if(o === ZERO || o === DEAD){
     checks.push({
       sev:"ok", weight:10,
@@ -3222,8 +3259,8 @@ if(owner){
     d:"No owner() method detected or unreadable.",
     fix:"Contract may use custom roles. Verify admin privileges manually."
   });
+  keySignals.push({ k:"Owner", v:"UNKNOWN", mini:"owner() missing/unreadable", src:"onchain", sev:"warn" });
 }
-
       // DEX Screener best pair
       const ds = await fetchDexscreenerToken(tokenAddr, signal);
       if(ds?.best){
@@ -3621,5 +3658,3 @@ if(owner){
   </script>
 </body>
 </html>
-
-    
