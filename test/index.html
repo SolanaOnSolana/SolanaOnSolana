@@ -3487,6 +3487,45 @@ function buildReportHtml(){
   const addr  = LAST_SCAN?.address || "";
   const score = LAST_SCAN?.score ?? "—";
   const verdict = LAST_SCAN?.verdict?.label || "—";
+    // === EXTRA SIGNALS (best-effort) ===
+  const checksArr = Array.isArray(LAST_SCAN?.checks) ? LAST_SCAN.checks : [];
+
+  const hasCheck = (needle, sev) =>
+    checksArr.some(c => String(c?.t||"").toLowerCase().includes(needle) && (!sev || c?.sev === sev));
+
+  const mintRenounced   = hasCheck("mint authority", "ok");
+  const freezeRenounced = hasCheck("freeze authority", "ok");
+  const ownerRenounced  = hasCheck("owner", "ok") || hasCheck("owner / admin", "ok");
+  const proxyWarn       = hasCheck("proxy", "warn");
+  const pausedBad       = hasCheck("pause", "bad");
+
+  // Holder stats (wenn du sie in LAST_SCAN.signals speicherst -> siehe Schritt 2 unten)
+  const top1Pct  = Number(LAST_SCAN?.signals?.top1Pct ?? NaN);
+  const top3Pct  = Number(LAST_SCAN?.signals?.top3Pct ?? NaN);
+  const top20Pct = Number(LAST_SCAN?.signals?.top20Pct ?? NaN);
+
+  // LP Burn % (optional, wenn wir es berechnen -> siehe Schritt 2C)
+  const lpBurnPct = Number(LAST_SCAN?.signals?.lpBurnPct ?? NaN);
+
+  function badgeHtml(label, mode){ // mode: good|warn|bad|null
+    const cls = mode ? `badge ${mode}` : "badge";
+    return `<span class="${cls}">${esc(label)}</span>`;
+  }
+
+  const extraBadges = [];
+  if(mintRenounced)   extraBadges.push(badgeHtml("MINT RENOUNCED", "good"));
+  if(freezeRenounced) extraBadges.push(badgeHtml("FREEZE OFF", "good"));
+  if(ownerRenounced)  extraBadges.push(badgeHtml("OWNER RENOUNCED", "good"));
+  if(proxyWarn)       extraBadges.push(badgeHtml("PROXY", "warn"));
+  if(pausedBad)       extraBadges.push(badgeHtml("PAUSED", "bad"));
+
+  if(Number.isFinite(top1Pct))  extraBadges.push(badgeHtml(`TOP1 ${top1Pct.toFixed(2)}%`, top1Pct>=15 ? "bad" : top1Pct>=8 ? "warn" : "good"));
+  if(Number.isFinite(top3Pct))  extraBadges.push(badgeHtml(`TOP3 ${top3Pct.toFixed(2)}%`, top3Pct>=35 ? "bad" : top3Pct>=25 ? "warn" : "good"));
+  if(Number.isFinite(top20Pct)) extraBadges.push(badgeHtml(`TOP20 ${top20Pct.toFixed(2)}%`, top20Pct>=75 ? "bad" : top20Pct>=55 ? "warn" : "good"));
+
+  if(Number.isFinite(lpBurnPct)){
+    extraBadges.push(badgeHtml(`LP BURN ${lpBurnPct.toFixed(1)}%`, lpBurnPct>=90 ? "good" : lpBurnPct>=50 ? "warn" : "bad"));
+  }
 
   // 2) Panels direkt aus der Seite klonen (sehen dann genauso aus)
   //    -> Wir nehmen komplette .panel Blöcke, nicht nur die Listen
@@ -3543,11 +3582,12 @@ function buildReportHtml(){
         </div>
 
         <div class="actions">
-          <a class="btn" href="${brandUrl}" rel="noreferrer">← Back to Main</a>
-          <span class="badge">${esc(chain)}</span>
-          <span class="badge good">${esc(String(score))}/100</span>
-          <span class="badge">${esc(verdict)}</span>
-        </div>
+  <a class="btn" href="${brandUrl}" rel="noreferrer">← Back to Main</a>
+  <span class="badge">${esc(chain)}</span>
+  <span class="badge good">${esc(String(score))}/100</span>
+  <span class="badge">${esc(verdict)}</span>
+  ${extraBadges.join("")}
+</div>
       </div>
     </div>
   </div>
