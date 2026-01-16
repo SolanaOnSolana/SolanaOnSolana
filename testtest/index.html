@@ -940,6 +940,9 @@
       .infoBtn:hover{transform:none}
       .explorerBtn:hover{transform:none}
     }
+
+    #diagPanel{ display:none !important; }
+    
   </style>
 </head>
 
@@ -1201,7 +1204,7 @@
         </div>
 
         <!-- Diagnostics (expanded, premium) -->
-        <div class="panel" style="margin-top:16px;">
+       <div class="panel" id="diagPanel" style="margin-top:16px;">
           <div class="classified">
             <div class="stamp">DIAGNOSTICS</div>
             <div class="stamp">ANTI-DOWN / FAILOVER</div>
@@ -2240,10 +2243,10 @@ ENGINES.runDiagnostics = async function(){
   const evmUrls = (c.kind === "evm") ? evmRpcUrls(evmChainIdFromActive()) : evmRpcUrls(1);
 
   // UI defaults
-  setText("diagSol", "…"); setText("diagSolUrl", "");
-  setText("diagEvm", "…"); setText("diagEvmUrl", "");
-  setText("diagDex", "…"); setText("diagDexUrl", "");
-  setText("diagGold", "…"); setText("diagGoldUrl", "");
+  setText("diagSol", "…"); // setText("diagSolUrl", ...);
+  setText("diagEvm", "…"); // setText("diagEvmUrl", ...);
+  setText("diagDex", "…"); // setText("diagDexUrl", ...);
+  setText("diagGold", "…"); // setText("diagGoldUrl", ...);
   setText("diagNote", "Running health checks…");
 
   const out = { sol:false, evm:false, dex:false, gold:false };
@@ -2251,7 +2254,7 @@ ENGINES.runDiagnostics = async function(){
   // Solana ping (getLatestBlockhash)
   try{
     const url = solUrls[0] || "https://api.mainnet-beta.solana.com";
-    setText("diagSolUrl", url);
+    // setText("diagSolUrl", url);
     const body = {
       jsonrpc:"2.0", id:1, method:"getLatestBlockhash", params:[{commitment:"processed"}]
     };
@@ -2273,7 +2276,7 @@ ENGINES.runDiagnostics = async function(){
   try{
     const list = evmUrls;
     const url = list[0] || "https://ethereum.publicnode.com";
-    setText("diagEvmUrl", url);
+   // setText("diagEvmUrl", url);
     const body = { jsonrpc:"2.0", id:1, method:"eth_blockNumber", params:[] };
     const res = await safeFetch(url, {
       method:"POST",
@@ -3049,13 +3052,6 @@ on("btnDiag","click", async ()=>{
 </script>
 
   <script>
-/* ============================================================
-   PART 3 — Premium Bubble Map + Basic Graph + Cluster v1
-   - Canvas zoom/pan/hover/click
-   - Bubble sizing by holder share / amount (best-effort)
-   - Graph mode v1 (synthetic edges; real transfer edges Part 4)
-   - Cluster intelligence v1 (heuristic)
-============================================================ */
 
 /* ===========================
    Small helpers (Part 3)
@@ -3689,7 +3685,7 @@ function renderClustersFromScan(scan){
     grid.appendChild(card);
   }
 
-  setText("clusterFoot", "Cluster v1 uses distribution + DEX signals. Transfer-based wallet linking ships in Part 4.");
+  setText("clusterFoot", "Cluster analysis is best-effort. When transfer data is available, linked-wallet signals may appear.");
 }
 
 /* ===========================
@@ -4615,16 +4611,16 @@ ENGINES.exportReport = async function(){
     }
   }catch{}
 
-  // Brand logo (embed if possible)
   if(!APP.BRAND_LOGO_DATAURL){
     APP.BRAND_LOGO_DATAURL = await urlToDataURL("assets/logo.png");
   }
 
-  // Token logo (best-effort embed)
   let tokenLogo = "";
-  try{
-    const imgUrl = scan?.meta?.image || "";
-    if(imgUrl){
+try{
+  const uiImg = qs("tokenLogo");
+  if(uiImg && uiImg.src && !tokenLogo) tokenLogo = uiImg.src;
+}catch{}
+
       // try embed; if fails, keep original url
       const d = await urlToDataURL(imgUrl);
       tokenLogo = d || imgUrl;
