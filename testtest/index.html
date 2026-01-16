@@ -925,7 +925,7 @@
     <div class="wrap">
       <div class="row">
         <div class="brand">
-          <img id="brandLogo" src="/assets/logo.png" alt="$SOS" onerror="this.style.display='none'">
+          <img id="brandLogo" src="assets/logo.png" alt="$SOS" onerror="this.style.display='none'">
           <div class="bt">
             <div class="t">$SOS</div>
             <div class="s">Contract Scanner • Token Risk • Clusters</div>
@@ -1780,41 +1780,47 @@
        NETWORK: SAFE FETCH + CACHING + ABORT
        ========================================================= */
     async function safeFetch(url, opts = {}, { timeoutMs = 15000, key = "" } = {}){
-      const cacheKey = key || (opts?.method || "GET") + "::" + url;
-      if(APP.CACHE.has(cacheKey)) return APP.CACHE.get(cacheKey);
+  const cacheKey = key || (opts?.method || "GET") + "::" + url;
 
-      const ctrl = new AbortController();
-      const t = setTimeout(() => ctrl.abort(), timeoutMs);
+  // Always return a fresh clone from cache
+  const cached = APP.CACHE.get(cacheKey);
+  if(cached){
+    try { return cached.clone(); } catch { /* fallthrough */ }
+  }
 
-      // link to global abort (cancel scan)
-      const signals = [];
-      if(opts.signal) signals.push(opts.signal);
-      signals.push(ctrl.signal);
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), timeoutMs);
 
-      const combined = new AbortController();
-      const onAbort = () => combined.abort();
-      for(const s of signals){
-        if(!s) continue;
-        if(s.aborted){ combined.abort(); break; }
-        s.addEventListener("abort", onAbort, { once:true });
-      }
+  const signals = [];
+  if(opts.signal) signals.push(opts.signal);
+  signals.push(ctrl.signal);
 
-      try{
-        const res = await fetch(url, { ...opts, signal: combined.signal });
-        if(!res.ok){
-          const tx = await res.text().catch(()=> "");
-          throw new Error(`HTTP ${res.status}: ${tx.slice(0,140)}`);
-        }
-        const out = res;
-        APP.CACHE.set(cacheKey, out.clone ? out.clone() : out);
-        return out;
-      } finally {
-        clearTimeout(t);
-        for(const s of signals){
-          try{ s.removeEventListener("abort", onAbort); }catch{}
-        }
-      }
+  const combined = new AbortController();
+  const onAbort = () => combined.abort();
+
+  for(const s of signals){
+    if(!s) continue;
+    if(s.aborted){ combined.abort(); break; }
+    s.addEventListener("abort", onAbort, { once:true });
+  }
+
+  try{
+    const res = await fetch(url, { ...opts, signal: combined.signal });
+    if(!res.ok){
+      const tx = await res.text().catch(()=> "");
+      throw new Error(`HTTP ${res.status}: ${tx.slice(0,140)}`);
     }
+
+    // Cache ORIGINAL (unread), return a clone to callers
+    APP.CACHE.set(cacheKey, res);
+    return res.clone();
+  } finally {
+    clearTimeout(t);
+    for(const s of signals){
+      try{ s.removeEventListener("abort", onAbort); }catch{}
+    }
+  }
+}
 
     /* =========================================================
        DEXSCREENER
@@ -1835,13 +1841,16 @@
     /* =========================================================
        SOLANA ENGINE (Helius RPC)
        ========================================================= */
-    function HELIUS_RPC(){
-      if(!CFG.HELIUS_KEY) return "";
-      return `https://mainnet.helius-rpc.com/?api-key=${encodeURIComponent(CFG.HELIUS_KEY)}`;
-    }
+    function SOL_RPC_URL(){
+  if(CFG.HELIUS_KEY){
+    return `https://mainnet.helius-rpc.com/?api-key=${encodeURIComponent(CFG.HELIUS_KEY)}`;
+  }
+  // best-effort fallback (rate-limited möglich)
+  return "https://api.mainnet-beta.solana.com";
+}
     async function solRpc(method, params, signal){
-      const url = HELIUS_RPC();
-      if(!url) throw new Error("Helius key missing. Click 'API Keys' and add HELIUS_KEY.");
+      const url = SOL_RPC_URL();
+if(!url) throw new Error("Solana RPC unavailable.");
       const res = await safeFetch(url, {
         method:"POST",
         headers:{ "Content-Type":"application/json" },
@@ -3029,6 +3038,24 @@
       }
 
       const ownerProg = parsed.owner || "";
+      const mintAuth  = parsed?.info?.mintAuthority ?? null;
+const freezeAuth = parsed?.info?.freezeAuthority ?? null;
+
+if(!mintAuth){
+  checks.push({ sev:"ok", weight:10, t:"Mint authority revoked", d:"mintAuthority is null (no further minting).", fix:"Verify token supply and emissions are truly fixed." });
+  keySignals.push({ k:"Mint authority", v:"REVOKED", mini:"mintAuthority = null", src:"onchain", sev:"ok" });
+}else{
+  checks.push({ sev:"warn", weight:14, t:"Mint authority active", d:`mintAuthority: ${shortAddr(mintAuth)}`, fix:"Revoke mint authority if supply should be fixed." });
+  keySignals.push({ k:"Mint authority", v:"ACTIVE", mini: mintAuth, src:"onchain", sev:"warn" });
+}
+
+if(!freezeAuth){
+  checks.push({ sev:"ok", weight:8, t:"Freeze authority revoked", d:"freezeAuthority is null (freeze disabled).", fix:"—" });
+  keySignals.push({ k:"Freeze authority", v:"REVOKED", mini:"freezeAuthority = null", src:"onchain", sev:"ok" });
+}else{
+  checks.push({ sev:"warn", weight:10, t:"Freeze authority active", d:`freezeAuthority: ${shortAddr(freezeAuth)}`, fix:"Revoke freeze authority if you don’t want account freezes." });
+  keySignals.push({ k:"Freeze authority", v:"ACTIVE", mini: freezeAuth, src:"onchain", sev:"warn" });
+}
       const isToken2022 = ownerProg === CFG.TOKEN_2022_PROGRAM;
       const isToken = ownerProg === CFG.TOKEN_PROGRAM;
 
@@ -3173,6 +3200,36 @@
       }else{
         checks.push({ sev:"warn", weight:8, t:"Paused()", d:"Unknown (method not found or unreadable).", fix:"Verify if contract has pause features." });
       }
+      const ZERO = "0x0000000000000000000000000000000000000000";
+const DEAD = "0x000000000000000000000000000000000000dead";
+
+if(owner){
+  const o = owner.toLowerCase();
+  if(o === ZERO || o === DEAD){
+    checks.push({
+      sev:"ok", weight:10,
+      t:"Ownership renounced",
+      d:`Owner is ${o === ZERO ? "0x0" : "0xdead"} (best-effort via owner()).`,
+      fix:"Still verify privileged roles (mint/pause/fees) in contract."
+    });
+    extList.push({ sev:"ok", t:"Owner", d: owner });
+  }else{
+    checks.push({
+      sev:"warn", weight:12,
+      t:"Ownership NOT renounced",
+      d:`Owner: ${shortAddr(owner)}`,
+      fix:"If you expect renounce: transfer ownership to 0x0. If not: verify owner trust + multisig."
+    });
+    extList.push({ sev:"warn", t:"Owner", d: owner });
+  }
+}else{
+  checks.push({
+    sev:"warn", weight:8,
+    t:"Owner() unknown",
+    d:"No owner() method detected or unreadable.",
+    fix:"Contract may use custom roles. Verify admin privileges manually."
+  });
+}
 
       // DEX Screener best pair
       const ds = await fetchDexscreenerToken(tokenAddr, signal);
