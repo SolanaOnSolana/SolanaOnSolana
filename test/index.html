@@ -3599,6 +3599,88 @@ function enableExportLite(){
     downloadTextFile(name, buildReportHtml());
   };
 }
+    /* ===================== PATCH: drawViz supports graph nodes/edges ===================== */
+const __drawVizPrev = drawViz;
+function drawViz(){
+  const canvas = qs("vizCanvas");
+  if(!canvas) return;
+  const ctx = canvas.getContext("2d");
+  if(!ctx) return;
+
+  const dpr = Number(canvas.dataset.dpr || 1);
+  const w = canvas.width;
+  const h = canvas.height;
+  ctx.clearRect(0,0,w,h);
+
+  const nodes = (VIZ.mode === "graph" && Array.isArray(VIZ._graphNodes) && VIZ._graphNodes.length)
+    ? VIZ._graphNodes
+    : VIZ.nodes;
+
+  const edges = (VIZ.mode === "graph" && Array.isArray(VIZ._graphEdges) && VIZ._graphEdges.length)
+    ? VIZ._graphEdges
+    : VIZ.edges;
+
+  if(!nodes || !nodes.length){
+    // subtle background dots
+    ctx.save();
+    ctx.globalAlpha = 0.22;
+    for(let y=20*dpr;y<h;y+=34*dpr){
+      for(let x=20*dpr;x<w;x+=34*dpr){
+        ctx.beginPath();
+        ctx.arc(x,y,1.2*dpr,0,Math.PI*2);
+        ctx.fillStyle = "rgba(255,255,255,0.18)";
+        ctx.fill();
+      }
+    }
+    ctx.restore();
+    return;
+  }
+
+  ctx.save();
+  ctx.translate(VIZ.panX*dpr, VIZ.panY*dpr);
+  ctx.scale(VIZ.zoom, VIZ.zoom);
+
+  // edges
+  ctx.globalAlpha = 0.35;
+  ctx.lineWidth = 1.2*dpr;
+  ctx.strokeStyle = "rgba(255,255,255,0.22)";
+  for(const e of (edges||[])){
+    const a = nodes[e.a];
+    const b = nodes[e.b];
+    if(!a || !b) continue;
+    ctx.beginPath();
+    ctx.moveTo((a.x||0)*dpr, (a.y||0)*dpr);
+    ctx.lineTo((b.x||0)*dpr, (b.y||0)*dpr);
+    ctx.stroke();
+  }
+
+  // nodes + labels
+  for(const n of nodes){
+    const fill = n.sev === "bad" ? "rgba(255,120,150,0.30)"
+               : n.sev === "warn" ? "rgba(255,220,130,0.24)"
+               : "rgba(20,241,149,0.22)";
+
+    ctx.globalAlpha = 0.95;
+    ctx.beginPath();
+    ctx.arc((n.x||0)*dpr, (n.y||0)*dpr, (n.r||14)*dpr, 0, Math.PI*2);
+    ctx.fillStyle = fill;
+    ctx.fill();
+    ctx.strokeStyle = "rgba(255,255,255,0.14)";
+    ctx.stroke();
+
+    const label = (n.sub || "");
+    if(label){
+      ctx.globalAlpha = 0.9;
+      ctx.fillStyle = "rgba(255,255,255,0.82)";
+      ctx.font = `${12*dpr}px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(label, (n.x||0)*dpr, ((n.y||0) + (n.r||14) + 12)*dpr);
+    }
+  }
+
+  ctx.restore();
+}
     /* ===================== FINISH INIT + CALL ===================== */
     init();
   </script>
