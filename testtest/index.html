@@ -2574,11 +2574,14 @@ async function getEvmMetaViaDexScreener(chainId, addr){
         setStatus("Fetching optional metadata provider…");
         const metaApi = await getEvmMetaViaApi(chainId, addr);
 
-        const metaMerged = {
-          name: (metaOnChain?.name || metaApi?.name || "").trim(),
-          symbol: (metaOnChain?.symbol || metaApi?.symbol || "").trim(),
-          image: (metaApi?.image || "").trim()
-        };
+setStatus("Fetching public metadata (DexScreener)…");
+const metaDex = await getEvmMetaViaDexScreener(chainId, addr);
+
+const metaMerged = {
+  name: (metaOnChain?.name || metaApi?.name || metaDex?.name || "").trim(),
+  symbol: (metaOnChain?.symbol || metaApi?.symbol || metaDex?.symbol || "").trim(),
+  image: (metaApi?.image || metaDex?.image || "").trim()
+};
 
         applyTokenHeader(metaMerged, addr);
 
