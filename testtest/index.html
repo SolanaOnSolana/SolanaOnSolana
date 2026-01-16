@@ -1,0 +1,3275 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#070711" />
+  <title>$SOS — Guardian Check (Multi-Chain) • Next Level</title>
+  <meta name="description" content="Guardian Approved — token risk score + launch readiness + cluster & bubble map (best-effort, on-chain verifiable when possible)." />
+
+  <style>
+    :root{
+      --bg:#070711;
+      --panel: rgba(255,255,255,.06);
+      --stroke: rgba(255,255,255,.12);
+      --text: rgba(255,255,255,.92);
+      --muted: rgba(255,255,255,.70);
+      --g:#14F195;
+      --c:#00D1FF;
+      --p:#9945FF;
+      --radius: 22px;
+      --shadow: 0 10px 30px rgba(0,0,0,.35);
+      --max: 1180px;
+
+      --sol-g1:#14F195;
+      --sol-g2:#00D1FF;
+      --sol-g3:#9945FF;
+      --bnb-yellow:#F0B90B;
+      --base-blue:#0052FF;
+
+      --good: rgba(20,241,149,.18);
+      --warn: rgba(255,220,130,.14);
+      --bad:  rgba(255,120,150,.16);
+      --gridGap: 16px;
+
+      /* NEW: confidence/source colors */
+      --src-onchain: rgba(20,241,149,.16);
+      --src-indexer: rgba(0,209,255,.14);
+      --src-api: rgba(153,69,255,.14);
+      --src-heur: rgba(255,220,130,.12);
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      color:var(--text);
+      font: 15.5px/1.55 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      background: var(--bg);
+      position:relative;
+      overflow-x:hidden;
+    }
+    body::before{
+      content:"";
+      position:fixed;
+      inset:0;
+      z-index:-1;
+      pointer-events:none;
+      background:
+        radial-gradient(1200px 700px at 10% 5%, rgba(153,69,255,.22), transparent 60%),
+        radial-gradient(1000px 650px at 90% 10%, rgba(20,241,149,.18), transparent 55%),
+        radial-gradient(900px 600px at 70% 85%, rgba(0,209,255,.14), transparent 55%),
+        var(--bg);
+      transform: translateZ(0);
+    }
+    a{color:inherit; text-decoration:none}
+    .wrap{max-width:var(--max); margin:0 auto; padding:0 18px; width:100%;}
+    main{padding:22px 0 42px}
+    .topbar{
+      position:sticky;
+      top:0;
+      z-index:20;
+      backdrop-filter: blur(14px);
+      background: rgba(7,7,17,.62);
+      border-bottom: 1px solid rgba(255,255,255,.08);
+    }
+    .row{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      padding:12px 0;
+      flex-wrap:wrap;
+    }
+    .brand{
+      display:flex;
+      align-items:center;
+      gap:12px;
+      min-width: 260px;
+      user-select:none;
+    }
+    .brand img{
+      width:40px;
+      height:40px;
+      object-fit:contain;
+      filter: drop-shadow(0 10px 25px rgba(0,0,0,.45));
+    }
+    .bt{display:flex; flex-direction:column; line-height:1.05}
+    .bt .t{font-weight:1000; letter-spacing:-.2px; font-size:16px}
+    .bt .s{font-weight:850; color:var(--muted); font-size:12.5px}
+
+    .actions{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      flex-wrap:wrap;
+      justify-content:flex-end;
+      width:100%;
+    }
+    @media (min-width: 980px){
+      .actions{width:auto}
+    }
+
+    .btn{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      padding:9px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      color: rgba(255,255,255,.88);
+      font-weight:950;
+      font-size:13px;
+      transition: .15s ease;
+      user-select:none;
+      cursor:pointer;
+      -webkit-tap-highlight-color: transparent;
+      white-space:nowrap;
+    }
+    .btn:hover{background: rgba(255,255,255,.10); transform: translateY(-1px)}
+    .btn.grad{
+      border:0;
+      background: linear-gradient(90deg, var(--g), var(--c), var(--p));
+      color:#061012;
+      box-shadow: 0 10px 24px rgba(0,0,0,.25);
+    }
+    .btn[disabled]{opacity:.55; pointer-events:none}
+
+    .card{
+      background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.05));
+      border: 1px solid rgba(255,255,255,.10);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+    }
+    .inner{padding:22px}
+
+    .hero{
+      position:relative;
+      overflow:hidden;
+      isolation:isolate;
+    }
+    .hero::before{
+      content:"";
+      position:absolute;
+      inset:-70px -40px;
+      background:
+        radial-gradient(900px 520px at 18% 28%, rgba(20,241,149,.16), transparent 60%),
+        radial-gradient(900px 520px at 82% 20%, rgba(0,209,255,.12), transparent 60%),
+        radial-gradient(900px 520px at 70% 86%, rgba(153,69,255,.14), transparent 60%);
+      z-index:0;
+      pointer-events:none;
+    }
+    .hero > *{position:relative; z-index:1}
+
+    .h1{
+      margin:0;
+      font-weight:1000;
+      letter-spacing:-1px;
+      line-height:1.05;
+      font-size: clamp(34px, 4.6vw, 62px);
+    }
+    .gradText{
+      background: linear-gradient(90deg, var(--g), var(--c), var(--p));
+      -webkit-background-clip:text;
+      background-clip:text;
+      color:transparent;
+    }
+    .sub{
+      margin-top:10px;
+      color: rgba(255,255,255,.76);
+      font-weight:850;
+      max-width: 940px;
+    }
+    .classified{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+    .stamp{
+      font-weight:1000;
+      font-size:12px;
+      letter-spacing: .45px;
+      text-transform:uppercase;
+      color: rgba(255,255,255,.76);
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      border-radius: 999px;
+      padding:7px 10px;
+    }
+
+    .layout{
+      margin-top:16px;
+      display:grid;
+      grid-template-columns: 1.05fr .95fr;
+      gap:var(--gridGap);
+      align-items:start;
+    }
+    @media (max-width: 980px){
+      .layout{grid-template-columns:1fr}
+    }
+
+    .analysisGrid{
+      margin-top: var(--gridGap);
+      display:grid;
+      grid-template-columns: 1.1fr .9fr;
+      gap: var(--gridGap);
+      align-items:start;
+    }
+    @media (max-width: 980px){
+      .analysisGrid{grid-template-columns:1fr}
+    }
+
+    .panel{
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.18);
+      border-radius: 18px;
+      padding:16px;
+      overflow:hidden;
+    }
+
+    .panelHead{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-bottom:10px;
+    }
+    .panelTitle{
+      font-weight:1000;
+      letter-spacing:.35px;
+      text-transform:uppercase;
+      font-size:12px;
+      color: rgba(255,255,255,.72);
+      display:flex;
+      gap:10px;
+      align-items:center;
+      flex-wrap:wrap;
+    }
+    .panelSub{
+      color: rgba(255,255,255,.62);
+      font-weight:850;
+      font-size:12.5px;
+      line-height:1.35;
+      margin-top:6px;
+    }
+
+    label{
+      display:block;
+      font-weight:950;
+      font-size:12.5px;
+      letter-spacing:.35px;
+      color: rgba(255,255,255,.82);
+      margin-bottom:8px;
+    }
+    input{
+      width:100%;
+      padding:14px 14px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.22);
+      color: rgba(255,255,255,.92);
+      outline:none;
+      font-weight:900;
+      letter-spacing:.2px;
+      font-size:16px;
+      max-width:100%;
+    }
+    input:focus{
+      border-color: rgba(0,209,255,.45);
+      box-shadow: 0 0 0 3px rgba(0,209,255,.12);
+    }
+
+    .statusLine{
+      margin-top:12px;
+      color: rgba(255,255,255,.72);
+      font-weight:900;
+      min-height: 18px;
+      font-size:13px;
+      overflow-wrap:anywhere;
+      word-break:break-word;
+    }
+
+    .badge{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      padding:7px 11px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      font-weight:1000;
+      font-size:12px;
+      white-space:nowrap;
+    }
+    .badge.good{border:0; background: linear-gradient(90deg,var(--g),var(--c),var(--p)); color:#061012}
+    .badge.warn{border-color: rgba(255,220,130,.35); background: rgba(255,220,130,.08); color: rgba(255,240,210,.92)}
+    .badge.bad{border-color: rgba(255,120,150,.35); background: rgba(255,120,150,.10); color: rgba(255,190,205,.95)}
+
+    /* NEW: source/confidence pills */
+    .badge.src{border:1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.05); color: rgba(255,255,255,.84)}
+    .badge.src.onchain{border-color: rgba(20,241,149,.26); background: var(--src-onchain);}
+    .badge.src.indexer{border-color: rgba(0,209,255,.26); background: var(--src-indexer);}
+    .badge.src.api{border-color: rgba(153,69,255,.26); background: var(--src-api);}
+    .badge.src.heur{border-color: rgba(255,220,130,.26); background: var(--src-heur);}
+
+    .resultTop{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:12px;
+      flex-wrap:wrap;
+    }
+    .resultTitle{
+      margin:0;
+      font-weight:1000;
+      font-size:22px;
+      letter-spacing:-.4px;
+    }
+    .mono{
+      font-family: ui-monospace, Menlo, Consolas, monospace;
+      font-weight:900;
+      color: rgba(255,255,255,.86);
+      margin-top:6px;
+      overflow-wrap:anywhere;
+      word-break:break-word;
+    }
+
+    .tokenHead{
+      display:flex;
+      gap:12px;
+      align-items:center;
+      flex-wrap:wrap;
+      margin-bottom:10px;
+      min-width:0;
+    }
+    .tokenLogoWrap{
+      width:44px;
+      height:44px;
+      border-radius:12px;
+      overflow:hidden;
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.18);
+      display:flex;
+      flex:0 0 auto;
+      position:relative;
+      align-items:center;
+      justify-content:center;
+    }
+    .tokenLogoWrap img{
+      width:100%;
+      height:100%;
+      object-fit:cover;
+      display:block;
+    }
+    .identicon{
+      width:100%;
+      height:100%;
+      display:block;
+    }
+
+    .tokenName{
+      font-weight:1000;
+      font-size:16px;
+      letter-spacing:-.2px;
+      line-height:1.15;
+      overflow-wrap:anywhere;
+      word-break:break-word;
+    }
+    .tokenSymbol{
+      margin-top:2px;
+      color: rgba(255,255,255,.70);
+      font-weight:900;
+      font-size:12.5px;
+    }
+
+    .metricStack{margin-top:12px; display:grid; gap:10px;}
+    .metric{
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.04);
+      border-radius: 16px;
+      padding:12px 12px;
+    }
+    .metricK{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      color: rgba(255,255,255,.70);
+      font-weight:1000;
+      font-size:12px;
+      letter-spacing:.45px;
+      text-transform:uppercase;
+    }
+    .metricV{
+      margin-top:8px;
+      font-weight:1000;
+      font-size:20px;
+      display:flex;
+      align-items:baseline;
+      justify-content:space-between;
+      gap:12px;
+      flex-wrap:wrap;
+    }
+    .metricMini{
+      margin-top:6px;
+      font-weight:850;
+      font-size:12px;
+      color: rgba(255,255,255,.62);
+      overflow-wrap:anywhere;
+      word-break:break-word;
+    }
+
+    .bar{
+      margin-top:10px;
+      height:12px;
+      border-radius:999px;
+      background: rgba(255,255,255,.08);
+      border: 1px solid rgba(255,255,255,.10);
+      overflow:hidden;
+    }
+    .bar > div{
+      height:100%;
+      width:0%;
+      background: linear-gradient(90deg, var(--g), var(--c), var(--p));
+      border-radius:999px;
+      transition: width .25s ease;
+    }
+
+    .list{
+      margin:10px 0 0;
+      padding:0;
+      list-style:none;
+      display:grid;
+      gap:10px;
+    }
+    .li{
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.14);
+      border-radius: 16px;
+      padding:12px 12px;
+      display:flex;
+      gap:10px;
+      align-items:flex-start;
+      justify-content:space-between;
+      min-width:0;
+    }
+    .li .left{min-width:0;}
+    .li .t{font-weight:1000; font-size:13px; letter-spacing:.2px;}
+    .li .d{
+      margin-top:4px;
+      color: rgba(255,255,255,.70);
+      font-weight:750;
+      font-size:12.5px;
+      line-height:1.35;
+      overflow-wrap:anywhere;
+      word-break:break-word;
+    }
+
+    .pillRow{
+      display:flex;
+      gap:8px;
+      align-items:center;
+      flex:0 0 auto;
+      justify-content:flex-end;
+      flex-wrap:wrap;
+    }
+    .pill{
+      padding:6px 10px;
+      border-radius: 999px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.06);
+      font-weight:1000;
+      font-size:12px;
+      white-space:nowrap;
+      user-select:none;
+      -webkit-tap-highlight-color: transparent;
+      cursor:pointer;
+    }
+    .pill.ok{border:0; background: linear-gradient(90deg,var(--g),var(--c),var(--p)); color:#061012}
+    .pill.warn{border-color: rgba(255,220,130,.35); background: rgba(255,220,130,.08); color: rgba(255,240,210,.92)}
+    .pill.bad{border-color: rgba(255,120,150,.35); background: rgba(255,120,150,.10); color: rgba(255,190,205,.95)}
+    .infoBtn{
+      width:26px;
+      height:26px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.18);
+      background: rgba(255,255,255,.06);
+      color: rgba(255,255,255,.86);
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      cursor:pointer;
+      user-select:none;
+      font-weight:1000;
+      font-size:13px;
+      line-height:1;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .infoBtn:hover{ background: rgba(255,255,255,.10); transform: translateY(-1px); }
+    .infoBtn:active{ transform: translateY(0px); }
+    .infoBtn span{ transform: translateY(-0.5px); }
+
+    .explorerBtn{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      padding:6px 10px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      font-weight:1000;
+      font-size:12px;
+      white-space:nowrap;
+      cursor:pointer;
+      user-select:none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .explorerBtn:hover{ background: rgba(255,255,255,.10); transform: translateY(-1px); }
+
+    /* ===== Bubble Map / Graph Canvas ===== */
+    .vizWrap{
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.16);
+      border-radius: 18px;
+      overflow:hidden;
+      position:relative;
+    }
+    .vizTop{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:10px;
+      flex-wrap:wrap;
+      padding:12px 12px 10px;
+      border-bottom: 1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.03);
+    }
+    .vizTitle{
+      font-weight:1000;
+      letter-spacing:.35px;
+      text-transform:uppercase;
+      font-size:12px;
+      color: rgba(255,255,255,.72);
+      display:flex;
+      align-items:center;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+    .vizHint{
+      color: rgba(255,255,255,.62);
+      font-weight:850;
+      font-size:12.5px;
+      line-height:1.35;
+      margin-top:6px;
+      max-width: 560px;
+    }
+    .vizControls{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      align-items:center;
+      justify-content:flex-end;
+    }
+    .seg{
+      display:inline-flex;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.04);
+      border-radius: 999px;
+      overflow:hidden;
+    }
+    .seg button{
+      border:0;
+      background:transparent;
+      color: rgba(255,255,255,.82);
+      font-weight:1000;
+      font-size:12px;
+      padding:8px 10px;
+      cursor:pointer;
+    }
+    .seg button.active{
+      background: rgba(255,255,255,.10);
+      color: rgba(255,255,255,.92);
+    }
+    /* NEW: disabled graph button style */
+    .seg button[disabled]{
+      opacity:.45;
+      cursor:not-allowed;
+    }
+
+    .vizStage{
+      height: 420px;
+      position:relative;
+      display:block;
+      background:
+        radial-gradient(900px 520px at 30% 30%, rgba(20,241,149,.08), transparent 60%),
+        radial-gradient(900px 520px at 70% 20%, rgba(0,209,255,.06), transparent 60%),
+        radial-gradient(900px 520px at 60% 85%, rgba(153,69,255,.06), transparent 60%),
+        rgba(0,0,0,.10);
+    }
+    @media (max-width: 980px){
+      .vizStage{ height: 360px; }
+    }
+    canvas.vizCanvas{
+      width:100%;
+      height:100%;
+      display:block;
+    }
+    .vizOverlay{
+      position:absolute;
+      inset:0;
+      pointer-events:none;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:16px;
+      text-align:center;
+      color: rgba(255,255,255,.68);
+      font-weight:900;
+    }
+
+    /* ===== cluster cards ===== */
+    .clusterGrid{
+      display:grid;
+      grid-template-columns: 1fr;
+      gap:10px;
+    }
+    .clusterCard{
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.14);
+      border-radius: 16px;
+      padding:12px 12px;
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:12px;
+    }
+    .clusterLeft{min-width:0}
+    .clusterT{
+      font-weight:1000;
+      font-size:13px;
+      letter-spacing:.2px;
+      display:flex;
+      align-items:center;
+      gap:8px;
+      flex-wrap:wrap;
+    }
+    .dot{
+      width:10px;height:10px;border-radius:999px;
+      background: rgba(255,255,255,.22);
+      border:1px solid rgba(255,255,255,.12);
+      flex:0 0 auto;
+    }
+    .dot.good{ background: rgba(20,241,149,.50); }
+    .dot.warn{ background: rgba(255,220,130,.55); }
+    .dot.bad{  background: rgba(255,120,150,.55); }
+
+    .clusterD{
+      margin-top:5px;
+      color: rgba(255,255,255,.70);
+      font-weight:750;
+      font-size:12.5px;
+      line-height:1.35;
+      overflow-wrap:anywhere;
+      word-break:break-word;
+    }
+    .clusterRight{
+      display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:flex-end;
+      flex:0 0 auto;
+    }
+
+    /* chain selection */
+    .chainRow{ margin-top:10px; display:flex; gap:10px; flex-wrap:wrap; }
+    .chainBtn{
+      display:inline-flex;
+      align-items:center;
+      gap:10px;
+      padding:10px 12px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      cursor:pointer;
+      user-select:none;
+      font-weight:1000;
+      font-size:13px;
+      color: rgba(255,255,255,.88);
+      -webkit-tap-highlight-color: transparent;
+    }
+    .chainBtn:hover{ background: rgba(255,255,255,.10); }
+    .chainBtn.active{
+      border:0;
+      background: linear-gradient(90deg, var(--g), var(--c), var(--p));
+      color:#061012;
+      box-shadow: 0 10px 24px rgba(0,0,0,.25);
+    }
+    .chainIcon{
+      width:18px;
+      height:18px;
+      border-radius:6px;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      overflow:hidden;
+      background: rgba(0,0,0,.25);
+      border:1px solid rgba(255,255,255,.10);
+      flex:0 0 auto;
+    }
+    .chainIcon svg{ width:18px; height:18px; display:block; }
+    .chainMiniHint{
+      margin-top:10px;
+      font-size:12.5px;
+      color: rgba(255,255,255,.62);
+      font-weight:850;
+      line-height:1.35;
+    }
+
+    footer{
+      padding: 18px 0 34px;
+      color: rgba(255,255,255,.45);
+      font-weight:650;
+      text-align:center;
+      font-size:12px;
+    }
+
+    /* modal + toast */
+    .modalWrap{
+      position:fixed;
+      inset:0;
+      background: rgba(0,0,0,.55);
+      backdrop-filter: blur(10px);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      padding:18px;
+      z-index:100;
+    }
+    .modal{
+      width:min(920px, 100%);
+      border-radius: 20px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(7,7,17,.92);
+      box-shadow: 0 16px 50px rgba(0,0,0,.5);
+      overflow:hidden;
+    }
+    .modalHead{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      padding:14px 16px;
+      border-bottom: 1px solid rgba(255,255,255,.10);
+    }
+    .modalTitle{ font-weight:1000; letter-spacing:-.3px; }
+    .modalBody{
+      padding:14px 16px 16px;
+      color: rgba(255,255,255,.84);
+      font-weight:850;
+      line-height:1.5;
+      overflow-wrap:anywhere;
+      word-break:break-word;
+    }
+
+    .toast{
+      position:fixed;
+      top: max(16px, env(safe-area-inset-top));
+      left:50%;
+      transform:translateX(-50%);
+      width:min(920px, calc(100% - 28px));
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(7,7,17,.90);
+      box-shadow: 0 16px 50px rgba(0,0,0,.45);
+      padding:14px 14px;
+      display:none;
+      z-index:120;
+      backdrop-filter: blur(12px);
+    }
+    .toastRow{display:flex; align-items:center; justify-content:space-between; gap:12px;}
+    .toastTitle{font-weight:1000; font-size:18px; letter-spacing:-.3px;}
+    .toastClose{
+      padding:9px 12px;
+      border-radius:999px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      color: rgba(255,255,255,.88);
+      font-weight:950;
+      cursor:pointer;
+    }
+    .toastClose:hover{background: rgba(255,255,255,.10);}
+
+    /* NEW: Key Signals cards (rechte Spalte Profi-Scanner) */
+    .signalCard{
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.04);
+      border-radius: 16px;
+      padding:12px 12px;
+    }
+    .signalTop{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+    .signalK{
+      font-weight:1000;
+      letter-spacing:.45px;
+      text-transform:uppercase;
+      font-size:12px;
+      color: rgba(255,255,255,.72);
+      display:flex;
+      align-items:center;
+      gap:8px;
+      flex-wrap:wrap;
+    }
+    .signalV{
+      margin-top:8px;
+      font-weight:1000;
+      font-size:18px;
+      display:flex;
+      align-items:center;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+    .signalMini{
+      margin-top:6px;
+      font-weight:850;
+      font-size:12px;
+      color: rgba(255,255,255,.62);
+      overflow-wrap:anywhere;
+      word-break:break-word;
+    }
+
+    /* Responsive tightening */
+    @media (max-width: 980px){
+      .wrap{ padding: 0 14px; }
+      .inner{ padding: 16px; }
+      .panel{ padding: 14px; }
+      .brand{ min-width: 0; width: 100%; }
+      .actions{ width: 100%; justify-content: flex-start; }
+      .actions .btn{ width: 100%; justify-content: center; padding: 12px 14px; font-size: 14px; }
+      .resultTop{ flex-direction: column; align-items: stretch; }
+      .resultTop > div:last-child{ width: 100%; justify-content: flex-start; }
+      .resultTop .badge{ width: fit-content; }
+      .tokenHead{ flex-wrap: nowrap; }
+      .tokenName{ font-size: 18px; }
+      .tokenSymbol{ font-size: 13px; }
+      .metricV{ flex-direction: column; align-items: flex-start; gap: 6px; font-size: 22px; }
+      .metricK{ flex-wrap: wrap; gap: 8px; }
+      .metricK .badge{ margin-left: auto; }
+      .li{ flex-direction: column; align-items: flex-start; gap: 10px; }
+      .pillRow{ width:100%; justify-content:flex-start; flex-wrap:wrap; }
+      .modal{ width:100%; }
+      .toast{ left:14px; right:14px; transform:none; width:auto; }
+    }
+
+    @media (prefers-reduced-motion: reduce){
+      .btn:hover{transform:none}
+      .bar > div{transition:none}
+      .infoBtn:hover{transform:none}
+      .explorerBtn:hover{transform:none}
+    }
+  </style>
+</head>
+<body>
+  <!-- Toast -->
+  <div class="toast" id="toast">
+    <div class="toastRow">
+      <div class="toastTitle" id="toastTitle">—</div>
+      <button class="toastClose" id="toastClose" type="button">Close</button>
+    </div>
+  </div>
+
+  <div class="topbar">
+    <div class="wrap">
+      <div class="row">
+        <div class="brand">
+          <img src="/assets/logo.png" alt="$SOS" onerror="this.style.display='none'">
+          <div class="bt">
+            <div class="t">$SOS</div>
+            <div class="s">Contract Scanner • Token Risk • Clusters</div>
+          </div>
+        </div>
+
+        <!-- IMPORTANT: Buttons NOT removed -->
+        <div class="actions">
+          <a class="btn" href="https://solanax1.com/" rel="noreferrer">← Back to Main</a>
+          <button class="btn grad" id="btnScan" type="button">Run Guardian Check</button>
+          <button class="btn grad" id="btnExport" type="button" disabled>Download Scan Report</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <main class="wrap">
+    <section class="card hero">
+      <div class="inner">
+        <div class="classified">
+          <div class="stamp">GUARDIAN SYSTEM • MAINNET • BEST-EFFORT VERIFIED</div>
+          <div class="stamp" id="stampTime">—</div>
+        </div>
+
+        <h1 class="h1" style="margin-top:12px;">
+          <span class="gradText">Guardian Contract</span> Scanner
+        </h1>
+
+        <div class="sub">
+          Multi-chain scan: Solana + ETH + BNB + Base — now with
+          <span class="gradText">clusters</span>, <span class="gradText">bubble map</span>, and <span class="gradText">linked wallets</span> (best-effort).
+        </div>
+
+        <div class="layout">
+          <!-- INPUT -->
+          <div class="panel">
+            <label>Choose Chain</label>
+            <div class="chainRow" id="chainRow"></div>
+            <div class="chainMiniHint" id="chainHint">—</div>
+
+            <label for="mint" style="margin-top:14px;" id="addrLabel">Token Address</label>
+            <input id="mint" placeholder="Paste token address..." autocomplete="off" spellcheck="false" inputmode="text" />
+            <button class="btn grad" id="btnScanInline" type="button" style="width:100%; margin-top:12px;">Run Guardian Check</button>
+            <div class="statusLine" id="status"></div>
+          </div>
+
+          <!-- RESULTS -->
+          <div class="panel" id="resultsPanel">
+            <div class="resultTop">
+              <div style="min-width:0">
+                <div class="tokenHead">
+                  <div class="tokenLogoWrap" id="tokenLogoWrap" aria-hidden="false">
+                    <img id="tokenLogo" alt="" style="display:none">
+                    <svg class="identicon" id="tokenIdenticon" viewBox="0 0 44 44" aria-hidden="true"></svg>
+                  </div>
+                  <div style="min-width:0">
+                    <div class="tokenName" id="tokenName">—</div>
+                    <div class="tokenSymbol" id="tokenSymbol">—</div>
+                  </div>
+                </div>
+
+                <h3 class="resultTitle" id="verdictTitle">—</h3>
+                <div class="mono" id="mintShort">—</div>
+              </div>
+
+              <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                <span class="badge" id="verdictBadge">—</span>
+                <span class="badge good" id="scoreBadge">—</span>
+              </div>
+            </div>
+
+            <div class="metricStack" id="metrics"></div>
+            <div class="statusLine" id="summary">—</div>
+
+            <!-- KEY SIGNALS (Pro Scanner Column) -->
+            <div class="metricStack" id="keySignals"></div>
+          </div>
+        </div>
+
+        <div class="analysisGrid">
+          <!-- Bubble Map / Graph -->
+          <div class="panel" id="vizPanel">
+            <div class="panelHead">
+              <div>
+                <div class="panelTitle">
+                  <span class="badge">NEW</span>
+                  Bubble Map • Wallet Graph
+                </div>
+                <div class="panelSub" id="vizSub">
+                  Shows holder bubbles + linked wallet edges (best-effort). Run a scan to populate.
+                </div>
+              </div>
+
+              <div class="vizControls">
+                <div class="seg" role="tablist" aria-label="Visualization mode">
+                  <button type="button" id="vizModeBubbles" class="active" aria-selected="true">Bubbles</button>
+                  <!-- NEW: graph disabled until real edges exist -->
+                  <button type="button" id="vizModeGraph" aria-selected="false" disabled>Graph</button>
+                </div>
+                <button class="btn" id="btnVizReset" type="button">Reset View</button>
+              </div>
+            </div>
+
+            <div class="vizWrap">
+              <div class="vizTop">
+                <div style="min-width:0">
+                  <div class="vizTitle">Holders & Clusters (Live)</div>
+                  <div class="vizHint" id="vizHint">
+                    Tip: Hover bubbles for wallet info. Click to open explorer (when enabled).
+                  </div>
+                </div>
+                <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; justify-content:flex-end;">
+                  <span class="badge" id="vizStamp">—</span>
+                  <span class="badge" id="vizLegend">—</span>
+                </div>
+              </div>
+
+              <div class="vizStage" id="vizStage">
+                <canvas class="vizCanvas" id="vizCanvas"></canvas>
+                <div class="vizOverlay" id="vizOverlay">
+                  No visualization data yet. Run a scan.
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Cluster Summary -->
+          <div class="panel" id="clusterPanel">
+            <div class="panelHead">
+              <div>
+                <div class="panelTitle">
+                  <span class="badge">NEW</span>
+                  Cluster Intelligence
+                </div>
+                <div class="panelSub" id="clusterSub">
+                  Detects linked wallets, split wallets, bundle-like patterns (best-effort).
+                </div>
+              </div>
+              <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end;">
+                <span class="badge" id="clusterStamp">—</span>
+              </div>
+            </div>
+
+            <div class="clusterGrid" id="clusterGrid">
+              <div class="clusterCard">
+                <div class="clusterLeft">
+                  <div class="clusterT"><span class="dot warn"></span> No scan yet</div>
+                  <div class="clusterD">Run a scan to generate cluster groups, linked wallets, and bundle/split heuristics.</div>
+                </div>
+                <div class="clusterRight">
+                  <span class="badge warn">WAIT</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="statusLine" id="clusterFoot" style="margin-top:12px;">—</div>
+          </div>
+        </div>
+
+        <!-- Checks -->
+        <div class="panel" style="margin-top:16px;">
+          <div class="classified">
+            <div class="stamp">GUARDIAN CHECKS</div>
+            <div class="stamp" id="scanHint">—</div>
+          </div>
+          <ul class="list" id="checksList" style="margin-top:10px;"></ul>
+        </div>
+
+        <!-- Launch readiness -->
+        <div class="panel" style="margin-top:16px;">
+          <div class="classified">
+            <div class="stamp">LAUNCH READINESS</div>
+            <div class="stamp">ACTION LIST</div>
+          </div>
+          <ul class="list" id="todoList" style="margin-top:10px;"></ul>
+        </div>
+
+        <!-- Token standard details -->
+        <div class="panel" style="margin-top:16px;">
+          <div class="classified">
+            <div class="stamp">TOKEN STANDARD DETAILS</div>
+            <div class="stamp">ON-CHAIN</div>
+          </div>
+          <ul class="list" id="extList" style="margin-top:10px;"></ul>
+        </div>
+
+        <!-- Metadata -->
+        <div class="panel" style="margin-top:16px;">
+          <div class="classified">
+            <div class="stamp">TOKEN METADATA</div>
+            <div class="stamp">RPC / ON-CHAIN</div>
+          </div>
+          <ul class="list" id="metaList" style="margin-top:10px;"></ul>
+        </div>
+
+        <!-- Top holders -->
+        <div class="panel" style="margin-top:16px;">
+          <div class="classified">
+            <div class="stamp">TOP HOLDERS (PREVIEW)</div>
+            <div class="stamp" id="holdersStamp">MAINNET</div>
+          </div>
+          <ul class="list" id="holdersList" style="margin-top:10px;"></ul>
+        </div>
+      </div>
+    </section>
+
+    <footer>© <span id="y"></span> $SOS • Guardian Check</footer>
+  </main>
+
+  <!-- Modal -->
+  <div class="modalWrap" id="modalWrap" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="modal">
+      <div class="modalHead">
+        <div class="modalTitle" id="modalTitle">Guardian Details</div>
+        <button class="btn" id="modalClose" type="button">Close</button>
+      </div>
+      <div class="modalBody" id="modalBody"></div>
+    </div>
+  </div>
+
+  <script>
+    /* =========================================================
+       PART 1–3 — FOUNDATION + HELPERS + CHAIN UI
+       ========================================================= */
+
+    /* ===== DOM helpers ===== */
+    const qs = (id) => document.getElementById(id);
+    const setText = (id, v) => { const el = qs(id); if (el) el.textContent = (v ?? ""); };
+    const setHTML = (id, v) => { const el = qs(id); if (el) el.innerHTML = (v ?? ""); };
+    const on = (id, ev, fn) => { const el = qs(id); if (el) el.addEventListener(ev, fn); };
+
+    const esc = (x) => String(x ?? "")
+      .replaceAll("&","&amp;")
+      .replaceAll("<","&lt;")
+      .replaceAll(">","&gt;")
+      .replaceAll('"',"&quot;");
+
+    function clamp(n, min, max){ return Math.max(min, Math.min(max, n)); }
+    function shortAddr(a){ return a ? (a.slice(0,4) + "…" + a.slice(-4)) : "—"; }
+    function pillLabel(sev){ return sev==="ok" ? "PASS" : sev==="bad" ? "FAIL" : "WATCH"; }
+    function pillClass(sev){ return sev==="ok" ? "pill ok" : sev==="bad" ? "pill bad" : "pill warn"; }
+
+    /* ===== global scan state ===== */
+    let ACTIVE_CHAIN_ID = "sol";
+    let SCANNING = false;
+    let LAST_SCAN = null;
+
+    /* ===== icon svgs ===== */
+    const ICONS = {
+      sol: `
+        <svg viewBox="0 0 64 64" aria-hidden="true">
+          <defs>
+            <linearGradient id="solg" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stop-color="${getComputedStyle(document.documentElement).getPropertyValue('--sol-g1').trim() || '#14F195'}"/>
+              <stop offset="0.5" stop-color="${getComputedStyle(document.documentElement).getPropertyValue('--sol-g2').trim() || '#00D1FF'}"/>
+              <stop offset="1" stop-color="${getComputedStyle(document.documentElement).getPropertyValue('--sol-g3').trim() || '#9945FF'}"/>
+            </linearGradient>
+          </defs>
+          <path d="M14 18c1.6-1.8 3.5-2.7 5.7-2.7h33.6c3.3 0 5 4 2.8 6.5l-6.1 6.8c-1.6 1.8-3.5 2.7-5.7 2.7H10.7c-3.3 0-5-4-2.8-6.5L14 18Z" fill="url(#solg)"/>
+          <path d="M14 38.9c1.6-1.8 3.5-2.7 5.7-2.7h33.6c3.3 0 5 4 2.8 6.5l-6.1 6.8c-1.6 1.8-3.5 2.7-5.7 2.7H10.7c-3.3 0-5-4-2.8-6.5L14 38.9Z" fill="url(#solg)" opacity=".7"/>
+          <path d="M50 28.5c-1.6 1.8-3.5 2.7-5.7 2.7H10.7c-3.3 0-5-4-2.8-6.5L14 17.9c1.6-1.8 3.5-2.7 5.7-2.7h33.6c3.3 0 5 4 2.8 6.5L50 28.5Z" fill="url(#solg)" opacity=".9"/>
+        </svg>
+      `,
+      eth: `
+        <svg viewBox="0 0 64 64" aria-hidden="true">
+          <path d="M32 6l16 26-16 9-16-9L32 6Z" fill="currentColor" opacity=".95"/>
+          <path d="M32 58l16-22-16 9-16-9 16 22Z" fill="currentColor" opacity=".75"/>
+        </svg>
+      `,
+      bnb: `
+        <svg viewBox="0 0 64 64" aria-hidden="true">
+          <path fill="${getComputedStyle(document.documentElement).getPropertyValue('--bnb-yellow').trim() || '#F0B90B'}"
+            d="M32 6l8.6 8.6L32 23.2l-8.6-8.6L32 6Zm15.4 15.4L56 30l-8.6 8.6-8.6-8.6L47.4 21.4ZM16.6 21.4 25.2 30l-8.6 8.6L8 30l8.6-8.6ZM32 32.8l8.6 8.6L32 50l-8.6-8.6L32 32.8Zm0-6.9 5.1 5.1L32 36.2 26.9 31 32 25.9Z"/>
+        </svg>
+      `,
+      base: `
+        <svg viewBox="0 0 64 64" aria-hidden="true">
+          <circle cx="32" cy="32" r="26" fill="${getComputedStyle(document.documentElement).getPropertyValue('--base-blue').trim() || '#0052FF'}"/>
+          <path d="M27.5 22h8.1c6.2 0 11.2 5 11.2 11.1S41.8 44.2 35.6 44.2h-8.1V22Zm5.3 5.1v12h2.4c3.3 0 6-2.7 6-6s-2.7-6-6-6h-2.4Z"
+                fill="#fff"/>
+        </svg>
+      `
+    };
+
+    const CHAINS = [
+      { id:"sol",  name:"Solana",   kind:"solana", stamp:"MAINNET", addrLabel:"Token Mint Address",       placeholder:"Paste token mint (Solana)..." },
+      { id:"eth",  name:"Ethereum", kind:"evm",    stamp:"ETH MAINNET", addrLabel:"Token Contract Address", placeholder:"Paste ERC-20 contract (0x...)" },
+      { id:"bnb",  name:"BNB",      kind:"evm",    stamp:"BNB MAINNET", addrLabel:"Token Contract Address", placeholder:"Paste BEP-20 contract (0x...)" },
+      { id:"base", name:"Base",     kind:"evm",    stamp:"BASE MAINNET", addrLabel:"Token Contract Address", placeholder:"Paste Base token contract (0x...)" }
+    ];
+
+    function chainObj(){
+      return CHAINS.find(c => c.id === ACTIVE_CHAIN_ID) || CHAINS[0];
+    }
+
+    /* ===== live stamp time ===== */
+    let STAMP_TIMER = null;
+    function updateStampTime(){
+      const el = qs("stampTime");
+      if(!el) return;
+      const now = new Date();
+      el.textContent = new Intl.DateTimeFormat("de-DE", {
+        timeZone: "Europe/Berlin",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit"
+      }).format(now);
+    }
+    function startLiveStampTime(){
+      if(STAMP_TIMER) clearInterval(STAMP_TIMER);
+      updateStampTime();
+      STAMP_TIMER = setInterval(updateStampTime, 1000);
+    }
+
+    /* ===== toast + modal ===== */
+    function openModal(title, bodyHtml){
+      setText("modalTitle", title || "Guardian Details");
+      setHTML("modalBody", bodyHtml || "");
+      const w = qs("modalWrap");
+      if(w){ w.style.display = "flex"; w.setAttribute("aria-hidden","false"); }
+    }
+    function closeModal(){
+      const w = qs("modalWrap");
+      if(w){ w.style.display = "none"; w.setAttribute("aria-hidden","true"); }
+    }
+    function showToast(title){
+      const t = qs("toast");
+      if(!t) return;
+      setText("toastTitle", title || "");
+      t.style.display = "block";
+    }
+    function hideToast(){
+      const t = qs("toast");
+      if(!t) return;
+      t.style.display = "none";
+    }
+
+    /* ===== identicon fallback ===== */
+    function hash32(str){
+      let h = 2166136261 >>> 0;
+      const s = String(str || "");
+      for(let i=0;i<s.length;i++){
+        h ^= s.charCodeAt(i);
+        h = Math.imul(h, 16777619) >>> 0;
+      }
+      return h >>> 0;
+    }
+    function identiconSvg(el, seed){
+      if(!el) return;
+      const h = hash32(seed || "—");
+      const c1 = `hsl(${(h % 360)}, 90%, 55%)`;
+      const c2 = `hsl(${((h>>>8) % 360)}, 90%, 45%)`;
+      const c3 = `hsl(${((h>>>16) % 360)}, 90%, 60%)`;
+
+      const size = 44;
+      const cell = 44 / 5;
+      let bits = h ^ (h>>>13) ^ (h>>>7);
+
+      let rects = "";
+      for(let y=0;y<5;y++){
+        for(let x=0;x<3;x++){
+          const on = (bits & 1) === 1;
+          bits = (bits >>> 1) | (bits << 31);
+          if(on){
+            const xx = x * cell;
+            const yy = y * cell;
+            const fill = ((x+y)%3===0?c1:((x+y)%3===1?c2:c3));
+            rects += `<rect x="${xx}" y="${yy}" width="${cell}" height="${cell}" rx="4" fill="${fill}" opacity="0.95"/>`;
+            const mx = (4-x) * cell;
+            rects += `<rect x="${mx}" y="${yy}" width="${cell}" height="${cell}" rx="4" fill="${fill}" opacity="0.95"/>`;
+          }
+        }
+      }
+
+      el.innerHTML = `
+        <defs>
+          <linearGradient id="ig" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="${c1}" stop-opacity="0.65"/>
+            <stop offset="1" stop-color="${c3}" stop-opacity="0.20"/>
+          </linearGradient>
+        </defs>
+        <rect x="0" y="0" width="${size}" height="${size}" rx="12" fill="rgba(0,0,0,.12)" />
+        <rect x="0" y="0" width="${size}" height="${size}" rx="12" fill="url(#ig)" />
+        <g>${rects}</g>
+      `;
+    }
+
+    function applyTokenHeader(meta, addr){
+      const nameEl = qs("tokenName");
+      const symEl  = qs("tokenSymbol");
+      const img    = qs("tokenLogo");
+      const ico    = qs("tokenIdenticon");
+
+      const name = (meta?.name || "Token").trim() || "Token";
+      const sym  = (meta?.symbol || "").trim();
+
+      if(nameEl) nameEl.textContent = name;
+      if(symEl)  symEl.textContent  = sym ? `$${sym}` : `Addr: ${addr ? shortAddr(addr) : "—"}`;
+
+      if(img && ico){
+        const hasImg = !!(meta?.image && String(meta.image).trim());
+        if(hasImg){
+          img.style.display = "block";
+          img.src = meta.image;
+          img.alt = name;
+          ico.style.display = "none";
+          img.onerror = () => {
+            img.style.display = "none";
+            ico.style.display = "block";
+            identiconSvg(ico, addr || name);
+          };
+        }else{
+          img.removeAttribute("src");
+          img.alt = "";
+          img.style.display = "none";
+          ico.style.display = "block";
+          identiconSvg(ico, addr || name);
+        }
+      }
+    }
+
+    /* ===== chain buttons ===== */
+    function renderChainButtons(){
+      const row = qs("chainRow");
+      if(!row) return;
+      row.innerHTML = "";
+      for(const c of CHAINS){
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "chainBtn" + (c.id === ACTIVE_CHAIN_ID ? " active" : "");
+        b.innerHTML = `<span class="chainIcon">${ICONS[c.id] || ""}</span><span>${esc(c.name)}</span>`;
+        b.addEventListener("click", () => setActiveChain(c.id, true));
+        row.appendChild(b);
+      }
+    }
+
+    function setStatus(msg){ setText("status", msg || ""); }
+
+    function setActiveChain(chainId, pushUrl){
+      const found = CHAINS.find(x => x.id === chainId) || CHAINS[0];
+      ACTIVE_CHAIN_ID = found.id;
+
+      renderChainButtons();
+      setText("holdersStamp", found.stamp || "MAINNET");
+      setText("addrLabel", found.addrLabel || "Token Address");
+
+      const mint = qs("mint");
+      if(mint) mint.placeholder = found.placeholder || "Paste token address...";
+
+      setText("chainHint", "");
+      setText("status", "");
+      setText("mintShort", "—");
+      setText("verdictTitle", "—");
+      setText("verdictBadge", "—");
+      setText("scoreBadge", "—");
+      setText("summary", "—");
+      setText("scanHint", "—");
+      setText("vizStamp", "—");
+      setText("vizLegend", "—");
+      setText("vizSub", "Shows holder bubbles + linked wallet edges (best-effort). Run a scan to populate.");
+      setText("clusterStamp", found.stamp || "MAINNET");
+      setText("clusterFoot", "—");
+
+      qs("metrics").innerHTML = "";
+      qs("checksList").innerHTML = "";
+      qs("todoList").innerHTML = "";
+      qs("extList").innerHTML = "";
+      qs("metaList").innerHTML = "";
+      qs("holdersList").innerHTML = "";
+      qs("keySignals").innerHTML = "";
+
+      qs("vizOverlay").style.display = "flex";
+      setText("vizOverlay", "No visualization data yet. Run a scan.");
+
+      // graph mode disabled until real relationship edges exist
+      const gbtn = qs("vizModeGraph");
+      if(gbtn){ gbtn.disabled = true; gbtn.classList.remove("active"); gbtn.setAttribute("aria-selected","false"); }
+
+      qs("clusterGrid").innerHTML = `
+        <div class="clusterCard">
+          <div class="clusterLeft">
+            <div class="clusterT"><span class="dot warn"></span> No scan yet</div>
+            <div class="clusterD">Run a scan to generate cluster groups, linked wallets, and bundle/split heuristics.</div>
+          </div>
+          <div class="clusterRight">
+            <span class="badge warn">WAIT</span>
+          </div>
+        </div>
+      `;
+
+      applyTokenHeader({name:"—", symbol:"", image:""}, "");
+
+      if(pushUrl){
+        const url = new URL(location.href);
+        url.searchParams.set("chain", found.id);
+        history.replaceState({}, "", url.toString());
+      }
+    }
+    /* =========================================================
+       PART 4 — RENDERERS + KEY SIGNALS (Pro Column)
+       ========================================================= */
+
+    /* ===== info modal registry ===== */
+    const INFO_MAP = new Map();
+    function newInfoId(){ return "i_" + Math.random().toString(36).slice(2) + Date.now().toString(36); }
+    function registerInfo(html){ const id = newInfoId(); INFO_MAP.set(id, html); return id; }
+    function getInfo(id){ return INFO_MAP.get(id) || ""; }
+
+    function explain(title, bullets){
+      const body = (bullets||[]).map(b => `<div style="margin:6px 0">${esc(b)}</div>`).join("");
+      return `
+        <div style="font-weight:1000; font-size:18px; margin-bottom:10px">${esc(title)}</div>
+        <div style="color:rgba(255,255,255,.72); font-weight:850; line-height:1.55">${body}</div>
+      `;
+    }
+
+    /* list renderer */
+    function renderList(listEl, items, defaultTitle){
+      if(!listEl) return;
+      listEl.innerHTML = "";
+      const arr = Array.isArray(items) ? items : [];
+
+      for(const it of arr){
+        const sev = it.sev || "warn";
+        const title = it.t || defaultTitle || "Details";
+        const desc = it.d || "—";
+        const infoTitle = it.infoTitle || title;
+        const html = (it.infoHtml && String(it.infoHtml).trim())
+          ? String(it.infoHtml)
+          : explain(infoTitle, [
+              desc,
+              it.why ? ("Why: " + it.why) : "Why: best-effort.",
+              "Status: " + pillLabel(sev)
+            ]);
+
+        const infoId = registerInfo(html);
+
+        const li = document.createElement("li");
+        li.className = "li";
+        li.innerHTML = `
+          <div class="left">
+            <div class="t">${esc(title)}</div>
+            <div class="d">${esc(desc)}</div>
+          </div>
+          <div class="pillRow">
+            <span class="${pillClass(sev)}" role="button" tabindex="0"
+                  data-open="1" data-title="${esc(infoTitle)}" data-info="${esc(infoId)}">${pillLabel(sev)}</span>
+            <button class="infoBtn" type="button" aria-label="Info"
+                    data-open="1" data-title="${esc(infoTitle)}" data-info="${esc(infoId)}"><span>i</span></button>
+          </div>
+        `;
+        listEl.appendChild(li);
+      }
+
+      if(!arr.length){
+        const li = document.createElement("li");
+        li.className = "li";
+        li.innerHTML = `
+          <div class="left">
+            <div class="t">${esc(defaultTitle || "No data")}</div>
+            <div class="d">—</div>
+          </div>
+          <div class="pillRow"><span class="pill warn">WATCH</span></div>
+        `;
+        listEl.appendChild(li);
+      }
+    }
+
+    /* metrics renderer */
+    function renderMetrics(rows){
+      const wrap = qs("metrics");
+      if(!wrap) return;
+      wrap.innerHTML = "";
+
+      const arr = Array.isArray(rows) ? rows : [];
+      for(const r of arr){
+        const d = document.createElement("div");
+        d.className = "metric";
+        const bar = (typeof r.barPct === "number")
+          ? `<div class="bar"><div style="width:${clamp(r.barPct,0,100)}%"></div></div>`
+          : "";
+        d.innerHTML = `
+          <div class="metricK">
+            <span>${esc(r.label || "—")}</span>
+            <span class="badge" style="opacity:.9">${esc(r.badge || r.value || "—")}</span>
+          </div>
+          <div class="metricV">${esc(r.value || "—")}</div>
+          <div class="metricMini">${esc(r.mini || "")}</div>
+          ${bar}
+        `;
+        wrap.appendChild(d);
+      }
+    }
+
+    /* click -> modal */
+    (function wireInfoClicks(){
+      document.addEventListener("click", (e) => {
+        const t = e.target;
+        const openEl = t?.closest?.("[data-open='1']");
+        if(openEl){
+          const title = openEl.getAttribute("data-title") || "Details";
+          const infoId = openEl.getAttribute("data-info") || "";
+          const html = getInfo(infoId);
+          if(html) openModal(title, html);
+        }
+      });
+
+      document.addEventListener("keydown", (e) => {
+        if(e.key !== "Enter" && e.key !== " ") return;
+        const a = document.activeElement;
+        if(a && a.matches && a.matches("[data-open='1']")){
+          e.preventDefault();
+          const title = a.getAttribute("data-title") || "Details";
+          const infoId = a.getAttribute("data-info") || "";
+          const html = getInfo(infoId);
+          if(html) openModal(title, html);
+        }
+      });
+    })();
+
+    /* =========================================================
+       KEY SIGNALS (Badges/Ampel + Confidence/Source)
+       src: onchain | indexer | api | heur
+       ========================================================= */
+    function srcBadge(src){
+      const s = String(src || "heur").toLowerCase();
+      const cls =
+        s.includes("on") ? "onchain" :
+        s.includes("index") ? "indexer" :
+        s.includes("api") ? "api" : "heur";
+      const label =
+        cls === "onchain" ? "On-chain verified" :
+        cls === "indexer" ? "Indexer required" :
+        cls === "api" ? "API signal" : "Heuristic";
+      return `<span class="badge src ${cls}">${esc(label)}</span>`;
+    }
+
+    function sevToBadge(sev){
+      const s = sev === "ok" ? "badge good" : sev === "bad" ? "badge bad" : "badge warn";
+      const label = sev === "ok" ? "PASS" : sev === "bad" ? "FAIL" : "WATCH";
+      return `<span class="${s}">${label}</span>`;
+    }
+
+    function renderKeySignals(signals){
+      const wrap = qs("keySignals");
+      if(!wrap) return;
+      wrap.innerHTML = "";
+
+      const rows = Array.isArray(signals) ? signals : [];
+      for(const s of rows){
+        const div = document.createElement("div");
+        div.className = "signalCard";
+        div.innerHTML = `
+          <div class="signalTop">
+            <div class="signalK">${esc(s.k || "Signal")}</div>
+            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+              ${srcBadge(s.src || "heur")}
+              ${sevToBadge(s.sev || "warn")}
+            </div>
+          </div>
+          <div class="signalV">${esc(s.v || "—")}</div>
+          <div class="signalMini">${esc(s.mini || "")}</div>
+        `;
+        wrap.appendChild(div);
+      }
+
+      if(!rows.length){
+        wrap.innerHTML = `<div class="signalCard"><div class="signalK">Key Signals</div><div class="signalV">—</div></div>`;
+      }
+    }
+
+    function setGraphAvailability(hasEdges){
+      const g = qs("vizModeGraph");
+      if(!g) return;
+      g.disabled = !hasEdges;
+      if(!hasEdges && (VIZ.mode === "graph")){
+        setVizMode("bubbles");
+      }
+    }
+    /* =========================================================
+       PART 5 — CONFIG + SOLANA ENGINE + DEXSCREENER LIQUIDITY
+       ========================================================= */
+
+    const CFG = {
+      HELIUS_KEY: "b566a086-57d4-4433-8661-faed9ad07ba0",
+      GOLDRUSH_API_KEY: "cqt_rQVTMTXwYkPJBrwf7ff6JWmdkywR",
+      EVM_RPCS: {
+        1:    ["https://ethereum.publicnode.com", "https://rpc.ankr.com/eth", "https://cloudflare-eth.com"],
+        56:   ["https://bsc.publicnode.com", "https://rpc.ankr.com/bsc", "https://bsc-dataseed.binance.org"],
+        8453: ["https://base.publicnode.com", "https://mainnet.base.org", "https://rpc.ankr.com/base"]
+      },
+      TOKEN_PROGRAM: "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+      TOKEN_2022_PROGRAM: "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+    };
+
+    function looksBase58(s){
+      return typeof s === "string" && s.length >= 32 && s.length <= 52 && /^[1-9A-HJ-NP-Za-km-z]+$/.test(s);
+    }
+    function looksEvmAddress(s){
+      return typeof s === "string" && /^0x[0-9a-fA-F]{40}$/.test(s.trim());
+    }
+
+    function explorerBase(chainId){
+      if(chainId === "sol")  return {name:"Solscan", base:"https://solscan.io/account/"};
+      if(chainId === "eth")  return {name:"Etherscan", base:"https://etherscan.io/address/"};
+      if(chainId === "bnb")  return {name:"BscScan", base:"https://bscscan.com/address/"};
+      if(chainId === "base") return {name:"BaseScan", base:"https://basescan.org/address/"};
+      return {name:"Explorer", base:"#"};
+    }
+
+    function formatUsd(n){
+      const x = Number(n);
+      if(!Number.isFinite(x)) return "—";
+      if(x >= 1e9) return (x/1e9).toFixed(2) + "B";
+      if(x >= 1e6) return (x/1e6).toFixed(2) + "M";
+      if(x >= 1e3) return (x/1e3).toFixed(2) + "K";
+      return x.toFixed(2);
+    }
+
+    /* ===== Dexscreener token endpoint (works across chains; address can be Sol mint or EVM token) ===== */
+    async function fetchDexscreenerToken(addr){
+      try{
+        const r = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${addr}`);
+        if(!r.ok) return null;
+        const j = await r.json();
+        const pairs = Array.isArray(j?.pairs) ? j.pairs : [];
+        if(!pairs.length) return { pairs: [] };
+        const best = pairs.slice().sort((a,b)=> (Number(b?.liquidity?.usd||0) - Number(a?.liquidity?.usd||0)))[0] || pairs[0];
+        return { best, pairs };
+      }catch{
+        return null;
+      }
+    }
+
+    /* ===== Solana RPC (Helius) ===== */
+    function HELIUS_RPC(){
+      return `https://mainnet.helius-rpc.com/?api-key=${encodeURIComponent(CFG.HELIUS_KEY)}`;
+    }
+    async function solRpc(method, params){
+      if(!CFG.HELIUS_KEY) throw new Error("Helius key missing in CFG. Set CFG.HELIUS_KEY.");
+      const res = await fetch(HELIUS_RPC(), {
+        method:"POST",
+        headers:{ "Content-Type":"application/json" },
+        body: JSON.stringify({ jsonrpc:"2.0", id:1, method, params })
+      });
+      if(!res.ok){
+        const t = await res.text().catch(()=> "");
+        throw new Error(`Solana RPC HTTP ${res.status}: ${t.slice(0,180)}`);
+      }
+      const j = await res.json();
+      if(j?.error) throw new Error(j.error.message || "Solana RPC error");
+      return j.result;
+    }
+    async function getMintParsed(mint){
+      const r = await solRpc("getAccountInfo", [mint, { encoding:"jsonParsed", commitment:"confirmed" }]);
+      const v = r?.value;
+      if(!v) return null;
+      const owner = v.owner;
+      const parsed = (v.data && typeof v.data === "object") ? v.data.parsed : null;
+      const info = parsed?.info || null;
+      return { owner, info, rawParsed: parsed };
+    }
+    async function getTokenSupply(mint){
+      const r = await solRpc("getTokenSupply", [mint]);
+      return r?.value || null;
+    }
+    async function getLargest(mint){
+      const r = await solRpc("getTokenLargestAccounts", [mint]);
+      return r?.value || [];
+    }
+    async function getAsset(mint){
+      try { return await solRpc("getAsset", [mint]); }
+      catch { return null; }
+    }
+    function pickTokenMetaFromAsset(asset){
+      if(!asset) return null;
+      const md = asset?.content?.metadata || {};
+      const name = (md?.name || asset?.metadata?.name || "").trim();
+      const symbol = (md?.symbol || asset?.metadata?.symbol || "").trim();
+
+      let image = "";
+      const linksImg = asset?.content?.links?.image;
+      if(typeof linksImg === "string") image = linksImg;
+      if(!image && Array.isArray(asset?.content?.files)){
+        const f = asset.content.files.find(x => (x?.mime || "").includes("image") && x?.uri);
+        if(f?.uri) image = f.uri;
+      }
+
+      const uri = (asset?.content?.json_uri || asset?.content?.links?.external_url || "").trim();
+      const description = (md?.description || asset?.content?.metadata?.description || "").trim();
+      return { name, symbol, image, uri, description };
+    }
+
+    function fmtInt(n){
+      if(n === null || n === undefined || Number.isNaN(n)) return "—";
+      try { return new Intl.NumberFormat("en-US").format(Math.round(Number(n))); }
+      catch { return String(n); }
+    }
+    function fmtPct(n){
+      if(n === null || n === undefined || Number.isNaN(n)) return "—";
+      return `${Number(n).toFixed(2)}%`;
+    }
+
+    /* ===== Solana scoring (kept, clean) ===== */
+    function scoreSol(sig){
+      let score = 100;
+      const checks = [];
+
+      if(sig.freezeActive){
+        score -= 35;
+        checks.push({ t:"Freeze Authority", sev:"bad", d:"Freeze authority is active — wallets can be frozen.", why:"Freeze is set.",
+          infoHtml: explain("Freeze Authority", ["Admin can freeze token accounts.", "Risk: buyers might be unable to sell/transfer.", "PASS = freeze authority removed."])
+        });
+      }else{
+        checks.push({ t:"Freeze Authority", sev:"ok", d:"Freeze authority removed (good).", why:"Freeze is null." });
+      }
+
+      if(sig.mintAuthActive){
+        score -= 30;
+        checks.push({ t:"Mint Authority", sev:"bad", d:"Mint authority is active — supply can be increased.", why:"Mint is set.",
+          infoHtml: explain("Mint Authority", ["Admin can mint new tokens.", "Risk: inflation / rug mechanics.", "PASS = mint authority renounced."])
+        });
+      }else{
+        checks.push({ t:"Mint Authority", sev:"ok", d:"Mint authority renounced (good).", why:"Mint is null." });
+      }
+
+      const t20 = Number(sig.top20 || 0);
+      if(t20 >= 75){ score -= 28; checks.push({ t:"Holder concentration (Top20)", sev:"bad", d:`Top20 hold ~${t20.toFixed(2)}% (very high).`, why:"Extreme concentration." }); }
+      else if(t20 >= 55){ score -= 18; checks.push({ t:"Holder concentration (Top20)", sev:"warn", d:`Top20 hold ~${t20.toFixed(2)}% (high).`, why:"High concentration." }); }
+      else if(t20 >= 35){ score -= 8;  checks.push({ t:"Holder concentration (Top20)", sev:"warn", d:`Top20 hold ~${t20.toFixed(2)}% (moderate).`, why:"Moderate concentration." }); }
+      else { checks.push({ t:"Holder concentration (Top20)", sev:"ok", d:`Top20 hold ~${t20.toFixed(2)}% (better).`, why:"Lower concentration." }); }
+
+      if(sig.programType === "TOKEN_2022"){
+        score -= 6;
+        checks.push({ t:"Token Standard", sev:"warn", d:"Token-2022 detected (extensions possible).", why:"Token-2022 can include extra rules." });
+      }else if(sig.programType === "SPL_TOKEN"){
+        checks.push({ t:"Token Standard", sev:"ok", d:"Standard SPL Token program.", why:"Mint owned by Token Program." });
+      }else{
+        score -= 10;
+        checks.push({ t:"Token Standard", sev:"warn", d:"Unknown token program (caution).", why:"Not standard program." });
+      }
+
+      if(sig.meta && (sig.meta.name || sig.meta.symbol)){
+        checks.push({ t:"Metadata", sev:"ok", d:"Name/symbol found.", why:"Metadata loaded." });
+      }else{
+        score -= 4;
+        checks.push({ t:"Metadata", sev:"warn", d:"Metadata missing/unreadable.", why:"No name/symbol." });
+      }
+
+      score = clamp(Math.round(score), 0, 100);
+      const critical = !!(sig.freezeActive || sig.mintAuthActive);
+      return { score, checks, critical };
+    }
+
+    function todoSol(sig){
+      const t = [];
+      t.push(sig.freezeActive
+        ? {t:"Remove Freeze Authority", sev:"bad", d:"Freeze can block buyers.", why:"Freeze is active — remove it."}
+        : {t:"Freeze Authority", sev:"ok", d:"Already removed.", why:"Freeze not active."}
+      );
+      t.push(sig.mintAuthActive
+        ? {t:"Renounce Mint Authority", sev:"bad", d:"Mint can inflate supply.", why:"Mint is active — renounce it."}
+        : {t:"Mint Authority", sev:"ok", d:"Already renounced.", why:"Mint not active."}
+      );
+      const t20 = Number(sig.top20 || 0);
+      if(t20 >= 55) t.push({t:"Reduce whale concentration", sev:"warn", d:`Top20 ~${t20.toFixed(2)}%.`, why:"High concentration — inspect wallets."});
+      else if(t20 >= 35) t.push({t:"Monitor distribution", sev:"warn", d:`Top20 ~${t20.toFixed(2)}%.`, why:"Moderate concentration — monitor."});
+      else t.push({t:"Distribution", sev:"ok", d:`Top20 ~${t20.toFixed(2)}% (better).`, why:"Healthier distribution."});
+
+      return t.map(x => ({...x, infoHtml: explain(x.t, [x.d, "Status: " + pillLabel(x.sev)])}));
+    }
+
+    /* ===== Solana Key Signals builder ===== */
+    function keySignalsSol({mintAuthActive, freezeActive, programType, liquidityUsd, top20}){
+      const s = [];
+      s.push({
+        k:"Mint Authority",
+        v: mintAuthActive ? "ACTIVE ❌" : "RENOUNCED ✅",
+        sev: mintAuthActive ? "bad" : "ok",
+        src:"onchain",
+        mini:"Solana mintAuthority on the mint account."
+      });
+      s.push({
+        k:"Freeze Authority",
+        v: freezeActive ? "ACTIVE ❌" : "RENOUNCED ✅",
+        sev: freezeActive ? "bad" : "ok",
+        src:"onchain",
+        mini:"Solana freezeAuthority on the mint account."
+      });
+
+      s.push({
+        k:"Token Standard",
+        v: programType === "TOKEN_2022" ? "TOKEN-2022 (WATCH)" : (programType === "SPL_TOKEN" ? "SPL (PASS)" : "UNKNOWN"),
+        sev: programType === "SPL_TOKEN" ? "ok" : "warn",
+        src:"onchain",
+        mini:"Mint owner program."
+      });
+
+      s.push({
+        k:"Top20 Concentration",
+        v: Number.isFinite(top20) ? `${top20.toFixed(2)}%` : "—",
+        sev: Number.isFinite(top20) ? (top20 >= 75 ? "bad" : top20 >= 35 ? "warn" : "ok") : "warn",
+        src:"onchain",
+        mini:"Computed from getTokenLargestAccounts (best-effort)."
+      });
+
+      s.push({
+        k:"Liquidity",
+        v: Number.isFinite(liquidityUsd) ? `$${formatUsd(liquidityUsd)}` : "—",
+        sev: Number.isFinite(liquidityUsd) ? (liquidityUsd < 3000 ? "bad" : liquidityUsd < 20000 ? "warn" : "ok") : "warn",
+        src:"api",
+        mini:"Dexscreener best pair liquidity (USD)."
+      });
+
+      s.push({
+        k:"LP",
+        v:"UNKNOWN ❓",
+        sev:"warn",
+        src:"heur",
+        mini:"Solana LP lock/burn is DEX-specific. Needs Raydium/Orca/Meteora-specific logic."
+      });
+
+      return s;
+    }
+    /* =========================================================
+       PART 6 — EVM ENGINE + LP BURN/LOCK (best-effort)
+       ========================================================= */
+
+    async function evmRpc(chainId, method, params){
+      const urls = CFG.EVM_RPCS[chainId] || [];
+      if(!urls.length) throw new Error("No RPC configured for this chain.");
+
+      const errors = [];
+      for(const url of urls){
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), 12000);
+        try{
+          const res = await fetch(url, {
+            method:"POST",
+            headers:{ "Content-Type":"application/json" },
+            body: JSON.stringify({ jsonrpc:"2.0", id:1, method, params }),
+            signal: ctrl.signal
+          });
+          clearTimeout(timer);
+
+          if(!res.ok){
+            const t = await res.text().catch(()=> "");
+            errors.push(`HTTP ${res.status} ${t.slice(0,120)}`);
+            continue;
+          }
+          const j = await res.json();
+          if(j?.error){
+            errors.push(String(j.error?.message || "RPC error").slice(0,120));
+            continue;
+          }
+          return j.result;
+        }catch(e){
+          clearTimeout(timer);
+          errors.push(String(e?.message || e).slice(0,120));
+        }
+      }
+      throw new Error(`All RPCs failed. ${errors.slice(-3).join(" • ")}`);
+    }
+
+    async function ethCall(chainId, to, data){
+      return await evmRpc(chainId, "eth_call", [{to, data}, "latest"]);
+    }
+    async function getCode(chainId, addr){
+      return await evmRpc(chainId, "eth_getCode", [addr, "latest"]);
+    }
+    async function getStorageAt(chainId, addr, slot){
+      return await evmRpc(chainId, "eth_getStorageAt", [addr, slot, "latest"]);
+    }
+
+    const SEL = {
+      name: "0x06fdde03",
+      symbol: "0x95d89b41",
+      decimals: "0x313ce567",
+      totalSupply: "0x18160ddd",
+      owner: "0x8da5cb5b",
+      paused: "0x5c975abb"
+    };
+
+    function strip0x(h){ return (h||"").startsWith("0x") ? h.slice(2) : (h||""); }
+    function decodeUint256(hex){
+      const h = strip0x(hex);
+      if(!h) return null;
+      const padded = h.padStart(64,"0").slice(-64);
+      try { return BigInt("0x"+padded); } catch { return null; }
+    }
+    function decodeAddressFrom32(hex){
+      const h = strip0x(hex);
+      if(!h) return null;
+      const padded = h.padStart(64,"0").slice(-40);
+      return "0x" + padded;
+    }
+    function bytes32ToAscii(hex){
+      const h = strip0x(hex);
+      if(h.length !== 64) return "";
+      try{
+        const bytes = new Uint8Array(h.match(/.{1,2}/g).map(b => parseInt(b,16)));
+        let s = new TextDecoder().decode(bytes).replace(/\0/g,"").trim();
+        if(!s) return "";
+        if(/^[\x20-\x7E]+$/.test(s)) return s;
+        return "";
+      }catch{ return ""; }
+    }
+    function decodeString(hex){
+      const data = strip0x(hex);
+      if(!data) return "";
+      if(data.length === 64){
+        const b = bytes32ToAscii("0x"+data);
+        if(b) return b;
+      }
+      if(data.length < 128) return "";
+      const lenHex = data.slice(64,128);
+      let len = 0;
+      try { len = Number(BigInt("0x"+lenHex)); } catch { return ""; }
+      if(!Number.isFinite(len) || len <= 0) return "";
+      const strData = data.slice(128, 128 + len*2);
+      if(!strData) return "";
+      try{
+        const bytes = new Uint8Array(strData.match(/.{1,2}/g).map(b => parseInt(b,16)));
+        return new TextDecoder().decode(bytes).replace(/\0/g,"").trim();
+      }catch{ return ""; }
+    }
+
+    async function getErc20Meta(chainId, addr){
+      const out = { name:"", symbol:"", decimals:null, totalSupply:null };
+      try { out.name = decodeString(await ethCall(chainId, addr, SEL.name)); } catch {}
+      try { out.symbol = decodeString(await ethCall(chainId, addr, SEL.symbol)); } catch {}
+      try {
+        const v = decodeUint256(await ethCall(chainId, addr, SEL.decimals));
+        out.decimals = (v === null) ? null : Number(v);
+        if(!Number.isFinite(out.decimals)) out.decimals = null;
+      } catch {}
+      try { out.totalSupply = decodeUint256(await ethCall(chainId, addr, SEL.totalSupply)); } catch {}
+      return out;
+    }
+    async function getOwner(chainId, addr){
+      try{ return decodeAddressFrom32(await ethCall(chainId, addr, SEL.owner)); }
+      catch{ return null; }
+    }
+    async function getPaused(chainId, addr){
+      try{
+        const r = await ethCall(chainId, addr, SEL.paused);
+        const v = decodeUint256(r || "0x");
+        if(v === null) return null;
+        return v !== 0n;
+      }catch{
+        return null;
+      }
+    }
+
+    /* Proxy detection (EIP-1967) */
+    const SLOT_IMPL  = "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc";
+    const SLOT_ADMIN = "0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103";
+    async function detectProxy(chainId, addr){
+      try{
+        const [implRaw, adminRaw] = await Promise.all([
+          getStorageAt(chainId, addr, SLOT_IMPL),
+          getStorageAt(chainId, addr, SLOT_ADMIN)
+        ]);
+        const impl  = decodeAddressFrom32(implRaw  || "0x");
+        const admin = decodeAddressFrom32(adminRaw || "0x");
+        const zero = "0x0000000000000000000000000000000000000000";
+        const implNonZero  = impl  && impl.toLowerCase()  !== zero;
+        const adminNonZero = admin && admin.toLowerCase() !== zero;
+        return { isProxy: implNonZero || adminNonZero, implementation: implNonZero ? impl : null, admin: adminNonZero ? admin : null };
+      }catch{
+        return {isProxy:false, implementation:null, admin:null};
+      }
+    }
+
+    /* ===== TrustWallet logo fallback (EVM) ===== */
+    function trustWalletLogo(chainId, addr){
+      const a = String(addr || "").trim();
+      if(!a) return [];
+      const lower = a.toLowerCase();
+      const base =
+        chainId === 1    ? "ethereum"
+        : chainId === 56 ? "smartchain"
+        : chainId === 8453 ? "base"
+        : "ethereum";
+      return [
+        `https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/${base}/assets/${a}/logo.png`,
+        `https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/${base}/assets/${lower}/logo.png`
+      ];
+    }
+
+    function applyTokenHeaderWithEvmLogo(meta, addr, evmChainId){
+      const m = { ...(meta||{}) };
+      const imgCandidates = [];
+      if(m.image) imgCandidates.push(String(m.image).trim());
+      for(const u of trustWalletLogo(evmChainId, addr)) imgCandidates.push(u);
+
+      const img  = qs("tokenLogo");
+      const ico  = qs("tokenIdenticon");
+
+      const name = (m?.name || "Token").trim() || "Token";
+      const symbol = (m?.symbol || "").trim();
+
+      setText("tokenName", name);
+      setText("tokenSymbol", symbol ? `$${symbol}` : `Addr: ${shortAddr(addr)}`);
+
+      let idx = 0;
+      function tryNext(){
+        if(!img || !ico) return;
+        if(idx >= imgCandidates.length){
+          img.style.display = "none";
+          ico.style.display = "block";
+          identiconSvg(ico, addr || name);
+          return;
+        }
+        const u = imgCandidates[idx++];
+        img.style.display = "block";
+        ico.style.display = "none";
+        img.src = u;
+        img.alt = name;
+      }
+
+      if(img){
+        img.onerror = () => tryNext();
+      }
+      tryNext();
+    }
+
+    /* ===== GoldRush holders (token holders + also works for LP token if pairAddress is ERC20 LP) ===== */
+    function goldrushChain(chainId){
+      if(chainId === 1) return "eth-mainnet";
+      if(chainId === 56) return "bsc-mainnet";
+      if(chainId === 8453) return "base-mainnet";
+      return "eth-mainnet";
+    }
+    async function goldrushHolders(chainId, addr){
+      if(!CFG.GOLDRUSH_API_KEY) return [];
+      const url = `https://api.covalenthq.com/v1/${goldrushChain(chainId)}/tokens/${addr}/token_holders/?page-size=10&key=${encodeURIComponent(CFG.GOLDRUSH_API_KEY)}`;
+      try{
+        const r = await fetch(url);
+        if(!r.ok) return [];
+        const j = await r.json();
+        return Array.isArray(j?.data?.items) ? j.data.items : [];
+      }catch{
+        return [];
+      }
+    }
+
+    function isDeadEvm(addr){
+      const a = String(addr||"").toLowerCase();
+      return a === "0x000000000000000000000000000000000000dead" || a === "0x0000000000000000000000000000000000000000";
+    }
+
+    /* ===== LP LOCKERS (best-effort, extend as needed) ===== */
+    const LOCKERS = {
+      1: [
+        "0x663a5c229c09b049e36dcc11a9b0d4a8eb9db214" /* Unicrypt (example) */
+      ],
+      56: [
+        /* add PinkLock/Unicrypt BSC addresses here */
+      ],
+      8453: [
+        /* base lockers */
+      ]
+    };
+
+    async function analyzeLpEvm(chainId, bestPair){
+      const pairAddress = String(bestPair?.pairAddress || "").trim();
+      const dexId = String(bestPair?.dexId || "").toLowerCase();
+
+      if(!pairAddress){
+        return { sev:"warn", v:"UNKNOWN ❓", src:"api", mini:"Dexscreener returned no pairAddress." };
+      }
+      if(dexId.includes("v3")){
+        return { sev:"warn", v:"UNKNOWN ❓", src:"api", mini:"V3-style liquidity (LP is not an ERC-20). Cannot compute burned/locked this way." };
+      }
+
+      const holders = await goldrushHolders(chainId, pairAddress);
+      if(!holders.length){
+        return { sev:"warn", v:"UNKNOWN ❓", src:"indexer", mini:"LP-holder distribution requires indexer coverage." };
+      }
+
+      let deadPct = 0;
+      let lockedPct = 0;
+
+      for(const h of holders){
+        const a = String(h?.address || "").toLowerCase();
+        const p = Number(h?.percentage ?? h?.pct ?? NaN);
+        if(!Number.isFinite(p)) continue;
+
+        if(isDeadEvm(a)) deadPct += p;
+
+        const lockerList = LOCKERS[chainId] || [];
+        if(lockerList.some(x => String(x).toLowerCase() === a)) lockedPct += p;
+      }
+
+      if(deadPct >= 90) return { sev:"ok", v:`BURNED ✅ (${deadPct.toFixed(1)}%)`, src:"indexer", mini:"Computed from LP token holders to dead wallets (best-effort)." };
+      if(lockedPct >= 50) return { sev:"ok", v:`LOCKED 🔒 (${lockedPct.toFixed(1)}%)`, src:"indexer", mini:"Computed via known locker addresses list (best-effort)." };
+      if(deadPct >= 50) return { sev:"warn", v:`PARTIAL BURN (${deadPct.toFixed(1)}%)`, src:"indexer", mini:"Some LP in dead wallets, not fully burned." };
+      if(lockedPct > 0) return { sev:"warn", v:`PARTIAL LOCK (${lockedPct.toFixed(1)}%)`, src:"indexer", mini:"Some LP appears in known lockers list." };
+
+      return { sev:"warn", v:"NOT BURNED/LOCKED", src:"indexer", mini:"No strong burn/lock signal detected (best-effort)." };
+    }
+
+    /* ===== EVM Key Signals builder ===== */
+    function keySignalsEvm({owner, proxy, paused, liquidityUsd, lpStatus}){
+      const zero = "0x0000000000000000000000000000000000000000";
+      const ownerKnown = !!owner;
+      const ownerRenounced = ownerKnown && owner.toLowerCase() === zero;
+
+      const s = [];
+
+      s.push({
+        k:"Owner",
+        v: ownerKnown ? (ownerRenounced ? "RENOUNCED ✅" : `ACTIVE ⚠️ (${shortAddr(owner)})`) : "UNKNOWN ❓",
+        sev: ownerKnown ? (ownerRenounced ? "ok" : "warn") : "warn",
+        src:"onchain",
+        mini: ownerKnown ? "owner() best-effort read." : "owner() missing/unreadable (custom admin possible)."
+      });
+
+      s.push({
+        k:"Proxy",
+        v: proxy?.isProxy ? "YES ⚠️ (UPGRADEABLE)" : "NO ✅",
+        sev: proxy?.isProxy ? "warn" : "ok",
+        src:"onchain",
+        mini: "EIP-1967 slots check."
+      });
+
+      s.push({
+        k:"Pausable",
+        v: paused === true ? "YES ⚠️ (PAUSED NOW)" : (paused === false ? "YES ⚠️ (NOT PAUSED)" : "NO ✅ / UNKNOWN"),
+        sev: paused === true ? "bad" : (paused === false ? "warn" : "ok"),
+        src:"onchain",
+        mini: "paused() best-effort."
+      });
+
+      s.push({
+        k:"Liquidity",
+        v: Number.isFinite(liquidityUsd) ? `$${formatUsd(liquidityUsd)}` : "—",
+        sev: Number.isFinite(liquidityUsd) ? (liquidityUsd < 3000 ? "bad" : liquidityUsd < 20000 ? "warn" : "ok") : "warn",
+        src:"api",
+        mini:"Dexscreener best pair liquidity (USD)."
+      });
+
+      s.push({
+        k:"LP",
+        v: lpStatus?.v || "UNKNOWN ❓",
+        sev: lpStatus?.sev || "warn",
+        src: lpStatus?.src || "heur",
+        mini: lpStatus?.mini || "LP burned/locked requires LP token holder data."
+      });
+
+      return s;
+    }
+    /* =========================================================
+       PART 7 — VIZ: collision packing + smart labels + hover state
+       ========================================================= */
+
+    const VIZ = {
+      mode: "bubbles",
+      nodes: [],
+      edges: [],
+      panX: 0,
+      panY: 0,
+      zoom: 1,
+      dragging: false,
+      lastX: 0,
+      lastY: 0,
+      hoverAddr: ""
+    };
+
+    function resizeCanvas(){
+      const canvas = qs("vizCanvas");
+      const stage  = qs("vizStage");
+      if(!canvas || !stage) return;
+      const rect = stage.getBoundingClientRect();
+      const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+      canvas.width = Math.floor(rect.width * dpr);
+      canvas.height = Math.floor(rect.height * dpr);
+      canvas.dataset.dpr = String(dpr);
+      drawViz();
+    }
+
+    /* ===== collision packing using spatial grid (fast; "quadtree-like") ===== */
+    function packNoOverlap(nodes, W, H){
+      const cx = W/2, cy = H/2;
+      const ITER = 220;
+
+      // initial center pull
+      for(const n of nodes){
+        if(!Number.isFinite(n.x)) n.x = cx + (Math.random()-0.5)*W*0.6;
+        if(!Number.isFinite(n.y)) n.y = cy + (Math.random()-0.5)*H*0.6;
+      }
+
+      // choose cell size by max radius
+      const maxR = nodes.reduce((m,n)=>Math.max(m, n.r||14), 14);
+      const cellSize = Math.max(28, Math.floor((maxR*2)+10));
+
+      for(let k=0;k<ITER;k++){
+        // build grid
+        const grid = new Map();
+        function key(ix,iy){ return ix+"|"+iy; }
+        function put(i, x, y){
+          const ix = Math.floor(x / cellSize);
+          const iy = Math.floor(y / cellSize);
+          const kk = key(ix,iy);
+          if(!grid.has(kk)) grid.set(kk, []);
+          grid.get(kk).push(i);
+        }
+
+        for(let i=0;i<nodes.length;i++){
+          put(i, nodes[i].x, nodes[i].y);
+        }
+
+        // center pull
+        for(const n of nodes){
+          n.x += (cx - n.x) * 0.0032;
+          n.y += (cy - n.y) * 0.0032;
+        }
+
+        // collision resolve
+        for(let i=0;i<nodes.length;i++){
+          const a = nodes[i];
+          const aix = Math.floor(a.x / cellSize);
+          const aiy = Math.floor(a.y / cellSize);
+
+          for(let oy=-1; oy<=1; oy++){
+            for(let ox=-1; ox<=1; ox++){
+              const kk = key(aix+ox, aiy+oy);
+              const list = grid.get(kk);
+              if(!list) continue;
+
+              for(const j of list){
+                if(j <= i) continue;
+                const b = nodes[j];
+                const dx = b.x - a.x;
+                const dy = b.y - a.y;
+                const dist = Math.sqrt(dx*dx + dy*dy) || 0.001;
+                const min = (a.r + b.r) + 6;
+                if(dist < min){
+                  const push = (min - dist) / dist * 0.52;
+                  const px = dx * push;
+                  const py = dy * push;
+                  a.x -= px; a.y -= py;
+                  b.x += px; b.y += py;
+                }
+              }
+            }
+          }
+        }
+
+        // bounds
+        for(const n of nodes){
+          n.x = clamp(n.x, 40, W-40);
+          n.y = clamp(n.y, 40, H-40);
+        }
+      }
+    }
+
+    /* ===== Build bubbles from holders (Distribution mode) ===== */
+    function buildBubblesFromHolders(holderItems){
+      const stage = qs("vizStage");
+      if(!stage) return;
+
+      const rect = stage.getBoundingClientRect();
+      const W = Math.max(520, rect.width || 820);
+      const H = Math.max(360, rect.height || 420);
+
+      const items = Array.isArray(holderItems) ? holderItems : [];
+      const nodes = [];
+
+      for(const it of items){
+        const pct = Number(it.pct || 0);
+        const r = clamp(10 + (pct * 2.4), 12, 52);
+
+        nodes.push({
+          x: NaN,
+          y: NaN,
+          r,
+          sev: it.sev || "ok",
+          addr: it.addr || "",
+          label: it.label || shortAddr(it.addr || ""),
+          sub: it.sub || (pct ? (pct.toFixed(2)+"%") : ""),
+          pct
+        });
+      }
+
+      packNoOverlap(nodes, W, H);
+
+      VIZ.nodes = nodes;
+      VIZ.edges = []; // edges only when we have real relationships
+      VIZ.panX = 0;
+      VIZ.panY = 0;
+      VIZ.zoom = 1;
+      VIZ.hoverAddr = "";
+
+      qs("vizOverlay").style.display = nodes.length ? "none" : "flex";
+      drawViz();
+
+      // No relationship edges here => graph disabled
+      setGraphAvailability(false);
+    }
+
+    function drawViz(){
+      const canvas = qs("vizCanvas");
+      if(!canvas) return;
+      const ctx = canvas.getContext("2d");
+      if(!ctx) return;
+
+      const dpr = Number(canvas.dataset.dpr || 1);
+      const w = canvas.width;
+      const h = canvas.height;
+      ctx.clearRect(0,0,w,h);
+
+      const nodes = VIZ.nodes;
+      const edges = VIZ.edges;
+
+      if(!nodes || !nodes.length){
+        ctx.save();
+        ctx.globalAlpha = 0.22;
+        for(let y=20*dpr;y<h;y+=34*dpr){
+          for(let x=20*dpr;x<w;x+=34*dpr){
+            ctx.beginPath();
+            ctx.arc(x,y,1.2*dpr,0,Math.PI*2);
+            ctx.fillStyle = "rgba(255,255,255,0.18)";
+            ctx.fill();
+          }
+        }
+        ctx.restore();
+        return;
+      }
+
+      ctx.save();
+      ctx.translate(VIZ.panX*dpr, VIZ.panY*dpr);
+      ctx.scale(VIZ.zoom, VIZ.zoom);
+
+      // edges (only in graph mode later)
+      ctx.globalAlpha = 0.35;
+      ctx.lineWidth = 1.2*dpr;
+      ctx.strokeStyle = "rgba(255,255,255,0.22)";
+      for(const e of (edges||[])){
+        const a = nodes[e.a];
+        const b = nodes[e.b];
+        if(!a || !b) continue;
+        ctx.beginPath();
+        ctx.moveTo((a.x||0)*dpr, (a.y||0)*dpr);
+        ctx.lineTo((b.x||0)*dpr, (b.y||0)*dpr);
+        ctx.stroke();
+      }
+
+      for(const n of nodes){
+        const fill = n.sev === "bad" ? "rgba(255,120,150,0.30)"
+                   : n.sev === "warn" ? "rgba(255,220,130,0.24)"
+                   : "rgba(20,241,149,0.22)";
+
+        ctx.globalAlpha = 0.95;
+        ctx.beginPath();
+        ctx.arc((n.x||0)*dpr, (n.y||0)*dpr, (n.r||14)*dpr, 0, Math.PI*2);
+        ctx.fillStyle = fill;
+        ctx.fill();
+
+        // hover ring
+        if(VIZ.hoverAddr && n.addr && String(n.addr).toLowerCase() === String(VIZ.hoverAddr).toLowerCase()){
+          ctx.globalAlpha = 0.9;
+          ctx.lineWidth = 2.2*dpr;
+          ctx.strokeStyle = "rgba(255,255,255,0.35)";
+        }else{
+          ctx.globalAlpha = 0.95;
+          ctx.lineWidth = 1.2*dpr;
+          ctx.strokeStyle = "rgba(255,255,255,0.14)";
+        }
+        ctx.stroke();
+
+        // smart labels (no messy overlap)
+        const showLabel =
+          (typeof n.pct === "number" && n.pct >= 2.0) ||
+          (VIZ.hoverAddr && n.addr && String(n.addr).toLowerCase() === String(VIZ.hoverAddr).toLowerCase()) ||
+          (VIZ.zoom >= 1.6);
+
+        const label = showLabel ? (n.sub || "") : "";
+        if(label){
+          ctx.globalAlpha = 0.9;
+          ctx.fillStyle = "rgba(255,255,255,0.82)";
+          ctx.font = `${12*dpr}px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial`;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(label, (n.x||0)*dpr, ((n.y||0) + (n.r||14) + 12)*dpr);
+        }
+      }
+
+      ctx.restore();
+    }
+
+    function setVizMode(mode){
+      const next = (mode === "graph") ? "graph" : "bubbles";
+      if(next === "graph"){
+        // graph only when enabled
+        const g = qs("vizModeGraph");
+        if(g && g.disabled){
+          showToast("Graph mode is disabled until real relationship edges exist.");
+          return;
+        }
+      }
+      VIZ.mode = next;
+
+      const b1 = qs("vizModeBubbles");
+      const b2 = qs("vizModeGraph");
+      if(b1 && b2){
+        b1.classList.toggle("active", VIZ.mode === "bubbles");
+        b2.classList.toggle("active", VIZ.mode === "graph");
+        b1.setAttribute("aria-selected", VIZ.mode === "bubbles" ? "true" : "false");
+        b2.setAttribute("aria-selected", VIZ.mode === "graph" ? "true" : "false");
+      }
+      drawViz();
+    }
+
+    function resetViz(){
+      VIZ.panX = 0;
+      VIZ.panY = 0;
+      VIZ.zoom = 1;
+      VIZ.hoverAddr = "";
+      drawViz();
+    }
+    /* =========================================================
+       PART 8 — VIZ tooltip + click explorer + holders rendering + cluster lite
+       ========================================================= */
+
+    let VIZ_TIP = null;
+    function ensureVizTooltip(){
+      const stage = qs("vizStage");
+      if(!stage) return null;
+      if(VIZ_TIP) return VIZ_TIP;
+
+      const d = document.createElement("div");
+      d.style.position = "absolute";
+      d.style.left = "0";
+      d.style.top = "0";
+      d.style.transform = "translate(-9999px,-9999px)";
+      d.style.pointerEvents = "none";
+      d.style.padding = "10px 10px";
+      d.style.borderRadius = "14px";
+      d.style.border = "1px solid rgba(255,255,255,.14)";
+      d.style.background = "rgba(7,7,17,.92)";
+      d.style.backdropFilter = "blur(10px)";
+      d.style.color = "rgba(255,255,255,.92)";
+      d.style.fontWeight = "900";
+      d.style.fontSize = "12.5px";
+      d.style.lineHeight = "1.35";
+      d.style.maxWidth = "260px";
+      d.style.boxShadow = "0 16px 50px rgba(0,0,0,.45)";
+      d.style.zIndex = "5";
+      stage.appendChild(d);
+
+      VIZ_TIP = d;
+      return d;
+    }
+
+    function showVizTip(clientX, clientY, html){
+      const tip = ensureVizTooltip();
+      if(!tip) return;
+      const stage = qs("vizStage");
+      const rect = stage.getBoundingClientRect();
+      tip.innerHTML = html || "";
+      const x = clientX - rect.left + 12;
+      const y = clientY - rect.top + 12;
+      tip.style.transform = `translate(${x}px, ${y}px)`;
+    }
+    function hideVizTip(){
+      const tip = ensureVizTooltip();
+      if(!tip) return;
+      tip.style.transform = "translate(-9999px,-9999px)";
+    }
+
+    function hitTestViz(clientX, clientY){
+      const canvas = qs("vizCanvas");
+      const stage  = qs("vizStage");
+      if(!canvas || !stage) return null;
+
+      const rect = stage.getBoundingClientRect();
+      const dpr = Number(canvas.dataset.dpr || 1);
+
+      const px = (clientX - rect.left) * dpr;
+      const py = (clientY - rect.top) * dpr;
+
+      const x = (px - (VIZ.panX * dpr)) / (VIZ.zoom || 1);
+      const y = (py - (VIZ.panY * dpr)) / (VIZ.zoom || 1);
+
+      for(let i = VIZ.nodes.length - 1; i >= 0; i--){
+        const n = VIZ.nodes[i];
+        const nx = (n.x || 0) * dpr;
+        const ny = (n.y || 0) * dpr;
+        const rr = (n.r || 14) * dpr;
+        const dx = x - nx;
+        const dy = y - ny;
+        if(dx*dx + dy*dy <= rr*rr) return { node:n, index:i };
+      }
+      return null;
+    }
+
+    function wireVizInteractions(){
+      const canvas = qs("vizCanvas");
+      if(!canvas) return;
+
+      // pan
+      canvas.addEventListener("pointerdown", (e) => {
+        VIZ.dragging = true;
+        VIZ.lastX = e.clientX;
+        VIZ.lastY = e.clientY;
+        canvas.setPointerCapture(e.pointerId);
+      });
+      canvas.addEventListener("pointermove", (e) => {
+        if(VIZ.dragging){
+          hideVizTip();
+          const dx = e.clientX - VIZ.lastX;
+          const dy = e.clientY - VIZ.lastY;
+          VIZ.lastX = e.clientX;
+          VIZ.lastY = e.clientY;
+          VIZ.panX += dx;
+          VIZ.panY += dy;
+          drawViz();
+          return;
+        }
+
+        const hit = hitTestViz(e.clientX, e.clientY);
+        if(!hit || !hit.node){
+          VIZ.hoverAddr = "";
+          hideVizTip();
+          drawViz();
+          return;
+        }
+
+        const n = hit.node;
+        VIZ.hoverAddr = n.addr || "";
+        drawViz();
+
+        const addr = n.addr ? String(n.addr) : "";
+        const label = n.label || (addr ? shortAddr(addr) : "Node");
+        const sub = n.sub ? String(n.sub) : "";
+
+        showVizTip(e.clientX, e.clientY, `
+          <div style="font-weight:1000; font-size:13px">${esc(label)}</div>
+          <div style="opacity:.86">${esc(sub)}</div>
+          ${addr ? `<div style="opacity:.75;margin-top:4px">${esc(shortAddr(addr))}</div>` : ""}
+          <div style="opacity:.65;margin-top:6px">Click → open explorer</div>
+        `);
+      });
+
+      canvas.addEventListener("pointerleave", () => {
+        VIZ.hoverAddr = "";
+        hideVizTip();
+        drawViz();
+      });
+
+      // click open explorer
+      canvas.addEventListener("click", (e) => {
+        const hit = hitTestViz(e.clientX, e.clientY);
+        if(!hit || !hit.node) return;
+        const addr = hit.node.addr ? String(hit.node.addr) : "";
+        if(!addr) return;
+        const ex = explorerBase(ACTIVE_CHAIN_ID);
+        window.open(ex.base + addr, "_blank", "noopener,noreferrer");
+      });
+
+      // zoom
+      canvas.addEventListener("wheel", (e) => {
+        e.preventDefault();
+        const delta = Math.sign(e.deltaY);
+        const factor = delta > 0 ? 0.92 : 1.08;
+        VIZ.zoom = Math.max(0.55, Math.min(2.4, VIZ.zoom * factor));
+        drawViz();
+      }, { passive:false });
+    }
+
+    /* ===== holders list renderer ===== */
+    function renderHoldersWithExplorer(items, chain){
+      const el = qs("holdersList");
+      if(!el) return;
+      el.innerHTML = "";
+      const ex = explorerBase(chain.id);
+
+      for(const it of items){
+        const infoId = registerInfo(it.infoHtml || explain("Top holder", [
+          "Meaning: Share of supply.",
+          "Why it matters: high % = dump risk.",
+          "Tip: check if LP/Burn/Team/Treasury."
+        ]));
+
+        const li = document.createElement("li");
+        li.className = "li";
+        li.innerHTML = `
+          <div class="left">
+            <div class="t">${esc(it.t || "Holder")}</div>
+            <div class="d">${esc(it.d || "—")}</div>
+          </div>
+          <div class="pillRow">
+            <a class="explorerBtn" href="${esc(ex.base + (it.addr||""))}" target="_blank" rel="noreferrer">${esc(ex.name)}</a>
+            <button class="infoBtn" type="button" aria-label="Info"
+                    data-open="1" data-title="${esc(it.t || "Holder")}" data-info="${esc(infoId)}"><span>i</span></button>
+          </div>
+        `;
+        el.appendChild(li);
+      }
+    }
+
+    function renderHoldersEmpty(){
+      const chain = chainObj();
+      renderList(qs("holdersList"), [{
+        t:"No holder data",
+        sev:"warn",
+        d: chain.kind === "solana"
+          ? "Holders will load after scan."
+          : (CFG.GOLDRUSH_API_KEY ? "Indexer returned no data." : "EVM holders need an indexer key (GoldRush)."),
+        infoHtml: explain("Top holders", [
+          "Meaning: Distribution shows whale risk.",
+          "Solana: via RPC largest accounts.",
+          "EVM: needs an indexer (RPC alone cannot list holders)."
+        ])
+      }], "Top Holders");
+    }
+
+    /* ===== cluster lite (kept) ===== */
+    function renderClusterLite(holderItems){
+      const grid = qs("clusterGrid");
+      if(!grid) return;
+
+      if(!holderItems || !holderItems.length){
+        grid.innerHTML = `
+          <div class="clusterCard">
+            <div class="clusterLeft">
+              <div class="clusterT"><span class="dot warn"></span> No cluster data</div>
+              <div class="clusterD">Run a scan and ensure holders are available to generate cluster intelligence.</div>
+            </div>
+            <div class="clusterRight">
+              <span class="badge warn">WAIT</span>
+            </div>
+          </div>
+        `;
+        setText("clusterFoot", "—");
+        return;
+      }
+
+            const top1 = holderItems[0]?.pct ?? 0;
+      const top3 = holderItems.slice(0,3).reduce((a,x)=>a+(x.pct||0),0);
+      const top10 = holderItems.slice(0,10).reduce((a,x)=>a+(x.pct||0),0);
+
+      const sev =
+        top1 >= 20 ? "bad" :
+        top1 >= 10 ? "warn" : "ok";
+
+      const sev2 =
+        top3 >= 45 ? "bad" :
+        top3 >= 30 ? "warn" : "ok";
+
+      const sev3 =
+        top10 >= 70 ? "bad" :
+        top10 >= 50 ? "warn" : "ok";
+
+      const dotCls = (s)=> s==="ok" ? "dot good" : s==="bad" ? "dot bad" : "dot warn";
+      const badgeCls = (s)=> s==="ok" ? "badge good" : s==="bad" ? "badge bad" : "badge warn";
+
+      grid.innerHTML = `
+        <div class="clusterCard">
+          <div class="clusterLeft">
+            <div class="clusterT"><span class="${dotCls(sev)}"></span> Whale dominance (Top1)</div>
+            <div class="clusterD">Largest holder controls ~${top1.toFixed(2)}%. High Top1 can mean team/LP/treasury — verify wallet type.</div>
+          </div>
+          <div class="clusterRight">
+            <span class="${badgeCls(sev)}">${pillLabel(sev)}</span>
+          </div>
+        </div>
+
+        <div class="clusterCard">
+          <div class="clusterLeft">
+            <div class="clusterT"><span class="${dotCls(sev2)}"></span> Cluster risk (Top3)</div>
+            <div class="clusterD">Top3 holders control ~${top3.toFixed(2)}%. If these are linked wallets, dump risk increases.</div>
+          </div>
+          <div class="clusterRight">
+            <span class="${badgeCls(sev2)}">${pillLabel(sev2)}</span>
+          </div>
+        </div>
+
+        <div class="clusterCard">
+          <div class="clusterLeft">
+            <div class="clusterT"><span class="${dotCls(sev3)}"></span> Distribution (Top10)</div>
+            <div class="clusterD">Top10 holders control ~${top10.toFixed(2)}%. Lower is generally healthier.</div>
+          </div>
+          <div class="clusterRight">
+            <span class="${badgeCls(sev3)}">${pillLabel(sev3)}</span>
+          </div>
+        </div>
+      `;
+
+      // tiny "bundle/split" heuristic (best-effort): similar sized chunks can indicate splitting
+      const pcts = holderItems.slice(0,10).map(x=>Number(x.pct||0)).filter(Number.isFinite).sort((a,b)=>b-a);
+      let similarPairs = 0;
+      for(let i=0;i<pcts.length;i++){
+        for(let j=i+1;j<pcts.length;j++){
+          const a = pcts[i], b = pcts[j];
+          if(a <= 0 || b <= 0) continue;
+          const ratio = a>b ? (a/b) : (b/a);
+          if(ratio <= 1.12) similarPairs++;
+        }
+      }
+      const splitSev = similarPairs >= 6 ? "warn" : "ok";
+      const splitText = similarPairs >= 6
+        ? `Possible split pattern: many similar-sized holdings among Top10 (pairs=${similarPairs}).`
+        : `No strong split pattern detected (pairs=${similarPairs}).`;
+
+      setText(
+        "clusterFoot",
+        `Heuristics: Top1=${top1.toFixed(2)}% • Top3=${top3.toFixed(2)}% • Top10=${top10.toFixed(2)}% • ${splitText}`
+      );
+
+      // add a 4th card if heuristic triggers
+      if(splitSev !== "ok"){
+        const extra = document.createElement("div");
+        extra.className = "clusterCard";
+        extra.innerHTML = `
+          <div class="clusterLeft">
+            <div class="clusterT"><span class="${dotCls(splitSev)}"></span> Split-wallet heuristic</div>
+            <div class="clusterD">${esc(splitText)} This does not prove linkage — verify via transfers or known tags.</div>
+          </div>
+          <div class="clusterRight"><span class="${badgeCls(splitSev)}">${pillLabel(splitSev)}</span></div>
+        `;
+        grid.appendChild(extra);
+      }
+    }
+
+    /* =========================================================
+       PART 9 — SCAN ORCHESTRATOR (Solana + EVM) + RENDER PIPELINE
+       ========================================================= */
+
+    function setVerdict(score, critical){
+      const badge = qs("verdictBadge");
+      const scoreEl = qs("scoreBadge");
+      if(scoreEl) scoreEl.textContent = `SCORE ${score}/100`;
+
+      let title = "WATCHLIST";
+      let sev = "warn";
+      if(score >= 85 && !critical){ title = "GUARDIAN APPROVED"; sev = "ok"; }
+      else if(score >= 70){ title = "CONDITIONAL PASS"; sev = "warn"; }
+      else { title = "HIGH RISK"; sev = "bad"; }
+
+      setText("verdictTitle", title);
+      if(badge){
+        badge.className = "badge " + (sev==="ok" ? "good" : sev==="bad" ? "bad" : "warn");
+        badge.textContent = sev==="ok" ? "APPROVED" : sev==="bad" ? "RISK" : "WATCH";
+      }
+      if(scoreEl){
+        scoreEl.className = "badge " + (score >= 85 ? "good" : score >= 60 ? "warn" : "bad");
+      }
+    }
+
+    function setScanButtons(disabled){
+      const b1 = qs("btnScan");
+      const b2 = qs("btnScanInline");
+      if(b1) b1.disabled = !!disabled;
+      if(b2) b2.disabled = !!disabled;
+    }
+
+    function normalizeInputAddr(raw){
+      return String(raw || "").trim();
+    }
+
+    async function scanSol(mint){
+      // basic validation
+      if(!looksBase58(mint)) throw new Error("Invalid Solana mint (base58).");
+
+      setText("mintShort", shortAddr(mint));
+      setText("scanHint", "SOLANA MAINNET");
+      setText("vizStamp", "SOL");
+      setText("clusterStamp", "SOL");
+      setText("vizLegend", "Green=OK • Yellow=Watch • Red=Risk");
+
+      // on-chain mint parse
+      const parsed = await getMintParsed(mint);
+      if(!parsed || !parsed.info) throw new Error("Mint account not found / not parseable.");
+
+      const ownerProgram = parsed.owner;
+      const info = parsed.info;
+
+      const mintAuth = info.mintAuthority ?? null;
+      const freezeAuth = info.freezeAuthority ?? null;
+
+      const mintAuthActive = !!mintAuth;
+      const freezeActive = !!freezeAuth;
+
+      const programType =
+        ownerProgram === CFG.TOKEN_2022_PROGRAM ? "TOKEN_2022" :
+        ownerProgram === CFG.TOKEN_PROGRAM ? "SPL_TOKEN" : "UNKNOWN";
+
+      // supply + decimals
+      const supply = await getTokenSupply(mint);
+      const decimals = Number(supply?.decimals ?? info.decimals ?? 0);
+      const uiAmount = Number(supply?.uiAmount ?? 0);
+
+      // largest accounts
+      const largest = await getLargest(mint);
+      const top = Array.isArray(largest) ? largest.slice(0, 10) : [];
+
+      // compute pct based on largest sum / total supply
+      const totalRaw = Number(supply?.amount ? BigInt(supply.amount) : 0n); // can overflow Number; so we do uiAmount approach
+      const totalUi = Number.isFinite(uiAmount) ? uiAmount : 0;
+
+      const holderItems = top.map((x, idx) => {
+        const addr = x?.address || "";
+        const amtUi = Number(x?.uiAmount ?? 0);
+        const pct = (totalUi > 0) ? (amtUi / totalUi * 100) : 0;
+
+        // simple severity (whales)
+        const sev =
+          pct >= 10 ? "bad" :
+          pct >= 4 ? "warn" : "ok";
+
+        return {
+          addr,
+          pct,
+          sev,
+          label: `#${idx+1} ${shortAddr(addr)}`,
+          sub: `${pct.toFixed(2)}%`,
+          t: `Holder #${idx+1}`,
+          d: `${shortAddr(addr)} • ${pct.toFixed(2)}%`,
+          infoHtml: explain(`Holder #${idx+1}`, [
+            `Wallet: ${addr}`,
+            `Share of supply: ${pct.toFixed(2)}%`,
+            "Tip: check if this is LP/treasury/team/burn."
+          ])
+        };
+      });
+
+      const top20 = Array.isArray(largest)
+        ? largest.slice(0, 20).reduce((a,x)=>{
+            const amtUi = Number(x?.uiAmount ?? 0);
+            return a + ((totalUi>0) ? (amtUi/totalUi*100) : 0);
+          }, 0)
+        : 0;
+
+      // metadata via Helius getAsset (best-effort)
+      const asset = await getAsset(mint);
+      const meta = pickTokenMetaFromAsset(asset) || { name:"Token", symbol:"", image:"", uri:"", description:"" };
+      applyTokenHeader(meta, mint);
+
+      // Dexscreener liquidity
+      let liquidityUsd = NaN;
+      try{
+        const ds = await fetchDexscreenerToken(mint);
+        liquidityUsd = Number(ds?.best?.liquidity?.usd || NaN);
+      }catch{}
+
+      // signals object
+      const sig = {
+        mintAuthActive,
+        freezeActive,
+        programType,
+        top20,
+        meta
+      };
+
+      // score + checks + todos
+      const scored = scoreSol(sig);
+      const todos = todoSol(sig);
+
+      setVerdict(scored.score, scored.critical);
+      setText("summary",
+        `Solana scan: ${mintAuthActive ? "mint active" : "mint renounced"} • ${freezeActive ? "freeze active" : "freeze removed"} • Top20≈${top20.toFixed(2)}%`
+      );
+
+      renderList(qs("checksList"), scored.checks, "Checks");
+      renderList(qs("todoList"), todos, "Launch Readiness");
+
+      // token standard details
+      renderList(qs("extList"), [
+        { t:"Token Program", sev: programType==="SPL_TOKEN" ? "ok" : "warn", d: ownerProgram, why:"Mint owner program." },
+        { t:"Decimals", sev:"ok", d: String(decimals), why:"Mint decimals / supply decimals." },
+        { t:"Total Supply (UI)", sev:"ok", d: fmtInt(totalUi), why:"getTokenSupply uiAmount." },
+      ], "Token Standard");
+
+      // metadata list
+      renderList(qs("metaList"), [
+        { t:"Name", sev: meta?.name ? "ok" : "warn", d: meta?.name || "—" },
+        { t:"Symbol", sev: meta?.symbol ? "ok" : "warn", d: meta?.symbol || "—" },
+        { t:"Description", sev: meta?.description ? "ok" : "warn", d: meta?.description || "—" },
+        { t:"URI", sev: meta?.uri ? "ok" : "warn", d: meta?.uri || "—" },
+      ], "Metadata");
+
+      // holders panel + viz + cluster
+      if(holderItems.length){
+        renderHoldersWithExplorer(holderItems, chainObj());
+        buildBubblesFromHolders(holderItems);
+        renderClusterLite(holderItems);
+      }else{
+        renderHoldersEmpty();
+        buildBubblesFromHolders([]);
+        renderClusterLite([]);
+      }
+
+      // key signals (pro column)
+      renderKeySignals(
+        keySignalsSol({
+          mintAuthActive,
+          freezeActive,
+          programType,
+          liquidityUsd,
+          top20
+        })
+      );
+
+      LAST_SCAN = { chain:"sol", addr: mint, meta, score: scored.score, when: Date.now() };
+      return LAST_SCAN;
+    }
+
+    function scoreEvmLite({ owner, proxy, paused, liquidityUsd, lpStatus, top10Pct }){
+      let score = 100;
+      const checks = [];
+      const rawOwner = owner || "";
+      const zero = "0x0000000000000000000000000000000000000000";
+      const renounced = rawOwner && rawOwner.toLowerCase() === zero;
+
+      if(!owner){
+        score -= 10;
+        checks.push({ t:"Owner()", sev:"warn", d:"owner() not readable (custom admin possible).", why:"Non-standard ownership." });
+      }else if(!renounced){
+        score -= 10;
+        checks.push({ t:"Owner Renounced", sev:"warn", d:`Owner active (${shortAddr(owner)}).`, why:"Owner may change config / fees (depends on contract)." });
+      }else{
+        checks.push({ t:"Owner Renounced", sev:"ok", d:"Owner is renounced (0x0).", why:"Ownership removed (best-effort)." });
+      }
+
+      if(proxy?.isProxy){
+        score -= 12;
+        checks.push({ t:"Upgradeable Proxy", sev:"warn", d:"Proxy detected (upgradeable).", why:"Implementation can change." });
+      }else{
+        checks.push({ t:"Upgradeable Proxy", sev:"ok", d:"No proxy signal found.", why:"EIP-1967 slots show no impl/admin." });
+      }
+
+      if(paused === true){
+        score -= 30;
+        checks.push({ t:"Paused", sev:"bad", d:"Token appears PAUSED now.", why:"Transfers may be blocked." });
+      }else if(paused === false){
+        score -= 6;
+        checks.push({ t:"Pausable", sev:"warn", d:"Contract supports pause (not paused).", why:"Admin can pause later." });
+      }else{
+        checks.push({ t:"Pausable", sev:"ok", d:"No pause signal found.", why:"paused() not present or returns unknown." });
+      }
+
+      if(Number.isFinite(liquidityUsd)){
+        if(liquidityUsd < 3000){ score -= 18; checks.push({ t:"Liquidity", sev:"bad", d:`Low liquidity: ~$${formatUsd(liquidityUsd)}`, why:"Thin liquidity => slippage/rug risk." }); }
+        else if(liquidityUsd < 20000){ score -= 8; checks.push({ t:"Liquidity", sev:"warn", d:`Moderate liquidity: ~$${formatUsd(liquidityUsd)}`, why:"Monitor liquidity." }); }
+        else checks.push({ t:"Liquidity", sev:"ok", d:`Healthy: ~$${formatUsd(liquidityUsd)}`, why:"More robust trading depth." });
+      }else{
+        score -= 6;
+        checks.push({ t:"Liquidity", sev:"warn", d:"No liquidity data found (Dexscreener).", why:"Token may be unlisted / no pairs." });
+      }
+
+      if(lpStatus?.sev === "ok"){
+        checks.push({ t:"LP", sev:"ok", d: lpStatus.v, why:"LP burned/locked signal present (best-effort)." });
+      }else if(lpStatus?.v){
+        score -= (lpStatus.v.includes("NOT") ? 10 : 6);
+        checks.push({ t:"LP", sev:"warn", d: lpStatus.v, why:"LP safety unclear." });
+      }else{
+        score -= 6;
+        checks.push({ t:"LP", sev:"warn", d:"LP unknown.", why:"Cannot compute LP holders." });
+      }
+
+      if(Number.isFinite(top10Pct)){
+        if(top10Pct >= 70){ score -= 20; checks.push({ t:"Top10 concentration", sev:"bad", d:`Top10 ≈ ${top10Pct.toFixed(2)}%`, why:"Very high concentration." }); }
+        else if(top10Pct >= 50){ score -= 10; checks.push({ t:"Top10 concentration", sev:"warn", d:`Top10 ≈ ${top10Pct.toFixed(2)}%`, why:"High concentration." }); }
+        else checks.push({ t:"Top10 concentration", sev:"ok", d:`Top10 ≈ ${top10Pct.toFixed(2)}%`, why:"Better distribution (within top10 view)." });
+      }else{
+        score -= 6;
+        checks.push({ t:"Top holders", sev:"warn", d:"No holder distribution (indexer required).", why:"RPC cannot list holders; needs GoldRush." });
+      }
+
+      score = clamp(Math.round(score), 0, 100);
+      const critical = (paused === true);
+      return { score, checks, critical };
+    }
+
+    function todoEvmLite({ owner, proxy, paused, liquidityUsd, lpStatus, top10Pct }){
+      const t = [];
+      const zero = "0x0000000000000000000000000000000000000000";
+      if(!owner) t.push({ t:"Ownership", sev:"warn", d:"owner() unknown; verify admin model.", why:"Non-standard ownership patterns exist." });
+      else if(owner.toLowerCase() !== zero) t.push({ t:"Ownership", sev:"warn", d:`Owner active (${shortAddr(owner)}).`, why:"Ensure multisig/timelock if possible." });
+      else t.push({ t:"Ownership", sev:"ok", d:"Owner renounced.", why:"Lower admin risk." });
+
+      t.push(proxy?.isProxy
+        ? { t:"Upgradeable proxy", sev:"warn", d:"Proxy detected; verify impl/admin.", why:"Upgradeable risk." }
+        : { t:"Upgradeable proxy", sev:"ok", d:"No proxy signal found.", why:"Lower upgrade risk." }
+      );
+
+      if(paused === true) t.push({ t:"Unpause / verify trading", sev:"bad", d:"Paused now — trading may be blocked.", why:"Critical usability risk." });
+      else if(paused === false) t.push({ t:"Pausable", sev:"warn", d:"Pause exists; ensure trust model.", why:"Admin can pause later." });
+      else t.push({ t:"Pausable", sev:"ok", d:"No pause signal.", why:"Ok." });
+
+      if(Number.isFinite(liquidityUsd) && liquidityUsd < 20000){
+        t.push({ t:"Liquidity", sev:"warn", d:`Increase liquidity (now ~$${formatUsd(liquidityUsd)}).`, why:"Improve depth; reduce slippage." });
+      }else{
+        t.push({ t:"Liquidity", sev:"ok", d:"Liquidity looks acceptable (or unknown).", why:"Monitor." });
+      }
+
+      t.push(lpStatus?.sev === "ok"
+        ? { t:"LP safety", sev:"ok", d: lpStatus.v, why:"Best-effort signal looks good." }
+        : { t:"LP safety", sev:"warn", d: lpStatus?.v || "Unknown", why:"Confirm via DEX/locker dashboards." }
+      );
+
+      if(Number.isFinite(top10Pct) && top10Pct >= 50){
+        t.push({ t:"Distribution", sev:"warn", d:`Top10 ≈ ${top10Pct.toFixed(2)}%.`, why:"Reduce whale concentration / verify wallets." });
+      }else{
+        t.push({ t:"Distribution", sev:"ok", d:"No strong whale alarm (within top10 view).", why:"Keep monitoring." });
+      }
+
+      return t.map(x => ({...x, infoHtml: explain(x.t, [x.d, "Status: " + pillLabel(x.sev)])}));
+    }
+
+    async function scanEvm(chainIdStr, addr){
+      if(!looksEvmAddress(addr)) throw new Error("Invalid EVM address (must be 0x + 40 hex).");
+
+      const chain = chainObj();
+      const chainId =
+        chainIdStr === "eth" ? 1 :
+        chainIdStr === "bnb" ? 56 :
+        chainIdStr === "base" ? 8453 : 1;
+
+      setText("mintShort", shortAddr(addr));
+      setText("scanHint", `${chain.stamp}`);
+      setText("vizStamp", chainIdStr.toUpperCase());
+      setText("clusterStamp", chainIdStr.toUpperCase());
+      setText("vizLegend", "Green=OK • Yellow=Watch • Red=Risk");
+
+      const code = await getCode(chainId, addr);
+      if(!code || code === "0x") throw new Error("No contract code at address.");
+
+      // meta on-chain (best-effort)
+      const meta = await getErc20Meta(chainId, addr);
+      applyTokenHeaderWithEvmLogo(meta, addr, chainId);
+
+      const [owner, paused, proxy] = await Promise.all([
+        getOwner(chainId, addr),
+        getPaused(chainId, addr),
+        detectProxy(chainId, addr)
+      ]);
+
+      // Dexscreener
+      let liquidityUsd = NaN;
+      let bestPair = null;
+      try{
+        const ds = await fetchDexscreenerToken(addr);
+        bestPair = ds?.best || null;
+        liquidityUsd = Number(bestPair?.liquidity?.usd || NaN);
+      }catch{}
+
+      // LP status best-effort (only works for V2-ish LP tokens)
+      let lpStatus = { sev:"warn", v:"UNKNOWN ❓", src:"heur", mini:"LP analysis not available." };
+      try{
+        if(bestPair) lpStatus = await analyzeLpEvm(chainId, bestPair);
+      }catch{}
+
+      // holders via GoldRush
+      let holderItems = [];
+      let top10Pct = NaN;
+      if(CFG.GOLDRUSH_API_KEY){
+        const holders = await goldrushHolders(chainId, addr);
+        const items = Array.isArray(holders) ? holders.slice(0, 10) : [];
+        holderItems = items.map((h, idx) => {
+          const a = String(h?.address || "");
+          const pct = Number(h?.percentage ?? h?.pct ?? 0);
+          const sev = pct >= 10 ? "bad" : pct >= 4 ? "warn" : "ok";
+          return {
+            addr: a,
+            pct,
+            sev,
+            label: `#${idx+1} ${shortAddr(a)}`,
+            sub: `${pct.toFixed(2)}%`,
+            t: `Holder #${idx+1}`,
+            d: `${shortAddr(a)} • ${pct.toFixed(2)}%`,
+            infoHtml: explain(`Holder #${idx+1}`, [
+              `Wallet: ${a}`,
+              `Share (indexer): ${pct.toFixed(2)}%`,
+              "Tip: Identify LP/treasury/team/burn wallets."
+            ])
+          };
+        });
+        top10Pct = holderItems.slice(0,10).reduce((a,x)=>a+(x.pct||0),0);
+      }
+
+      // score + checks/todos
+      const scored = scoreEvmLite({ owner, proxy, paused, liquidityUsd, lpStatus, top10Pct });
+      const todos = todoEvmLite({ owner, proxy, paused, liquidityUsd, lpStatus, top10Pct });
+
+      setVerdict(scored.score, scored.critical);
+      setText("summary",
+        `EVM scan: ${proxy?.isProxy ? "proxy" : "no proxy"} • ${paused===true ? "paused" : paused===false ? "pausable" : "no pause signal"} • ${Number.isFinite(top10Pct) ? `Top10≈${top10Pct.toFixed(2)}%` : "holders unknown"}`
+      );
+
+      renderList(qs("checksList"), scored.checks, "Checks");
+      renderList(qs("todoList"), todos, "Launch Readiness");
+
+      // token standard details
+      const decimals = (meta?.decimals ?? null);
+      const supplyBn = meta?.totalSupply ?? null;
+      const supplyText = (supplyBn !== null && decimals !== null)
+        ? (() => {
+            // safe-ish formatting: show raw + approx ui
+            let ui = null;
+            try{
+              const denom = 10n ** BigInt(decimals);
+              ui = Number(supplyBn / denom);
+            }catch{}
+            return ui !== null ? `${fmtInt(ui)} (approx)` : `${supplyBn.toString()} (raw)`;
+          })()
+        : "—";
+
+      renderList(qs("extList"), [
+        { t:"Decimals", sev: (decimals===null ? "warn" : "ok"), d: (decimals===null ? "—" : String(decimals)), why:"ERC-20 decimals()" },
+        { t:"Total Supply", sev: (supplyBn===null ? "warn" : "ok"), d: supplyText, why:"totalSupply() best-effort" },
+        { t:"Proxy Implementation", sev: proxy?.implementation ? "warn" : "ok", d: proxy?.implementation || "—", why:"EIP-1967 implementation slot" },
+        { t:"Proxy Admin", sev: proxy?.admin ? "warn" : "ok", d: proxy?.admin || "—", why:"EIP-1967 admin slot" }
+      ], "Token Standard");
+
+      // metadata list
+      renderList(qs("metaList"), [
+        { t:"Name", sev: meta?.name ? "ok" : "warn", d: meta?.name || "—" },
+        { t:"Symbol", sev: meta?.symbol ? "ok" : "warn", d: meta?.symbol || "—" }
+      ], "Metadata");
+
+      // holders + viz + cluster
+      if(holderItems.length){
+        renderHoldersWithExplorer(holderItems, chainObj());
+        buildBubblesFromHolders(holderItems);
+        renderClusterLite(holderItems);
+      }else{
+        renderHoldersEmpty();
+        buildBubblesFromHolders([]);
+        renderClusterLite([]);
+      }
+
+      // key signals (pro column)
+      renderKeySignals(
+        keySignalsEvm({
+          owner,
+          proxy,
+          paused,
+          liquidityUsd,
+          lpStatus
+        })
+      );
+
+      LAST_SCAN = { chain: chainIdStr, addr, meta, score: scored.score, when: Date.now() };
+      return LAST_SCAN;
+    }
+
+    async function runScan(){
+      if(SCANNING) return;
+      const chain = chainObj();
+      const raw = normalizeInputAddr(qs("mint")?.value || "");
+      if(!raw){
+        setStatus("Paste an address first.");
+        return;
+      }
+
+      SCANNING = true;
+      setScanButtons(true);
+      hideToast();
+      setStatus("Running scan…");
+
+      try{
+        // reset export button until success
+        const exBtn = qs("btnExport");
+        if(exBtn){ exBtn.disabled = true; }
+
+        resizeCanvas();
+
+        if(chain.kind === "solana"){
+          await scanSol(raw);
+        }else{
+          await scanEvm(chain.id, raw);
+        }
+
+        setStatus("Scan complete.");
+        // enable export (placeholder report)
+        if(exBtn){ exBtn.disabled = false; }
+      }catch(e){
+        const msg = String(e?.message || e || "Scan failed.");
+        setStatus("Error: " + msg);
+        showToast("Scan failed: " + msg);
+      }finally{
+        SCANNING = false;
+        setScanButtons(false);
+      }
+    }
+
+    /* =========================================================
+       PART 10 — EXPORT (simple HTML report) + WIRING/BOOT
+       ========================================================= */
+
+    function exportReport(){
+      if(!LAST_SCAN){
+        showToast("No scan data to export yet.");
+        return;
+      }
+
+      const chain = LAST_SCAN.chain;
+      const addr  = LAST_SCAN.addr;
+      const score = LAST_SCAN.score;
+      const when  = new Date(LAST_SCAN.when).toISOString();
+
+      // minimal, instant report (client-side)
+      const html = `
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Guardian Report • ${esc(chain)} • ${esc(addr)}</title>
+<style>
+  body{font-family: ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial; padding:22px; background:#070711; color:#fff;}
+  .card{border:1px solid rgba(255,255,255,.14); background:rgba(255,255,255,.06); border-radius:16px; padding:16px; max-width:920px;}
+  .k{opacity:.75; font-size:12px; text-transform:uppercase; letter-spacing:.4px; font-weight:900;}
+  .v{font-size:18px; font-weight:1000; margin-top:6px; word-break:break-word;}
+  .row{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+  @media(max-width:760px){.row{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="k">Guardian Report</div>
+    <div class="v">Chain: ${esc(chain)}<br>Address: ${esc(addr)}<br>Score: ${esc(String(score))}/100<br>Time: ${esc(when)}</div>
+  </div>
+  <div style="height:14px"></div>
+  <div class="card">
+    <div class="k">Summary</div>
+    <div class="v">${esc(qs("summary")?.textContent || "—")}</div>
+  </div>
+  <div style="height:14px"></div>
+  <div class="card">
+    <div class="k">Key Signals</div>
+    <div class="v">${qs("keySignals")?.innerText ? esc(qs("keySignals").innerText) : "—"}</div>
+  </div>
+</body></html>`.trim();
+
+      const blob = new Blob([html], { type:"text/html;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `guardian-report_${chain}_${addr.slice(0,8)}.html`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(()=>URL.revokeObjectURL(url), 2500);
+    }
+
+    // wiring
+    on("btnScan", "click", runScan);
+    on("btnScanInline", "click", runScan);
+    on("btnExport", "click", exportReport);
+
+    on("modalClose", "click", closeModal);
+    on("modalWrap", "click", (e)=>{ if(e.target === qs("modalWrap")) closeModal(); });
+    on("toastClose", "click", hideToast);
+
+    on("vizModeBubbles","click", ()=> setVizMode("bubbles"));
+    on("vizModeGraph","click", ()=> setVizMode("graph"));
+    on("btnVizReset","click", resetViz);
+
+    window.addEventListener("resize", ()=> resizeCanvas());
+
+    // boot
+    (function boot(){
+      startLiveStampTime();
+      setText("y", String(new Date().getFullYear()));
+
+      // chain from URL
+      const url = new URL(location.href);
+      const c = url.searchParams.get("chain");
+      if(c && CHAINS.some(x=>x.id===c)) ACTIVE_CHAIN_ID = c;
+
+      renderChainButtons();
+      setActiveChain(ACTIVE_CHAIN_ID, false);
+
+      wireVizInteractions();
+      resizeCanvas();
+    })();
+  </script>
+</body>
+</html>
+
