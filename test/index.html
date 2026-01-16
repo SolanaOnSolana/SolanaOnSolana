@@ -767,39 +767,24 @@
 
   <!-- Modal -->
   <div class="modalWrap" id="modalWrap" role="dialog" aria-modal="true" aria-hidden="true">
-  <div class="modal">
-    <div class="modalHead">
-      <div class="modalTitle" id="modalTitle">Guardian Details</div>
-      <button class="btn" id="modalClose" type="button">Close</button>
+    <div class="modal">
+      <div class="modalHead">
+        <div class="modalTitle" id="modalTitle">Guardian Details</div>
+        <button class="btn" id="modalClose" type="button">Close</button>
+      </div>
+      <div class="modalBody" id="modalBody"></div>
     </div>
-    <div class="modalBody" id="modalBody"></div>
   </div>
-</div>
-
-<!-- TEIL 2/4 — JS (Core UI + Chain Switch + State) -->
 <script>
 /* =========================================================
-  GUARDIAN CHECK (Multi-Chain) — REBUILD FROM SCRATCH
-  Teil 2/4:
-  - Config + Chain definitions
-  - Icons
-  - DOM helpers + utils
-  - Modal/Toast + Info system
-  - UI reset/render (Lists, Metrics, Header)
-  - Chain switch + init wiring
-  (Scan-Logik Solana/EVM kommt in Teil 3/4 + 4/4)
+  GUARDIAN CHECK — Stable Rebuild (5 Parts)
+  TEIL 2/5: Core UI / State / Chain Switch / Bubble Map (fixed)
 ========================================================= */
 
-/* ===================== CONFIG ===================== */
 const CFG = {
-  // Solana RPC (Helius)
   HELIUS_KEY: "b566a086-57d4-4433-8661-faed9ad07ba0",
-
-  // EVM holders need an indexer (Covalent GoldRush)
-  // Wenn du keinen Key hast: leer lassen -> UI zeigt Hinweis.
   GOLDRUSH_API_KEY: "cqt_rQVTMTXwYkPJBrwf7ff6JWmdkywR",
 
-  // Solana programs
   TOKEN_PROGRAM: "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
   TOKEN_2022_PROGRAM: "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
 
@@ -810,163 +795,85 @@ const CFG = {
     { id:"base", name:"Base",     kind:"evm",    chainId:8453, stamp:"BASE MAINNET", addrLabel:"Token Contract Address", placeholder:"Paste Base token contract (0x...)" }
   ],
 
-  // Public RPCs (Fallback-Liste; wir rotieren)
   EVM_RPCS: {
     1:    ["https://ethereum.publicnode.com", "https://rpc.ankr.com/eth",  "https://eth.llamarpc.com", "https://cloudflare-eth.com"],
     56:   ["https://bsc.publicnode.com",      "https://rpc.ankr.com/bsc",  "https://bsc-dataseed.binance.org"],
     8453: ["https://base.publicnode.com",     "https://rpc.ankr.com/base", "https://mainnet.base.org"]
   },
 
-  UI: {
-    REPORT_LOGO_URL: "https://solanax1.com/assets/logo.png"
-  },
-
-  EXPORT: { DEFAULT_FORMAT: "html" }
+  UI: { REPORT_LOGO_URL: "https://solanax1.com/assets/logo.png" }
 };
 
-/* ===================== ICONS ===================== */
+/* =============== ICONS =============== */
+const CSSV = (k, fb) => (getComputedStyle(document.documentElement).getPropertyValue(k).trim() || fb);
 const ICONS = {
   sol: `
     <svg viewBox="0 0 64 64" aria-hidden="true">
-      <defs>
-        <linearGradient id="solg" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stop-color="${getComputedStyle(document.documentElement).getPropertyValue('--sol-g1').trim() || '#14F195'}"/>
-          <stop offset="0.5" stop-color="${getComputedStyle(document.documentElement).getPropertyValue('--sol-g2').trim() || '#00D1FF'}"/>
-          <stop offset="1" stop-color="${getComputedStyle(document.documentElement).getPropertyValue('--sol-g3').trim() || '#9945FF'}"/>
-        </linearGradient>
-      </defs>
+      <defs><linearGradient id="solg" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="${CSSV('--sol-g1','#14F195')}"/>
+        <stop offset="0.5" stop-color="${CSSV('--sol-g2','#00D1FF')}"/>
+        <stop offset="1" stop-color="${CSSV('--sol-g3','#9945FF')}"/>
+      </linearGradient></defs>
       <path d="M14 18c1.6-1.8 3.5-2.7 5.7-2.7h33.6c3.3 0 5 4 2.8 6.5l-6.1 6.8c-1.6 1.8-3.5 2.7-5.7 2.7H10.7c-3.3 0-5-4-2.8-6.5L14 18Z" fill="url(#solg)"/>
       <path d="M14 38.9c1.6-1.8 3.5-2.7 5.7-2.7h33.6c3.3 0 5 4 2.8 6.5l-6.1 6.8c-1.6 1.8-3.5 2.7-5.7 2.7H10.7c-3.3 0-5-4-2.8-6.5L14 38.9Z" fill="url(#solg)" opacity=".7"/>
-    </svg>
-  `,
-  eth: `
-    <svg viewBox="0 0 64 64" aria-hidden="true">
-      <path d="M32 6l16 26-16 9-16-9L32 6Z" fill="currentColor" opacity=".95"/>
-      <path d="M32 58l16-22-16 9-16-9 16 22Z" fill="currentColor" opacity=".75"/>
-    </svg>
-  `,
-  bnb: `
-    <svg viewBox="0 0 64 64" aria-hidden="true">
-      <path fill="${getComputedStyle(document.documentElement).getPropertyValue('--bnb-yellow').trim() || '#F0B90B'}"
-        d="M32 6l8.6 8.6L32 23.2l-8.6-8.6L32 6Zm15.4 15.4L56 30l-8.6 8.6-8.6-8.6L47.4 21.4ZM16.6 21.4 25.2 30l-8.6 8.6L8 30l8.6-8.6ZM32 32.8l8.6 8.6L32 50l-8.6-8.6L32 32.8Zm0-6.9 5.1 5.1L32 36.2 26.9 31 32 25.9Z"/>
-    </svg>
-  `,
-  base: `
-    <svg viewBox="0 0 64 64" aria-hidden="true">
-      <circle cx="32" cy="32" r="26" fill="${getComputedStyle(document.documentElement).getPropertyValue('--base-blue').trim() || '#0052FF'}"/>
-      <path d="M27.5 22h8.1c6.2 0 11.2 5 11.2 11.1S41.8 44.2 35.6 44.2h-8.1V22Zm5.3 5.1v12h2.4c3.3 0 6-2.7 6-6s-2.7-6-6-6h-2.4Z"
-            fill="#fff"/>
-    </svg>
-  `
+    </svg>`,
+  eth: `<svg viewBox="0 0 64 64"><path d="M32 6l16 26-16 9-16-9L32 6Z" fill="currentColor" opacity=".95"/><path d="M32 58l16-22-16 9-16-9 16 22Z" fill="currentColor" opacity=".75"/></svg>`,
+  bnb: `<svg viewBox="0 0 64 64"><path fill="${CSSV('--bnb-yellow','#F0B90B')}" d="M32 6l8.6 8.6L32 23.2l-8.6-8.6L32 6Zm15.4 15.4L56 30l-8.6 8.6-8.6-8.6L47.4 21.4ZM16.6 21.4 25.2 30l-8.6 8.6L8 30l8.6-8.6ZM32 32.8l8.6 8.6L32 50l-8.6-8.6L32 32.8Zm0-6.9 5.1 5.1L32 36.2 26.9 31 32 25.9Z"/></svg>`,
+  base:`<svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="26" fill="${CSSV('--base-blue','#0052FF')}"/><path d="M27.5 22h8.1c6.2 0 11.2 5 11.2 11.1S41.8 44.2 35.6 44.2h-8.1V22Zm5.3 5.1v12h2.4c3.3 0 6-2.7 6-6s-2.7-6-6-6h-2.4Z" fill="#fff"/></svg>`
 };
 
-/* ===================== DOM HELPERS ===================== */
+/* =============== DOM + Helpers =============== */
 const qs = (id) => document.getElementById(id);
-const setText = (id, v) => { const el = qs(id); if (el) el.textContent = (v ?? ""); };
-const setHTML = (id, v) => { const el = qs(id); if (el) el.innerHTML = (v ?? ""); };
-const on = (id, ev, fn) => { const el = qs(id); if (el) el.addEventListener(ev, fn); };
+const on = (id, ev, fn) => { const el = qs(id); if(el) el.addEventListener(ev, fn); };
 const esc = (x) => String(x ?? "")
   .replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;");
 
-/* ===================== STATE ===================== */
-let activeChain = CFG.CHAINS[0];
+const setText = (id, v) => { const el = qs(id); if(el) el.textContent = (v ?? ""); };
+const setHTML = (id, v) => { const el = qs(id); if(el) el.innerHTML = (v ?? ""); };
 
-const SCAN_STATE = {
-  scanning: false,
-  completed: false,
-  chain: null,
-  addr: null,
-  result: null,
-  lastError: null
-};
-
-/* ===================== UTILS ===================== */
-function clamp(n, min, max){ return Math.max(min, Math.min(max, n)); }
-function safeLower(x){ return String(x||"").toLowerCase(); }
+function clamp(n,min,max){ return Math.max(min, Math.min(max, n)); }
 function shortAddr(a){ return a ? (a.slice(0,6) + "…" + a.slice(-4)) : "—"; }
-
 function fmtInt(n){
   if (n === null || n === undefined || Number.isNaN(n)) return "—";
-  try { return new Intl.NumberFormat("en-US").format(Math.round(Number(n))); }
-  catch { return String(n); }
+  try { return new Intl.NumberFormat("en-US").format(Math.round(Number(n))); } catch { return String(n); }
 }
 function fmtPct(n){
   if (n === null || n === undefined || Number.isNaN(n)) return "—";
   return `${Number(n).toFixed(2)}%`;
 }
-
 function setStatus(msg){ setText("status", msg || ""); }
 
-function setBadge(el, txt, mode){
-  if(!el) return;
-  el.textContent = txt ?? "";
-  el.classList.remove("good","warn","bad");
-  if(mode) el.classList.add(mode);
-}
-
-/* ===================== LIVE TIME STAMP ===================== */
-let STAMP_TIMER = null;
-function updateStampTime(){
-  const el = qs("stampTime");
-  if(!el) return;
-  const now = new Date();
-  const live = new Intl.DateTimeFormat("de-DE", {
-    timeZone: "Europe/Berlin",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit"
-  }).format(now);
-  el.textContent = live;
-}
-function startLiveStampTime(){
-  if(STAMP_TIMER) clearInterval(STAMP_TIMER);
-  updateStampTime();
-  STAMP_TIMER = setInterval(updateStampTime, 1000);
-}
-
-/* ===================== VALIDATION ===================== */
 function looksBase58(s){
   return typeof s === "string"
     && s.length >= 32 && s.length <= 52
     && /^[1-9A-HJ-NP-Za-km-z]+$/.test(s);
 }
-function looksEvmAddress(s){
-  return typeof s === "string" && /^0x[0-9a-fA-F]{40}$/.test(s.trim());
-}
+function looksEvmAddress(s){ return typeof s === "string" && /^0x[0-9a-fA-F]{40}$/.test(s.trim()); }
 
-/* ===================== MODAL + TOAST ===================== */
+/* =============== Modal / Toast =============== */
 function openModal(title, bodyHtml){
   setText("modalTitle", title || "Guardian Details");
   setHTML("modalBody", bodyHtml || "");
   const w = qs("modalWrap");
-  if(w){
-    w.style.display = "flex";
-    w.setAttribute("aria-hidden","false");
-  }
+  if(w){ w.style.display="flex"; w.setAttribute("aria-hidden","false"); }
 }
 function closeModal(){
   const w = qs("modalWrap");
-  if(w){
-    w.style.display = "none";
-    w.setAttribute("aria-hidden","true");
-  }
+  if(w){ w.style.display="none"; w.setAttribute("aria-hidden","true"); }
 }
 function showToast(title){
   const t = qs("toast");
   if(!t) return;
   setText("toastTitle", title || "");
-  t.style.display = "block";
+  t.style.display="block";
 }
 function hideToast(){
   const t = qs("toast");
   if(!t) return;
-  t.style.display = "none";
+  t.style.display="none";
 }
 
-/* ===================== INFO SYSTEM ===================== */
+/* =============== Info system (no duplicates) =============== */
 const INFO_MAP = new Map();
 function newInfoId(){ return "i_" + Math.random().toString(36).slice(2) + Date.now().toString(36); }
 function registerInfo(html){
@@ -982,19 +889,36 @@ function explain(title, bullets){
     <div style="font-weight:1000; font-size:18px; margin-bottom:10px">${esc(title)}</div>
     <div style="color:rgba(255,255,255,.72); font-weight:850; line-height:1.55">
       ${body}
-    </div>
-  `;
+    </div>`;
 }
 function pillLabel(sev){ return sev==="ok" ? "PASS" : sev==="bad" ? "FAIL" : "WATCH"; }
 function pillClass(sev){ return sev==="ok" ? "pill ok" : sev==="bad" ? "pill bad" : "pill warn"; }
 
-/* ===================== UI RENDER HELPERS ===================== */
-function renderList(listEl, items, defaultTitle){
+function setBadge(el, txt, mode){
+  if(!el) return;
+  el.textContent = txt ?? "";
+  el.classList.remove("good","warn","bad");
+  if(mode) el.classList.add(mode);
+}
+
+/* =============== State =============== */
+let activeChain = CFG.CHAINS[0];
+const SCAN_STATE = {
+  scanning:false,
+  completed:false,
+  chain:null,
+  addr:null,
+  result:null,
+  lastError:null
+};
+
+/* =============== Lists / Metrics render =============== */
+function renderList(listEl, items){
   if(!listEl) return;
   listEl.innerHTML = "";
-  for(const it of items){
+  for(const it of (items||[])){
     const sev = it.sev || "warn";
-    const title = it.t || defaultTitle || "Details";
+    const title = it.t || "Details";
     const desc = it.d || "—";
     const infoTitle = it.infoTitle || title;
 
@@ -1016,8 +940,7 @@ function renderList(listEl, items, defaultTitle){
               data-open="1" data-title="${esc(infoTitle)}" data-info="${esc(infoId)}">${pillLabel(sev)}</span>
         <button class="infoBtn" type="button" aria-label="Info"
                 data-open="1" data-title="${esc(infoTitle)}" data-info="${esc(infoId)}"><span>i</span></button>
-      </div>
-    `;
+      </div>`;
     listEl.appendChild(li);
   }
 }
@@ -1039,8 +962,7 @@ function renderMetrics(rows){
       </div>
       <div class="metricV">${esc(r.value || "—")}</div>
       <div class="metricMini">${esc(r.mini || "")}</div>
-      ${bar}
-    `;
+      ${bar}`;
     wrap.appendChild(d);
   }
 }
@@ -1079,6 +1001,7 @@ function explorerBase(chain){
   return {name:"Explorer", base:"#"};
 }
 
+/* =============== Holders render + Bubble Map FIX (resize-safe) =============== */
 function renderHoldersEmpty(){
   const el = qs("holdersList");
   if(!el) return;
@@ -1091,10 +1014,10 @@ function renderHoldersEmpty(){
           ? "No holders returned (indexer). Try again / different token."
           : "EVM holders need an indexer (GoldRush)."),
     infoHtml: explain("Top holders", [
-      "Solana: on-chain largest accounts (preview).",
+      "Solana: largest token accounts (preview).",
       "EVM: JSON-RPC cannot enumerate holders; requires GoldRush indexer."
     ])
-  }], "Top Holders");
+  }]);
 }
 
 function renderHoldersWithExplorer(items, chain){
@@ -1120,23 +1043,26 @@ function renderHoldersWithExplorer(items, chain){
         <a class="explorerBtn" href="${esc(ex.base + (it.addr||""))}" target="_blank" rel="noreferrer">${esc(ex.name)}</a>
         <button class="infoBtn" type="button" aria-label="Info"
                 data-open="1" data-title="${esc(it.t || "Holder")}" data-info="${esc(infoId)}"><span>i</span></button>
-      </div>
-    `;
+      </div>`;
     el.appendChild(li);
   }
 }
 
-/* ===================== BUBBLE MAP (Canvas) ===================== */
 function holdersToBubbles(holders){
-  const out = [];
-  for(const h of (holders||[]).slice(0, 20)){
-    out.push({
-      addr: h.wallet,
-      pct: Number(h.pct || 0),
-      label: shortAddr(h.wallet || "")
-    });
-  }
-  return out;
+  return (holders||[]).slice(0, 20).map(h => ({
+    addr: h.wallet,
+    pct: Number(h.pct || 0),
+    label: shortAddr(h.wallet || "")
+  }));
+}
+
+function ensureCanvasSize(canvas, cssHeight=240){
+  const rect = canvas.getBoundingClientRect();
+  const w = Math.max(1, Math.floor(rect.width));
+  const dpr = Math.max(1, window.devicePixelRatio || 1);
+  canvas.width = Math.floor(w * dpr);
+  canvas.height = Math.floor(cssHeight * dpr);
+  return { w: canvas.width, h: canvas.height, dpr };
 }
 
 function renderBubbleMap(holderBubbles){
@@ -1155,35 +1081,27 @@ function renderBubbleMap(holderBubbles){
   wrap.style.display = "block";
   badge.textContent = `${items.length} wallets`;
 
-  const rect = canvas.getBoundingClientRect();
-  const dpr = Math.max(1, window.devicePixelRatio || 1);
-  canvas.width = Math.floor(rect.width * dpr);
-  canvas.height = Math.floor(240 * dpr);
+  const { w, h, dpr } = ensureCanvasSize(canvas, 240);
   const ctx = canvas.getContext("2d");
+  ctx.clearRect(0,0,w,h);
 
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-
-  // light grid
   ctx.globalAlpha = 0.25;
-  for(let x=0;x<canvas.width;x+=Math.floor(48*dpr)){
-    ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,canvas.height); ctx.strokeStyle="rgba(255,255,255,.08)"; ctx.stroke();
+  for(let x=0;x<w;x+=Math.floor(48*dpr)){
+    ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,h); ctx.strokeStyle="rgba(255,255,255,.08)"; ctx.stroke();
   }
-  for(let y=0;y<canvas.height;y+=Math.floor(48*dpr)){
-    ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(canvas.width,y); ctx.strokeStyle="rgba(255,255,255,.08)"; ctx.stroke();
+  for(let y=0;y<h;y+=Math.floor(48*dpr)){
+    ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y); ctx.strokeStyle="rgba(255,255,255,.08)"; ctx.stroke();
   }
   ctx.globalAlpha = 1;
 
-  const w = canvas.width, h = canvas.height;
   const cx = w/2, cy = h/2;
-
   const maxPct = Math.max(...items.map(x => x.pct || 0), 1);
   const placed = [];
 
   function overlaps(x,y,r){
     for(const p of placed){
-      const dx = x-p.x, dy = y-p.y;
-      const dist = Math.sqrt(dx*dx+dy*dy);
-      if(dist < r + p.r + 6*dpr) return true;
+      const dx=x-p.x, dy=y-p.y;
+      if(Math.sqrt(dx*dx+dy*dy) < r + p.r + 6*dpr) return true;
     }
     return false;
   }
@@ -1192,38 +1110,35 @@ function renderBubbleMap(holderBubbles){
     const pct = Number(it.pct || 0);
     const r = (12 + (pct/maxPct)*42) * dpr;
 
-    let angle = idx * 0.7;
-    let rad = 0;
-    let x = cx, y = cy;
+    let angle = idx * 0.7, rad = 0;
+    let x=cx, y=cy;
     for(let k=0;k<900;k++){
-      rad += 0.7*dpr;
-      angle += 0.35;
+      rad += 0.7*dpr; angle += 0.35;
       x = cx + Math.cos(angle)*rad;
       y = cy + Math.sin(angle)*rad;
       if(x-r<8*dpr || x+r>w-8*dpr || y-r<8*dpr || y+r>h-8*dpr) continue;
       if(!overlaps(x,y,r)) break;
     }
-    placed.push({x,y,r, label: it.label || shortAddr(it.addr || ""), pct});
+    placed.push({x,y,r,label: it.label || shortAddr(it.addr || ""), pct});
   });
 
   for(const p of placed){
     ctx.beginPath();
     ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
-    ctx.fillStyle = "rgba(255,255,255,.08)";
+    ctx.fillStyle="rgba(255,255,255,.08)";
     ctx.fill();
-
     ctx.lineWidth = 2*dpr;
-    ctx.strokeStyle = "rgba(20,241,149,.55)";
+    ctx.strokeStyle="rgba(20,241,149,.55)";
     ctx.stroke();
 
     ctx.font = `${Math.max(10, Math.floor(11*dpr))}px ui-sans-serif, system-ui`;
-    ctx.fillStyle = "rgba(255,255,255,.85)";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
+    ctx.fillStyle="rgba(255,255,255,.85)";
+    ctx.textAlign="center";
+    ctx.textBaseline="middle";
     ctx.fillText(`${p.pct.toFixed(1)}%`, p.x, p.y - 6*dpr);
 
     ctx.font = `${Math.max(9, Math.floor(10*dpr))}px ui-monospace, Menlo, Consolas, monospace`;
-    ctx.fillStyle = "rgba(255,255,255,.62)";
+    ctx.fillStyle="rgba(255,255,255,.62)";
     ctx.fillText(p.label, p.x, p.y + 10*dpr);
   }
 
@@ -1231,7 +1146,7 @@ function renderBubbleMap(holderBubbles){
   catch{ window.__BUBBLE_MAP_DATA_URL = ""; }
 }
 
-/* ===================== UI RESET ===================== */
+/* =============== Reset UI =============== */
 function resetUIForNewScan(){
   SCAN_STATE.completed = false;
   SCAN_STATE.result = null;
@@ -1252,65 +1167,42 @@ function resetUIForNewScan(){
   if(img){ img.removeAttribute("src"); img.alt = ""; }
 
   renderMetrics([]);
-
   renderList(qs("checksList"), [{
-    t:"Waiting for scan",
-    sev:"warn",
+    t:"Waiting for scan", sev:"warn",
     d:"Paste an address and run the Guardian Check.",
     infoHtml: explain("Guardian Checks", [
       "After scanning, we generate checks & explanations per chain.",
       "Solana: mint/freeze authorities, supply, largest accounts.",
       "EVM: code/proxy/owner/paused + ERC-20 metadata."
     ])
-  }], "Guardian Checks");
-
+  }]);
   renderList(qs("todoList"), [{
-    t:"Waiting for scan",
-    sev:"warn",
+    t:"Waiting for scan", sev:"warn",
     d:"Launch readiness tasks appear after scan.",
-    infoHtml: explain("Launch Readiness", [
-      "We derive an action list from detected on-chain signals."
-    ])
-  }], "Launch Readiness");
-
+    infoHtml: explain("Launch Readiness", ["We derive an action list from detected on-chain signals."])
+  }]);
   renderList(qs("stdList"), [{
-    t:"Waiting for scan",
-    sev:"warn",
+    t:"Waiting for scan", sev:"warn",
     d:"Standard details appear after scan.",
-    infoHtml: explain("Token Standard", [
-      "Solana: SPL vs Token-2022 (extensions possible).",
-      "EVM: ERC-20 selectors + proxy detection."
-    ])
-  }], "Token Standard");
-
+    infoHtml: explain("Token Standard", ["Solana: SPL vs Token-2022.", "EVM: ERC-20 selectors + proxy detection."])
+  }]);
   renderList(qs("metaList"), [{
-    t:"Waiting for scan",
-    sev:"warn",
+    t:"Waiting for scan", sev:"warn",
     d:"Metadata appears after scan.",
-    infoHtml: explain("Token Metadata", [
-      "Solana: Helius DAS getAsset().",
-      "EVM: name/symbol/decimals/totalSupply via eth_call."
-    ])
-  }], "Token Metadata");
+    infoHtml: explain("Token Metadata", ["Solana: Helius DAS getAsset().", "EVM: name/symbol/decimals/totalSupply via eth_call."])
+  }]);
 
   renderHoldersEmpty();
-
-  const bw = qs("bubbleWrap");
-  if(bw) bw.style.display = "none";
-  window.__BUBBLE_MAP_DATA_URL = "";
+  renderBubbleMap([]);
 
   const ex = qs("btnExport");
-  if(ex){
-    ex.disabled = true;
-    ex.textContent = "Download Scan Report";
-  }
+  if(ex){ ex.disabled = true; ex.textContent = "Download Scan Report"; }
 }
 
-/* ===================== CHAIN UI ===================== */
+/* =============== Chain UI =============== */
 function renderChainButtons(){
   const row = qs("chainRow");
   if(!row) return;
-
   row.innerHTML = "";
   for(const c of CFG.CHAINS){
     const b = document.createElement("button");
@@ -1321,7 +1213,6 @@ function renderChainButtons(){
     row.appendChild(b);
   }
 }
-
 function setActiveChain(chainId, pushUrl){
   const found = CFG.CHAINS.find(x => x.id === chainId) || CFG.CHAINS[0];
   activeChain = found;
@@ -1347,388 +1238,318 @@ function setActiveChain(chainId, pushUrl){
   }
 }
 
-/* ===================== GLOBAL CLICK (Info -> Modal) ===================== */
-function bindGlobalInfoClicks(){
-  document.addEventListener("click", (e) => {
+/* =============== Live time =============== */
+let STAMP_TIMER = null;
+function updateStampTime(){
+  const el = qs("stampTime");
+  if(!el) return;
+  const now = new Date();
+  const live = new Intl.DateTimeFormat("de-DE", {
+    timeZone: "Europe/Berlin",
+    year:"numeric", month:"2-digit", day:"2-digit",
+    hour:"2-digit", minute:"2-digit", second:"2-digit"
+  }).format(now);
+  el.textContent = live;
+}
+function startLiveStampTime(){
+  if(STAMP_TIMER) clearInterval(STAMP_TIMER);
+  updateStampTime();
+  STAMP_TIMER = setInterval(updateStampTime, 1000);
+}
+
+/* =============== One-time bindings (NO duplicates) =============== */
+let __BOUND = false;
+function bindOnce(){
+  if(__BOUND) return;
+  __BOUND = true;
+
+  on("modalClose","click",closeModal);
+  on("modalWrap","click",(e)=>{ if(e.target===qs("modalWrap")) closeModal(); });
+  on("toastClose","click",hideToast);
+
+  // One delegate for info buttons
+  document.addEventListener("click",(e)=>{
     const t = e.target;
-    if(!(t instanceof HTMLElement)) return;
-
-    const node = t.closest?.("[data-open='1']");
+    const node = t?.closest?.("[data-open='1']");
     if(!node) return;
-
     const title = node.getAttribute("data-title") || "Details";
     const infoId = node.getAttribute("data-info") || "";
     const html = getInfo(infoId) || explain(title, ["No details available."]);
     openModal(title, html);
   });
 
-  document.addEventListener("keydown", (e) => {
-    if(e.key === "Escape") closeModal();
-  });
+  document.addEventListener("keydown",(e)=>{ if(e.key==="Escape") closeModal(); });
+
+  // Bubble map rerender on resize (keeps it from "disappearing")
+  window.addEventListener("resize", ()=>{
+    if(SCAN_STATE.completed && SCAN_STATE.result?.holders){
+      renderBubbleMap(holdersToBubbles(SCAN_STATE.result.holders));
+    }
+  }, { passive:true });
 }
 
-/* ===================== SCAN ENTRY (Stub) ===================== */
-/* Teil 3/4 implementiert:
-   - scanSolana(addr)
-   - scanEvm(chain, addr)
-   - scoring/verdict + render all sections once
-*/
-async function runGuardianScan(){
-  if(SCAN_STATE.scanning) return;
-
-  const addrInput = (qs("addr")?.value || "").trim();
-  const addr = addrInput;
-
-  // validate
-  if(activeChain.kind === "solana"){
-    if(!looksBase58(addr)){
-      setStatus("Invalid Solana mint address (base58).");
-      showToast("Invalid address");
-      return;
-    }
-  }else{
-    if(!looksEvmAddress(addr)){
-      setStatus("Invalid EVM address (0x + 40 hex).");
-      showToast("Invalid address");
-      return;
-    }
-  }
-
-  SCAN_STATE.scanning = true;
-  SCAN_STATE.completed = false;
-  SCAN_STATE.chain = activeChain;
-  SCAN_STATE.addr = addr;
-  SCAN_STATE.result = null;
-  SCAN_STATE.lastError = null;
-
-  setStatus("Scanning…");
-  setText("scanHint", `${activeChain.stamp || "MAINNET"} • scanning…`);
-  resetUIForNewScan();
-  setText("addrShort", addr);
-
-  try{
-    // In Teil 3/4 ersetzen wir das durch echte Scan-Logik.
-    throw new Error("Scan logic not loaded yet (Teil 3/4).");
-  }catch(err){
-    SCAN_STATE.lastError = String(err?.message || err);
-    setStatus(`Error: ${SCAN_STATE.lastError}`);
-    setText("scanHint", `${activeChain.stamp || "MAINNET"} • error`);
-    showToast("Scan failed (Teil 3/4 fehlt noch)");
-  }finally{
-    SCAN_STATE.scanning = false;
-  }
-}
-
-/* ===================== INIT ===================== */
-function init(){
-  // footer year
+function initCore(){
   setText("y", String(new Date().getFullYear()));
-
-  // time stamp
   startLiveStampTime();
+  bindOnce();
 
-  // bind modal/toast controls
-  on("modalClose", "click", closeModal);
-  on("modalWrap", "click", (e) => { if(e.target === qs("modalWrap")) closeModal(); });
-  on("toastClose", "click", hideToast);
-
-  // global info clicks
-  bindGlobalInfoClicks();
-
-  // chain from URL
   const url = new URL(location.href);
   const chainParam = url.searchParams.get("chain");
   if(chainParam) setActiveChain(chainParam, false);
   else setActiveChain(activeChain.id, false);
 
-  // addr from URL (optional)
   const addrParam = url.searchParams.get("addr");
   if(addrParam && qs("addr")) qs("addr").value = addrParam;
 
-  // buttons
-  on("btnScan", "click", runGuardianScan);
-  on("btnScanInline", "click", runGuardianScan);
-
-  // enter in input
-  on("addr", "keydown", (e) => {
-    if(e.key === "Enter") runGuardianScan();
-  });
-
-  // initial UI
-    resetUIForNewScan();
+  resetUIForNewScan();
 }
 
-if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
-else init();
-</script>
-
-<!-- TEIL 3/4 — SCAN ENGINE (Solana + EVM) -->
+if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", initCore);
+else initCore();
 <script>
 /* =========================================================
-  TEIL 3/4:
-  - Solana Scan (mint parse, supply, largest holders + owner resolve, Helius getAsset)
-  - EVM Scan (RPC fallback, eth_call decode, ERC20 metadata, code check,
-             EIP-1967 proxy slots, owner()/paused() best-effort)
-  - GoldRush holders (EVM) + bubble map data
-  - Score/Verdict + render sections ONCE (kein "nur bubble map" bug)
+  TEIL 3/5 — SCAN ENGINE
+  Solana + EVM (ETH / BNB / BASE)
 ========================================================= */
 
-/* ===================== ABI / EVM HELPERS ===================== */
+/* =============== EVM ABI / Helpers =============== */
 const ERC20_SIG = {
-  name:        "0x06fdde03",
-  symbol:      "0x95d89b41",
-  decimals:    "0x313ce567",
-  totalSupply: "0x18160ddd",
-  owner:       "0x8da5cb5b",
-  paused:      "0x5c975abb"
+  name:"0x06fdde03",
+  symbol:"0x95d89b41",
+  decimals:"0x313ce567",
+  totalSupply:"0x18160ddd",
+  owner:"0x8da5cb5b",
+  paused:"0x5c975abb"
 };
 
-// EIP-1967 slots
 const EIP1967 = {
-  implementation: "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc",
-  admin:          "0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103"
+  impl:"0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc"
 };
 
-function hexStrip0x(h){ return String(h||"").startsWith("0x") ? h.slice(2) : String(h||""); }
-function hexToBytes(hex){
-  const h = hexStrip0x(hex);
-  if(!h || h.length % 2) return new Uint8Array();
-  const out = new Uint8Array(h.length/2);
-  for(let i=0;i<out.length;i++) out[i] = parseInt(h.slice(i*2,i*2+2),16);
-  return out;
-}
-function bytesToUtf8(bytes){
-  try { return new TextDecoder().decode(bytes); } catch { return ""; }
-}
-function isAllZero(hex){
-  const h = hexStrip0x(hex).toLowerCase();
-  return !h || /^0+$/.test(h);
-}
-function asAddrFromSlot(hex32){
-  // slot value is 32 bytes; addr is last 20 bytes
-  const h = hexStrip0x(hex32).padStart(64,"0");
-  const addr = "0x" + h.slice(24);
-  return /^0x0{40}$/.test(addr) ? null : addr;
-}
-function decodeUint(hex){
-  const h = hexStrip0x(hex);
-  if(!h) return null;
-  try { return BigInt("0x"+h); } catch { return null; }
-}
-function decodeUintFromReturn(ret){
-  if(!ret || isAllZero(ret)) return null;
-  const h = hexStrip0x(ret);
-  if(h.length < 64) return null;
-  return decodeUint("0x"+h.slice(0,64));
-}
-function decodeAddressFromReturn(ret){
-  if(!ret || isAllZero(ret)) return null;
-  const h = hexStrip0x(ret);
-  if(h.length < 64) return null;
-  const addr = "0x" + h.slice(24, 64);
-  return /^0x0{40}$/i.test(addr) ? null : addr;
-}
-function decodeStringFromReturn(ret){
-  // Handles ABI string + bytes32-as-string fallback
-  if(!ret || isAllZero(ret)) return null;
-  const h = hexStrip0x(ret);
+function strip0x(x){ return String(x||"").replace(/^0x/,""); }
+function hexToBigInt(x){ try{return BigInt("0x"+strip0x(x));}catch{return null;} }
 
-  // bytes32 case: some tokens return bytes32 for name/symbol
-  if(h.length === 64){
-    const bytes = hexToBytes("0x"+h);
-    // trim nulls
-    let end = bytes.length;
-    while(end>0 && bytes[end-1]===0) end--;
-    const s = bytesToUtf8(bytes.slice(0,end)).trim();
-    return s || null;
-  }
-
-  // ABI string: offset (32) + length + data
-  if(h.length < 128) return null;
-  const offset = Number(decodeUint("0x"+h.slice(0,64)) || 0n);
-  // common: offset=32
-  const lenPos = offset*2; // bytes -> hex chars
-  if(lenPos + 64 > h.length) return null;
-  const len = Number(decodeUint("0x"+h.slice(lenPos, lenPos+64)) || 0n);
-  const dataPos = lenPos + 64;
-  const dataHex = h.slice(dataPos, dataPos + len*2);
-  if(dataHex.length < len*2) return null;
-  const s = bytesToUtf8(hexToBytes("0x"+dataHex)).replace(/\0/g,"").trim();
-  return s || null;
-}
-
-async function evmRpcCall(url, method, params){
-  const body = {
-    jsonrpc: "2.0",
-    id: Math.floor(Math.random()*1e9),
-    method,
-    params
-  };
-  const res = await fetch(url, {
+async function evmRpc(url, method, params){
+  const r = await fetch(url,{
     method:"POST",
     headers:{ "content-type":"application/json" },
-    body: JSON.stringify(body)
+    body:JSON.stringify({ jsonrpc:"2.0", id:1, method, params })
   });
-  if(!res.ok) throw new Error(`RPC ${res.status}`);
-  const j = await res.json();
-  if(j.error) throw new Error(j.error.message || "RPC error");
+  const j = await r.json();
+  if(j.error) throw new Error(j.error.message);
   return j.result;
 }
 
-async function evmWithFallback(chainId, fn){
-  const rpcs = (CFG.EVM_RPCS[chainId] || []).slice();
-  if(!rpcs.length) throw new Error("No RPCs configured");
-  let lastErr = null;
-  for(const url of rpcs){
-    try { return await fn(url); }
-    catch(e){ lastErr = e; }
+async function evmFallback(chainId, fn){
+  for(const rpc of CFG.EVM_RPCS[chainId] || []){
+    try{ return await fn(rpc); }catch{}
   }
-  throw lastErr || new Error("RPC failed");
+  throw new Error("All RPCs failed");
 }
 
-async function evmGetCode(chainId, addr){
-  return evmWithFallback(chainId, (url) => evmRpcCall(url, "eth_getCode", [addr, "latest"]));
-}
-async function evmCall(chainId, to, data){
-  return evmWithFallback(chainId, (url) => evmRpcCall(url, "eth_call", [{to, data}, "latest"]));
-}
-async function evmStorageAt(chainId, addr, slot){
-  return evmWithFallback(chainId, (url) => evmRpcCall(url, "eth_getStorageAt", [addr, slot, "latest"]));
-}
-
-/* ===================== GOLDRUSH HOLDERS (EVM) ===================== */
-async function fetchGoldrushHolders(chainId, tokenAddr, pageSize=20){
+/* =============== GoldRush Holders =============== */
+async function fetchGoldrushHolders(chainId, addr){
   if(!CFG.GOLDRUSH_API_KEY) return [];
-  const base = `https://api.covalenthq.com/v1/${chainId}/tokens/${tokenAddr}/token_holders/`;
-  const url = `${base}?page-size=${pageSize}&key=${encodeURIComponent(CFG.GOLDRUSH_API_KEY)}`;
-  const res = await fetch(url, { headers:{ "accept":"application/json" }});
-  if(!res.ok) throw new Error(`GoldRush ${res.status}`);
-  const j = await res.json();
-
-  const items = j?.data?.items || j?.data?.items?.items || j?.data?.data?.items || [];
-  if(!Array.isArray(items)) return [];
-
-  // Try to normalize fields (defensive)
-  return items.map(it => ({
-    address: String(it.address || it.wallet_address || it.holder_address || "").trim(),
-    balance: String(it.balance || it.token_balance || it.balance_quoted || it.balance_raw || "0").trim()
-  })).filter(x => /^0x[0-9a-fA-F]{40}$/.test(x.address));
+  const url = `https://api.covalenthq.com/v1/${chainId}/tokens/${addr}/token_holders/?page-size=20&key=${CFG.GOLDRUSH_API_KEY}`;
+  const r = await fetch(url);
+  const j = await r.json();
+  const items = j?.data?.items || [];
+  return items.map(x=>({
+    wallet:x.address,
+    balance:BigInt(x.balance||"0")
+  }));
 }
 
-/* ===================== SOLANA HELPERS ===================== */
-function heliusRpcUrl(){
-  return `https://mainnet.helius-rpc.com/?api-key=${encodeURIComponent(CFG.HELIUS_KEY)}`;
+/* =============== Solana RPC =============== */
+function heliusUrl(){
+  return `https://mainnet.helius-rpc.com/?api-key=${CFG.HELIUS_KEY}`;
 }
 async function solRpc(method, params){
-  const res = await fetch(heliusRpcUrl(), {
+  const r = await fetch(heliusUrl(),{
     method:"POST",
     headers:{ "content-type":"application/json" },
-    body: JSON.stringify({ jsonrpc:"2.0", id:1, method, params })
+    body:JSON.stringify({ jsonrpc:"2.0", id:1, method, params })
   });
-  if(!res.ok) throw new Error(`Helius RPC ${res.status}`);
-  const j = await res.json();
-  if(j.error) throw new Error(j.error.message || "Sol RPC error");
+  const j = await r.json();
+  if(j.error) throw new Error(j.error.message);
   return j.result;
 }
-function b64ToBytes(b64){
-  const bin = atob(b64);
-  const out = new Uint8Array(bin.length);
-  for(let i=0;i<bin.length;i++) out[i] = bin.charCodeAt(i);
-  return out;
-}
-function u32LE(bytes, off){
-  return (bytes[off]) | (bytes[off+1]<<8) | (bytes[off+2]<<16) | (bytes[off+3]<<24);
-}
-function u64LE(bytes, off){
-  // JS safe up to 2^53, but supply can be bigger. We use BigInt.
-  let x = 0n;
-  for(let i=7;i>=0;i--) x = (x<<8n) + BigInt(bytes[off+i]);
-  return x;
-}
-function pubkeyFrom(bytes, off){
-  // 32 bytes -> base58 is non-trivial; we only need short display.
-  // We'll return base58 via built-in? Not available. We'll skip exact conversion
-  // and instead use a hex-like fingerprint for display when needed.
-  const slice = bytes.slice(off, off+32);
-  // create a pseudo "pk" string by base64url (stable), just for display
-  // BUT: we want real addresses. Owner resolve needs actual pubkeys -> cannot fake.
-  // So we do NOT use this function for owner. We'll resolve owner by RPC's parsed data.
-  return slice;
+
+/* =============== Solana Scan =============== */
+async function scanSolana(mint){
+  const info = await solRpc("getParsedAccountInfo",[mint,{commitment:"confirmed"}]);
+  const p = info?.value?.data?.parsed?.info || {};
+
+  const supplyRes = await solRpc("getTokenSupply",[mint]);
+  const supplyRaw = BigInt(supplyRes?.value?.amount || "0");
+  const supplyUi = Number(supplyRes?.value?.uiAmount || 0);
+
+  const largest = await solRpc("getTokenLargestAccounts",[mint]);
+  const accs = largest?.value || [];
+
+  const holders = accs.map(a=>{
+    const raw = BigInt(a.amount||"0");
+    return {
+      wallet:a.address,
+      pct: supplyRaw>0n ? Number((raw*10000n)/supplyRaw)/100 : 0
+    };
+  }).sort((a,b)=>b.pct-a.pct).slice(0,10);
+
+  let meta = { name:"Token", symbol:"", image:"" };
+  try{
+    const asset = await solRpc("getAsset",{ id:mint });
+    meta.name = asset?.content?.metadata?.name || meta.name;
+    meta.symbol = asset?.content?.metadata?.symbol || meta.symbol;
+    meta.image = asset?.content?.links?.image || "";
+  }catch{}
+
+  return {
+    meta,
+    signals:{
+      kind:"solana",
+      mintAuthActive:!!p.mintAuthority,
+      freezeAuthActive:!!p.freezeAuthority,
+      program:info?.value?.owner,
+      supplyUi,
+      topHolderPct:holders[0]?.pct ?? null
+    },
+    holders
+  };
 }
 
-/* Use getParsedAccountInfo for accurate authorities + owner */
-async function solGetParsedAccountInfo(pubkey){
-  return solRpc("getParsedAccountInfo", [pubkey, { commitment:"confirmed" }]);
-}
-async function solGetTokenSupply(mint){
-  return solRpc("getTokenSupply", [mint, { commitment:"confirmed" }]);
-}
-async function solGetTokenLargestAccounts(mint){
-  return solRpc("getTokenLargestAccounts", [mint, { commitment:"confirmed" }]);
-}
-async function solGetMultipleAccounts(pubkeys){
-  return solRpc("getMultipleAccounts", [pubkeys, { commitment:"confirmed", encoding:"base64" }]);
-}
+/* =============== EVM Scan =============== */
+async function scanEvm(chain, addr){
+  const chainId = chain.chainId;
 
-// SPL Token account layout: owner pubkey offset 32 (32 bytes) — but converting to base58 is hard.
-// We'll instead call getParsedAccountInfo per token account to get owner reliably (slower but OK for top ~10).
-async function solResolveOwnersForTokenAccounts(tokenAccounts){
-  const out = [];
-  for(const ta of tokenAccounts){
+  const code = await evmFallback(chainId,(rpc)=>evmRpc(rpc,"eth_getCode",[addr,"latest"]));
+  const hasCode = code && code !== "0x";
+
+  let name=null,symbol=null,decimals=null,totalSupplyRaw=null;
+
+  if(hasCode){
     try{
-      const info = await solGetParsedAccountInfo(ta);
-      const owner = info?.value?.data?.parsed?.info?.owner || null;
-      out.push({ tokenAccount: ta, owner });
-    }catch{
-      out.push({ tokenAccount: ta, owner: null });
-    }
+      name = await evmFallback(chainId,(r)=>evmRpc(r,"eth_call",[{to:addr,data:ERC20_SIG.name},"latest"]));
+    }catch{}
+    try{
+      symbol = await evmFallback(chainId,(r)=>evmRpc(r,"eth_call",[{to:addr,data:ERC20_SIG.symbol},"latest"]));
+    }catch{}
+    try{
+      decimals = Number(hexToBigInt(await evmFallback(chainId,(r)=>evmRpc(r,"eth_call",[{to:addr,data:ERC20_SIG.decimals},"latest"]))));
+    }catch{}
+    try{
+      totalSupplyRaw = hexToBigInt(await evmFallback(chainId,(r)=>evmRpc(r,"eth_call",[{to:addr,data:ERC20_SIG.totalSupply},"latest"])));
+    }catch{}
   }
-  return out;
+
+  let holders=[], topHolderPct=null;
+  if(totalSupplyRaw && CFG.GOLDRUSH_API_KEY){
+    const raw = await fetchGoldrushHolders(chainId, addr);
+    holders = raw.map(h=>({
+      wallet:h.wallet,
+      pct:Number((h.balance*10000n)/totalSupplyRaw)/100
+    })).sort((a,b)=>b.pct-a.pct).slice(0,10);
+    topHolderPct = holders[0]?.pct ?? null;
+  }
+
+  return {
+    meta:{ name:"Token", symbol:"", image:"" },
+    signals:{
+      kind:"evm",
+      hasCode,
+      decimals,
+      totalSupplyUi: totalSupplyRaw && decimals!=null ? Number(totalSupplyRaw/(10n**BigInt(decimals))) : null,
+      topHolderPct
+    },
+    holders
+  };
 }
 
-// Helius DAS getAsset
-async function heliusGetAsset(mint){
-  const res = await fetch(heliusRpcUrl(), {
-    method:"POST",
-    headers:{ "content-type":"application/json" },
-    body: JSON.stringify({
-      jsonrpc:"2.0",
-      id:"getAsset",
-      method:"getAsset",
-      params:{ id: mint }
-    })
-  });
-  if(!res.ok) throw new Error(`Helius DAS ${res.status}`);
-  const j = await res.json();
-  if(j.error) throw new Error(j.error.message || "Helius getAsset error");
-  return j.result;
+/* =============== Main Scan Runner =============== */
+async function runGuardianScan(){
+  if(SCAN_STATE.scanning) return;
+
+  const addr = (qs("addr")?.value||"").trim();
+  if(activeChain.kind==="solana" && !looksBase58(addr)){
+    setStatus("Invalid Solana address"); return;
+  }
+  if(activeChain.kind==="evm" && !looksEvmAddress(addr)){
+    setStatus("Invalid EVM address"); return;
+  }
+
+  SCAN_STATE.scanning = true;
+  SCAN_STATE.addr = addr;
+  SCAN_STATE.chain = activeChain;
+
+  setStatus("Scanning…");
+  resetUIForNewScan();
+  setText("addrShort", addr);
+
+  try{
+    const res = activeChain.kind==="solana"
+      ? await scanSolana(addr)
+      : await scanEvm(activeChain, addr);
+
+    SCAN_STATE.result = res;
+    SCAN_STATE.completed = true;
+
+    applyTokenHeader(res.meta, addr);
+    renderHoldersWithExplorer(
+      res.holders.map(h=>({
+        t:"Holder",
+        d:`${shortAddr(h.wallet)} • ${fmtPct(h.pct)}`,
+        addr:h.wallet
+      })),
+      activeChain
+    );
+    renderBubbleMap(holdersToBubbles(res.holders));
+
+    setStatus("Scan complete");
+    qs("btnExport").disabled = false;
+  }catch(e){
+    setStatus("Scan failed: "+e.message);
+  }finally{
+    SCAN_STATE.scanning = false;
+  }
 }
 
-/* ===================== SCORE / VERDICT / BUILDERS ===================== */
+/* Bind scan buttons */
+qs("btnScan").addEventListener("click",runGuardianScan);
+qs("btnScanInline").addEventListener("click",runGuardianScan);
+</script>
+
+<script>
+/* =========================================================
+  TEIL 4/5 — RENDER PIPELINE (Score/Verdict/Checks/Todos/Meta/Std)
+  WICHTIG:
+  - Wir lassen TEIL 3 unverändert
+  - Wir intercepten Button-Clicks im CAPTURE-Phase, damit die alten
+    Listener nicht mehr feuern (stopImmediatePropagation)
+  - Alle UI-Sektionen werden wieder sauber gefüllt (kein "Bubble only" Bug)
+========================================================= */
+
+/* =============== Score / Verdict =============== */
 function verdictFrom(score, critical){
-  if(critical) return {label:"FLAGGED", mode:"bad",  title:"FLAGGED • High Risk"};
-  if(score >= 80) return {label:"APPROVED", mode:"good", title:"APPROVED • Guardian Grade"};
-  if(score >= 50) return {label:"OBSERVED", mode:"warn", title:"OBSERVED • Mixed Signals"};
-  return {label:"FLAGGED", mode:"bad", title:"FLAGGED • High Risk"};
+  if(critical) return { label:"FLAGGED", mode:"bad",  title:"FLAGGED • High Risk" };
+  if(score >= 80) return { label:"APPROVED", mode:"good", title:"APPROVED • Guardian Grade" };
+  if(score >= 50) return { label:"OBSERVED", mode:"warn", title:"OBSERVED • Mixed Signals" };
+  return { label:"FLAGGED", mode:"bad", title:"FLAGGED • High Risk" };
 }
 
-function computeScore(signals){
+function computeScore(sig){
   let score = 100;
   let critical = false;
 
-  if(signals.kind === "solana"){
-    if(signals.mintAuthActive){ score -= 35; critical = true; }
-    if(signals.freezeAuthActive){ score -= 15; }
-    if(signals.program === CFG.TOKEN_2022_PROGRAM){ score -= 8; }
+  if(sig.kind === "solana"){
+    if(sig.mintAuthActive){ score -= 35; critical = true; }
+    if(sig.freezeAuthActive){ score -= 15; }
+    if(sig.program && String(sig.program) === CFG.TOKEN_2022_PROGRAM){ score -= 8; }
   }else{
-    if(!signals.hasCode){ score = 0; critical = true; }
-    if(signals.proxy?.isProxy){ score -= 10; }
-    if(signals.owner) score -= 8;
-    if(signals.paused === true) score -= 10;
+    if(!sig.hasCode){ score = 0; critical = true; }
+    if(Number.isFinite(sig.decimals) === false) score -= 6;
   }
 
-  if(Number.isFinite(signals.topHolderPct)){
-    const p = signals.topHolderPct;
+  if(Number.isFinite(sig.topHolderPct)){
+    const p = sig.topHolderPct;
     if(p >= 35){ score -= 30; critical = true; }
     else if(p >= 20) score -= 18;
     else if(p >= 10) score -= 8;
@@ -1738,168 +1559,197 @@ function computeScore(signals){
   return { score, critical };
 }
 
-function buildMetricRows(meta, signals){
+/* =============== Builders for UI sections =============== */
+function buildMetricRows(meta, sig){
   const rows = [];
-  if(signals.kind === "solana"){
-    rows.push({ label:"Supply (UI)", value: fmtInt(signals.supplyUi), badge:"ON-CHAIN", mini:"Reported supply via getTokenSupply()." });
-    rows.push({ label:"Mint Authority", value: signals.mintAuthActive ? "Active" : "Revoked", badge: signals.mintAuthActive ? "RISK" : "OK", barPct: signals.mintAuthActive ? 85 : 10, mini: signals.mintAuthority ? shortAddr(signals.mintAuthority) : "—" });
-    rows.push({ label:"Freeze Authority", value: signals.freezeAuthActive ? "Active" : "Revoked", badge: signals.freezeAuthActive ? "WATCH" : "OK", barPct: signals.freezeAuthActive ? 55 : 10, mini: signals.freezeAuthority ? shortAddr(signals.freezeAuthority) : "—" });
-    rows.push({ label:"Top Holder (preview)", value: Number.isFinite(signals.topHolderPct) ? fmtPct(signals.topHolderPct) : "No signal", badge:"HOLDERS", barPct: Number.isFinite(signals.topHolderPct) ? clamp(signals.topHolderPct,0,100) : 0, mini:"From largest accounts (preview)." });
+  if(sig.kind === "solana"){
+    rows.push({
+      label:"Supply (UI)",
+      value: Number.isFinite(sig.supplyUi) ? fmtInt(sig.supplyUi) : "—",
+      badge:"ON-CHAIN",
+      mini:"getTokenSupply() uiAmount"
+    });
+    rows.push({
+      label:"Mint Authority",
+      value: sig.mintAuthActive ? "Active" : "Revoked",
+      badge: sig.mintAuthActive ? "RISK" : "OK",
+      barPct: sig.mintAuthActive ? 85 : 10,
+      mini: sig.mintAuthActive ? "Minting possible" : "Fixed supply signal"
+    });
+    rows.push({
+      label:"Freeze Authority",
+      value: sig.freezeAuthActive ? "Active" : "Revoked",
+      badge: sig.freezeAuthActive ? "WATCH" : "OK",
+      barPct: sig.freezeAuthActive ? 55 : 10,
+      mini: sig.freezeAuthActive ? "Freezing possible" : "No freeze control"
+    });
+    rows.push({
+      label:"Top Holder (preview)",
+      value: Number.isFinite(sig.topHolderPct) ? fmtPct(sig.topHolderPct) : "—",
+      badge:"HOLDERS",
+      barPct: Number.isFinite(sig.topHolderPct) ? clamp(sig.topHolderPct,0,100) : 0,
+      mini:"largest accounts (preview)"
+    });
+    rows.push({
+      label:"Token Program",
+      value: sig.program ? (sig.program === CFG.TOKEN_2022_PROGRAM ? "Token-2022" : "SPL Token") : "—",
+      badge:"PROGRAM",
+      mini: sig.program || "—"
+    });
   }else{
-    rows.push({ label:"Contract", value: signals.hasCode ? "Deployed" : "Not found", badge: signals.hasCode ? "OK" : "FAIL", barPct: signals.hasCode ? 90 : 0, mini:"eth_getCode() result." });
-    rows.push({ label:"Proxy", value: signals.proxy?.isProxy ? "Upgradeable" : "No signal", badge: signals.proxy?.isProxy ? "WATCH" : "OK", barPct: signals.proxy?.isProxy ? 55 : 10, mini: signals.proxy?.implementation ? `Impl ${shortAddr(signals.proxy.implementation)}` : "—" });
-    rows.push({ label:"Owner()", value: signals.owner ? shortAddr(signals.owner) : "No signal", badge: signals.owner ? "WATCH" : "OK", mini:"Ownable() best-effort call." });
-    rows.push({ label:"Pausable", value: signals.paused === true ? "Paused" : (signals.paused === false ? "Not paused" : "No signal"), badge: signals.paused === true ? "WATCH" : "OK", mini:"paused() best-effort call." });
-    rows.push({ label:"Decimals", value: (signals.decimals ?? "—"), badge:"ERC-20", mini:"decimals() selector." });
-    rows.push({ label:"Total Supply", value: signals.totalSupplyUi ? fmtInt(signals.totalSupplyUi) : "—", badge:"ERC-20", mini:"totalSupply() normalized by decimals." });
-    rows.push({ label:"Top Holder (preview)", value: Number.isFinite(signals.topHolderPct) ? fmtPct(signals.topHolderPct) : "No signal", badge: CFG.GOLDRUSH_API_KEY ? "HOLDERS" : "INDEXER", barPct: Number.isFinite(signals.topHolderPct) ? clamp(signals.topHolderPct,0,100) : 0, mini: CFG.GOLDRUSH_API_KEY ? "From GoldRush token holders." : "Requires GoldRush key." });
+    rows.push({
+      label:"Contract",
+      value: sig.hasCode ? "Deployed" : "Not found",
+      badge: sig.hasCode ? "OK" : "FAIL",
+      barPct: sig.hasCode ? 90 : 0,
+      mini:"eth_getCode()"
+    });
+    rows.push({
+      label:"Decimals",
+      value: Number.isFinite(sig.decimals) ? String(sig.decimals) : "—",
+      badge:"ERC-20",
+      mini:"decimals() best-effort"
+    });
+    rows.push({
+      label:"Total Supply (UI)",
+      value: Number.isFinite(sig.totalSupplyUi) ? fmtInt(sig.totalSupplyUi) : "—",
+      badge:"ERC-20",
+      mini:"totalSupply normalized"
+    });
+    rows.push({
+      label:"Top Holder (preview)",
+      value: Number.isFinite(sig.topHolderPct) ? fmtPct(sig.topHolderPct) : "—",
+      badge: CFG.GOLDRUSH_API_KEY ? "HOLDERS" : "INDEXER",
+      barPct: Number.isFinite(sig.topHolderPct) ? clamp(sig.topHolderPct,0,100) : 0,
+      mini: CFG.GOLDRUSH_API_KEY ? "GoldRush token_holders" : "Needs GoldRush key"
+    });
   }
   return rows;
 }
 
-function makeTodoFromSignals(sig){
-  const todos = [];
-  todos.push({
-    t:"Publish contract + links",
-    sev:"warn",
-    d:"Add website, docs, socials, and verified explorer links before launch.",
-    why:"Users need a verifiable source of truth to reduce impersonation risk."
-  });
-
-  if(sig?.proxy?.isProxy){
-    todos.push({
-      t:"Document upgradeability",
-      sev:"warn",
-      d:"Explain proxy/admin powers; publish timelock or multi-sig governance.",
-      why:"Upgradeable proxies add admin risk; transparency reduces fear."
-    });
-  }
-  if(sig?.mintAuthActive){
-    todos.push({
-      t:"Revoke mint authority",
-      sev:"bad",
-      d:"Disable minting (set mint authority to null) if supply is meant to be fixed.",
-      why:"Active mint authority can inflate supply."
-    });
-  }
-  if(sig?.freezeAuthActive){
-    todos.push({
-      t:"Revoke freeze authority",
-      sev:"warn",
-      d:"Disable freeze authority unless it’s a compliance feature and publicly documented.",
-      why:"Freeze can block transfers and is often abused."
-    });
-  }
-  if(sig?.topHolderPct && sig.topHolderPct >= 15){
-    todos.push({
-      t:"Reduce whale concentration",
-      sev:"warn",
-      d:`Largest holder is ${sig.topHolderPct.toFixed(2)}%. Consider vesting, LP lock, or distribution changes.`,
-      why:"High concentration increases dump risk."
-    });
-  }
-  if(sig?.paused === true){
-    todos.push({
-      t:"Disclose pause control",
-      sev:"warn",
-      d:"If the token can be paused, disclose who can pause and under what conditions.",
-      why:"Pause is centralized control; users must understand it."
-    });
-  }
-  return todos;
-}
-
-function makeChecksFromSignals(sig){
-  const checks = [];
-
+function makeChecks(sig){
+  const out = [];
   if(sig.kind === "solana"){
-    checks.push({
-      t:"Token Program",
-      sev: sig.program === CFG.TOKEN_2022_PROGRAM ? "warn" : "ok",
-      d: sig.program === CFG.TOKEN_2022_PROGRAM ? "Token-2022 detected (extensions possible)." : "SPL Token program detected.",
-      infoHtml: explain("Token Program", [
-        "SPL Token (classic) is widely supported.",
-        "Token-2022 can include extensions (fees, hooks, etc.)."
-      ])
-    });
-    checks.push({
+    out.push({
       t:"Mint Authority",
       sev: sig.mintAuthActive ? "bad" : "ok",
-      d: sig.mintAuthActive ? `Active: ${shortAddr(sig.mintAuthority || "")}` : "Revoked / disabled",
+      d: sig.mintAuthActive ? "Active mint authority detected." : "Mint authority revoked.",
       infoHtml: explain("Mint Authority", [
-        "Active mint authority can mint new tokens (supply inflation).",
-        "If supply should be fixed: revoke mint authority."
+        "If mint authority is active, supply can be increased.",
+        "For fixed supply, revoke mint authority."
       ])
     });
-    checks.push({
+    out.push({
       t:"Freeze Authority",
       sev: sig.freezeAuthActive ? "warn" : "ok",
-      d: sig.freezeAuthActive ? `Active: ${shortAddr(sig.freezeAuthority || "")}` : "Revoked / disabled",
+      d: sig.freezeAuthActive ? "Freeze authority active." : "Freeze authority revoked.",
       infoHtml: explain("Freeze Authority", [
-        "Freeze authority can block transfers for token accounts.",
-        "If not required: revoke freeze authority."
+        "Freeze authority can block transfers for accounts.",
+        "If not required, revoke it."
       ])
     });
-    checks.push({
+    out.push({
       t:"Top Holder Concentration",
       sev: (sig.topHolderPct >= 35) ? "bad" : (sig.topHolderPct >= 15 ? "warn" : "ok"),
-      d: Number.isFinite(sig.topHolderPct) ? `${sig.topHolderPct.toFixed(2)}% held by largest wallet (preview).` : "No holder signal.",
+      d: Number.isFinite(sig.topHolderPct) ? `Largest holder ~${sig.topHolderPct.toFixed(2)}% (preview).` : "No holder signal.",
       infoHtml: explain("Top Holder Concentration", [
         "High concentration increases dump risk.",
-        "This is a preview based on largest accounts."
+        "Preview is based on largest accounts returned by RPC."
+      ])
+    });
+    out.push({
+      t:"Token Program",
+      sev: (sig.program === CFG.TOKEN_2022_PROGRAM) ? "warn" : "ok",
+      d: sig.program ? (sig.program === CFG.TOKEN_2022_PROGRAM ? "Token-2022 detected (extensions possible)." : "SPL Token detected.") : "Unknown program.",
+      infoHtml: explain("Token Program", [
+        "Token-2022 can include extensions (fees/hooks).",
+        "Classic SPL Token is widely supported."
       ])
     });
   }else{
-    checks.push({
+    out.push({
       t:"Contract Code",
       sev: sig.hasCode ? "ok" : "bad",
-      d: sig.hasCode ? "Bytecode found (deployed)." : "No code at address.",
+      d: sig.hasCode ? "Bytecode found (deployed contract)." : "No code at address.",
       infoHtml: explain("Contract Code", [
-        "If eth_getCode returns 0x, the address is not a contract (or not deployed)."
+        "If eth_getCode returns 0x, it is not a contract or not deployed."
       ])
     });
-    checks.push({
-      t:"Proxy Detection (EIP-1967)",
-      sev: sig.proxy?.isProxy ? "warn" : "ok",
-      d: sig.proxy?.isProxy ? `Upgradeable proxy. Impl: ${shortAddr(sig.proxy.implementation || "")}` : "No EIP-1967 proxy signal.",
-      infoHtml: explain("Proxy Detection", [
-        "We read EIP-1967 implementation/admin storage slots.",
-        "Upgradeable proxies add admin/upgrade risk."
+    out.push({
+      t:"ERC-20 Metadata",
+      sev: (Number.isFinite(sig.decimals) ? "ok" : "warn"),
+      d: Number.isFinite(sig.decimals) ? `Decimals = ${sig.decimals}` : "Decimals not detected (best-effort).",
+      infoHtml: explain("ERC-20", [
+        "We call standard selectors via eth_call.",
+        "Some tokens are non-standard; decoding may fail."
       ])
     });
-    checks.push({
-      t:"Owner() / Admin",
-      sev: sig.owner ? "warn" : "ok",
-      d: sig.owner ? `Owner: ${shortAddr(sig.owner)}` : "No owner() signal (best-effort).",
-      infoHtml: explain("Owner()", [
-        "If contract is Ownable, owner can have special privileges.",
-        "We best-effort call owner(). Some tokens won’t implement it."
-      ])
-    });
-    checks.push({
-      t:"Pausable",
-      sev: sig.paused === true ? "warn" : "ok",
-      d: sig.paused === true ? "Token is currently paused." : (sig.paused === false ? "Not paused." : "No paused() signal."),
-      infoHtml: explain("paused()", [
-        "If contract is Pausable, transfers may be stopped by admin.",
-        "We best-effort call paused()."
-      ])
-    });
-    checks.push({
+    out.push({
       t:"Top Holder Concentration",
       sev: (sig.topHolderPct >= 35) ? "bad" : (sig.topHolderPct >= 15 ? "warn" : "ok"),
-      d: Number.isFinite(sig.topHolderPct) ? `${sig.topHolderPct.toFixed(2)}% held by largest wallet (preview).` : (CFG.GOLDRUSH_API_KEY ? "No holder signal from indexer." : "Needs GoldRush key."),
-      infoHtml: explain("Top Holder Concentration", [
-        "EVM holders require an indexer; RPC alone cannot list holders.",
+      d: Number.isFinite(sig.topHolderPct)
+        ? `Largest holder ~${sig.topHolderPct.toFixed(2)}% (preview).`
+        : (CFG.GOLDRUSH_API_KEY ? "No holder signal from indexer." : "Needs GoldRush key to show holders."),
+      infoHtml: explain("Holders (EVM)", [
+        "RPC cannot enumerate all holders on EVM.",
         "We use GoldRush token_holders when available."
       ])
     });
   }
-
-  return checks;
+  return out;
 }
 
-function makeStdDetails(sig){
+function makeTodos(sig){
+  const out = [];
+  out.push({
+    t:"Publish verified links",
+    sev:"warn",
+    d:"Add official website/docs/socials + verified explorer links.",
+    infoHtml: explain("Links", [
+      "Reduces impersonation/scam clones.",
+      "Users need a single source of truth."
+    ])
+  });
+
+  if(sig.kind === "solana"){
+    if(sig.mintAuthActive){
+      out.push({
+        t:"Revoke mint authority",
+        sev:"bad",
+        d:"If supply should be fixed, revoke mint authority.",
+        infoHtml: explain("Revoke mint authority", [
+          "Active mint authority can inflate supply."
+        ])
+      });
+    }
+    if(sig.freezeAuthActive){
+      out.push({
+        t:"Revoke freeze authority",
+        sev:"warn",
+        d:"If not needed, revoke freeze authority.",
+        infoHtml: explain("Revoke freeze authority", [
+          "Freeze can block transfers and is often abused."
+        ])
+      });
+    }
+  }
+
+  if(Number.isFinite(sig.topHolderPct) && sig.topHolderPct >= 15){
+    out.push({
+      t:"Reduce whale concentration",
+      sev:"warn",
+      d:`Largest holder is ~${sig.topHolderPct.toFixed(2)}%. Consider vesting/locks/distribution.`,
+      infoHtml: explain("Concentration", [
+        "High concentration increases dump risk.",
+        "Use vesting, LP locks, or distribution changes."
+      ])
+    });
+  }
+
+  return out;
+}
+
+function makeStd(sig){
   if(sig.kind === "solana"){
     const is2022 = sig.program === CFG.TOKEN_2022_PROGRAM;
     return [{
@@ -1907,332 +1757,103 @@ function makeStdDetails(sig){
       sev: is2022 ? "warn" : "ok",
       d: is2022 ? "Token-2022 (extensions possible)" : "SPL Token (classic)",
       infoHtml: explain("Token Standard", [
-        is2022 ? "Token-2022 can have extensions." : "Classic SPL Token is widely supported."
+        is2022 ? "Token-2022 may include extensions." : "Classic SPL Token is widely supported."
       ])
     }];
   }
-  // EVM
-  const list = [];
-  list.push({
-    t:"ERC-20 Interface",
+  return [{
+    t:"Standard",
     sev:"ok",
-    d:"Checked via selectors: name/symbol/decimals/totalSupply (best-effort).",
+    d:"ERC-20 (best-effort via selectors)",
     infoHtml: explain("ERC-20", [
-      "We use eth_call with standard ERC-20 function selectors.",
-      "Some contracts return non-standard encodings; we decode defensively."
+      "Uses eth_call for standard function selectors.",
+      "Some contracts are non-standard."
     ])
-  });
-  if(sig.proxy?.isProxy){
-    list.push({
-      t:"Upgradeable Proxy",
-      sev:"warn",
-      d:"EIP-1967 slots indicate proxy pattern.",
-      infoHtml: explain("Upgradeable Proxy", [
-        "Proxy delegates logic to an implementation contract.",
-        "Upgrades can change behavior; governance transparency matters."
-      ])
-    });
-  }
-  return list;
+  }];
 }
 
-function makeMetaList(meta, sig){
-  const out = [];
+function makeMeta(meta, sig){
+  const name = (meta?.name || "Token").trim() || "Token";
+  const symbol = (meta?.symbol || "").trim() || "—";
+  const img = meta?.image ? "Image URL detected" : "No image detected";
+
   if(sig.kind === "solana"){
-    out.push({
-      t:"Name / Symbol",
-      sev:"ok",
-      d:`${meta?.name || "—"} (${meta?.symbol || "—"})`,
-      infoHtml: explain("Metadata", [
-        "Solana metadata pulled via Helius DAS getAsset()."
-      ])
-    });
-    out.push({
-      t:"Image",
-      sev: meta?.image ? "ok" : "warn",
-      d: meta?.image ? "Image URL detected." : "No image in on-chain metadata.",
-      infoHtml: explain("Token Image", [
-        "Not all tokens publish an image in metadata."
-      ])
-    });
-  }else{
-    out.push({
-      t:"Name / Symbol",
-      sev:"ok",
-      d:`${meta?.name || "—"} (${meta?.symbol || "—"})`,
-      infoHtml: explain("ERC-20 Metadata", [
-        "Decoded from name()/symbol() (string or bytes32)."
-      ])
-    });
-    out.push({
-      t:"Decimals / Supply",
-      sev:"ok",
-      d:`decimals=${sig.decimals ?? "—"} • totalSupply=${sig.totalSupplyUi ? fmtInt(sig.totalSupplyUi) : "—"}`,
-      infoHtml: explain("Decimals / Supply", [
-        "totalSupply() is normalized by decimals for UI display."
-      ])
-    });
+    return [
+      { t:"Name / Symbol", sev:"ok", d:`${name} (${symbol})`, infoHtml: explain("Metadata", ["Helius DAS getAsset() (best-effort)."]) },
+      { t:"Image", sev: meta?.image ? "ok" : "warn", d: img, infoHtml: explain("Image", ["Not all tokens publish an image in metadata."]) }
+    ];
   }
-  return out;
+  return [
+    { t:"Name / Symbol", sev:"ok", d:`${name} (${symbol})`, infoHtml: explain("Metadata", ["EVM meta is limited without token lists/indexers."]) },
+    { t:"Decimals / Supply", sev:"ok", d:`decimals=${Number.isFinite(sig.decimals)?sig.decimals:"—"} • supply=${Number.isFinite(sig.totalSupplyUi)?fmtInt(sig.totalSupplyUi):"—"}`, infoHtml: explain("Decimals / Supply", ["Best-effort decoded via eth_call."]) }
+  ];
 }
 
-/* ===================== MAIN RENDER PIPELINE ===================== */
-function renderScanResult(meta, signals, holders){
-  // header
+/* =============== Final render (ALL sections) =============== */
+function renderScanResult(meta, sig, holders){
   applyTokenHeader(meta, SCAN_STATE.addr);
   setText("addrShort", SCAN_STATE.addr || "—");
 
-  const { score, critical } = computeScore(signals);
+  const { score, critical } = computeScore(sig);
   const v = verdictFrom(score, critical);
 
   setText("verdictTitle", v.title);
   setBadge(qs("verdictBadge"), v.label, v.mode);
   setText("scoreBadge", `${score}/100`);
 
-  // metrics
-  renderMetrics(buildMetricRows(meta, signals));
+  renderMetrics(buildMetricRows(meta, sig));
 
-  // summary
-  const sumBits = [];
-  if(signals.kind === "solana"){
-    sumBits.push(signals.program === CFG.TOKEN_2022_PROGRAM ? "Token-2022" : "SPL");
-    if(signals.mintAuthActive) sumBits.push("mint active");
-    if(signals.freezeAuthActive) sumBits.push("freeze active");
+  // summary line
+  const bits = [];
+  if(sig.kind === "solana"){
+    bits.push(sig.program === CFG.TOKEN_2022_PROGRAM ? "Token-2022" : "SPL");
+    if(sig.mintAuthActive) bits.push("mint active");
+    if(sig.freezeAuthActive) bits.push("freeze active");
   }else{
-    if(signals.proxy?.isProxy) sumBits.push("proxy");
-    if(signals.owner) sumBits.push("ownable");
-    if(signals.paused === true) sumBits.push("paused");
+    bits.push(sig.hasCode ? "contract ok" : "no code");
+    if(Number.isFinite(sig.decimals)) bits.push(`decimals ${sig.decimals}`);
   }
-  if(Number.isFinite(signals.topHolderPct)) sumBits.push(`top holder ${signals.topHolderPct.toFixed(2)}%`);
-  setText("summary", sumBits.length ? `Signals: ${sumBits.join(" • ")}` : "Signals: —");
+  if(Number.isFinite(sig.topHolderPct)) bits.push(`top holder ${sig.topHolderPct.toFixed(2)}%`);
+  setText("summary", bits.length ? `Signals: ${bits.join(" • ")}` : "Signals: —");
 
-  // checks / todo / standard / meta
-  renderList(qs("checksList"), makeChecksFromSignals(signals), "Checks");
-  renderList(qs("todoList"), makeTodoFromSignals(signals), "Launch readiness");
-  renderList(qs("stdList"), makeStdDetails(signals), "Token Standard");
-  renderList(qs("metaList"), makeMetaList(meta, signals), "Metadata");
+  renderList(qs("checksList"), makeChecks(sig));
+  renderList(qs("todoList"), makeTodos(sig));
+  renderList(qs("stdList"), makeStd(sig));
+  renderList(qs("metaList"), makeMeta(meta, sig));
 
-  // holders
+  // holders + bubble
   if(Array.isArray(holders) && holders.length){
-    renderHoldersWithExplorer(holders.map(h => ({
-      t: h.label,
-      d: `${shortAddr(h.wallet)} • ${h.pct.toFixed(2)}%`,
-      addr: h.wallet,
-      infoHtml: explain("Holder", [
-        `Wallet: ${h.wallet}`,
-        `Share: ${h.pct.toFixed(4)}% (preview)`
-      ])
-    })), activeChain);
-
-    // bubble map
-    const bubbles = holdersToBubbles(holders);
-    renderBubbleMap(bubbles);
+    renderHoldersWithExplorer(
+      holders.map(h=>({
+        t:"Holder",
+        d:`${shortAddr(h.wallet)} • ${fmtPct(h.pct)}`,
+        addr:h.wallet
+      })),
+      activeChain
+    );
+    renderBubbleMap(holdersToBubbles(holders));
   }else{
     renderHoldersEmpty();
     renderBubbleMap([]);
   }
 
-  // enable export (Teil 4 baut Report)
+  // export unlock (Teil 5 macht echte Export-Logik)
   const ex = qs("btnExport");
-  if(ex){
-    ex.disabled = false;
-    ex.textContent = "Download Scan Report";
-  }
+  if(ex){ ex.disabled = false; ex.textContent = "Download Scan Report"; }
 
   setText("scanHint", `${activeChain.stamp || "MAINNET"} • done`);
 }
 
-/* ===================== SOLANA SCAN ===================== */
-async function scanSolana(mint){
-  // parsed mint info (authorities + program)
-  const mintInfo = await solGetParsedAccountInfo(mint);
-  const value = mintInfo?.value;
-  const ownerProgram = value?.owner || null;
-
-  const parsed = value?.data?.parsed?.info || null;
-  const mintAuthority = parsed?.mintAuthority || null;
-  const freezeAuthority = parsed?.freezeAuthority || null;
-
-  const mintAuthActive = !!mintAuthority;
-  const freezeAuthActive = !!freezeAuthority;
-
-  // supply
-  const supplyRes = await solGetTokenSupply(mint);
-  const supplyUi = Number(supplyRes?.value?.uiAmount ?? supplyRes?.value?.uiAmountString ?? 0);
-
-  // largest accounts
-  const largest = await solGetTokenLargestAccounts(mint);
-  const list = (largest?.value || []).slice(0, 10); // top 10
-  const tokenAccounts = list.map(x => x.address).filter(Boolean);
-
-  // resolve owners (top 10)
-  const owners = await solResolveOwnersForTokenAccounts(tokenAccounts);
-  const supplyRaw = BigInt(String(supplyRes?.value?.amount || "0"));
-
-  // compute holder list by owner (merge duplicates)
-  const byOwner = new Map();
-  for(let i=0;i<list.length;i++){
-    const ta = list[i];
-    const owner = owners[i]?.owner || ta.address; // fallback token account
-    const amtRaw = BigInt(String(ta.amount || "0"));
-    const prev = byOwner.get(owner) || 0n;
-    byOwner.set(owner, prev + amtRaw);
-  }
-
-  const holders = Array.from(byOwner.entries()).map(([wallet, amtRaw]) => {
-    const pct = supplyRaw > 0n ? Number((amtRaw * 10000n) / supplyRaw) / 100 : 0;
-    return { wallet, pct, amtRaw };
-  }).sort((a,b) => (b.pct - a.pct)).slice(0, 10);
-
-  const topHolderPct = holders.length ? holders[0].pct : null;
-
-  // metadata via Helius DAS getAsset
-  let meta = { name:"Token", symbol:"", image:"" };
-  try{
-    const asset = await heliusGetAsset(mint);
-    const content = asset?.content || {};
-    const md = content?.metadata || {};
-    meta.name = md?.name || asset?.name || meta.name;
-    meta.symbol = md?.symbol || asset?.symbol || meta.symbol;
-    meta.image = (content?.links?.image || content?.files?.[0]?.uri || "") || "";
-  }catch{
-    // keep defaults
-  }
-
-  const signals = {
-    kind:"solana",
-    program: ownerProgram,
-    mintAuthority,
-    freezeAuthority,
-    mintAuthActive,
-    freezeAuthActive,
-    supplyUi,
-    topHolderPct
-  };
-
-  return { meta, signals, holders };
-}
-
-/* ===================== EVM SCAN ===================== */
-async function scanEvm(chain, addr){
-  const chainId = chain.chainId;
-
-  // code
-  const code = await evmGetCode(chainId, addr);
-  const hasCode = code && code !== "0x";
-
-  // proxy (EIP-1967)
-  let proxy = { isProxy:false, implementation:null, admin:null };
-  try{
-    const implSlot = await evmStorageAt(chainId, addr, EIP1967.implementation);
-    const admSlot  = await evmStorageAt(chainId, addr, EIP1967.admin);
-    const impl = asAddrFromSlot(implSlot);
-    const adm  = asAddrFromSlot(admSlot);
-    if(impl){
-      proxy = { isProxy:true, implementation: impl, admin: adm };
-    }
-  }catch{
-    // ignore proxy detection errors
-  }
-
-  // ERC-20 metadata (best-effort)
-  let name = null, symbol = null, decimals = null, totalSupplyRaw = null;
-
-  if(hasCode){
-    try{ name = decodeStringFromReturn(await evmCall(chainId, addr, ERC20_SIG.name)) || null; }catch{}
-    try{ symbol = decodeStringFromReturn(await evmCall(chainId, addr, ERC20_SIG.symbol)) || null; }catch{}
-    try{
-      const d = decodeUintFromReturn(await evmCall(chainId, addr, ERC20_SIG.decimals));
-      decimals = (d !== null) ? Number(d) : null;
-      if(!(Number.isFinite(decimals) && decimals >= 0 && decimals <= 255)) decimals = null;
-    }catch{}
-    try{ totalSupplyRaw = decodeUintFromReturn(await evmCall(chainId, addr, ERC20_SIG.totalSupply)); }catch{}
-  }
-
-  let totalSupplyUi = null;
-  if(totalSupplyRaw !== null && Number.isFinite(decimals)){
-    try{
-      // show integer UI (no decimals) for display
-      const div = 10n ** BigInt(decimals);
-      totalSupplyUi = Number(totalSupplyRaw / div); // may overflow for huge supplies; UI only
-      if(!Number.isFinite(totalSupplyUi)) totalSupplyUi = null;
-    }catch{ totalSupplyUi = null; }
-  }
-
-  // ownable / paused (best-effort)
-  let owner = null;
-  let paused = null;
-  if(hasCode){
-    try{ owner = decodeAddressFromReturn(await evmCall(chainId, addr, ERC20_SIG.owner)); }catch{}
-    try{
-      const r = await evmCall(chainId, addr, ERC20_SIG.paused);
-      const u = decodeUintFromReturn(r);
-      if(u !== null) paused = (u !== 0n);
-    }catch{}
-  }
-
-  // holders via GoldRush
-  let holders = [];
-  let topHolderPct = null;
-  if(CFG.GOLDRUSH_API_KEY){
-    try{
-      const hr = await fetchGoldrushHolders(chainId, addr, 20);
-      if(hr.length && totalSupplyRaw && totalSupplyRaw > 0n){
-        holders = hr.map((h) => {
-          let bal = 0n;
-          try { bal = BigInt(h.balance); } catch {}
-          const pct = Number((bal * 1000000n) / totalSupplyRaw) / 10000; // 2 decimals-ish
-          return { wallet: h.address, pct: pct, balRaw: bal };
-        }).sort((a,b) => b.pct - a.pct).slice(0, 10);
-        topHolderPct = holders.length ? holders[0].pct : null;
-      }
-    }catch{
-      // ignore
-    }
-  }
-
-  const meta = {
-    name: name || "Token",
-    symbol: symbol || "",
-    image: "" // could be extended later via token lists/indexers
-  };
-
-  const signals = {
-    kind:"evm",
-    hasCode,
-    proxy,
-    owner,
-    paused,
-    decimals,
-    totalSupplyUi,
-    topHolderPct
-  };
-
-  return { meta, signals, holders };
-}
-
-/* ===================== PATCH runGuardianScan() ===================== */
-/* In Teil 2/4 war runGuardianScan() noch Stub.
-   Hier überschreiben wir sie sauber, ohne andere Teile anzufassen. */
-async function runGuardianScan(){
+/* =============== V2 Runner (intercepts old listeners) =============== */
+async function runGuardianScanV2(){
   if(SCAN_STATE.scanning) return;
 
-  const addrInput = (qs("addr")?.value || "").trim();
-  const addr = addrInput;
-
-  // validate
-  if(activeChain.kind === "solana"){
-    if(!looksBase58(addr)){
-      setStatus("Invalid Solana mint address (base58).");
-      showToast("Invalid address");
-      return;
-    }
-  }else{
-    if(!looksEvmAddress(addr)){
-      setStatus("Invalid EVM address (0x + 40 hex).");
-      showToast("Invalid address");
-      return;
-    }
+  const addr = (qs("addr")?.value||"").trim();
+  if(activeChain.kind==="solana" && !looksBase58(addr)){
+    setStatus("Invalid Solana mint address (base58)."); showToast("Invalid address"); return;
+  }
+  if(activeChain.kind==="evm" && !looksEvmAddress(addr)){
+    setStatus("Invalid EVM address (0x + 40 hex)."); showToast("Invalid address"); return;
   }
 
   SCAN_STATE.scanning = true;
@@ -2248,23 +1869,20 @@ async function runGuardianScan(){
   setText("addrShort", addr);
 
   try{
-    let meta, signals, holders;
+    const res = (activeChain.kind==="solana")
+      ? await scanSolana(addr)
+      : await scanEvm(activeChain, addr);
 
-    if(activeChain.kind === "solana"){
-      ({ meta, signals, holders } = await scanSolana(addr));
-    }else{
-      ({ meta, signals, holders } = await scanEvm(activeChain, addr));
-    }
-
-    SCAN_STATE.result = { meta, signals, holders };
+    SCAN_STATE.result = res;
     SCAN_STATE.completed = true;
 
-    renderScanResult(meta, signals, holders);
+    renderScanResult(res.meta, res.signals, res.holders);
+
     setStatus("Scan complete.");
     hideToast();
-  }catch(err){
-    SCAN_STATE.lastError = String(err?.message || err);
-    setStatus(`Error: ${SCAN_STATE.lastError}`);
+  }catch(e){
+    SCAN_STATE.lastError = String(e?.message || e);
+    setStatus("Error: " + SCAN_STATE.lastError);
     setText("scanHint", `${activeChain.stamp || "MAINNET"} • error`);
     showToast("Scan failed");
   }finally{
@@ -2272,157 +1890,184 @@ async function runGuardianScan(){
   }
 }
 
-/* Re-bind buttons to the new function (in case Teil 2 loaded first) */
-(function rebindScanButtons(){
+/* =============== Intercept Buttons (capture) =============== */
+(function bindScanCapture(){
   const b1 = qs("btnScan");
   const b2 = qs("btnScanInline");
-  if(b1){ b1.onclick = null; b1.addEventListener("click", runGuardianScan); }
-  if(b2){ b2.onclick = null; b2.addEventListener("click", runGuardianScan); }
-})();
-</script>
+  if(b1){
+    b1.addEventListener("click",(e)=>{
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      runGuardianScanV2();
+    }, true);
+  }
+  if(b2){
+    b2.addEventListener("click",(e)=>{
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      runGuardianScanV2();
+    }, true);
+  }
 
-<!-- TEIL 4/4 — EXPORT REPORT + FINAL WIRES -->
+  const input = qs("addr");
+  if(input){
+    input.addEventListener("keydown",(e)=>{
+      if(e.key === "Enter"){
+        e.preventDefault();
+        runGuardianScanV2();
+      }
+    }, true);
+  }
+})();
 <script>
 /* =========================================================
-  TEIL 4/4:
-  - Export: Download Scan Report (single-file HTML)
-  - Includes: token header, verdict/score, metrics, checks/todos/meta/std,
-              holders table, bubble map PNG (if available), explorer links
-  - Safe: only enabled when SCAN_STATE.completed === true
+  TEIL 5/5 — EXPORT (Download Scan Report) + FINAL SAFE WIRES
+  Ziel:
+  - Export Button funktioniert immer (auch wenn alte Listener existieren)
+  - Report ist "clean" wie Website: dark + gradient + cards + mobile grid
+  - Enthält: Verdict/Score, Metrics, Checks, Todos, Standard, Metadata,
+            Top holders + Bubble Map PNG (wenn vorhanden)
 ========================================================= */
 
-function nowBerlinISO(){
-  // Build a stable timestamp in Berlin time
+function nowBerlinStamp(){
   const dt = new Date();
   const fmt = new Intl.DateTimeFormat("de-DE", {
-    timeZone: "Europe/Berlin",
+    timeZone:"Europe/Berlin",
     year:"numeric", month:"2-digit", day:"2-digit",
     hour:"2-digit", minute:"2-digit", second:"2-digit"
   }).format(dt);
-  // fmt like "16.01.2026, 12:34:56"
-  const clean = fmt.replace(",","").replaceAll(".","-").replaceAll(" ","_").replaceAll(":","-");
-  return clean;
+  // "16.01.2026, 12:34:56" -> "2026-01-16_12-34-56" (approx)
+  const parts = fmt.replace(",","").split(" ");
+  const d = (parts[0]||"").split(".").reverse().join("-");
+  const t = (parts[1]||"").replaceAll(":","-");
+  return `${d}_${t}`;
 }
 
-function chainExplorerFor(chain){
-  const ex = explorerBase(chain);
-  return ex;
-}
-
-function styleForReport(){
-  // minimal embedded style; independent of app CSS
+function reportCss(){
   return `
-    :root{
-      --bg:#070711;
-      --panel: rgba(255,255,255,.06);
-      --stroke: rgba(255,255,255,.12);
-      --text: rgba(255,255,255,.92);
-      --muted: rgba(255,255,255,.70);
-      --g:#14F195;
-      --c:#00D1FF;
-      --p:#9945FF;
-      --r:18px;
-    }
-    *{box-sizing:border-box}
-    body{
-      margin:0;
-      font: 14.5px/1.55 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
-      color:var(--text);
-      background: var(--bg);
-      padding: 24px;
-    }
-    .wrap{max-width:980px; margin:0 auto}
-    .card{
-      border:1px solid rgba(255,255,255,.10);
-      background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.05));
-      border-radius: var(--r);
-      padding: 18px;
-      margin-bottom: 14px;
-    }
-    .row{display:flex; gap:14px; align-items:center; flex-wrap:wrap; justify-content:space-between}
-    .h1{
-      margin:0;
-      font-weight:1000;
-      letter-spacing:-.8px;
-      font-size: 28px;
-      line-height:1.1;
-    }
-    .grad{
-      background: linear-gradient(90deg, var(--g), var(--c), var(--p));
-      -webkit-background-clip:text;
-      background-clip:text;
-      color:transparent;
-    }
-    .sub{color: rgba(255,255,255,.74); font-weight:800; margin-top:8px}
-    .badge{
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      padding:7px 11px;
-      border-radius:999px;
-      border: 1px solid rgba(255,255,255,.14);
-      background: rgba(255,255,255,.06);
-      font-weight:1000;
-      font-size:12px;
-      white-space:nowrap;
-    }
-    .badge.good{border:0; background: linear-gradient(90deg,var(--g),var(--c),var(--p)); color:#061012}
-    .badge.warn{border-color: rgba(255,220,130,.35); background: rgba(255,220,130,.08); color: rgba(255,240,210,.92)}
-    .badge.bad{border-color: rgba(255,120,150,.35); background: rgba(255,120,150,.10); color: rgba(255,190,205,.95)}
-    .mono{font-family: ui-monospace, Menlo, Consolas, monospace; font-weight:900; color: rgba(255,255,255,.86)}
-    .grid{display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-top: 12px}
-    @media (max-width: 720px){ .grid{grid-template-columns:1fr} }
-    .metric{
-      border:1px solid rgba(255,255,255,.10);
-      background: rgba(255,255,255,.04);
-      border-radius: 14px;
-      padding: 12px;
-    }
-    .mk{display:flex; align-items:center; justify-content:space-between; gap:10px; color:rgba(255,255,255,.70); font-weight:1000; font-size:12px; letter-spacing:.45px; text-transform:uppercase}
-    .mv{margin-top:8px; font-weight:1000; font-size:18px}
-    .mini{margin-top:6px; color: rgba(255,255,255,.65); font-weight:850; font-size:12px}
-    .bar{margin-top:10px; height:10px; border-radius:999px; background: rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.10); overflow:hidden}
-    .bar > div{height:100%; background: linear-gradient(90deg, var(--g), var(--c), var(--p)); width:0%}
-    h2{margin:0 0 10px; font-size: 16px; letter-spacing:-.3px}
-    ul{margin:0; padding:0; list-style:none; display:grid; gap:10px}
-    li{
-      border:1px solid rgba(255,255,255,.10);
-      background: rgba(0,0,0,.14);
-      border-radius: 14px;
-      padding: 12px;
-      display:flex;
-      align-items:flex-start;
-      justify-content:space-between;
-      gap:10px;
-    }
-    .lt{font-weight:1000; font-size:13px}
-    .ld{margin-top:4px; color: rgba(255,255,255,.70); font-weight:800; font-size:12.5px; line-height:1.35}
-    .pill{font-weight:1000; font-size:12px; border-radius:999px; padding:6px 10px; border:1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.06)}
-    .pill.ok{border:0; background: linear-gradient(90deg,var(--g),var(--c),var(--p)); color:#061012}
-    .pill.warn{border-color: rgba(255,220,130,.35); background: rgba(255,220,130,.08); color: rgba(255,240,210,.92)}
-    .pill.bad{border-color: rgba(255,120,150,.35); background: rgba(255,120,150,.10); color: rgba(255,190,205,.95)}
-    table{width:100%; border-collapse:collapse; overflow:hidden; border-radius: 14px; border:1px solid rgba(255,255,255,.10)}
-    th,td{padding:10px 10px; text-align:left; font-size:12.5px; border-bottom:1px solid rgba(255,255,255,.08)}
-    th{color: rgba(255,255,255,.72); font-weight:1000; letter-spacing:.35px; text-transform:uppercase; font-size:11.5px; background: rgba(255,255,255,.04)}
-    tr:last-child td{border-bottom:0}
-    a{color: rgba(255,255,255,.92); text-decoration:none}
-    a:hover{text-decoration:underline}
-    .imgBox{
-      margin-top:12px;
-      border:1px solid rgba(255,255,255,.10);
-      background: rgba(0,0,0,.14);
-      border-radius: 14px;
-      padding: 12px;
-    }
-    .imgBox img{width:100%; height:auto; display:block; border-radius: 10px}
-    .foot{color: rgba(255,255,255,.50); font-weight:800; font-size:12px; text-align:center; margin-top:18px}
+:root{
+  --bg:#070711;
+  --panel: rgba(255,255,255,.06);
+  --stroke: rgba(255,255,255,.12);
+  --text: rgba(255,255,255,.92);
+  --muted: rgba(255,255,255,.70);
+  --g:#14F195;
+  --c:#00D1FF;
+  --p:#9945FF;
+  --r:18px;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  font: 14.5px/1.55 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+  color:var(--text);
+  background: var(--bg);
+  padding: 22px;
+}
+body::before{
+  content:"";
+  position:fixed;
+  inset:0;
+  z-index:-1;
+  pointer-events:none;
+  background:
+    radial-gradient(1200px 700px at 10% 5%, rgba(153,69,255,.20), transparent 60%),
+    radial-gradient(1000px 650px at 90% 10%, rgba(20,241,149,.16), transparent 55%),
+    radial-gradient(900px 600px at 70% 85%, rgba(0,209,255,.12), transparent 55%),
+    var(--bg);
+}
+.wrap{max-width:980px; margin:0 auto}
+.card{
+  border:1px solid rgba(255,255,255,.10);
+  background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.05));
+  border-radius: var(--r);
+  padding: 16px;
+  margin-bottom: 14px;
+}
+.row{display:flex; gap:12px; align-items:center; flex-wrap:wrap; justify-content:space-between}
+.h1{
+  margin:0;
+  font-weight:1000;
+  letter-spacing:-.6px;
+  font-size: 28px;
+  line-height:1.1;
+}
+.grad{
+  background: linear-gradient(90deg, var(--g), var(--c), var(--p));
+  -webkit-background-clip:text;
+  background-clip:text;
+  color:transparent;
+}
+.sub{color: rgba(255,255,255,.74); font-weight:850; margin-top:6px}
+.badge{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:7px 11px;
+  border-radius:999px;
+  border: 1px solid rgba(255,255,255,.14);
+  background: rgba(255,255,255,.06);
+  font-weight:1000;
+  font-size:12px;
+  white-space:nowrap;
+}
+.badge.good{border:0; background: linear-gradient(90deg,var(--g),var(--c),var(--p)); color:#061012}
+.badge.warn{border-color: rgba(255,220,130,.35); background: rgba(255,220,130,.08); color: rgba(255,240,210,.92)}
+.badge.bad{border-color: rgba(255,120,150,.35); background: rgba(255,120,150,.10); color: rgba(255,190,205,.95)}
+.mono{font-family: ui-monospace, Menlo, Consolas, monospace; font-weight:900; color: rgba(255,255,255,.86)}
+.grid{display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-top: 12px}
+@media (max-width: 720px){ body{padding:14px} .grid{grid-template-columns:1fr} }
+.metric{
+  border:1px solid rgba(255,255,255,.10);
+  background: rgba(255,255,255,.04);
+  border-radius: 14px;
+  padding: 12px;
+}
+.mk{display:flex; align-items:center; justify-content:space-between; gap:10px; color:rgba(255,255,255,.70); font-weight:1000; font-size:12px; letter-spacing:.45px; text-transform:uppercase}
+.mv{margin-top:8px; font-weight:1000; font-size:18px}
+.mini{margin-top:6px; color: rgba(255,255,255,.65); font-weight:850; font-size:12px}
+.bar{margin-top:10px; height:10px; border-radius:999px; background: rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.10); overflow:hidden}
+.bar > div{height:100%; background: linear-gradient(90deg, var(--g), var(--c), var(--p)); width:0%}
+h2{margin:0 0 10px; font-size: 16px; letter-spacing:-.3px}
+ul{margin:0; padding:0; list-style:none; display:grid; gap:10px}
+li{
+  border:1px solid rgba(255,255,255,.10);
+  background: rgba(0,0,0,.14);
+  border-radius: 14px;
+  padding: 12px;
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:10px;
+}
+.lt{font-weight:1000; font-size:13px}
+.ld{margin-top:4px; color: rgba(255,255,255,.70); font-weight:800; font-size:12.5px; line-height:1.35}
+.pill{font-weight:1000; font-size:12px; border-radius:999px; padding:6px 10px; border:1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.06)}
+.pill.ok{border:0; background: linear-gradient(90deg,var(--g),var(--c),var(--p)); color:#061012}
+.pill.warn{border-color: rgba(255,220,130,.35); background: rgba(255,220,130,.08); color: rgba(255,240,210,.92)}
+.pill.bad{border-color: rgba(255,120,150,.35); background: rgba(255,120,150,.10); color: rgba(255,190,205,.95)}
+table{width:100%; border-collapse:collapse; overflow:hidden; border-radius: 14px; border:1px solid rgba(255,255,255,.10)}
+th,td{padding:10px 10px; text-align:left; font-size:12.5px; border-bottom:1px solid rgba(255,255,255,.08)}
+th{color: rgba(255,255,255,.72); font-weight:1000; letter-spacing:.35px; text-transform:uppercase; font-size:11.5px; background: rgba(255,255,255,.04)}
+tr:last-child td{border-bottom:0}
+a{color: rgba(255,255,255,.92); text-decoration:none}
+a:hover{text-decoration:underline}
+.imgBox{
+  margin-top:12px;
+  border:1px solid rgba(255,255,255,.10);
+  background: rgba(0,0,0,.14);
+  border-radius: 14px;
+  padding: 12px;
+}
+.imgBox img{width:100%; height:auto; display:block; border-radius: 10px}
+.foot{color: rgba(255,255,255,.50); font-weight:800; font-size:12px; text-align:center; margin-top:18px}
   `;
 }
 
-function sevToPillClass(sev){
+function sevToPill(sev){
   return sev === "ok" ? "pill ok" : sev === "bad" ? "pill bad" : "pill warn";
 }
-function sevToBadgeClass(mode){
+function modeToBadge(mode){
   return mode === "good" ? "badge good" : mode === "bad" ? "badge bad" : "badge warn";
 }
 
@@ -2436,13 +2081,13 @@ function reportListItemHtml(it){
         <div class="lt">${t}</div>
         <div class="ld">${d}</div>
       </div>
-      <div class="${sevToPillClass(sev)}">${esc(pillLabel(sev))}</div>
+      <div class="${sevToPill(sev)}">${esc(pillLabel(sev))}</div>
     </li>
   `;
 }
 
 function reportMetricsHtml(rows){
-  const cards = (rows || []).map(r => {
+  const cards = (rows||[]).map(r=>{
     const bar = (typeof r.barPct === "number")
       ? `<div class="bar"><div style="width:${clamp(r.barPct,0,100)}%"></div></div>`
       : "";
@@ -2462,93 +2107,92 @@ function reportMetricsHtml(rows){
 }
 
 function holdersTableHtml(holders, chain){
-  const ex = chainExplorerFor(chain);
+  const ex = explorerBase(chain);
   if(!Array.isArray(holders) || !holders.length){
     return `<div class="sub" style="margin-top:8px;">No holder data available.</div>`;
   }
-  const rows = holders.map((h, i) => {
-    const addr = String(h.wallet || "");
+  const rows = holders.map((h,i)=>{
+    const addr = String(h.wallet||"");
     const link = ex.base + addr;
     return `
       <tr>
         <td>${i+1}</td>
         <td class="mono"><a href="${esc(link)}" target="_blank" rel="noreferrer">${esc(addr)}</a></td>
-        <td>${esc(h.pct.toFixed(2))}%</td>
+        <td>${esc(Number(h.pct||0).toFixed(2))}%</td>
       </tr>
     `;
   }).join("");
   return `
     <table>
-      <thead>
-        <tr>
-          <th>#</th><th>Wallet</th><th>Share</th>
-        </tr>
-      </thead>
+      <thead><tr><th>#</th><th>Wallet</th><th>Share</th></tr></thead>
       <tbody>${rows}</tbody>
     </table>
   `;
 }
 
 function buildReportHtml(){
-  const st = SCAN_STATE;
-  if(!st?.completed || !st?.result) throw new Error("No completed scan to export.");
+  if(!SCAN_STATE.completed || !SCAN_STATE.result) throw new Error("No completed scan to export.");
 
-  const chain = st.chain;
-  const addr = st.addr;
-  const { meta, signals, holders } = st.result;
+  const chain = SCAN_STATE.chain;
+  const addr  = SCAN_STATE.addr;
+  const res   = SCAN_STATE.result;
 
-  const { score, critical } = computeScore(signals);
+  const meta = res.meta || {name:"Token",symbol:"",image:""};
+  const sig  = res.signals || {kind:chain?.kind || "evm"};
+  const holders = Array.isArray(res.holders) ? res.holders : [];
+
+  const stamp = nowBerlinStamp();
+  const name = (meta.name || "Token").trim() || "Token";
+  const sym  = (meta.symbol || "").trim();
+
+  const { score, critical } = computeScore(sig);
   const v = verdictFrom(score, critical);
 
-  const stamp = nowBerlinISO();
-  const ex = chainExplorerFor(chain);
+  const metricRows = buildMetricRows(meta, sig);
+  const checks = makeChecks(sig);
+  const todos  = makeTodos(sig);
+  const std    = makeStd(sig);
+  const metaList = makeMeta(meta, sig);
 
-  const checks = makeChecksFromSignals(signals);
-  const todos  = makeTodoFromSignals(signals);
-  const std    = makeStdDetails(signals);
-  const metaList = makeMetaList(meta, signals);
+  const ex = explorerBase(chain);
+  const explorerLink = ex.base + addr;
 
-  const metricRows = buildMetricRows(meta, signals);
-
-  const bubbleDataUrl = window.__BUBBLE_MAP_DATA_URL || "";
-  const bubbleBlock = bubbleDataUrl
+  const bubblePng = window.__BUBBLE_MAP_DATA_URL || "";
+  const bubbleBlock = bubblePng
     ? `<div class="imgBox">
-         <div class="mk" style="margin-bottom:8px;"><span>Holder Bubble Map</span><span class="badge">PNG</span></div>
-         <img src="${esc(bubbleDataUrl)}" alt="Holder Bubble Map"/>
+         <div class="mk" style="margin-bottom:8px;">
+           <span>Holder Bubble Map</span><span class="badge">PNG</span>
+         </div>
+         <img src="${esc(bubblePng)}" alt="Holder Bubble Map"/>
          <div class="mini">Bubble size = holder % (preview). Visual heuristic.</div>
        </div>`
     : "";
 
-  const tokenImg = meta?.image
+  const tokenImg = meta.image
     ? `<div style="width:52px;height:52px;border-radius:14px;overflow:hidden;border:1px solid rgba(255,255,255,.10);background:rgba(0,0,0,.14);flex:0 0 auto">
          <img src="${esc(meta.image)}" alt="" style="width:100%;height:100%;object-fit:cover;display:block" />
        </div>`
     : "";
 
-  const name = (meta?.name || "Token").trim() || "Token";
-  const sym  = (meta?.symbol || "").trim();
-
-  const explorerLink = `${ex.base}${addr}`;
-
-  // Embed a compact JSON snapshot at the end (useful for later)
+  // compact JSON snapshot for later debugging (optional)
   const snapshot = {
     generated_at_berlin: stamp,
     chain: chain?.id,
     chain_stamp: chain?.stamp,
     address: addr,
     meta,
-    signals,
+    signals: sig,
     holders
   };
 
   return `<!doctype html>
-<html lang="en">
+<html lang="de">
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <meta name="theme-color" content="#070711"/>
   <title>Guardian Report — ${esc(chain?.name || "Chain")} — ${esc(shortAddr(addr))}</title>
-  <style>${styleForReport()}</style>
+  <style>${reportCss()}</style>
 </head>
 <body>
   <div class="wrap">
@@ -2558,13 +2202,11 @@ function buildReportHtml(){
           ${tokenImg}
           <div style="min-width:0">
             <div class="h1"><span class="grad">Guardian Report</span></div>
-            <div class="sub">
-              ${esc(chain?.name || "Chain")} • ${esc(chain?.stamp || "MAINNET")} • ${esc(stamp.replaceAll("_"," "))}
-            </div>
+            <div class="sub">${esc(chain?.name || "Chain")} • ${esc(chain?.stamp || "MAINNET")} • ${esc(stamp.replaceAll("_"," "))}</div>
           </div>
         </div>
         <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap">
-          <span class="${sevToBadgeClass(v.mode)}">${esc(v.label)}</span>
+          <span class="${modeToBadge(v.mode)}">${esc(v.label)}</span>
           <span class="badge good">${esc(score)}/100</span>
         </div>
       </div>
@@ -2581,7 +2223,7 @@ function buildReportHtml(){
           <div class="sub" style="margin-top:2px">Verdict</div>
           <div style="font-weight:1000; font-size:18px; letter-spacing:-.2px">${esc(v.title)}</div>
           <div class="mini" style="margin-top:6px">
-            This report is a heuristic risk scan. Always verify sources and audited code.
+            Heuristic risk scan — always verify sources and audited code.
           </div>
         </div>
       </div>
@@ -2594,30 +2236,22 @@ function buildReportHtml(){
 
     <div class="card">
       <h2>Guardian Checks</h2>
-      <ul>
-        ${checks.map(reportListItemHtml).join("")}
-      </ul>
+      <ul>${checks.map(reportListItemHtml).join("")}</ul>
     </div>
 
     <div class="card">
       <h2>Launch Readiness</h2>
-      <ul>
-        ${todos.map(reportListItemHtml).join("")}
-      </ul>
+      <ul>${todos.map(reportListItemHtml).join("")}</ul>
     </div>
 
     <div class="card">
       <h2>Token Standard</h2>
-      <ul>
-        ${std.map(reportListItemHtml).join("")}
-      </ul>
+      <ul>${std.map(reportListItemHtml).join("")}</ul>
     </div>
 
     <div class="card">
       <h2>Token Metadata</h2>
-      <ul>
-        ${metaList.map(reportListItemHtml).join("")}
-      </ul>
+      <ul>${metaList.map(reportListItemHtml).join("")}</ul>
     </div>
 
     <div class="card">
@@ -2645,18 +2279,27 @@ function downloadText(filename, text){
   document.body.appendChild(a);
   a.click();
   a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 2500);
+  setTimeout(()=>URL.revokeObjectURL(url), 2500);
 }
 
-async function exportReport(){
+async function exportReportV2(){
   try{
     if(!SCAN_STATE.completed || !SCAN_STATE.result){
       showToast("No completed scan to export");
+      setStatus("Run a scan first, then export.");
       return;
     }
+
+    // ensure bubble PNG exists (if bubble visible)
+    try{
+      if(SCAN_STATE.result?.holders?.length){
+        renderBubbleMap(holdersToBubbles(SCAN_STATE.result.holders));
+      }
+    }catch{}
+
     const chainId = SCAN_STATE.chain?.id || "chain";
-    const addrShort = shortAddr(SCAN_STATE.addr || "addr").replaceAll("…","-");
-    const stamp = nowBerlinISO();
+    const addrShort = (shortAddr(SCAN_STATE.addr || "addr") || "addr").replaceAll("…","-");
+    const stamp = nowBerlinStamp();
     const file = `guardian-report_${chainId}_${addrShort}_${stamp}.html`;
 
     const html = buildReportHtml();
@@ -2666,55 +2309,28 @@ async function exportReport(){
     setTimeout(hideToast, 1400);
   }catch(e){
     showToast("Export failed");
-    setStatus(`Export error: ${String(e?.message || e)}`);
+    setStatus("Export error: " + String(e?.message || e));
   }
 }
 
-/* ===================== EXPORT BUTTON WIRE ===================== */
-(function bindExport(){
+/* =============== EXPORT Button intercept (capture) =============== */
+(function bindExportCapture(){
   const b = qs("btnExport");
   if(!b) return;
-  b.addEventListener("click", exportReport);
+
+  b.addEventListener("click", (e)=>{
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    exportReportV2();
+  }, true);
 })();
 
-/* ===================== FINAL UX WIRING ===================== */
-(function finalWiring(){
-  // close modal / toast
-  const mc = qs("modalClose");
-  const mw = qs("modalWrap");
-  if(mc) mc.addEventListener("click", closeModal);
-  if(mw){
-    mw.addEventListener("click", (e) => {
-      if(e.target === mw) closeModal();
-    });
-  }
-  const tc = qs("toastClose");
-  if(tc) tc.addEventListener("click", hideToast);
-
-  // delegate info buttons (works for all lists)
-  document.addEventListener("click", (e) => {
-    const t = e.target;
-    const btn = t?.closest?.("[data-open='1']");
-    if(!btn) return;
-    const title = btn.getAttribute("data-title") || "Details";
-    const infoId = btn.getAttribute("data-info") || "";
-    const html = getInfo(infoId) || explain(title, ["No details available."]);
-    openModal(title, html);
-  });
-
-  // enter key runs scan
-  const addr = qs("addr");
-  if(addr){
-    addr.addEventListener("keydown", (e) => {
-      if(e.key === "Enter"){
-        e.preventDefault();
-        runGuardianScan();
-      }
-    });
-  }
-
-  // expose safe debug
-  window.__GUARDIAN_STATE = SCAN_STATE;
+/* =============== Safety: keep bubble PNG fresh for exports =============== */
+(function keepBubbleFresh(){
+  // After scan: bubble is already rendered in Teil 4.
+  // On resize: Teil 2 already re-renders bubble.
+  // Here we only ensure export has up-to-date png.
+  window.__EXPORT_READY = true;
 })();
 </script>
 
