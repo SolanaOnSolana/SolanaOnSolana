@@ -2055,9 +2055,10 @@
     }
 
     async function solRpc(method, params){
-      if(!CFG.HELIUS_KEY || String(CFG.HELIUS_KEY).includes("b566a086-57d4-4433-8661-faed9ad07ba0")){
-        throw new Error("Helius key missing in CFG. Set CFG.HELIUS_KEY.");
-      }
+      if(!CFG.HELIUS_KEY || String(CFG.HELIUS_KEY).includes("PUT_YOUR_HELIUS_KEY_HERE")){
+  throw new Error("Helius key missing in CFG. Set CFG.HELIUS_KEY.");
+}
+      
       const res = await fetch(HELIUS_RPC(), {
         method:"POST",
         headers:{ "Content-Type":"application/json" },
@@ -2513,7 +2514,7 @@
     }
 
     async function goldrushHolders(chainId, addr){
-      if(!CFG.GOLDRUSH_API_KEY || String(CFG.GOLDRUSH_API_KEY).includes("cqt_rQVTMTXwYkPJBrwf7ff6JWmdkywR")) return [];
+      if(!CFG.GOLDRUSH_API_KEY || String(CFG.GOLDRUSH_API_KEY).includes("PUT_YOUR_GOLDRUSH_KEY_HERE")) return [];
       const url = `https://api.covalenthq.com/v1/${goldrushChain(chainId)}/tokens/${addr}/token_holders/?page-size=10&key=${encodeURIComponent(CFG.GOLDRUSH_API_KEY)}`;
       try{
         const r = await fetch(url);
@@ -2832,6 +2833,7 @@
 
           // holders list + bubbles + cluster lite
           renderHoldersSol(addr, uiSupply, largest);
+          buildGraphFromCurrentBubbles();
           const holderForCluster = (Array.isArray(largest) && Number.isFinite(uiSupply) && uiSupply>0)
             ? largest.slice(0,10).map(x => {
                 const a = x?.address || "";
@@ -2919,6 +2921,7 @@ for(const h of holdersForTags.slice(0,10)){
   h.isContract = await isContractEvm(evmChainId, h.addr);
 }
 renderClusterCardsEvm({ chainId: evmChainId, holders: holdersForTags.slice(0,10), lpPairs });
+          buildGraphForEvmTagged(holdersForTags.slice(0,10), { chainId: evmChainId, lpPairs });
 
 
 
