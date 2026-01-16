@@ -1609,6 +1609,12 @@
       return x.toFixed(2);
     }
 
+    async function getSignatures(addr, limit=20){
+  return await solRpc("getSignaturesForAddress", [addr, { limit }]);
+}
+async function getTx(sig){
+  return await solRpc("getTransaction", [sig, { encoding:"jsonParsed", maxSupportedTransactionVersion: 0 }]);
+}
     /* ===== Dexscreener token endpoint (works across chains; address can be Sol mint or EVM token) ===== */
     async function fetchDexscreenerToken(addr){
       try{
@@ -1660,6 +1666,21 @@
       const r = await solRpc("getTokenLargestAccounts", [mint]);
       return r?.value || [];
     }
+    async function getTokenAccountOwners(tokenAccountAddrs){
+  const addrs = (tokenAccountAddrs || []).filter(Boolean);
+  if(!addrs.length) return [];
+
+  // getMultipleAccounts: schneller als 10x getAccountInfo
+  const res = await solRpc("getMultipleAccounts", [addrs, { encoding:"jsonParsed", commitment:"confirmed" }]);
+  const values = Array.isArray(res?.value) ? res.value : [];
+
+  return values.map(v => {
+    const parsed = v?.data?.parsed;
+    const info = parsed?.info;
+    // Token account owner wallet
+    return info?.owner || null;
+  });
+}
     async function getAsset(mint){
       try { return await solRpc("getAsset", [mint]); }
       catch { return null; }
@@ -1943,6 +1964,19 @@
         return null;
       }
     }
+
+    async function goldrushTransfers(chainId, tokenAddr, pageSize=200){
+  if(!CFG.GOLDRUSH_API_KEY) return [];
+  const url = `https://api.covalenthq.com/v1/${goldrushChain(chainId)}/tokens/${tokenAddr}/token_transfers/?page-size=${pageSize}&key=${encodeURIComponent(CFG.GOLDRUSH_API_KEY)}`;
+  try{
+    const r = await fetch(url);
+    if(!r.ok) return [];
+    const j = await r.json();
+    return Array.isArray(j?.data?.items) ? j.data.items : [];
+  }catch{
+    return [];
+  }
+}
 
     /* Proxy detection (EIP-1967) */
     const SLOT_IMPL  = "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc";
@@ -2325,20 +2359,20 @@
       ctx.translate(VIZ.panX*dpr, VIZ.panY*dpr);
       ctx.scale(VIZ.zoom, VIZ.zoom);
 
-      // edges (only in graph mode later)
-      ctx.globalAlpha = 0.35;
-      ctx.lineWidth = 1.2*dpr;
-      ctx.strokeStyle = "rgba(255,255,255,0.22)";
-      for(const e of (edges||[])){
-        const a = nodes[e.a];
-        const b = nodes[e.b];
-        if(!a || !b) continue;
-        ctx.beginPath();
-        ctx.moveTo((a.x||0)*dpr, (a.y||0)*dpr);
-        ctx.lineTo((b.x||0)*dpr, (b.y||0)*dpr);
-        ctx.stroke();
-      }
-
+      if(VIZ.mode === "graph"){
+  ctx.globalAlpha = 0.35;
+  ctx.lineWidth = 1.2*dpr;
+  ctx.strokeStyle = "rgba(255,255,255,0.22)";
+  for(const e of (edges||[])){
+    const a = nodes[e.a];
+    const b = nodes[e.b];
+    if(!a || !b) continue;
+    ctx.beginPath();
+    ctx.moveTo((a.x||0)*dpr, (a.y||0)*dpr);
+    ctx.lineTo((b.x||0)*dpr, (b.y||0)*dpr);
+    ctx.stroke();
+  }
+}
       for(const n of nodes){
         const fill = n.sev === "bad" ? "rgba(255,120,150,0.30)"
                    : n.sev === "warn" ? "rgba(255,220,130,0.24)"
@@ -2717,6 +2751,175 @@
       }
     }
 
+    function buildGraphFromEdges(baseNodes, edges){
+  // baseNodes: [{addr,pct,sev,label,sub,r}]
+  const stage = qs("vizStage");
+  if(!stage) return;
+
+  const rect = stage.getBoundingClientRect();
+  const W = Math.max(520, rect.width || 820);
+  const H = Math.max(360, rect.height || 420);
+
+  const nodes = baseNodes.map(n => ({
+    x: NaN, y: NaN,
+    r: n.r,
+    sev: n.sev,
+    addr: n.addr,
+    label: n.label,
+    sub: n.sub,
+    pct: n.pct
+  }));
+
+  packNoOverlap(nodes, W, H);
+
+  VIZ.nodes = nodes;
+  VIZ.edges = edges || [];
+  VIZ.panX = 0;
+  VIZ.panY = 0;
+  VIZ.zoom = 1;
+  VIZ.hoverAddr = "";
+
+  qs("vizOverlay").style.display = nodes.length ? "none" : "flex";
+  setGraphAvailability((VIZ.edges || []).length > 0);
+  drawViz();
+}
+
+// --------- SOL graph: shared fee-payer / shared counterparty (best-effort) ----------
+async function buildSolEdgesFromRecent(wallets){
+  // wallets: array of wallet addrs
+  const maxWallets = wallets.slice(0, 8);
+  const feePayerMap = new Map(); // feePayer -> set(wallet)
+  const directPairs = new Set(); // "a|b"
+
+  for(const w of maxWallets){
+    let sigs = [];
+    try{ sigs = await getSignatures(w, 18); }catch{ sigs = []; }
+    const picks = sigs.slice(0, 3); // keep fast
+
+    for(const s of picks){
+      const sig = s?.signature;
+      if(!sig) continue;
+      let tx = null;
+      try{ tx = await getTx(sig); }catch{ tx = null; }
+      if(!tx) continue;
+
+      const feePayer = tx?.transaction?.message?.accountKeys?.[0]?.pubkey || null;
+      if(feePayer){
+        if(!feePayerMap.has(feePayer)) feePayerMap.set(feePayer, new Set());
+        feePayerMap.get(feePayer).add(w);
+      }
+
+      // try to find a simple counterparty (first non-self key)
+      const keys = tx?.transaction?.message?.accountKeys || [];
+      for(const k of keys){
+        const pk = k?.pubkey;
+        if(pk && pk !== w){
+          // record direct pair (w <-> pk) only if pk is one of our top wallets
+          if(maxWallets.includes(pk)){
+            const a = [w, pk].sort().join("|");
+            directPairs.add(a);
+          }
+          break;
+        }
+      }
+    }
+  }
+
+  // edges: connect wallets that share same feePayer
+  const edges = [];
+  const walletIndex = new Map(maxWallets.map((a,i)=>[a,i]));
+
+  // fee payer clusters
+  for(const [, set] of feePayerMap){
+    const arr = Array.from(set);
+    if(arr.length < 2) continue;
+    for(let i=0;i<arr.length;i++){
+      for(let j=i+1;j<arr.length;j++){
+        const a = walletIndex.get(arr[i]);
+        const b = walletIndex.get(arr[j]);
+        if(a==null || b==null) continue;
+        edges.push({ a, b });
+      }
+    }
+  }
+
+  // direct transfer-ish pairs
+  for(const p of directPairs){
+    const [x,y] = p.split("|");
+    const a = walletIndex.get(x);
+    const b = walletIndex.get(y);
+    if(a==null || b==null) continue;
+    edges.push({ a, b });
+  }
+
+  // dedupe
+  const seen = new Set();
+  const out = [];
+  for(const e of edges){
+    const k = e.a<e.b ? `${e.a}|${e.b}` : `${e.b}|${e.a}`;
+    if(seen.has(k)) continue;
+    seen.add(k);
+    out.push(e);
+  }
+  return { nodesWallets: maxWallets, edges: out };
+}
+
+// --------- EVM graph: shared source / direct transfers (best-effort) ----------
+async function buildEvmEdgesFromTransfers(chainId, tokenAddr, wallets){
+  const maxWallets = wallets.slice(0, 10).map(a => String(a).toLowerCase());
+  const idx = new Map(maxWallets.map((a,i)=>[a,i]));
+
+  const items = await goldrushTransfers(chainId, tokenAddr, 200);
+  if(!items.length) return { nodesWallets: maxWallets, edges: [] };
+
+  // map: source -> set(receivers among top wallets)
+  const srcMap = new Map();
+  const edges = [];
+
+  for(const it of items){
+    const from = String(it?.from_address || "").toLowerCase();
+    const to   = String(it?.to_address || "").toLowerCase();
+    if(!from || !to) continue;
+
+    const fromIn = idx.has(from);
+    const toIn   = idx.has(to);
+
+    // direct between top wallets
+    if(fromIn && toIn && from !== to){
+      edges.push({ a: idx.get(from), b: idx.get(to) });
+    }
+
+    // shared source funding top wallets
+    if(toIn && from){
+      if(!srcMap.has(from)) srcMap.set(from, new Set());
+      srcMap.get(from).add(to);
+    }
+  }
+
+  for(const [, set] of srcMap){
+    const arr = Array.from(set);
+    if(arr.length < 2) continue;
+    for(let i=0;i<arr.length;i++){
+      for(let j=i+1;j<arr.length;j++){
+        const a = idx.get(arr[i]);
+        const b = idx.get(arr[j]);
+        if(a==null || b==null) continue;
+        edges.push({ a, b });
+      }
+    }
+  }
+
+  // dedupe
+  const seen = new Set();
+  const out = [];
+  for(const e of edges){
+    const k = e.a<e.b ? `${e.a}|${e.b}` : `${e.b}|${e.a}`;
+    if(seen.has(k)) continue;
+    seen.add(k);
+    out.push(e);
+  }
+  return { nodesWallets: maxWallets, edges: out };
+}
     /* =========================================================
        PART 9 — SCAN ORCHESTRATOR (Solana + EVM) + RENDER PIPELINE
        ========================================================= */
@@ -2785,12 +2988,43 @@
       const decimals = Number(supply?.decimals ?? info.decimals ?? 0);
       const uiAmount = Number(supply?.uiAmount ?? 0);
 
-      // largest accounts
+            // largest accounts
       const largest = await getLargest(mint);
       const top = Array.isArray(largest) ? largest.slice(0, 10) : [];
 
+      // compute pct based on largest sum / total supply (use uiAmount)
+      const totalUi = Number.isFinite(uiAmount) ? uiAmount : 0;
+
+      // resolve token accounts -> owner wallets (important!)
+      const tokenAccounts = top.map(x => x?.address).filter(Boolean);
+      const owners = await getTokenAccountOwners(tokenAccounts);
+
+      const holderItems = top.map((x, idx) => {
+        const tokenAcc = x?.address || "";
+        const ownerWallet = owners[idx] || tokenAcc; // fallback
+        const amtUi = Number(x?.uiAmount ?? 0);
+        const pct = (totalUi > 0) ? (amtUi / totalUi * 100) : 0;
+
+        const sev = pct >= 10 ? "bad" : pct >= 4 ? "warn" : "ok";
+
+        return {
+          addr: ownerWallet,
+          tokenAccount: tokenAcc,
+          pct,
+          sev,
+          label: `#${idx+1} ${shortAddr(ownerWallet)}`,
+          sub: `${pct.toFixed(2)}%`,
+          t: `Holder #${idx+1}`,
+          d: `${shortAddr(ownerWallet)} • ${pct.toFixed(2)}%`,
+          infoHtml: explain(`Holder #${idx+1}`, [
+            `Owner wallet: ${ownerWallet}`,
+            `Token account: ${tokenAcc}`,
+            `Share of supply: ${pct.toFixed(2)}%`,
+            "Tip: check if this is LP/treasury/team/burn."
+          ])
+        };
+      });
       // compute pct based on largest sum / total supply
-      const totalRaw = Number(supply?.amount ? BigInt(supply.amount) : 0n); // can overflow Number; so we do uiAmount approach
       const totalUi = Number.isFinite(uiAmount) ? uiAmount : 0;
 
       const holderItems = top.map((x, idx) => {
@@ -2798,26 +3032,7 @@
         const amtUi = Number(x?.uiAmount ?? 0);
         const pct = (totalUi > 0) ? (amtUi / totalUi * 100) : 0;
 
-        // simple severity (whales)
-        const sev =
-          pct >= 10 ? "bad" :
-          pct >= 4 ? "warn" : "ok";
-
-        return {
-          addr,
-          pct,
-          sev,
-          label: `#${idx+1} ${shortAddr(addr)}`,
-          sub: `${pct.toFixed(2)}%`,
-          t: `Holder #${idx+1}`,
-          d: `${shortAddr(addr)} • ${pct.toFixed(2)}%`,
-          infoHtml: explain(`Holder #${idx+1}`, [
-            `Wallet: ${addr}`,
-            `Share of supply: ${pct.toFixed(2)}%`,
-            "Tip: check if this is LP/treasury/team/burn."
-          ])
-        };
-      });
+    
 
       const top20 = Array.isArray(largest)
         ? largest.slice(0, 20).reduce((a,x)=>{
