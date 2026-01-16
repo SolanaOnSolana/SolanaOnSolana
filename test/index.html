@@ -3477,93 +3477,119 @@ function setVizMode(mode){
    ========================================================= */
 
 function buildReportHtml(){
+  // 1) CSS aus deiner Seite übernehmen (damit es exakt gleich aussieht)
+  const css = Array.from(document.querySelectorAll("style"))
+    .map(s => s.textContent || "")
+    .join("\n\n");
+
+  const when = new Date().toISOString();
   const chain = LAST_SCAN?.chain?.name || ACTIVE_CHAIN_ID;
   const addr  = LAST_SCAN?.address || "";
   const score = LAST_SCAN?.score ?? "—";
   const verdict = LAST_SCAN?.verdict?.label || "—";
-  const when = new Date().toISOString();
 
-  const metrics = (LAST_SCAN?.metrics || []).map(m => `
-    <tr>
-      <td style="padding:8px 10px;border-bottom:1px solid #222;">${esc(m.label||"—")}</td>
-      <td style="padding:8px 10px;border-bottom:1px solid #222;font-weight:800;">${esc(m.value||"—")}</td>
-    </tr>
-  `).join("");
+  // 2) Panels direkt aus der Seite klonen (sehen dann genauso aus)
+  //    -> Wir nehmen komplette .panel Blöcke, nicht nur die Listen
+  const resultsPanel = qs("resultsPanel")?.outerHTML || "";
+  const checksPanel  = qs("checksList")?.closest(".panel")?.outerHTML || "";
+  const todoPanel    = qs("todoList")?.closest(".panel")?.outerHTML || "";
+  const extPanel     = qs("extList")?.closest(".panel")?.outerHTML || "";
+  const metaPanel    = qs("metaList")?.closest(".panel")?.outerHTML || "";
+  const holdersPanel = qs("holdersList")?.closest(".panel")?.outerHTML || "";
+  const clusterPanel = qs("clusterPanel")?.outerHTML || "";
+  const vizPanel     = qs("vizPanel")?.outerHTML || "";
 
-  const checks = (LAST_SCAN?.checks || []).map(c => `
-    <li style="margin:6px 0">
-      <b>${esc(c.t||"—")}</b> — ${esc(c.d||"—")} <span style="opacity:.7">(${esc(pillLabel(c.sev||"warn"))})</span>
-    </li>
-  `).join("");
+  // 3) Canvas als Bild “einfrieren”, weil Canvas im Export sonst leer sein kann
+  let vizImg = "";
+  try{
+    const c = qs("vizCanvas");
+    if(c && c.width && c.height){
+      vizImg = c.toDataURL("image/png");
+    }
+  }catch{}
 
-  const todos = (LAST_SCAN?.todos || []).map(t => `
-    <li style="margin:6px 0">
-      <b>${esc(t.t||"—")}</b> — ${esc(t.d||"—")} <span style="opacity:.7">(${esc(pillLabel(t.sev||"warn"))})</span>
-    </li>
-  `).join("");
+  // 4) Im geklonten vizPanel ersetzen wir das <canvas> durch ein <img>
+  let vizPanelFixed = vizPanel;
+  if(vizPanelFixed && vizImg){
+    vizPanelFixed = vizPanelFixed.replace(
+      /<canvas[^>]*id="vizCanvas"[^>]*><\/canvas>/i,
+      `<img src="${vizImg}" alt="Bubble map snapshot" style="width:100%;height:100%;object-fit:cover;display:block">`
+    );
+  }
 
-  const bubbles = (VIZ.nodes || []).slice(0,30).map(n => `
-    <tr>
-      <td style="padding:8px 10px;border-bottom:1px solid #222;">${esc(n.addr ? shortAddr(n.addr) : (n.label||"—"))}</td>
-      <td style="padding:8px 10px;border-bottom:1px solid #222;">${esc(n.sub||"—")}</td>
-      <td style="padding:8px 10px;border-bottom:1px solid #222;">${esc(pillLabel(n.sev||"warn"))}</td>
-    </tr>
-  `).join("");
+  // 5) Logo + Brand URL (Passe das an deine Domain an)
+  const brandUrl = "https://solanax1.com/";
+  const logoUrl  = "https://solanax1.com/assets/logo.png";
 
+  // 6) Report-Seite im gleichen Look (gleiches CSS, gleiche Klassen)
   return `<!doctype html>
-<html><head><meta charset="utf-8">
-<title>$SOS Guardian Report</title>
-<style>
-  body{font-family:system-ui,Segoe UI,Arial;background:#0b0b14;color:#fff;margin:0;padding:22px}
-  .card{background:#121224;border:1px solid #222;border-radius:16px;padding:16px;margin:12px 0}
-  h1{margin:0 0 6px 0;font-size:22px}
-  .muted{opacity:.75}
-  table{width:100%;border-collapse:collapse}
-</style>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>$SOS — Guardian Scan Report</title>
+<style>${css}</style>
 </head>
 <body>
-  <h1>$SOS — Guardian Scan Report</h1>
-  <div class="muted">Generated: ${esc(when)}</div>
+  <div class="topbar">
+    <div class="wrap">
+      <div class="row">
+        <div class="brand">
+          <img src="${logoUrl}" alt="$SOS" onerror="this.style.display='none'">
+          <div class="bt">
+            <div class="t">$SOS</div>
+            <div class="s">Guardian Scan Report • Export</div>
+          </div>
+        </div>
 
-  <div class="card">
-    <div><b>Chain:</b> ${esc(chain)}</div>
-    <div><b>Address:</b> ${esc(addr)}</div>
-    <div><b>Verdict:</b> ${esc(verdict)}</div>
-    <div><b>Score:</b> ${esc(String(score))}</div>
-  </div>
-
-  <div class="card">
-    <h2 style="margin:0 0 10px 0;font-size:16px">Metrics</h2>
-    <table>${metrics || "<tr><td class='muted'>No metrics</td></tr>"}</table>
-  </div>
-
-  <div class="card">
-    <h2 style="margin:0 0 10px 0;font-size:16px">Guardian Checks</h2>
-    <ul>${checks || "<li class='muted'>No checks</li>"}</ul>
-  </div>
-
-  <div class="card">
-    <h2 style="margin:0 0 10px 0;font-size:16px">Launch Readiness</h2>
-    <ul>${todos || "<li class='muted'>No todos</li>"}</ul>
-  </div>
-
-  <div class="card">
-    <h2 style="margin:0 0 10px 0;font-size:16px">Top Holders (preview)</h2>
-    <table>
-      <tr><th style="text-align:left;padding:8px 10px;border-bottom:1px solid #222;">Wallet</th>
-          <th style="text-align:left;padding:8px 10px;border-bottom:1px solid #222;">Share</th>
-          <th style="text-align:left;padding:8px 10px;border-bottom:1px solid #222;">Signal</th></tr>
-      ${bubbles || ""}
-    </table>
-    <div class="muted" style="margin-top:10px">
-      Note: This HTML report is best-effort from in-app data. For PDF, export via browser print (Ctrl/Cmd+P).
+        <div class="actions">
+          <a class="btn" href="${brandUrl}" rel="noreferrer">← Back to Main</a>
+          <span class="badge">${esc(chain)}</span>
+          <span class="badge good">${esc(String(score))}/100</span>
+          <span class="badge">${esc(verdict)}</span>
+        </div>
+      </div>
     </div>
   </div>
 
-</body></html>`;
-}
+  <main class="wrap">
+    <section class="card hero">
+      <div class="inner">
+        <div class="classified">
+          <div class="stamp">EXPORTED REPORT • BEST-EFFORT</div>
+          <div class="stamp">${esc(when)}</div>
+        </div>
 
-    
+        <div class="panel" style="margin-top:16px;">
+          <div class="classified">
+            <div class="stamp">TARGET</div>
+            <div class="stamp">${esc(chain)} • ${esc(shortAddr(addr))}</div>
+          </div>
+          <div class="statusLine" style="margin-top:10px;">
+            Full address: <span class="mono">${esc(addr)}</span>
+          </div>
+        </div>
+
+        <div style="margin-top:16px;">${resultsPanel}</div>
+        <div style="margin-top:16px;">${vizPanelFixed || ""}</div>
+        <div style="margin-top:16px;">${clusterPanel}</div>
+        <div style="margin-top:16px;">${checksPanel}</div>
+        <div style="margin-top:16px;">${todoPanel}</div>
+        <div style="margin-top:16px;">${extPanel}</div>
+        <div style="margin-top:16px;">${metaPanel}</div>
+        <div style="margin-top:16px;">${holdersPanel}</div>
+
+        <div class="statusLine" style="margin-top:14px; opacity:.75">
+          Brand: ${esc(brandUrl)} • Logo: ${esc(logoUrl)}
+        </div>
+      </div>
+    </section>
+
+    <footer>© ${new Date().getFullYear()} $SOS • Guardian Report</footer>
+  </main>
+</body>
+</html>`;
+}
 
 function downloadTextFile(filename, text){
   const blob = new Blob([text], {type:"text/html;charset=utf-8"});
