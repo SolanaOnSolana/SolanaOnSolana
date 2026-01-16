@@ -800,9 +800,6 @@
       DEFAULT_FORMAT: "html"
     }
   };
-    
-    CFG.UI = CFG.UI || {};
-    CFG.UI.REPORT_LOGO_URL = "https://solanax1.com/assets/logo.png";
 
   /* ===================== ICONS (UPDATED: more original-looking) ===================== */
   const ICONS = {
@@ -909,13 +906,6 @@ function startLiveStampTime(){
   updateStampTime();
   STAMP_TIMER = setInterval(updateStampTime, 1000);
 }
-  // sofort Uhr setzen
-  updateStampTime();
-
-  // jede Sekunde aktualisieren
-  STAMP_TIMER = setInterval(updateStampTime, 1000);
-}
-
 
   /* ===================== VALIDATION ===================== */
   function looksBase58(s){
@@ -3148,48 +3138,40 @@ function startLiveStampTime(){
   }
 
   function init(){
-    qs("y").textContent = String(new Date().getFullYear());
+  setText("y", String(new Date().getFullYear()));
 
-    on("modalClose", "click", closeModal);
-    on("toastClose", "click", hideToast);
+  on("modalClose", "click", closeModal);
+  on("toastClose", "click", hideToast);
 
-    on("modalWrap", "click", (e) => {
-      if(e.target === qs("modalWrap")) closeModal();
-    });
+  on("modalWrap", "click", (e) => {
+    if(e.target === qs("modalWrap")) closeModal();
+  });
 
-    on("btnScan", "click", runScan);
-    on("btnScanInline", "click", runScan);
+  on("btnScan", "click", runScan);
+  on("btnScanInline", "click", runScan);
 
-    on("mint", "keydown", (e) => {
-      if(e.key === "Enter") runScan();
-    });
+  on("mint", "keydown", (e) => {
+    if(e.key === "Enter") runScan();
+  });
 
-    on("btnExport", "click", () => {
-      if(!LAST_SCAN) return;
+  on("btnExport", "click", () => {
+    if(!LAST_SCAN) return;
 
-      // Preferred: branded HTML (looks like your site)
-      const safeAddr = fileSafe((LAST_SCAN.address || "").replace(/^0x/i,"").slice(0, 16));
-      const htmlName = `guardian_scan_${LAST_SCAN.chain.id}_${safeAddr}.html`;
-      const html = buildBrandedReportHtml(LAST_SCAN);
-      downloadHtml(htmlName, html);
+    const safeAddr = fileSafe((LAST_SCAN.address || "").replace(/^0x/i,"").slice(0, 16));
+    const htmlName = `guardian_scan_${LAST_SCAN.chain.id}_${safeAddr}.html`;
+    const html = buildBrandedReportHtml(LAST_SCAN);
+    downloadHtml(htmlName, html);
+  });
 
-      // Optional fallback TXT (kept, not removed) — enable if you want:
-      if(CFG?.UI?.EXPORT_TXT_FALLBACK){
-        const txtName = `guardian_scan_${LAST_SCAN.chain.id}_${safeAddr}.txt`;
-        downloadText(txtName, buildReportText(LAST_SCAN));
-      }
-    });
+  const url = new URL(location.href);
+  const chainParam = url.searchParams.get("chain");
+  if(chainParam && CFG.CHAINS.some(c => c.id === chainParam)){
+    activeChain = CFG.CHAINS.find(c => c.id === chainParam);
+  }
 
-    // URL chain param
-    const url = new URL(location.href);
-    const chainParam = url.searchParams.get("chain");
-    if(chainParam && CFG.CHAINS.some(c => c.id === chainParam)){
-      activeChain = CFG.CHAINS.find(c => c.id === chainParam);
-    }
-    
-    setActiveChain(activeChain.id, false);
-    startLiveStampTime();
-    wireGlobalClick();
+  setActiveChain(activeChain.id, false);
+  startLiveStampTime();
+  wireGlobalClick();
 }
 
 init();
