@@ -761,30 +761,33 @@
 
   <script>
   /* =========================================================
-     GUARDIAN CHECK — REWRITE (Multi-Chain)
-     - keeps all features
-     - adds bundles/clusters + bubble map
-     - export includes clusters
+     GUARDIAN CHECK — FULL SINGLE-FILE (Multi-Chain)
+     - Solana scan: Helius RPC + largest holders + bubble map
+     - EVM scan: pure JSON-RPC for ERC20 basics + proxy detection
+     - EVM holders/clusters: requires GoldRush key (optional; degrades gracefully)
+     - FIXED FLOW: no "No scan yet" after EVM — state-first finalize renderer
      ========================================================= */
 
   /* ===================== CONFIG ===================== */
   const CFG = {
     HELIUS_KEY: "b566a086-57d4-4433-8661-faed9ad07ba0",
+    // If you have a better EVM metadata provider later, add it; not required for core scan:
     EVM_METADATA_KEY: "",
 
-    // Covalent GoldRush
+    // Covalent GoldRush (optional but recommended for EVM holders/txs)
     GOLDRUSH_API_KEY: "cqt_rQVTMTXwYkPJBrwf7ff6JWmdkywR",
 
     TOKEN_PROGRAM: "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
     TOKEN_2022_PROGRAM: "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
 
     CHAINS: [
-      { id:"sol",  name:"Solana",   kind:"solana", stamp:"MAINNET",    addrLabel:"Token Mint Address",      placeholder:"Paste token mint (Solana)..." },
-      { id:"eth",  name:"Ethereum", kind:"evm",    chainId:1,  stamp:"ETH MAINNET",  addrLabel:"Token Contract Address", placeholder:"Paste ERC-20 contract (0x...)" },
-      { id:"bnb",  name:"BNB",      kind:"evm",    chainId:56, stamp:"BNB MAINNET",  addrLabel:"Token Contract Address", placeholder:"Paste BEP-20 contract (0x...)" },
+      { id:"sol",  name:"Solana",   kind:"solana", stamp:"MAINNET",       addrLabel:"Token Mint Address",      placeholder:"Paste token mint (Solana)..." },
+      { id:"eth",  name:"Ethereum", kind:"evm",    chainId:1,    stamp:"ETH MAINNET",  addrLabel:"Token Contract Address", placeholder:"Paste ERC-20 contract (0x...)" },
+      { id:"bnb",  name:"BNB",      kind:"evm",    chainId:56,   stamp:"BNB MAINNET",  addrLabel:"Token Contract Address", placeholder:"Paste BEP-20 contract (0x...)" },
       { id:"base", name:"Base",     kind:"evm",    chainId:8453, stamp:"BASE MAINNET", addrLabel:"Token Contract Address", placeholder:"Paste Base token contract (0x...)" }
     ],
 
+    // RPC fallbacks (public). You can add your own paid endpoints for better reliability.
     EVM_RPCS: {
       1:    ["https://ethereum.publicnode.com", "https://rpc.ankr.com/eth",  "https://eth.llamarpc.com", "https://cloudflare-eth.com"],
       56:   ["https://bsc.publicnode.com",      "https://rpc.ankr.com/bsc",  "https://bsc-dataseed.binance.org"],
@@ -792,34 +795,31 @@
     },
 
     UI: {
-      SHOW_PASS_DETAILS_EVM: false,
-      SHOW_NO_SIGNAL_METRICS: false,
+      // Export logo MUST be absolute so downloaded HTML works on mobile:
       REPORT_LOGO_URL: "https://solanax1.com/assets/logo.png"
     },
 
-    EXPORT: { DEFAULT_FORMAT: "html" }
-  };
+    EXPORT: { DEFAULT_FORMAT: "html" },
 
-  /* ===================== CLUSTERS / BUNDLES CONFIG (MUST BE BEFORE USE) ===================== */
-  CFG.CLUSTERS = {
-    ENABLED: true,
-    TOP_HOLDER_WALLETS: 25,
-    TXS_PER_WALLET: 40,
-    EDGE_WEIGHTS: {
-      TOKEN_TRANSFER: 2.0,
-      NATIVE_FUNDING: 2.5,
-      SHARED_FUNDER: 2.0,
-      SHARED_COUNTERPARTY: 0.7,
-      SAME_SECOND_BURST: 2.0
-    },
-    MIN_EDGE_WEIGHT: 2.0,
-    BURST: { WINDOW_SECONDS: 1, MIN_WALLETS_IN_BUCKET: 3 },
-    IGNORE: {
-      EVM_ADDRS: new Set([
-        "0x0000000000000000000000000000000000000000",
-        "0x000000000000000000000000000000000000dead"
-      ]),
-      SOL_ADDRS: new Set([])
+    CLUSTERS: {
+      ENABLED: true,
+      TOP_HOLDER_WALLETS: 25,
+      TXS_PER_WALLET: 40,
+      EDGE_WEIGHTS: {
+        TOKEN_TRANSFER: 2.0,
+        SHARED_FUNDER: 2.0,
+        SHARED_COUNTERPARTY: 0.7,
+        SAME_SECOND_BURST: 2.0
+      },
+      MIN_EDGE_WEIGHT: 2.0,
+      BURST: { MIN_WALLETS_IN_BUCKET: 3 },
+      IGNORE: {
+        EVM_ADDRS: new Set([
+          "0x0000000000000000000000000000000000000000",
+          "0x000000000000000000000000000000000000dead"
+        ]),
+        SOL_ADDRS: new Set([])
+      }
     }
   };
 
@@ -859,19 +859,25 @@
     `
   };
 
-  /* ===================== SAFE DOM HELPERS ===================== */
+  /* ===================== DOM HELPERS ===================== */
   const qs = (id) => document.getElementById(id);
   const setText = (id, v) => { const el = qs(id); if (el) el.textContent = (v ?? ""); };
   const setHTML = (id, v) => { const el = qs(id); if (el) el.innerHTML = (v ?? ""); };
   const on = (id, ev, fn) => { const el = qs(id); if (el) el.addEventListener(ev, fn); };
-  const esc = (x) => String(x ?? "").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;");
+  const esc = (x) => String(x ?? "")
+    .replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;");
 
-  /* ===================== GLOBAL STATE ===================== */
+  /* ===================== STATE (FIXED) ===================== */
   let activeChain = CFG.CHAINS[0];
-  let LAST_SCAN = null;
-  let SCANNING = false;
 
-  /* ===================== UTIL ===================== */
+  const SCAN_STATE = {
+    scanning: false,
+    completed: false,
+    chain: null,
+    addr: null,
+    result: null
+  };
+
   function clamp(n, min, max){ return Math.max(min, Math.min(max, n)); }
   function shortAddr(a){ return a ? (a.slice(0,4) + "…" + a.slice(-4)) : "—"; }
   function fmtInt(n){
@@ -884,6 +890,7 @@
     return `${Number(n).toFixed(2)}%`;
   }
   function setStatus(msg){ setText("status", msg || ""); }
+
   function setBadge(el, txt, mode){
     if(!el) return;
     el.textContent = txt ?? "";
@@ -891,7 +898,7 @@
     if(mode) el.classList.add(mode);
   }
 
-  /* live stamp */
+  /* ===================== LIVE TIME STAMP ===================== */
   let STAMP_TIMER = null;
   function updateStampTime(){
     const el = qs("stampTime");
@@ -973,6 +980,78 @@
   function pillLabel(sev){ return sev==="ok" ? "PASS" : sev==="bad" ? "FAIL" : "WATCH"; }
   function pillClass(sev){ return sev==="ok" ? "pill ok" : sev==="bad" ? "pill bad" : "pill warn"; }
 
+  /* ===================== UI RESET (SAFE) ===================== */
+  function resetUIForNewScan(){
+    SCAN_STATE.completed = false;
+    SCAN_STATE.result = null;
+
+    setText("mintShort","—");
+    setText("verdictTitle","—");
+    setBadge(qs("verdictBadge"),"—");
+    setText("scoreBadge","—");
+    setText("summary","—");
+    setText("scanHint","—");
+    setText("tokenName","—");
+    setText("tokenSymbol","—");
+
+    const lw = qs("tokenLogoWrap");
+    const img = qs("tokenLogo");
+    if(lw) lw.style.display = "none";
+    if(img){ img.removeAttribute("src"); img.alt = ""; }
+
+    renderMetrics([]);
+
+    renderList(qs("checksList"), [{
+      t:"Waiting for scan",
+      sev:"warn",
+      d:"Paste an address and run the Guardian Check.",
+      infoHtml: explain("Guardian Checks", [
+        "After scanning, we generate on-chain checks & explanations."
+      ])
+    }], "Guardian Checks");
+
+    renderList(qs("todoList"), [{
+      t:"Waiting for scan",
+      sev:"warn",
+      d:"Launch readiness tasks appear after scan.",
+      infoHtml: explain("Launch Readiness", [
+        "We derive an action list from detected on-chain signals."
+      ])
+    }], "Launch Readiness");
+
+    renderList(qs("extList"), [{
+      t:"Waiting for scan",
+      sev:"warn",
+      d:"Standard details appear after scan.",
+      infoHtml: explain("Token Standard", [
+        "Solana: SPL vs Token-2022.",
+        "EVM: ERC-20 basics + proxy detection."
+      ])
+    }], "Token Standard");
+
+    renderList(qs("metaList"), [{
+      t:"Waiting for scan",
+      sev:"warn",
+      d:"Metadata appears after scan.",
+      infoHtml: explain("Token Metadata", [
+        "Solana: Helius DAS getAsset().",
+        "EVM: name/symbol/decimals from ERC-20 selectors."
+      ])
+    }], "Token Metadata");
+
+    renderHoldersEmpty();
+
+    const bw = qs("bubbleWrap");
+    if(bw) bw.style.display = "none";
+    window.__BUBBLE_MAP_DATA_URL = "";
+
+    const ex = qs("btnExport");
+    if(ex){
+      ex.disabled = true;
+      ex.textContent = "Download Scan Report";
+    }
+  }
+
   /* ===================== UI RENDER ===================== */
   function applyTokenHeader(meta, addr){
     const nameEl = qs("tokenName");
@@ -1037,16 +1116,7 @@
     const wrap = qs("metrics");
     if(!wrap) return;
     wrap.innerHTML = "";
-
-    const filtered = (rows || []).filter(r => {
-      if(CFG.UI.SHOW_NO_SIGNAL_METRICS) return true;
-      const v = String(r?.value ?? "").toLowerCase();
-      if(v.includes("no signal")) return false;
-      if(v.includes("not found")) return false;
-      return true;
-    });
-
-    for(const r of filtered){
+    for(const r of (rows || [])){
       const d = document.createElement("div");
       d.className = "metric";
       const bar = (typeof r.barPct === "number")
@@ -1079,11 +1149,14 @@
     renderList(el, [{
       t:"No holder data",
       sev:"warn",
-      d: activeChain.kind === "solana" ? "Top holders appear after scan." : (CFG.GOLDRUSH_API_KEY ? "Holders appear if the indexer returns data." : "Holders need an indexer (GoldRush)."),
+      d: activeChain.kind === "solana"
+        ? "Top holders appear after scan."
+        : (CFG.GOLDRUSH_API_KEY
+            ? "Holders appear if the indexer returns data."
+            : "EVM holders need an indexer (GoldRush)."),
       infoHtml: explain("Top holders", [
-        "Meaning: Distribution shows whale risk.",
-        "Solana: via RPC largest accounts.",
-        "EVM: needs an indexer (GoldRush) — RPC alone cannot list holders."
+        "Solana: via getTokenLargestAccounts() + owner resolve.",
+        "EVM: RPC alone cannot list token holders — needs an indexer (GoldRush)."
       ])
     }], "Top Holders");
   }
@@ -1097,8 +1170,7 @@
     for(const it of items){
       const infoId = registerInfo(it.infoHtml || explain("Top holder", [
         "Meaning: Share of supply.",
-        "Why it matters: High % = dump risk.",
-        "Tip: Check if LP/Burn/Team/Treasury."
+        "Why it matters: High % = dump risk."
       ]));
 
       const li = document.createElement("li");
@@ -1115,63 +1187,6 @@
         </div>
       `;
       el.appendChild(li);
-    }
-  }
-
-  function clearUI(){
-    setText("mintShort","—");
-    setText("verdictTitle","—");
-    setBadge(qs("verdictBadge"),"—");
-    setText("scoreBadge","—");
-    setText("summary","—");
-    setText("scanHint","—");
-    setText("tokenName","—");
-    setText("tokenSymbol","—");
-
-    const lw = qs("tokenLogoWrap");
-    if(lw) lw.style.display = "none";
-
-    renderMetrics([]);
-
-    renderList(qs("checksList"), [{
-      t:"No scan yet",
-      sev:"warn",
-      d:"Paste an address and run the Guardian Check.",
-      why:"No data available yet."
-    }], "Guardian Check Details");
-
-    renderList(qs("todoList"), [{
-      t:"Waiting for scan",
-      sev:"warn",
-      d:"We generate the action list from on-chain signals after a scan.",
-      why:"Run a scan to generate the checklist."
-    }], "Launch Readiness");
-
-    renderList(qs("extList"), [{
-      t:"No scan yet",
-      sev:"warn",
-      d:"Standard details appear after scan.",
-      why:"Run a scan to display standard/extensions."
-    }], "Token Standard");
-
-    renderList(qs("metaList"), [{
-      t:"No scan yet",
-      sev:"warn",
-      d:"Name / symbol / logo appear after scan.",
-      why:"Run a scan to fetch metadata."
-    }], "Token Metadata");
-
-    renderHoldersEmpty();
-
-    // bubble
-    const bw = qs("bubbleWrap");
-    if(bw) bw.style.display = "none";
-
-    LAST_SCAN = null;
-    const ex = qs("btnExport");
-    if(ex){
-      ex.disabled = true;
-      ex.textContent = "Download Scan Report";
     }
   }
 
@@ -1202,9 +1217,12 @@
     const mint = qs("mint");
     if(mint) mint.placeholder = activeChain.placeholder || "Paste token address...";
 
-    setText("chainHint", "");
+    setText("chainHint", activeChain.kind === "evm"
+      ? (CFG.GOLDRUSH_API_KEY ? "EVM holders/clusters enabled (GoldRush)." : "Tip: add GoldRush key to show EVM holders/clusters.")
+      : "Solana: Helius RPC for on-chain signals.");
+
     setStatus("");
-    clearUI();
+    resetUIForNewScan();
 
     if(pushUrl){
       const url = new URL(location.href);
@@ -1213,195 +1231,19 @@
     }
   }
 
-  /* ===================== CLUSTER GRAPH ENGINE ===================== */
-  const ClusterGraph = () => ({
-    nodes: new Set(),
-    edges: new Map(), // key => {a,b,w,reasons:Set()}
-    addNode(a){
-      if(!a) return;
-      this.nodes.add(String(a));
-    },
-    addEdge(a,b,w,reason){
-      if(!a || !b) return;
-      a = String(a); b = String(b);
-      if(a === b) return;
-      const [x,y] = a.toLowerCase() < b.toLowerCase() ? [a,b] : [b,a];
-      const key = `${x}|${y}`;
-      const cur = this.edges.get(key) || {a:x, b:y, w:0, reasons:new Set()};
-      cur.w += Number(w || 0);
-      if(reason) cur.reasons.add(String(reason));
-      this.edges.set(key, cur);
-      this.nodes.add(x); this.nodes.add(y);
-    }
-  });
-
-  class DSU{
-    constructor(){ this.p = new Map(); this.sz = new Map(); }
-    find(x){
-      if(!this.p.has(x)){ this.p.set(x,x); this.sz.set(x,1); }
-      let r = x;
-      while(this.p.get(r) !== r) r = this.p.get(r);
-      let c = x;
-      while(this.p.get(c) !== c){
-        const n = this.p.get(c);
-        this.p.set(c, r);
-        c = n;
-      }
-      return r;
-    }
-    union(a,b){
-      a=this.find(a); b=this.find(b);
-      if(a===b) return;
-      if(this.sz.get(a) < this.sz.get(b)) [a,b] = [b,a];
-      this.p.set(b,a);
-      this.sz.set(a, this.sz.get(a)+this.sz.get(b));
-    }
-  }
-
-  function buildClustersFromGraph(graph, minWeight){
-    const dsu = new DSU();
-    for(const e of graph.edges.values()){
-      if(e.w >= minWeight) dsu.union(e.a, e.b);
-    }
-    const clusters = new Map();
-    for(const n of graph.nodes){
-      const r = dsu.find(n);
-      if(!clusters.has(r)) clusters.set(r, {root:r, wallets:new Set(), edgeW:0, edges:[]});
-      clusters.get(r).wallets.add(n);
-    }
-    for(const e of graph.edges.values()){
-      if(e.w < minWeight) continue;
-      const r = dsu.find(e.a);
-      const c = clusters.get(r);
-      if(c){
-        c.edgeW += e.w;
-        c.edges.push(e);
-      }
-    }
-    return [...clusters.values()]
-      .map(c => ({...c, walletCount: c.wallets.size}))
-      .sort((a,b)=>b.walletCount-a.walletCount);
-  }
-
-  function burstBucketsFromFirstSeen(firstSeenByWallet){
-    const buckets = new Map();
-    for(const [w,ts] of Object.entries(firstSeenByWallet || {})){
-      if(!ts) continue;
-      const sec = Math.floor(Number(ts));
-      if(!Number.isFinite(sec)) continue;
-      if(!buckets.has(sec)) buckets.set(sec, []);
-      buckets.get(sec).push(w);
-    }
-    return [...buckets.entries()]
-      .map(([sec, wallets]) => ({sec, wallets, count: wallets.length}))
-      .sort((a,b)=>b.count-a.count);
-  }
-
-  function computeClusterSharePct(clusterWallets, holderMapPct){
-    let sum = 0;
-    for(const w of clusterWallets){
-      const p = holderMapPct.get(w.toLowerCase());
-      if(Number.isFinite(p)) sum += p;
-    }
-    return sum;
-  }
-
-  function clusterRiskSummary(analysis){
-    const clustered = analysis?.clusteredPctWallets ?? 0;
-    const largestHold = analysis?.largestClusterPctHold ?? 0;
-    const burstMax = analysis?.burstTop?.[0]?.count ?? 0;
-
-    let score = 0;
-    score += clamp(clustered * 0.9, 0, 45);
-    score += clamp(largestHold * 1.2, 0, 40);
-    if(burstMax >= 8) score += 15;
-    else if(burstMax >= 5) score += 10;
-    else if(burstMax >= 3) score += 6;
-
-    score = clamp(Math.round(score), 0, 100);
-    const sev = score >= 70 ? "bad" : score >= 40 ? "warn" : "ok";
-    return { score, sev };
-  }
-
-  /* Save base metric rows so we can append cluster metrics without deleting */
-  function setBaseMetricRows(rows){
-    window.__METRICS_BASE_ROWS = Array.isArray(rows) ? rows.slice() : [];
-  }
-
-  function renderClustersPanel(analysis){
-    if(!analysis || !analysis.enabled) return;
-
-    const clusteredPct = analysis.clusteredPctWallets ?? 0;
-    const largestHold = analysis.largestClusterPctHold ?? 0;
-    const burstMax = analysis.burstTop?.[0]?.count ?? 0;
-    const risk = clusterRiskSummary(analysis);
-
-    const extraMetricRows = [
-      { label:"Connected Wallets (Clusters)", value:`${clusteredPct.toFixed(1)}%`, badge:(risk.sev==="bad"?"HIGH":risk.sev==="warn"?"MED":"LOW"), barPct: clamp(clusteredPct,0,100), mini:"Top-holder wallets linked by transfers/bursts." },
-      { label:"Largest Cluster (Hold Share)", value:`${largestHold.toFixed(2)}%`, badge:(largestHold>=25?"HIGH":largestHold>=12?"MED":"LOW"), barPct: clamp(largestHold,0,100), mini:"Sum of top-holder % in biggest cluster." },
-      { label:"Bundle Burst (Same-second)", value: burstMax ? `${burstMax} wallets` : "None", badge:(burstMax>=8?"HIGH":burstMax>=5?"MED":burstMax>=3?"LOW":"—"), mini:"Max wallets with first activity same second." }
-    ];
-
-    if(window.__METRICS_BASE_ROWS){
-      renderMetrics([...window.__METRICS_BASE_ROWS, ...extraMetricRows]);
-    }
-
-    // Append a cluster check (no rewrite of existing list)
-    const checksEl = qs("checksList");
-    if(checksEl){
-      const topCluster = analysis.clustersTop?.[0];
-      const topClusterWallets = topCluster ? [...topCluster.wallets].slice(0,6).map(shortAddr).join(", ") : "—";
-
-      const burstLine = (analysis.burstTop || [])
-        .slice(0, 3)
-        .filter(x => x.count >= CFG.CLUSTERS.BURST.MIN_WALLETS_IN_BUCKET)
-        .map(x => `${x.count} wallets @ ${new Date(x.sec*1000).toISOString().slice(11,19)} UTC`)
-        .join(" • ");
-
-      const item = {
-        t:"Bundles / Connected Wallets",
-        sev: risk.sev,
-        d: (risk.sev==="bad")
-          ? `High clustering detected. Bundle score ${risk.score}/100.`
-          : (risk.sev==="warn")
-            ? `Some clustering signals. Bundle score ${risk.score}/100.`
-            : `Low clustering. Bundle score ${risk.score}/100.`,
-        infoHtml: explain("Bundles / Connected Wallets", [
-          `Clustered wallets: ${clusteredPct.toFixed(1)}% of scanned holders`,
-          `Largest cluster hold share: ${largestHold.toFixed(2)}%`,
-          burstLine ? `Top burst buckets: ${burstLine}` : "No significant same-second bursts detected.",
-          topCluster ? `Largest cluster wallets (preview): ${topClusterWallets}` : "No cluster found above threshold.",
-          "",
-          "We link wallets using:",
-          "• Direct transfers between holder wallets",
-          "• Shared funder patterns",
-          "• Same-second first activity bursts",
-          "• Shared counterparties (weak signal)"
-        ])
-      };
-
-      const infoId = registerInfo(item.infoHtml);
-      const li = document.createElement("li");
-      li.className = "li";
-      li.innerHTML = `
-        <div class="left">
-          <div class="t">${esc(item.t)}</div>
-          <div class="d">${esc(item.d)}</div>
-        </div>
-        <div class="pillRow">
-          <span class="${pillClass(item.sev)}" role="button" tabindex="0"
-                data-open="1" data-title="${esc(item.t)}" data-info="${esc(infoId)}">${pillLabel(item.sev)}</span>
-          <button class="infoBtn" type="button" aria-label="Info"
-                  data-open="1" data-title="${esc(item.t)}" data-info="${esc(infoId)}"><span>i</span></button>
-        </div>
-      `;
-      checksEl.appendChild(li);
-    }
-
-    window.__LAST_CLUSTER_ANALYSIS = analysis;
-  }
-
   /* ===================== BUBBLE MAP (Canvas) ===================== */
+  function holdersToBubbles(holders){
+    const out = [];
+    for(const h of (holders||[]).slice(0, 20)){
+      out.push({
+        addr: h.wallet,
+        pct: Number(h.pct || 0),
+        label: shortAddr(h.wallet || "")
+      });
+    }
+    return out;
+  }
+
   function renderBubbleMap(holderBubbles){
     const wrap = qs("bubbleWrap");
     const canvas = qs("bubbleCanvas");
@@ -1411,23 +1253,21 @@
     const items = Array.isArray(holderBubbles) ? holderBubbles.slice(0, 20) : [];
     if(!items.length){
       wrap.style.display = "none";
+      window.__BUBBLE_MAP_DATA_URL = "";
       return;
     }
 
     wrap.style.display = "block";
     badge.textContent = `${items.length} wallets`;
 
-    // HiDPI scale
     const rect = canvas.getBoundingClientRect();
     const dpr = Math.max(1, window.devicePixelRatio || 1);
     canvas.width = Math.floor(rect.width * dpr);
     canvas.height = Math.floor(240 * dpr);
     const ctx = canvas.getContext("2d");
 
-    // clear
     ctx.clearRect(0,0,canvas.width,canvas.height);
 
-    // background subtle grid
     ctx.globalAlpha = 0.25;
     for(let x=0;x<canvas.width;x+=Math.floor(48*dpr)){
       ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,canvas.height); ctx.strokeStyle="rgba(255,255,255,.08)"; ctx.stroke();
@@ -1437,7 +1277,6 @@
     }
     ctx.globalAlpha = 1;
 
-    // simple packing: spiral placement, radius by pct
     const w = canvas.width, h = canvas.height;
     const cx = w/2, cy = h/2;
 
@@ -1472,20 +1311,16 @@
       placed.push({x,y,r, label: it.label || shortAddr(it.addr || ""), pct});
     });
 
-    // draw circles
     for(const p of placed){
-      // fill
       ctx.beginPath();
       ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
       ctx.fillStyle = "rgba(255,255,255,.08)";
       ctx.fill();
 
-      // stroke gradient-ish (simple)
       ctx.lineWidth = 2*dpr;
       ctx.strokeStyle = "rgba(20,241,149,.55)";
       ctx.stroke();
 
-      // label
       ctx.font = `${Math.max(10, Math.floor(11*dpr))}px ui-sans-serif, system-ui`;
       ctx.fillStyle = "rgba(255,255,255,.85)";
       ctx.textAlign = "center";
@@ -1497,7 +1332,6 @@
       ctx.fillText(p.label, p.x, p.y + 10*dpr);
     }
 
-    // store image for report export
     try{
       window.__BUBBLE_MAP_DATA_URL = canvas.toDataURL("image/png");
     }catch{
@@ -1505,7 +1339,7 @@
     }
   }
 
-  /* ===================== VERDICT / SCORING ===================== */
+  /* ===================== VERDICT / SCORE ===================== */
   function verdictFrom(score, critical){
     if(critical) return {label:"FLAGGED", mode:"bad",  title:"FLAGGED • High Risk"};
     if(score >= 80) return {label:"APPROVED", mode:"good", title:"APPROVED • Guardian Grade"};
@@ -1513,620 +1347,62 @@
     return {label:"FLAGGED", mode:"bad", title:"FLAGGED • High Risk"};
   }
 
-  /* ===================== SOLANA RPC (Helius) ===================== */
-  function HELIUS_RPC(){
-    return `https://mainnet.helius-rpc.com/?api-key=${encodeURIComponent(CFG.HELIUS_KEY)}`;
-  }
-  async function solRpc(method, params){
-    if(!CFG.HELIUS_KEY) throw new Error("Helius key missing.");
-    const res = await fetch(HELIUS_RPC(), {
-      method:"POST",
-      headers:{ "Content-Type":"application/json" },
-      body: JSON.stringify({ jsonrpc:"2.0", id:1, method, params })
-    });
-    if(!res.ok){
-      const t = await res.text().catch(()=> "");
-      throw new Error(`Solana RPC HTTP ${res.status}: ${t.slice(0,220)}`);
-    }
-    const j = await res.json();
-    if(j?.error) throw new Error(j.error.message || "Solana RPC error");
-    return j.result;
-  }
-  async function getMintParsed(mint){
-    const r = await solRpc("getAccountInfo", [mint, { encoding:"jsonParsed", commitment:"confirmed" }]);
-    const v = r?.value;
-    if(!v) return null;
-    const owner = v.owner;
-    const parsed = (v.data && typeof v.data === "object") ? v.data.parsed : null;
-    const info = parsed?.info || null;
-    return { owner, info, rawParsed: parsed };
-  }
-  async function getTokenSupply(mint){
-    const r = await solRpc("getTokenSupply", [mint]);
-    return r?.value || null;
-  }
-  async function getLargest(mint){
-    const r = await solRpc("getTokenLargestAccounts", [mint]);
-    return r?.value || [];
-  }
-  async function getAsset(mint){
-    try { return await solRpc("getAsset", [mint]); }
-    catch { return null; }
-  }
+  function computeScore(signals){
+    let score = 100;
+    let critical = false;
 
-  function pickTokenMetaFromAsset(asset){
-    if(!asset) return null;
-    const md = asset?.content?.metadata || {};
-    const name = (md?.name || asset?.metadata?.name || "").trim();
-    const symbol = (md?.symbol || asset?.metadata?.symbol || "").trim();
-    let image = "";
-    const linksImg = asset?.content?.links?.image;
-    if(typeof linksImg === "string") image = linksImg;
-    if(!image && Array.isArray(asset?.content?.files)){
-      const f = asset.content.files.find(x => (x?.mime || "").includes("image") && x?.uri);
-      if(f?.uri) image = f.uri;
-    }
-    const uri = (asset?.content?.json_uri || asset?.content?.links?.external_url || "").trim();
-    const description = (md?.description || asset?.content?.metadata?.description || "").trim();
-    const authorities = Array.isArray(asset?.authorities) ? asset.authorities : [];
-    return { name, symbol, image, uri, description, authorities };
-  }
-
-  /* ===================== EVM RPC ===================== */
-  async function evmRpc(chainId, method, params){
-    const urls = CFG.EVM_RPCS[chainId] || [];
-    if(!urls.length) throw new Error("No RPC configured for this chain.");
-    const errors = [];
-    for(const url of urls){
-      const ctrl = new AbortController();
-      const timer = setTimeout(() => ctrl.abort(), 12000);
-      try{
-        const res = await fetch(url, {
-          method:"POST",
-          headers:{ "Content-Type":"application/json" },
-          body: JSON.stringify({ jsonrpc:"2.0", id:1, method, params }),
-          signal: ctrl.signal
-        });
-        clearTimeout(timer);
-        if(!res.ok){
-          const t = await res.text().catch(()=> "");
-          errors.push(`HTTP ${res.status} ${t.slice(0,160)}`);
-          continue;
-        }
-        const j = await res.json();
-        if(j?.error){
-          errors.push(String(j.error?.message || "RPC error").slice(0,160));
-          continue;
-        }
-        return j.result;
-      }catch(e){
-        clearTimeout(timer);
-        errors.push(String(e?.message || e).slice(0,160));
-      }
-    }
-    throw new Error(`All RPCs failed. ${errors.slice(-3).join(" • ")}`);
-  }
-  async function ethCall(chainId, to, data){
-    return await evmRpc(chainId, "eth_call", [{to, data}, "latest"]);
-  }
-  async function getCode(chainId, addr){
-    return await evmRpc(chainId, "eth_getCode", [addr, "latest"]);
-  }
-  async function getStorageAt(chainId, addr, slot){
-    return await evmRpc(chainId, "eth_getStorageAt", [addr, slot, "latest"]);
-  }
-
-  const SEL = {
-    name: "0x06fdde03",
-    symbol: "0x95d89b41",
-    decimals: "0x313ce567",
-    totalSupply: "0x18160ddd",
-    owner: "0x8da5cb5b",
-    paused: "0x5c975abb"
-  };
-  function strip0x(h){ return (h||"").startsWith("0x") ? h.slice(2) : (h||""); }
-  function decodeUint256(hex){
-    const h = strip0x(hex);
-    if(!h) return null;
-    const padded = h.padStart(64,"0").slice(-64);
-    try { return BigInt("0x"+padded); }
-    catch { return null; }
-  }
-  function decodeAddressFrom32(hex){
-    const h = strip0x(hex);
-    if(!h) return null;
-    const padded = h.padStart(64,"0").slice(-40);
-    return "0x" + padded;
-  }
-  function bytes32ToAscii(hex){
-    const h = strip0x(hex);
-    if(h.length !== 64) return "";
-    try{
-      const bytes = new Uint8Array(h.match(/.{1,2}/g).map(b => parseInt(b,16)));
-      let s = new TextDecoder().decode(bytes).replace(/\0/g,"").trim();
-      if(!s) return "";
-      if(/^[\x20-\x7E]+$/.test(s)) return s;
-      return "";
-    }catch{
-      return "";
-    }
-  }
-  function decodeString(hex){
-    const data = strip0x(hex);
-    if(!data) return "";
-    if(data.length === 64){
-      const b = bytes32ToAscii("0x"+data);
-      if(b) return b;
-    }
-    if(data.length < 128) return "";
-    const lenHex = data.slice(64,128);
-    let len = 0;
-    try { len = Number(BigInt("0x"+lenHex)); }
-    catch { return ""; }
-    if(!Number.isFinite(len) || len <= 0) return "";
-    const strData = data.slice(128, 128 + len*2);
-    if(!strData) return "";
-    try{
-      const bytes = new Uint8Array(strData.match(/.{1,2}/g).map(b => parseInt(b,16)));
-      return new TextDecoder().decode(bytes).replace(/\0/g,"").trim();
-    }catch{
-      return "";
-    }
-  }
-  async function getErc20Meta(chainId, addr){
-    const out = { name:"", symbol:"", decimals:null, totalSupply:null };
-    try { out.name = decodeString(await ethCall(chainId, addr, SEL.name)); } catch {}
-    try { out.symbol = decodeString(await ethCall(chainId, addr, SEL.symbol)); } catch {}
-    try {
-      const v = decodeUint256(await ethCall(chainId, addr, SEL.decimals));
-      out.decimals = (v === null) ? null : Number(v);
-      if(!Number.isFinite(out.decimals)) out.decimals = null;
-    } catch {}
-    try { out.totalSupply = decodeUint256(await ethCall(chainId, addr, SEL.totalSupply)); } catch {}
-    return out;
-  }
-  async function getOwner(chainId, addr){
-    try{
-      const r = await ethCall(chainId, addr, SEL.owner);
-      return decodeAddressFrom32(r || "0x");
-    }catch{
-      return null;
-    }
-  }
-  async function getPaused(chainId, addr){
-    try{
-      const r = await ethCall(chainId, addr, SEL.paused);
-      const v = decodeUint256(r || "0x");
-      if(v === null) return null;
-      return v !== 0n;
-    }catch{
-      return null;
-    }
-  }
-
-  const SLOT_IMPL  = "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc";
-  const SLOT_ADMIN = "0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103";
-  async function detectProxy(chainId, addr){
-    try{
-      const [implRaw, adminRaw] = await Promise.all([
-        getStorageAt(chainId, addr, SLOT_IMPL),
-        getStorageAt(chainId, addr, SLOT_ADMIN)
-      ]);
-      const impl  = decodeAddressFrom32(implRaw  || "0x");
-      const admin = decodeAddressFrom32(adminRaw || "0x");
-      const zero = "0x0000000000000000000000000000000000000000";
-      const implNonZero  = impl  && impl.toLowerCase()  !== zero;
-      const adminNonZero = admin && admin.toLowerCase() !== zero;
-      return { isProxy: implNonZero || adminNonZero, implementation: implNonZero ? impl : null, admin: adminNonZero ? admin : null };
-    }catch{
-      return {isProxy:false, implementation:null, admin:null};
-    }
-  }
-
-    /* ===================== GOLD RUSH (holders + txs) ===================== */
-  async function goldrushFetch(path, params){
-    if(!CFG.GOLDRUSH_API_KEY) throw new Error("GoldRush API key missing.");
-    const url = new URL(`https://api.covalenthq.com/v1/${path}`);
-    if(params){
-      for(const [k,v] of Object.entries(params)){
-        if(v === undefined || v === null || v === "") continue;
-        url.searchParams.set(k, String(v));
-      }
-    }
-    // Prefer "Bearer" style? Covalent uses Basic auth with key as username. We'll use Authorization Basic.
-    const auth = btoa(`${CFG.GOLDRUSH_API_KEY}:`);
-    const res = await fetch(url.toString(), {
-      headers:{
-        "Accept":"application/json",
-        "Authorization": `Basic ${auth}`
-      }
-    });
-    if(!res.ok){
-      const t = await res.text().catch(()=> "");
-      throw new Error(`GoldRush HTTP ${res.status}: ${t.slice(0,220)}`);
-    }
-    const j = await res.json();
-    if(j?.error) throw new Error(j.error_message || "GoldRush error");
-    return j?.data || null;
-  }
-
-  // Token holders (EVM)
-  async function goldrushGetTokenHolders(chainId, tokenAddr, pageSize=50){
-    // Endpoint: /v1/{chainId}/tokens/{tokenAddress}/token_holders/
-    // This exists in GoldRush. If it fails, we degrade gracefully.
-    const data = await goldrushFetch(`${chainId}/tokens/${tokenAddr}/token_holders/`, {
-      "page-size": pageSize
-    });
-    const items = Array.isArray(data?.items) ? data.items : [];
-    return items;
-  }
-
-  // Address transactions (EVM) - used for cluster heuristics
-  async function goldrushGetAddressTxs(chainId, wallet, pageSize=100){
-    // Endpoint: /v1/{chainId}/address/{address}/transactions_v2/
-    const data = await goldrushFetch(`${chainId}/address/${wallet}/transactions_v2/`, {
-      "page-size": pageSize
-    });
-    const items = Array.isArray(data?.items) ? data.items : [];
-    return items;
-  }
-
-  function normalizeEvmAddr(a){
-    if(!a) return "";
-    const s = String(a).trim();
-    if(!s) return "";
-    return s.toLowerCase();
-  }
-
-  /* ===================== SOLANA: top holders + heuristics ===================== */
-  async function solGetTopHolders(mint){
-    const largest = await getLargest(mint);
-    // largest: [{address, amount, decimals, uiAmount, uiAmountString}]
-    const supply = await getTokenSupply(mint);
-    const supplyUi = Number(supply?.uiAmount ?? supply?.uiAmountString ?? 0);
-    const out = [];
-
-    for(const x of (largest||[]).slice(0, CFG.CLUSTERS.TOP_HOLDER_WALLETS)){
-      const ui = Number(x.uiAmount ?? x.uiAmountString ?? 0);
-      const pct = supplyUi > 0 ? (ui / supplyUi) * 100 : 0;
-      out.push({
-        tokenAccount: x.address,
-        uiAmount: ui,
-        pct,
-      });
-    }
-    return { holders: out, supplyUi };
-  }
-
-  // Attempt to resolve owner wallet for token accounts (best-effort)
-  async function solResolveOwners(tokenAccounts){
-    // Use getMultipleAccounts with jsonParsed
-    const owners = new Map(); // tokenAcc -> owner wallet
-    const chunk = (arr, n) => {
-      const out = [];
-      for(let i=0;i<arr.length;i+=n) out.push(arr.slice(i,i+n));
-      return out;
-    };
-    const parts = chunk(tokenAccounts, 90);
-    for(const p of parts){
-      const r = await solRpc("getMultipleAccounts", [p, { encoding:"jsonParsed", commitment:"confirmed" }]);
-      const vals = r?.value || [];
-      for(let i=0;i<vals.length;i++){
-        const v = vals[i];
-        const addr = p[i];
-        const owner = v?.data?.parsed?.info?.owner;
-        if(owner) owners.set(addr, owner);
-      }
-    }
-    return owners;
-  }
-
-  // First seen signature timestamp via getSignaturesForAddress (best-effort, limited)
-  async function solFirstSeen(wallet, limit=30){
-    try{
-      const sigs = await solRpc("getSignaturesForAddress", [wallet, {limit}]);
-      // oldest is last
-      const last = Array.isArray(sigs) && sigs.length ? sigs[sigs.length-1] : null;
-      const ts = last?.blockTime;
-      return (typeof ts === "number") ? ts : null;
-    }catch{
-      return null;
-    }
-  }
-
-  async function solRecentTokenTransfersBetweenWallets(mint, wallets, txsPerWallet=20){
-    // Heuristic: look at each wallet token account(s) and parse recent txs for transfers.
-    // This is intentionally "best-effort" and bounded.
-    const walletSet = new Set(wallets.map(w => String(w)));
-    const g = ClusterGraph();
-
-    for(const w of walletSet) g.addNode(w);
-
-    // We'll fetch signatures for each wallet and inspect transactions (parsed).
-    for(const w of [...walletSet].slice(0, CFG.CLUSTERS.TOP_HOLDER_WALLETS)){
-      let sigs = [];
-      try{
-        sigs = await solRpc("getSignaturesForAddress", [w, {limit: txsPerWallet}]);
-      }catch{
-        continue;
-      }
-      const sigList = (Array.isArray(sigs) ? sigs : []).map(x => x.signature).filter(Boolean);
-      if(!sigList.length) continue;
-
-      // fetch parsed txs in small chunks
-      const chunk = (arr,n)=>{ const o=[]; for(let i=0;i<arr.length;i+=n) o.push(arr.slice(i,i+n)); return o; };
-      for(const c of chunk(sigList, 20)){
-        let txs = [];
-        try{
-          txs = await solRpc("getParsedTransactions", [c, {maxSupportedTransactionVersion:0}]);
-        }catch{
-          continue;
-        }
-        if(!Array.isArray(txs)) continue;
-
-        for(const tx of txs){
-          const bt = tx?.blockTime;
-          const ins = tx?.transaction?.message?.instructions || [];
-          for(const insn of ins){
-            // token transfer parsed
-            const p = insn?.parsed;
-            if(p?.type === "transfer" || p?.type === "transferChecked"){
-              const info = p?.info || {};
-              const src = info?.source || info?.authority || "";
-              const dst = info?.destination || "";
-              // source/destination are token accounts; authority might be wallet.
-              // We link if any involved wallet is within set (either authority or resolved owner unknown).
-              // Minimal: if authority is in our set and destination owner is in set isn't trivial here. We'll weak-link
-              // wallets appearing in accountKeys: use pre/post token balances owner.
-              const pre = tx?.meta?.preTokenBalances || [];
-              const post = tx?.meta?.postTokenBalances || [];
-
-              // find owners touching this mint
-              const owners = new Set();
-              for(const b of [...pre, ...post]){
-                if(b?.mint !== mint) continue;
-                const ow = b?.owner;
-                if(ow && walletSet.has(ow)) owners.add(ow);
-              }
-              // if authority exists and is in set, include it
-              const auth = info?.authority;
-              if(auth && walletSet.has(auth)) owners.add(auth);
-
-              const arr = [...owners];
-              if(arr.length >= 2){
-                for(let i=0;i<arr.length;i++){
-                  for(let j=i+1;j<arr.length;j++){
-                    g.addEdge(arr[i], arr[j], CFG.CLUSTERS.EDGE_WEIGHTS.TOKEN_TRANSFER, "SOL: token transfer");
-                  }
-                }
-              }
-            }
-          }
-
-          // burst: same second first-seen is computed elsewhere
-          // shared counterparties: skip for sol to keep bounded
-        }
-      }
-    }
-    return g;
-  }
-
-  /* ===================== EVM: cluster graph from txs ===================== */
-  function extractFirstSeenFromTxItems(items){
-    // items contain transactions with block_signed_at
-    // return earliest timestamp in seconds
-    let min = null;
-    for(const it of items || []){
-      const t = it?.block_signed_at;
-      if(!t) continue;
-      const ms = Date.parse(t);
-      if(Number.isFinite(ms)){
-        const sec = Math.floor(ms/1000);
-        if(min === null || sec < min) min = sec;
-      }
-    }
-    return min;
-  }
-
-  function addEdgesFromEvmTxs(graph, wallet, txItems, walletSetLower){
-    const w = normalizeEvmAddr(wallet);
-    graph.addNode(w);
-
-    for(const it of txItems || []){
-      const from = normalizeEvmAddr(it?.from_address);
-      const to   = normalizeEvmAddr(it?.to_address);
-
-      if(from && to){
-        // If wallet interacts with another holder wallet: shared counterparty
-        if(walletSetLower.has(from) && walletSetLower.has(to)){
-          graph.addEdge(from, to, CFG.CLUSTERS.EDGE_WEIGHTS.SHARED_COUNTERPARTY, "EVM: direct tx between holders");
-        }else if(walletSetLower.has(from) && !CFG.CLUSTERS.IGNORE.EVM_ADDRS.has(to)){
-          // weak: same counterparty will be handled by "shared counterparty" logic
-        }
-      }
-
-      // Native funding heuristic: if value is large-ish and to is holder wallet (or from)
-      // Covalent provides value in wei string in "value"
-      const val = it?.value;
-      let v = 0n;
-      try{ if(val) v = BigInt(val); }catch{}
-      if(v > 0n && from && to){
-        // If a non-holder funds many holders, we connect those holders via shared funder in a second pass
-        // We'll store funder->recipient on window temp store.
-      }
-    }
-  }
-
-  function buildSharedFunderEdges(graph, funderMap){
-    // funderMap: Map<funder, Set<recipientHolders>>
-    for(const [funder, recips] of funderMap.entries()){
-      const arr = [...recips];
-      if(arr.length < 2) continue;
-      for(let i=0;i<arr.length;i++){
-        for(let j=i+1;j<arr.length;j++){
-          graph.addEdge(arr[i], arr[j], CFG.CLUSTERS.EDGE_WEIGHTS.SHARED_FUNDER, "EVM: shared funder");
-        }
-      }
-    }
-  }
-
-  /* ===================== CLUSTER ANALYSIS ORCHESTRATOR ===================== */
-  async function analyzeClusters(chain, addr, holdersPreview){
-    if(!CFG.CLUSTERS?.ENABLED) return { enabled:false };
-    const top = (holdersPreview || []).slice(0, CFG.CLUSTERS.TOP_HOLDER_WALLETS);
-
-    // holderMapPct maps wallet->pct (lowercase)
-    const holderMapPct = new Map();
-    const walletList = [];
-    for(const h of top){
-      const w = (h.wallet || h.addr || h.owner || "").trim();
-      if(!w) continue;
-      const wl = (chain.kind==="evm") ? normalizeEvmAddr(w) : String(w);
-      walletList.push(wl);
-      const pct = Number(h.pct || 0);
-      if(Number.isFinite(pct)) holderMapPct.set((chain.kind==="evm")?wl:wl.toLowerCase(), pct);
-    }
-
-    const g = ClusterGraph();
-
-    // firstSeen per wallet (seconds)
-    const firstSeenByWallet = {};
-
-    if(chain.kind === "evm"){
-      const walletSetLower = new Set(walletList.map(normalizeEvmAddr));
-      const funderMap = new Map(); // funder -> Set(recipients)
-
-      // fetch txs per wallet (bounded, sequential to avoid rate limits)
-      for(const w of walletSetLower){
-        if(!w || CFG.CLUSTERS.IGNORE.EVM_ADDRS.has(w)) continue;
-        let items = [];
-        try{
-          items = await goldrushGetAddressTxs(chain.chainId, w, CFG.CLUSTERS.TXS_PER_WALLET);
-        }catch{
-          continue;
-        }
-        // first seen
-        const fs = extractFirstSeenFromTxItems(items);
-        if(fs) firstSeenByWallet[w] = fs;
-
-        // edges + collect funders
-        for(const it of items || []){
-          const from = normalizeEvmAddr(it?.from_address);
-          const to   = normalizeEvmAddr(it?.to_address);
-          if(!from || !to) continue;
-
-          // direct tx between holder wallets
-          if(walletSetLower.has(from) && walletSetLower.has(to)){
-            g.addEdge(from, to, CFG.CLUSTERS.EDGE_WEIGHTS.SHARED_COUNTERPARTY, "EVM: direct tx between holders");
-          }
-
-          // funder map: if recipient is a holder wallet and sender is not (or is) — we treat sender as funder candidate
-          // We'll use a tiny threshold to avoid dust: 0 is ok but better with non-zero.
-          let v = 0n;
-          try{ if(it?.value) v = BigInt(it.value); }catch{}
-          if(v > 0n && walletSetLower.has(to) && !walletSetLower.has(from) && !CFG.CLUSTERS.IGNORE.EVM_ADDRS.has(from)){
-            if(!funderMap.has(from)) funderMap.set(from, new Set());
-            funderMap.get(from).add(to);
-          }
-        }
-      }
-
-      buildSharedFunderEdges(g, funderMap);
-
-      // burst buckets
-      const buckets = burstBucketsFromFirstSeen(firstSeenByWallet)
-        .filter(b => b.count >= CFG.CLUSTERS.BURST.MIN_WALLETS_IN_BUCKET)
-        .slice(0, 10);
-
-      // cluster build
-      const clusters = buildClustersFromGraph(g, CFG.CLUSTERS.MIN_EDGE_WEIGHT);
-
-      // compute cluster hold share for each cluster
-      const clustersWithHold = clusters.map(c => {
-        const pct = computeClusterSharePct(c.wallets, holderMapPct);
-        return {...c, holdPct: pct};
-      }).sort((a,b)=> (b.holdPct - a.holdPct) || (b.walletCount - a.walletCount));
-
-      const clusteredWalletCount = clustersWithHold.reduce((acc,c)=> acc + (c.walletCount>=2 ? c.walletCount : 0), 0);
-      const clusteredPctWallets = walletList.length ? (clusteredWalletCount / walletList.length)*100 : 0;
-      const largestClusterPctHold = clustersWithHold[0]?.holdPct || 0;
-
-      return {
-        enabled:true,
-        kind:"evm",
-        walletCount: walletList.length,
-        clusteredWalletCount,
-        clusteredPctWallets,
-        largestClusterPctHold,
-        burstTop: buckets,
-        clustersTop: clustersWithHold.slice(0, 5),
-        firstSeenByWallet
-      };
+    if(signals.kind === "solana"){
+      if(signals.mintAuthActive){ score -= 35; critical = true; }
+      if(signals.freezeAuthActive){ score -= 15; }
+      if(signals.program === CFG.TOKEN_2022_PROGRAM){ score -= 8; }
     }else{
-      // Solana clusters: we use token transfer edges between holder wallets (best-effort)
-      // For Sol, "holdersPreview" wallet is owner wallet (not token account) if possible.
-      const walletSet = new Set(walletList);
-      // compute firstSeen (bounded)
-      for(const w of [...walletSet]){
-        const fs = await solFirstSeen(w, 25);
-        if(fs) firstSeenByWallet[w] = fs;
-      }
-
-      // build edges from recent transfers
-      let graph = null;
-      try{
-        graph = await solRecentTokenTransfersBetweenWallets(addr, [...walletSet], Math.min(20, CFG.CLUSTERS.TXS_PER_WALLET));
-      }catch{
-        graph = ClusterGraph();
-        for(const w of walletSet) graph.addNode(w);
-      }
-
-      // burst
-      const buckets = burstBucketsFromFirstSeen(firstSeenByWallet)
-        .filter(b => b.count >= CFG.CLUSTERS.BURST.MIN_WALLETS_IN_BUCKET)
-        .slice(0, 10);
-
-      // add burst edges: connect all wallets in a burst bucket strongly
-      for(const b of buckets){
-        const ws = b.wallets || [];
-        for(let i=0;i<ws.length;i++){
-          for(let j=i+1;j<ws.length;j++){
-            graph.addEdge(ws[i], ws[j], CFG.CLUSTERS.EDGE_WEIGHTS.SAME_SECOND_BURST, "SOL: same-second burst");
-          }
-        }
-      }
-
-      const clusters = buildClustersFromGraph(graph, CFG.CLUSTERS.MIN_EDGE_WEIGHT);
-
-      const clustersWithHold = clusters.map(c => {
-        // holderMapPct uses lower-case on sol
-        const pct = computeClusterSharePct(c.wallets, holderMapPct);
-        return {...c, holdPct: pct};
-      }).sort((a,b)=> (b.holdPct - a.holdPct) || (b.walletCount - a.walletCount));
-
-      const clusteredWalletCount = clustersWithHold.reduce((acc,c)=> acc + (c.walletCount>=2 ? c.walletCount : 0), 0);
-      const clusteredPctWallets = walletList.length ? (clusteredWalletCount / walletList.length)*100 : 0;
-      const largestClusterPctHold = clustersWithHold[0]?.holdPct || 0;
-
-      return {
-        enabled:true,
-        kind:"sol",
-        walletCount: walletList.length,
-        clusteredWalletCount,
-        clusteredPctWallets,
-        largestClusterPctHold,
-        burstTop: buckets,
-        clustersTop: clustersWithHold.slice(0, 5),
-        firstSeenByWallet
-      };
+      if(!signals.hasCode){ score = 0; critical = true; }
+      if(signals.proxy?.isProxy){ score -= 10; }
+      if(signals.owner && !CFG.CLUSTERS.IGNORE.EVM_ADDRS.has(String(signals.owner).toLowerCase())) score -= 8;
+      if(signals.paused === true) score -= 10;
     }
+
+    if(Number.isFinite(signals.topHolderPct)){
+      const p = signals.topHolderPct;
+      if(p >= 35){ score -= 30; critical = true; }
+      else if(p >= 20) score -= 18;
+      else if(p >= 10) score -= 8;
+    }
+
+    if(signals.clusterRiskSev === "bad") score -= 18;
+    else if(signals.clusterRiskSev === "warn") score -= 10;
+
+    score = clamp(Math.round(score), 0, 100);
+    return { score, critical };
   }
 
-  /* ===================== CHECKS + TODO GENERATION ===================== */
+  function buildMetricRows(meta, signals){
+    const rows = [];
+    if(signals.kind === "solana"){
+      rows.push({ label:"Supply (UI)", value: fmtInt(signals.supplyUi), badge:"ON-CHAIN", mini:"Reported supply via getTokenSupply()." });
+      rows.push({ label:"Mint Authority", value: signals.mintAuthActive ? "Active" : "Revoked", badge: signals.mintAuthActive ? "RISK" : "OK", barPct: signals.mintAuthActive ? 85 : 10, mini: signals.mintAuthority ? shortAddr(signals.mintAuthority) : "—" });
+      rows.push({ label:"Freeze Authority", value: signals.freezeAuthActive ? "Active" : "Revoked", badge: signals.freezeAuthActive ? "WATCH" : "OK", barPct: signals.freezeAuthActive ? 55 : 10, mini: signals.freezeAuthority ? shortAddr(signals.freezeAuthority) : "—" });
+      rows.push({ label:"Top Holder (preview)", value: Number.isFinite(signals.topHolderPct) ? fmtPct(signals.topHolderPct) : "No signal", badge:"HOLDERS", barPct: Number.isFinite(signals.topHolderPct) ? clamp(signals.topHolderPct,0,100) : 0, mini:"From largest accounts (preview)." });
+    }else{
+      rows.push({ label:"Contract", value: signals.hasCode ? "Deployed" : "Not found", badge: signals.hasCode ? "OK" : "FAIL", barPct: signals.hasCode ? 90 : 0, mini:"eth_getCode() result." });
+      rows.push({ label:"Proxy", value: signals.proxy?.isProxy ? "Upgradeable" : "No signal", badge: signals.proxy?.isProxy ? "WATCH" : "OK", barPct: signals.proxy?.isProxy ? 55 : 10, mini: signals.proxy?.implementation ? `Impl ${shortAddr(signals.proxy.implementation)}` : "—" });
+      rows.push({ label:"Owner()", value: signals.owner ? shortAddr(signals.owner) : "No signal", badge: signals.owner ? "WATCH" : "OK", mini:"Ownable() best-effort call." });
+      rows.push({ label:"Pausable", value: signals.paused === true ? "Paused" : (signals.paused === false ? "Not paused" : "No signal"), badge: signals.paused === true ? "WATCH" : "OK", mini:"paused() best-effort call." });
+      rows.push({ label:"Top Holder (preview)", value: Number.isFinite(signals.topHolderPct) ? fmtPct(signals.topHolderPct) : "No signal", badge: CFG.GOLDRUSH_API_KEY ? "HOLDERS" : "INDEXER", barPct: Number.isFinite(signals.topHolderPct) ? clamp(signals.topHolderPct,0,100) : 0, mini: CFG.GOLDRUSH_API_KEY ? "From GoldRush holders endpoint." : "Requires GoldRush key." });
+    }
+
+    if(signals.clusterEnabled){
+      rows.push({ label:"Connected Wallets", value: `${Number(signals.clusteredPctWallets||0).toFixed(1)}%`, badge: signals.clusterRiskSev ? signals.clusterRiskSev.toUpperCase() : "—", barPct: clamp(Number(signals.clusteredPctWallets||0),0,100), mini:"Top-holder wallets linked by heuristics." });
+      rows.push({ label:"Largest Cluster (Hold)", value: `${Number(signals.largestClusterPctHold||0).toFixed(2)}%`, badge: (Number(signals.largestClusterPctHold||0) >= 25 ? "HIGH" : Number(signals.largestClusterPctHold||0) >= 12 ? "MED" : "LOW"), barPct: clamp(Number(signals.largestClusterPctHold||0),0,100), mini:"Sum of holder % in biggest cluster." });
+    }
+
+    return rows;
+  }
+
+  /* ===================== CHECKS + TODO ===================== */
   function makeTodoFromSignals(sig){
     const todos = [];
 
-    // generic
     todos.push({
       t:"Publish contract + links",
       sev:"warn",
@@ -2201,7 +1477,6 @@
   function makeChecksFromSignals(sig){
     const checks = [];
 
-    // supply + authorities
     if(sig.kind === "solana"){
       checks.push({
         t:"Token Program",
@@ -2209,8 +1484,7 @@
         d: sig.program === CFG.TOKEN_2022_PROGRAM ? "Token-2022 detected (extensions possible)." : "SPL Token program detected.",
         infoHtml: explain("Token Program", [
           "SPL Token (classic) is widely supported.",
-          "Token-2022 can include extensions (fees, hooks, etc.).",
-          "Extensions are not inherently bad but add complexity."
+          "Token-2022 can include extensions (fees, hooks, etc.)."
         ])
       });
 
@@ -2220,7 +1494,7 @@
         d: sig.mintAuthActive ? `Active: ${shortAddr(sig.mintAuthority || "")}` : "Revoked / disabled",
         infoHtml: explain("Mint Authority", [
           "Active mint authority can mint new tokens (supply inflation).",
-          "If supply should be fixed: revoke mint authority.",
+          "If supply should be fixed: revoke mint authority."
         ])
       });
 
@@ -2230,11 +1504,10 @@
         d: sig.freezeAuthActive ? `Active: ${shortAddr(sig.freezeAuthority || "")}` : "Revoked / disabled",
         infoHtml: explain("Freeze Authority", [
           "Freeze authority can halt transfers on accounts.",
-          "Some projects keep it for compliance; must be disclosed.",
+          "If kept: disclose it clearly."
         ])
       });
     }else{
-      // EVM
       checks.push({
         t:"Contract Code",
         sev: sig.hasCode ? "ok" : "bad",
@@ -2251,7 +1524,6 @@
         d: sig.proxy?.isProxy ? `Proxy detected. Impl: ${shortAddr(sig.proxy.implementation || "")}` : "No EIP-1967 proxy detected",
         infoHtml: explain("Proxy / Upgradeability", [
           "Upgradeable proxies can change logic after launch.",
-          "Not always bad, but increases governance/admin risk.",
           "Publish admin address and a timelock/multi-sig policy."
         ])
       });
@@ -2261,8 +1533,8 @@
         sev: sig.owner && !CFG.CLUSTERS.IGNORE.EVM_ADDRS.has(sig.owner.toLowerCase()) ? "warn" : "ok",
         d: sig.owner ? `${shortAddr(sig.owner)}` : "No signal / function missing",
         infoHtml: explain("Owner()", [
-          "Many tokens use Ownable; owner can have special privileges.",
-          "If owner exists: disclose controls, use multisig/timelock where possible."
+          "Ownable owner may have special privileges.",
+          "If owner exists: disclose controls; prefer multisig/timelock."
         ])
       });
 
@@ -2277,7 +1549,6 @@
       });
     }
 
-    // holders
     if(Number.isFinite(sig.topHolderPct)){
       checks.push({
         t:"Largest Holder (Top list)",
@@ -2285,7 +1556,20 @@
         d: `${sig.topHolderPct.toFixed(2)}% of supply (top holder preview)`,
         infoHtml: explain("Largest Holder", [
           "High concentration increases dump/manipulation risk.",
-          "Check if wallet is LP, burn, treasury, or team vesting."
+          "Check if wallet is LP, burn, treasury, or vesting."
+        ])
+      });
+    }
+
+    if(sig.clusterEnabled){
+      checks.push({
+        t:"Bundles / Connected Wallets",
+        sev: sig.clusterRiskSev || "warn",
+        d: `Bundle score ${sig.clusterRiskScore}/100 — clustered wallets: ${Number(sig.clusteredPctWallets||0).toFixed(1)}%`,
+        infoHtml: explain("Bundles / Connected Wallets", [
+          `Clustered wallets: ${Number(sig.clusteredPctWallets||0).toFixed(1)}%`,
+          `Largest cluster hold share: ${Number(sig.largestClusterPctHold||0).toFixed(2)}%`,
+          "Heuristic links: shared funders (EVM), direct interactions, same-second first activity bursts."
         ])
       });
     }
@@ -2293,7 +1577,6 @@
     return checks;
   }
 
-  /* ===================== METADATA / EXT LIST ===================== */
   function renderTokenStandardDetails(chain, sig){
     const items = [];
     if(chain.kind === "solana"){
@@ -2304,392 +1587,736 @@
           sev:"warn",
           d:`${ext.length} extension(s) detected`,
           infoHtml: explain("Token-2022 Extensions", [
-            "Extensions add features such as transfer fees or hooks.",
-            "Not all wallets/exchanges support every extension.",
-            "Review each extension for user impact."
+            "Extensions can change transfer behavior / support requirements."
           ])
         });
         for(const e of ext){
-          items.push({
-            t:`Extension: ${e}`,
-            sev:"warn",
-            d:"On-chain extension present.",
-            why:"Extensions can change transfer behavior or account rules."
-          });
+          items.push({ t:`Extension: ${e}`, sev:"warn", d:"On-chain extension present.", why:"Extensions can change behavior." });
         }
       }else{
-        items.push({
-          t:"Extensions",
-          sev:"ok",
-          d:"None detected (or not Token-2022).",
-          why:"Classic SPL tokens have simpler behavior."
-        });
+        items.push({ t:"Extensions", sev:"ok", d:"None detected (or not Token-2022).", why:"Classic SPL tokens are simpler." });
       }
     }else{
       items.push({
-        t:"ERC-20 / BEP-20 Basics",
+        t:"ERC-20 Basics",
         sev:"ok",
         d:"We read name/symbol/decimals/totalSupply via standard selectors (best-effort).",
-        why:"If selectors are missing, some metadata may show “No signal”."
+        why:"Some tokens omit selectors; then metadata can be missing."
       });
       if(sig?.proxy?.isProxy){
-        items.push({
-          t:"Upgradeable Pattern",
-          sev:"warn",
-          d:"EIP-1967 proxy slots indicate upgradeability.",
-          why:"Upgrades can change rules after launch."
-        });
+        items.push({ t:"Upgradeable Pattern", sev:"warn", d:"EIP-1967 proxy slots indicate upgradeability.", why:"Upgrades can change behavior." });
+      }
+      if(!CFG.GOLDRUSH_API_KEY){
+        items.push({ t:"Top holders (EVM)", sev:"warn", d:"Needs GoldRush key (indexer).", why:"RPC cannot list all token holders." });
       }
     }
     renderList(qs("extList"), items, "Token Standard");
   }
 
   function renderTokenMetadataList(meta){
-    const items = [];
-    if(meta?.name) items.push({ t:"Name", sev:"ok", d: meta.name, why:"Token name from on-chain / contract calls." });
-    if(meta?.symbol) items.push({ t:"Symbol", sev:"ok", d: meta.symbol, why:"Token symbol from on-chain / contract calls." });
-    if(meta?.uri) items.push({ t:"URI", sev:"warn", d: meta.uri, why:"Metadata URI is user-provided; verify it matches official docs." });
-    if(meta?.description) items.push({ t:"Description", sev:"ok", d: meta.description, why:"Metadata description (best-effort)." });
+  const items = [];
+  if(meta?.name) items.push({ t:"Name", sev:"ok", d: meta.name, why:"Token name from on-chain / contract calls." });
+  if(meta?.symbol) items.push({ t:"Symbol", sev:"ok", d: meta.symbol, why:"Token symbol from on-chain / contract calls." });
+  if(meta?.uri) items.push({ t:"URI", sev:"warn", d: meta.uri, why:"URI is user-provided; verify it matches official docs." });
+  if(meta?.description) items.push({ t:"Description", sev:"ok", d: meta.description, why:"Metadata description (best-effort)." });
 
-    if(meta?.authorities?.length){
-      items.push({
-        t:"Authorities",
-        sev:"warn",
-        d:`${meta.authorities.length} authority record(s)`,
-        why:"Authorities indicate update permissions or creators."
-      });
-    }
-
-    if(!items.length){
-      items.push({ t:"No metadata", sev:"warn", d:"No signal from RPC/contract.", why:"Some tokens don’t expose metadata via standard calls." });
-    }
-    renderList(qs("metaList"), items, "Token Metadata");
-  }
-
-  /* ===================== HOLDERS RENDER + BUBBLES PREP ===================== */
-  function holdersToBubbles(holders){
-    // expects holders items with {wallet, pct}
-    const out = [];
-    for(const h of (holders||[]).slice(0, 20)){
-      out.push({
-        addr: h.wallet,
-        pct: Number(h.pct || 0),
-        label: shortAddr(h.wallet || "")
-      });
-    }
-    return out;
-  }
-
-  /* ===================== CORE SCAN: SOLANA ===================== */
-  async function scanSolana(mint){
-    const parsed = await getMintParsed(mint);
-    if(!parsed?.info) throw new Error("Mint not found or not parsed.");
-
-    const program = parsed.owner;
-    const info = parsed.info;
-
-    const mintAuthority = info?.mintAuthority || null;
-    const freezeAuthority = info?.freezeAuthority || null;
-
-    const mintAuthActive = !!mintAuthority;
-    const freezeAuthActive = !!freezeAuthority;
-
-    const supply = await getTokenSupply(mint);
-    const supplyUi = Number(supply?.uiAmount ?? supply?.uiAmountString ?? 0);
-
-    // token metadata from Helius DAS
-    const asset = await getAsset(mint);
-    const meta = pickTokenMetaFromAsset(asset) || {name:"", symbol:"", image:"", uri:"", description:"", authorities:[]};
-
-    // top holders (Sol): returns token accounts; resolve to owner wallets
-    const { holders: rawHolders } = await solGetTopHolders(mint);
-    const tokenAccounts = rawHolders.map(h => h.tokenAccount);
-    const ownerMap = await solResolveOwners(tokenAccounts);
-
-    const holders = rawHolders.map(h => {
-      const owner = ownerMap.get(h.tokenAccount) || h.tokenAccount;
-      return {
-        wallet: owner,
-        pct: Number(h.pct || 0),
-        uiAmount: h.uiAmount,
-        tokenAccount: h.tokenAccount
-      };
+  if(Array.isArray(meta?.authorities) && meta.authorities.length){
+    items.push({
+      t:"Authorities",
+      sev:"warn",
+      d:`${meta.authorities.length} authority record(s)`,
+      why:"Authorities can imply update permissions or creators."
     });
-
-    const topHolderPct = holders[0]?.pct ?? null;
-
-    // token-2022 extensions best-effort: read raw parsed? Here we just list unknown; you can later extend.
-    const extensions = [];
-    if(program === CFG.TOKEN_2022_PROGRAM){
-      // Try to infer from parsed rawParsed? It depends on RPC; keep safe placeholder.
-      extensions.push("Token-2022 (extensions possible)");
-    }
-
-    // cluster analysis
-    const clusterAnalysis = await analyzeClusters(activeChain, mint, holders);
-    const clusterRisk = clusterRiskSummary(clusterAnalysis);
-
-    // bubble map
-    renderBubbleMap(holdersToBubbles(holders));
-
-    const signals = {
-      kind:"solana",
-      program,
-      mintAuthority,
-      freezeAuthority,
-      mintAuthActive,
-      freezeAuthActive,
-      supplyUi,
-      topHolderPct,
-      extensions,
-      clusterRiskSev: clusterRisk.sev,
-      clusterRiskScore: clusterRisk.score
-    };
-
-    return { meta, holders, signals, clusterAnalysis };
   }
 
-  /* ===================== CORE SCAN: EVM ===================== */
-  async function scanEvm(chain, addr){
-    const code = await getCode(chain.chainId, addr);
-    const hasCode = !!code && code !== "0x";
+  if(!items.length){
+    items.push({
+      t:"No metadata",
+      sev:"warn",
+      d:"No signal from RPC/contract.",
+      infoHtml: explain("Token Metadata", [
+        "Solana: uses Helius DAS getAsset() (if available).",
+        "EVM: uses ERC-20 selectors; some contracts don’t implement them cleanly."
+      ])
+    });
+  }
+  renderList(qs("metaList"), items, "Token Metadata");
+}
 
-    if(!hasCode){
-      // still return minimal
-      return {
-        meta: {name:"", symbol:"", image:"", uri:"", description:""},
-        holders: [],
-        signals: {
-          kind:"evm",
-          hasCode:false,
-          proxy:{isProxy:false, implementation:null, admin:null},
-          owner:null,
-          paused:null,
-          topHolderPct:null
-        },
-        clusterAnalysis:{enabled:false}
-      };
+/* ===================== CLUSTERS (LIGHTWEIGHT, SAFE) ===================== */
+// Goal: never break scan if indexer endpoints fail.
+// We compute ONLY a conservative heuristic from holder wallets + (optional) tx-first-seen bursts.
+
+function clusterRiskSummarySimple(clusteredPctWallets, largestClusterPctHold, burstMax){
+  let score = 0;
+  score += clamp(clusteredPctWallets * 0.9, 0, 45);
+  score += clamp(largestClusterPctHold * 1.2, 0, 40);
+  if(burstMax >= 8) score += 15;
+  else if(burstMax >= 5) score += 10;
+  else if(burstMax >= 3) score += 6;
+  score = clamp(Math.round(score), 0, 100);
+  const sev = score >= 70 ? "bad" : score >= 40 ? "warn" : "ok";
+  return { score, sev };
+}
+
+function burstBucketsFromFirstSeen(firstSeenByWallet){
+  const buckets = new Map();
+  for(const [w,ts] of Object.entries(firstSeenByWallet || {})){
+    if(ts === null || ts === undefined) continue;
+    const sec = Math.floor(Number(ts));
+    if(!Number.isFinite(sec)) continue;
+    if(!buckets.has(sec)) buckets.set(sec, []);
+    buckets.get(sec).push(w);
+  }
+  return [...buckets.entries()]
+    .map(([sec, wallets]) => ({sec, wallets, count: wallets.length}))
+    .sort((a,b)=>b.count-a.count);
+}
+
+function computeClusterSharePctFromHolders(clusterWallets, holders){
+  // holders: [{wallet, pct}]
+  const map = new Map((holders||[]).map(h => [String(h.wallet||"").toLowerCase(), Number(h.pct||0)]));
+  let sum = 0;
+  for(const w of (clusterWallets||[])){
+    const p = map.get(String(w).toLowerCase());
+    if(Number.isFinite(p)) sum += p;
+  }
+  return sum;
+}
+
+/* Build very simple clusters:
+   - If two holders share the same funder (EVM) within recent tx list => link
+   - Otherwise, we only use burst buckets as "cluster groups" (Sol/EVM) */
+async function analyzeClustersLight(chain, holders){
+  if(!CFG.CLUSTERS?.ENABLED) return { enabled:false };
+
+  const top = (holders||[]).slice(0, CFG.CLUSTERS.TOP_HOLDER_WALLETS).filter(h => h?.wallet);
+  if(top.length < 3) return { enabled:false };
+
+  const firstSeenByWallet = {};
+  let clusters = []; // array of {wallets:Set, walletCount, holdPct}
+  let burstTop = [];
+
+  if(chain.kind === "evm" && CFG.GOLDRUSH_API_KEY){
+    // Use GoldRush address txs to get first seen; best effort.
+    const walletList = top.map(h => String(h.wallet).toLowerCase());
+    const walletSet = new Set(walletList);
+
+    // funder -> set(recipients)
+    const funderMap = new Map();
+
+    for(const w of walletList){
+      if(!w || CFG.CLUSTERS.IGNORE.EVM_ADDRS.has(w)) continue;
+      let txs = [];
+      try{
+        txs = await goldrushGetAddressTxs(chain.chainId, w, CFG.CLUSTERS.TXS_PER_WALLET);
+      }catch{
+        continue;
+      }
+
+      // earliest timestamp (first seen)
+      let min = null;
+      for(const it of txs || []){
+        const t = it?.block_signed_at;
+        if(!t) continue;
+        const ms = Date.parse(t);
+        if(Number.isFinite(ms)){
+          const sec = Math.floor(ms/1000);
+          if(min === null || sec < min) min = sec;
+        }
+
+        const from = String(it?.from_address||"").toLowerCase();
+        const to   = String(it?.to_address||"").toLowerCase();
+
+        // shared funder heuristic: non-holder -> holder with non-zero value
+        let v = 0n;
+        try{ if(it?.value) v = BigInt(it.value); }catch{}
+        if(v > 0n && to && walletSet.has(to) && from && !walletSet.has(from) && !CFG.CLUSTERS.IGNORE.EVM_ADDRS.has(from)){
+          if(!funderMap.has(from)) funderMap.set(from, new Set());
+          funderMap.get(from).add(to);
+        }
+      }
+      if(min !== null) firstSeenByWallet[w] = min;
     }
 
-    const proxy = await detectProxy(chain.chainId, addr);
-    const erc = await getErc20Meta(chain.chainId, addr);
-    const owner = await getOwner(chain.chainId, addr);
-    const paused = await getPaused(chain.chainId, addr);
+    // Build clusters from funder groups (only if funder funds >=2 holders)
+    const funderGroups = [];
+    for(const [funder, recips] of funderMap.entries()){
+      const arr = [...recips];
+      if(arr.length >= 2) funderGroups.push(arr);
+    }
 
-    // holders via GoldRush if key present
-    let holders = [];
-    let topHolderPct = null;
+    clusters = funderGroups.map(arr => {
+      const holdPct = computeClusterSharePctFromHolders(arr, top);
+      return { wallets: new Set(arr), walletCount: arr.length, holdPct };
+    }).sort((a,b)=> (b.holdPct - a.holdPct) || (b.walletCount - a.walletCount));
 
-    if(CFG.GOLDRUSH_API_KEY){
-      try{
-        const items = await goldrushGetTokenHolders(chain.chainId, addr, 50);
-        // items structure varies; common: {address, balance, ... , balance_24h, quote, ...}
-        // Some responses include "token_holder_address" or "address"
-        // We'll use a best-effort parse and compute pct if "total_supply" is provided; else rank-only.
-        // Covalent holders endpoint typically includes "balance" and "balance_24h" and may include "total_supply" at data-level; we don't have it reliably.
-        // We'll compute pct if we can infer totalSupply from ERC20 call.
-        let totalSupply = erc.totalSupply; // BigInt
-        const decimals = (Number.isFinite(erc.decimals) ? erc.decimals : 18);
+    burstTop = burstBucketsFromFirstSeen(firstSeenByWallet)
+      .filter(b => b.count >= CFG.CLUSTERS.BURST.MIN_WALLETS_IN_BUCKET)
+      .slice(0, 10);
 
-        let totalUi = null;
-        try{
-          if(typeof totalSupply === "bigint"){
-            totalUi = Number(totalSupply) / Math.pow(10, decimals);
-            if(!Number.isFinite(totalUi)) totalUi = null;
-          }
-        }catch{ totalUi = null; }
-
-        holders = items.slice(0, CFG.CLUSTERS.TOP_HOLDER_WALLETS).map((x, idx) => {
-          const w = normalizeEvmAddr(x?.token_holder_address || x?.address || x?.wallet_address || "");
-          let pct = 0;
-          // balance usually in raw base units as string
-          let bal = 0n;
-          try{ if(x?.balance) bal = BigInt(x.balance); }catch{}
-          if(totalSupply && totalSupply > 0n){
-            try{
-              // pct by raw units (decimals cancel out)
-              pct = Number((bal * 10000n) / totalSupply) / 100;
-              if(!Number.isFinite(pct)) pct = 0;
-            }catch{ pct = 0; }
-          }else{
-            pct = 0;
-          }
-          return { wallet: w, pct, rank: idx+1, balance: bal.toString() };
-        }).filter(h => h.wallet && !CFG.CLUSTERS.IGNORE.EVM_ADDRS.has(h.wallet));
-        topHolderPct = holders[0]?.pct ?? null;
-
-        // bubble map
-        renderBubbleMap(holdersToBubbles(holders));
-      }catch{
-        holders = [];
-        renderBubbleMap([]);
+    // Add burst clusters (treat each bucket as a cluster candidate)
+    for(const b of burstTop){
+      const arr = (b.wallets||[]).filter(w => walletSet.has(String(w).toLowerCase()));
+      if(arr.length >= 2){
+        clusters.push({
+          wallets: new Set(arr),
+          walletCount: arr.length,
+          holdPct: computeClusterSharePctFromHolders(arr, top)
+        });
       }
+    }
+
+    clusters = clusters
+      .sort((a,b)=> (b.holdPct - a.holdPct) || (b.walletCount - a.walletCount))
+      .slice(0, 6);
+  }else{
+    // Solana or no GoldRush: only burst-based clusters using first-seen per wallet if possible.
+    const walletList = top.map(h => String(h.wallet));
+    // Best-effort: derive "first seen" from Solana signatures; bounded and safe.
+    if(chain.kind === "solana"){
+      for(const w of walletList){
+        if(!w || CFG.CLUSTERS.IGNORE.SOL_ADDRS.has(w)) continue;
+        const fs = await solFirstSeen(w, 25);
+        if(fs) firstSeenByWallet[w] = fs;
+      }
+      burstTop = burstBucketsFromFirstSeen(firstSeenByWallet)
+        .filter(b => b.count >= CFG.CLUSTERS.BURST.MIN_WALLETS_IN_BUCKET)
+        .slice(0, 10);
+
+      clusters = burstTop.map(b => {
+        const arr = b.wallets || [];
+        return { wallets: new Set(arr), walletCount: arr.length, holdPct: computeClusterSharePctFromHolders(arr, top) };
+      }).sort((a,b)=> (b.holdPct - a.holdPct) || (b.walletCount - a.walletCount)).slice(0, 6);
     }else{
+      return { enabled:false };
+    }
+  }
+
+  const largestClusterPctHold = clusters[0]?.holdPct || 0;
+
+  // clustered wallets % (union of cluster wallet sets)
+  const allClustered = new Set();
+  for(const c of clusters){
+    if(c.walletCount >= 2){
+      for(const w of c.wallets) allClustered.add(String(w).toLowerCase());
+    }
+  }
+  const clusteredWalletCount = allClustered.size;
+  const clusteredPctWallets = top.length ? (clusteredWalletCount / top.length) * 100 : 0;
+  const burstMax = burstTop?.[0]?.count || 0;
+
+  const risk = clusterRiskSummarySimple(clusteredPctWallets, largestClusterPctHold, burstMax);
+
+  return {
+    enabled:true,
+    clusteredWalletCount,
+    clusteredPctWallets,
+    largestClusterPctHold,
+    burstTop,
+    clustersTop: clusters
+      .map(c => ({ wallets:[...c.wallets], walletCount:c.walletCount, holdPct:c.holdPct }))
+      .slice(0, 5),
+    risk
+  };
+}
+
+/* ===================== SOLANA RPC (Helius) ===================== */
+function HELIUS_RPC(){
+  return `https://mainnet.helius-rpc.com/?api-key=${encodeURIComponent(CFG.HELIUS_KEY)}`;
+}
+async function solRpc(method, params){
+  if(!CFG.HELIUS_KEY) throw new Error("Helius key missing.");
+  const res = await fetch(HELIUS_RPC(), {
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body: JSON.stringify({ jsonrpc:"2.0", id:1, method, params })
+  });
+  if(!res.ok){
+    const t = await res.text().catch(()=> "");
+    throw new Error(`Solana RPC HTTP ${res.status}: ${t.slice(0,220)}`);
+  }
+  const j = await res.json();
+  if(j?.error) throw new Error(j.error.message || "Solana RPC error");
+  return j.result;
+}
+async function getMintParsed(mint){
+  const r = await solRpc("getAccountInfo", [mint, { encoding:"jsonParsed", commitment:"confirmed" }]);
+  const v = r?.value;
+  if(!v) return null;
+  const owner = v.owner;
+  const parsed = (v.data && typeof v.data === "object") ? v.data.parsed : null;
+  const info = parsed?.info || null;
+  return { owner, info, rawParsed: parsed };
+}
+async function getTokenSupply(mint){
+  const r = await solRpc("getTokenSupply", [mint]);
+  return r?.value || null;
+}
+async function getLargest(mint){
+  const r = await solRpc("getTokenLargestAccounts", [mint]);
+  return r?.value || [];
+}
+async function getAsset(mint){
+  try { return await solRpc("getAsset", [mint]); }
+  catch { return null; }
+}
+function pickTokenMetaFromAsset(asset){
+  if(!asset) return null;
+  const md = asset?.content?.metadata || {};
+  const name = (md?.name || asset?.metadata?.name || "").trim();
+  const symbol = (md?.symbol || asset?.metadata?.symbol || "").trim();
+  let image = "";
+  const linksImg = asset?.content?.links?.image;
+  if(typeof linksImg === "string") image = linksImg;
+  if(!image && Array.isArray(asset?.content?.files)){
+    const f = asset.content.files.find(x => (x?.mime || "").includes("image") && x?.uri);
+    if(f?.uri) image = f.uri;
+  }
+  const uri = (asset?.content?.json_uri || asset?.content?.links?.external_url || "").trim();
+  const description = (md?.description || asset?.content?.metadata?.description || "").trim();
+  const authorities = Array.isArray(asset?.authorities) ? asset.authorities : [];
+  return { name, symbol, image, uri, description, authorities };
+}
+
+// Resolve token account owners (best-effort)
+async function solResolveOwners(tokenAccounts){
+  const owners = new Map();
+  const chunk = (arr, n) => {
+    const out = [];
+    for(let i=0;i<arr.length;i+=n) out.push(arr.slice(i,i+n));
+    return out;
+  };
+  for(const p of chunk(tokenAccounts, 90)){
+    const r = await solRpc("getMultipleAccounts", [p, { encoding:"jsonParsed", commitment:"confirmed" }]);
+    const vals = r?.value || [];
+    for(let i=0;i<vals.length;i++){
+      const v = vals[i];
+      const addr = p[i];
+      const owner = v?.data?.parsed?.info?.owner;
+      if(owner) owners.set(addr, owner);
+    }
+  }
+  return owners;
+}
+
+// First seen signature timestamp (best-effort)
+async function solFirstSeen(wallet, limit=25){
+  try{
+    const sigs = await solRpc("getSignaturesForAddress", [wallet, {limit}]);
+    const last = Array.isArray(sigs) && sigs.length ? sigs[sigs.length-1] : null;
+    const ts = last?.blockTime;
+    return (typeof ts === "number") ? ts : null;
+  }catch{
+    return null;
+  }
+}
+
+async function solGetTopHolders(mint){
+  const largest = await getLargest(mint);
+  const supply = await getTokenSupply(mint);
+  const supplyUi = Number(supply?.uiAmount ?? supply?.uiAmountString ?? 0);
+  const out = [];
+
+  for(const x of (largest||[]).slice(0, CFG.CLUSTERS.TOP_HOLDER_WALLETS)){
+    const ui = Number(x.uiAmount ?? x.uiAmountString ?? 0);
+    const pct = supplyUi > 0 ? (ui / supplyUi) * 100 : 0;
+    out.push({ tokenAccount: x.address, uiAmount: ui, pct });
+  }
+  return { holders: out, supplyUi };
+}
+
+/* ===================== EVM RPC (JSON-RPC only) ===================== */
+async function evmRpc(chainId, method, params){
+  const urls = CFG.EVM_RPCS[chainId] || [];
+  if(!urls.length) throw new Error("No RPC configured for this chain.");
+  const errors = [];
+  for(const url of urls){
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 12000);
+    try{
+      const res = await fetch(url, {
+        method:"POST",
+        headers:{ "Content-Type":"application/json" },
+        body: JSON.stringify({ jsonrpc:"2.0", id:1, method, params }),
+        signal: ctrl.signal
+      });
+      clearTimeout(timer);
+      if(!res.ok){
+        const t = await res.text().catch(()=> "");
+        errors.push(`HTTP ${res.status} ${t.slice(0,160)}`);
+        continue;
+      }
+      const j = await res.json();
+      if(j?.error){
+        errors.push(String(j.error?.message || "RPC error").slice(0,160));
+        continue;
+      }
+      return j.result;
+    }catch(e){
+      clearTimeout(timer);
+      errors.push(String(e?.message || e).slice(0,160));
+    }
+  }
+  throw new Error(`All RPCs failed. ${errors.slice(-3).join(" • ")}`);
+}
+async function ethCall(chainId, to, data){
+  return await evmRpc(chainId, "eth_call", [{to, data}, "latest"]);
+}
+async function getCode(chainId, addr){
+  return await evmRpc(chainId, "eth_getCode", [addr, "latest"]);
+}
+async function getStorageAt(chainId, addr, slot){
+  return await evmRpc(chainId, "eth_getStorageAt", [addr, slot, "latest"]);
+}
+
+const SEL = {
+  name: "0x06fdde03",
+  symbol: "0x95d89b41",
+  decimals: "0x313ce567",
+  totalSupply: "0x18160ddd",
+  owner: "0x8da5cb5b",
+  paused: "0x5c975abb"
+};
+function strip0x(h){ return (h||"").startsWith("0x") ? h.slice(2) : (h||""); }
+function decodeUint256(hex){
+  const h = strip0x(hex);
+  if(!h) return null;
+  const padded = h.padStart(64,"0").slice(-64);
+  try { return BigInt("0x"+padded); }
+  catch { return null; }
+}
+function decodeAddressFrom32(hex){
+  const h = strip0x(hex);
+  if(!h) return null;
+  const padded = h.padStart(64,"0").slice(-40);
+  return "0x" + padded;
+}
+function bytes32ToAscii(hex){
+  const h = strip0x(hex);
+  if(h.length !== 64) return "";
+  try{
+    const bytes = new Uint8Array(h.match(/.{1,2}/g).map(b => parseInt(b,16)));
+    let s = new TextDecoder().decode(bytes).replace(/\0/g,"").trim();
+    if(!s) return "";
+    if(/^[\x20-\x7E]+$/.test(s)) return s;
+    return "";
+  }catch{ return ""; }
+}
+function decodeString(hex){
+  const data = strip0x(hex);
+  if(!data) return "";
+  if(data.length === 64){
+    const b = bytes32ToAscii("0x"+data);
+    if(b) return b;
+  }
+  if(data.length < 128) return "";
+  const lenHex = data.slice(64,128);
+  let len = 0;
+  try { len = Number(BigInt("0x"+lenHex)); }
+  catch { return ""; }
+  if(!Number.isFinite(len) || len <= 0) return "";
+  const strData = data.slice(128, 128 + len*2);
+  if(!strData) return "";
+  try{
+    const bytes = new Uint8Array(strData.match(/.{1,2}/g).map(b => parseInt(b,16)));
+    return new TextDecoder().decode(bytes).replace(/\0/g,"").trim();
+  }catch{ return ""; }
+}
+async function getErc20Meta(chainId, addr){
+  const out = { name:"", symbol:"", decimals:null, totalSupply:null };
+  try { out.name = decodeString(await ethCall(chainId, addr, SEL.name)); } catch {}
+  try { out.symbol = decodeString(await ethCall(chainId, addr, SEL.symbol)); } catch {}
+  try {
+    const v = decodeUint256(await ethCall(chainId, addr, SEL.decimals));
+    out.decimals = (v === null) ? null : Number(v);
+    if(!Number.isFinite(out.decimals)) out.decimals = null;
+  } catch {}
+  try { out.totalSupply = decodeUint256(await ethCall(chainId, addr, SEL.totalSupply)); } catch {}
+  return out;
+}
+async function getOwner(chainId, addr){
+  try{
+    const r = await ethCall(chainId, addr, SEL.owner);
+    return decodeAddressFrom32(r || "0x");
+  }catch{ return null; }
+}
+async function getPaused(chainId, addr){
+  try{
+    const r = await ethCall(chainId, addr, SEL.paused);
+    const v = decodeUint256(r || "0x");
+    if(v === null) return null;
+    return v !== 0n;
+  }catch{ return null; }
+}
+const SLOT_IMPL  = "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc";
+const SLOT_ADMIN = "0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103";
+async function detectProxy(chainId, addr){
+  try{
+    const [implRaw, adminRaw] = await Promise.all([
+      getStorageAt(chainId, addr, SLOT_IMPL),
+      getStorageAt(chainId, addr, SLOT_ADMIN)
+    ]);
+    const impl  = decodeAddressFrom32(implRaw  || "0x");
+    const admin = decodeAddressFrom32(adminRaw || "0x");
+    const zero = "0x0000000000000000000000000000000000000000";
+    const implNonZero  = impl  && impl.toLowerCase()  !== zero;
+    const adminNonZero = admin && admin.toLowerCase() !== zero;
+    return { isProxy: implNonZero || adminNonZero, implementation: implNonZero ? impl : null, admin: adminNonZero ? admin : null };
+  }catch{
+    return {isProxy:false, implementation:null, admin:null};
+  }
+}
+
+/* ===================== GOLD RUSH (OPTIONAL) ===================== */
+async function goldrushFetch(path, params){
+  if(!CFG.GOLDRUSH_API_KEY) throw new Error("GoldRush API key missing.");
+  const url = new URL(`https://api.covalenthq.com/v1/${path}`);
+  if(params){
+    for(const [k,v] of Object.entries(params)){
+      if(v === undefined || v === null || v === "") continue;
+      url.searchParams.set(k, String(v));
+    }
+  }
+  const auth = btoa(`${CFG.GOLDRUSH_API_KEY}:`);
+  const res = await fetch(url.toString(), {
+    headers:{
+      "Accept":"application/json",
+      "Authorization": `Basic ${auth}`
+    }
+  });
+  if(!res.ok){
+    const t = await res.text().catch(()=> "");
+    throw new Error(`GoldRush HTTP ${res.status}: ${t.slice(0,220)}`);
+  }
+  const j = await res.json();
+  if(j?.error) throw new Error(j.error_message || "GoldRush error");
+  return j?.data || null;
+}
+
+async function goldrushGetTokenHolders(chainId, tokenAddr, pageSize=50){
+  const data = await goldrushFetch(`${chainId}/tokens/${tokenAddr}/token_holders/`, {
+    "page-size": pageSize
+  });
+  const items = Array.isArray(data?.items) ? data.items : [];
+  return items;
+}
+
+async function goldrushGetAddressTxs(chainId, wallet, pageSize=100){
+  const data = await goldrushFetch(`${chainId}/address/${wallet}/transactions_v2/`, {
+    "page-size": pageSize
+  });
+  const items = Array.isArray(data?.items) ? data.items : [];
+  return items;
+}
+
+/* ===================== CORE SCANS ===================== */
+async function scanSolana(mint){
+  const parsed = await getMintParsed(mint);
+  if(!parsed?.info) throw new Error("Mint not found or not parsed.");
+
+  const program = parsed.owner;
+  const info = parsed.info;
+
+  const mintAuthority = info?.mintAuthority || null;
+  const freezeAuthority = info?.freezeAuthority || null;
+
+  const mintAuthActive = !!mintAuthority;
+  const freezeAuthActive = !!freezeAuthority;
+
+  const supply = await getTokenSupply(mint);
+  const supplyUi = Number(supply?.uiAmount ?? supply?.uiAmountString ?? 0);
+
+  const asset = await getAsset(mint);
+  const meta = pickTokenMetaFromAsset(asset) || {name:"", symbol:"", image:"", uri:"", description:"", authorities:[]};
+
+  const { holders: rawHolders } = await solGetTopHolders(mint);
+  const tokenAccounts = rawHolders.map(h => h.tokenAccount);
+  const ownerMap = await solResolveOwners(tokenAccounts);
+
+  const holders = rawHolders.map(h => {
+    const owner = ownerMap.get(h.tokenAccount) || h.tokenAccount; // fallback
+    return { wallet: owner, pct: Number(h.pct || 0), uiAmount: h.uiAmount, tokenAccount: h.tokenAccount };
+  });
+
+  const topHolderPct = holders[0]?.pct ?? null;
+
+  const extensions = [];
+  if(program === CFG.TOKEN_2022_PROGRAM){
+    extensions.push("Token-2022 (extensions possible)");
+  }
+
+  renderBubbleMap(holdersToBubbles(holders));
+
+  // clusters (best-effort)
+  const cluster = await analyzeClustersLight(activeChain, holders);
+  const clusterEnabled = !!cluster.enabled;
+
+  const signals = {
+    kind:"solana",
+    program,
+    mintAuthority,
+    freezeAuthority,
+    mintAuthActive,
+    freezeAuthActive,
+    supplyUi,
+    topHolderPct,
+    extensions,
+    clusterEnabled,
+    clusteredPctWallets: cluster.clusteredPctWallets || 0,
+    largestClusterPctHold: cluster.largestClusterPctHold || 0,
+    clusterRiskScore: cluster?.risk?.score ?? 0,
+    clusterRiskSev: cluster?.risk?.sev ?? null
+  };
+
+  return { meta, holders, signals, cluster };
+}
+
+async function scanEvm(chain, addr){
+  const code = await getCode(chain.chainId, addr);
+  const hasCode = !!code && code !== "0x";
+
+  if(!hasCode){
+    renderBubbleMap([]);
+    return {
+      meta: {name:"", symbol:"", image:"", uri:"", description:""},
+      holders: [],
+      signals: {
+        kind:"evm",
+        hasCode:false,
+        proxy:{isProxy:false, implementation:null, admin:null},
+        owner:null,
+        paused:null,
+        topHolderPct:null,
+        clusterEnabled:false
+      },
+      cluster: {enabled:false}
+    };
+  }
+
+  const proxy = await detectProxy(chain.chainId, addr);
+  const erc = await getErc20Meta(chain.chainId, addr);
+  const owner = await getOwner(chain.chainId, addr);
+  const paused = await getPaused(chain.chainId, addr);
+
+  const meta = {
+    name: (erc?.name || "").trim(),
+    symbol: (erc?.symbol || "").trim(),
+    image: "",
+    uri: "",
+    description: ""
+  };
+
+  // Holders (optional)
+  let holders = [];
+  let topHolderPct = null;
+
+  if(CFG.GOLDRUSH_API_KEY){
+    try{
+      const items = await goldrushGetTokenHolders(chain.chainId, addr, 50);
+
+      const totalSupply = erc.totalSupply; // BigInt or null
+      holders = items.slice(0, CFG.CLUSTERS.TOP_HOLDER_WALLETS).map((x, idx) => {
+        const w = String(x?.token_holder_address || x?.address || x?.wallet_address || "").toLowerCase();
+        let bal = 0n;
+        try{ if(x?.balance) bal = BigInt(x.balance); }catch{}
+        let pct = 0;
+        if(totalSupply && typeof totalSupply === "bigint" && totalSupply > 0n){
+          try{
+            pct = Number((bal * 10000n) / totalSupply) / 100;
+            if(!Number.isFinite(pct)) pct = 0;
+          }catch{ pct = 0; }
+        }
+        return { wallet: w, pct, rank: idx+1, balance: bal.toString() };
+      }).filter(h => h.wallet && !CFG.CLUSTERS.IGNORE.EVM_ADDRS.has(h.wallet));
+
+      topHolderPct = holders[0]?.pct ?? null;
+      renderBubbleMap(holdersToBubbles(holders));
+    }catch{
+      holders = [];
       renderBubbleMap([]);
     }
-
-    // cluster analysis (only meaningful if we have holders)
-    const clusterAnalysis = await analyzeClusters(chain, addr, holders);
-    const clusterRisk = clusterRiskSummary(clusterAnalysis);
-
-    const meta = {
-      name: (erc?.name || "").trim(),
-      symbol: (erc?.symbol || "").trim(),
-      image: "",
-      uri: "",
-      description: ""
-    };
-
-    const signals = {
-      kind:"evm",
-      hasCode:true,
-      proxy,
-      owner,
-      paused,
-      topHolderPct,
-      decimals: erc.decimals,
-      totalSupply: (typeof erc.totalSupply === "bigint" ? erc.totalSupply.toString() : null),
-      clusterRiskSev: clusterRisk.sev,
-      clusterRiskScore: clusterRisk.score
-    };
-
-    return { meta, holders, signals, clusterAnalysis };
+  }else{
+    renderBubbleMap([]);
   }
 
-  /* ===================== SCORE MODEL ===================== */
-  function computeScore(signals){
-    // 0..100
-    let score = 100;
-    let critical = false;
+  // clusters (optional)
+  const cluster = await analyzeClustersLight(chain, holders);
+  const clusterEnabled = !!cluster.enabled;
 
-    if(signals.kind === "solana"){
-      if(signals.mintAuthActive){ score -= 35; critical = true; }
-      if(signals.freezeAuthActive){ score -= 15; }
-      if(signals.program === CFG.TOKEN_2022_PROGRAM){ score -= 8; }
-    }else{
-      if(!signals.hasCode){ score = 0; critical = true; }
-      if(signals.proxy?.isProxy){ score -= 10; }
-      if(signals.owner && !CFG.CLUSTERS.IGNORE.EVM_ADDRS.has(String(signals.owner).toLowerCase())) score -= 8;
-      if(signals.paused === true) score -= 10;
-    }
+  const signals = {
+    kind:"evm",
+    hasCode:true,
+    proxy,
+    owner,
+    paused,
+    topHolderPct,
+    decimals: erc.decimals,
+    totalSupply: (typeof erc.totalSupply === "bigint" ? erc.totalSupply.toString() : null),
+    clusterEnabled,
+    clusteredPctWallets: cluster.clusteredPctWallets || 0,
+    largestClusterPctHold: cluster.largestClusterPctHold || 0,
+    clusterRiskScore: cluster?.risk?.score ?? 0,
+    clusterRiskSev: cluster?.risk?.sev ?? null
+  };
 
-    if(Number.isFinite(signals.topHolderPct)){
-      const p = signals.topHolderPct;
-      if(p >= 35){ score -= 30; critical = true; }
-      else if(p >= 20) score -= 18;
-      else if(p >= 10) score -= 8;
-    }
+  return { meta, holders, signals, cluster };
+}
 
-    if(signals.clusterRiskSev === "bad") score -= 18;
-    else if(signals.clusterRiskSev === "warn") score -= 10;
+/* ===================== EXPORT REPORT ===================== */
+function buildReportHtml(scan){
+  const chain = scan.chain;
+  const meta = scan.meta || {};
+  const sig = scan.signals || {};
+  const verdict = scan.verdict || {};
+  const score = scan.score ?? 0;
+  const addr = scan.addr || "";
+  const ex = explorerBase(chain);
+  const bubbleImg = (window.__BUBBLE_MAP_DATA_URL || "");
 
-    score = clamp(Math.round(score), 0, 100);
-    return { score, critical };
-  }
-
-  function buildMetricRows(meta, signals){
-    const rows = [];
-    if(signals.kind === "solana"){
-      rows.push({ label:"Supply (UI)", value: fmtInt(signals.supplyUi), badge:"ON-CHAIN", mini:"Reported supply via getTokenSupply()." });
-      rows.push({ label:"Mint Authority", value: signals.mintAuthActive ? "Active" : "Revoked", badge: signals.mintAuthActive ? "RISK" : "OK", barPct: signals.mintAuthActive ? 85 : 10, mini: signals.mintAuthority ? shortAddr(signals.mintAuthority) : "—" });
-      rows.push({ label:"Freeze Authority", value: signals.freezeAuthActive ? "Active" : "Revoked", badge: signals.freezeAuthActive ? "WATCH" : "OK", barPct: signals.freezeAuthActive ? 55 : 10, mini: signals.freezeAuthority ? shortAddr(signals.freezeAuthority) : "—" });
-      rows.push({ label:"Top Holder (preview)", value: Number.isFinite(signals.topHolderPct) ? fmtPct(signals.topHolderPct) : "No signal", badge:"HOLDERS", barPct: Number.isFinite(signals.topHolderPct) ? clamp(signals.topHolderPct,0,100) : 0, mini:"From largest accounts (preview)." });
-    }else{
-      rows.push({ label:"Contract", value: signals.hasCode ? "Deployed" : "Not found", badge: signals.hasCode ? "OK" : "FAIL", barPct: signals.hasCode ? 90 : 0, mini:"eth_getCode() result." });
-      rows.push({ label:"Proxy", value: signals.proxy?.isProxy ? "Upgradeable" : "No signal", badge: signals.proxy?.isProxy ? "WATCH" : "OK", barPct: signals.proxy?.isProxy ? 55 : 10, mini: signals.proxy?.implementation ? `Impl ${shortAddr(signals.proxy.implementation)}` : "—" });
-      rows.push({ label:"Owner()", value: signals.owner ? shortAddr(signals.owner) : "No signal", badge: signals.owner ? "WATCH" : "OK", mini:"Ownable() best-effort call." });
-      rows.push({ label:"Pausable", value: signals.paused === true ? "Paused" : (signals.paused === false ? "Not paused" : "No signal"), badge: signals.paused === true ? "WATCH" : "OK", mini:"paused() best-effort call." });
-      rows.push({ label:"Top Holder (preview)", value: Number.isFinite(signals.topHolderPct) ? fmtPct(signals.topHolderPct) : "No signal", badge: CFG.GOLDRUSH_API_KEY ? "HOLDERS" : "INDEXER", barPct: Number.isFinite(signals.topHolderPct) ? clamp(signals.topHolderPct,0,100) : 0, mini: CFG.GOLDRUSH_API_KEY ? "From GoldRush holders endpoint." : "Requires GoldRush key." });
-    }
-
-    // base rows saved for cluster append
-    setBaseMetricRows(rows);
-    return rows;
-  }
-
-  /* ===================== EXPORT REPORT ===================== */
-  function buildReportHtml(scan){
-    const chain = scan.chain;
-    const meta = scan.meta || {};
-    const sig = scan.signals || {};
-    const verdict = scan.verdict || {};
-    const score = scan.score ?? 0;
-    const addr = scan.addr || "";
-
-    const ex = explorerBase(chain);
-    const bubbleImg = (window.__BUBBLE_MAP_DATA_URL || "");
-
-    const cluster = scan.clusterAnalysis || null;
-    const clusterRisk = (cluster && cluster.enabled) ? clusterRiskSummary(cluster) : null;
-
-    const clusterBlock = (cluster && cluster.enabled) ? `
-      <h2 style="margin:26px 0 10px;font:800 18px/1.2 system-ui;color:#fff">Bundles / Connected Wallets</h2>
-      <div style="border:1px solid rgba(255,255,255,.16);border-radius:14px;padding:14px;background:rgba(255,255,255,.06);color:rgba(255,255,255,.88)">
-        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between">
-          <div><b>Clustered wallets:</b> ${Number(cluster.clusteredPctWallets||0).toFixed(1)}%</div>
-          <div><b>Largest cluster hold share:</b> ${Number(cluster.largestClusterPctHold||0).toFixed(2)}%</div>
-          <div><b>Bundle score:</b> ${clusterRisk ? `${clusterRisk.score}/100` : "—"}</div>
-        </div>
-        <div style="margin-top:10px;color:rgba(255,255,255,.74);font-weight:650">
-          Evidence includes direct transfers between top holders, shared funders (EVM), and same-second first-activity bursts (heuristic).
-        </div>
-        ${Array.isArray(cluster.clustersTop) && cluster.clustersTop.length ? `
-          <div style="margin-top:12px">
-            <b>Top clusters (preview)</b>
-            <ul style="margin:8px 0 0;padding-left:18px;color:rgba(255,255,255,.86)">
-              ${cluster.clustersTop.slice(0,5).map((c,i)=>`
-                <li style="margin:6px 0">
-                  <span style="font-weight:800">#${i+1}</span>
-                  — wallets: ${c.walletCount}
-                  — hold share: ${Number(c.holdPct||0).toFixed(2)}%
-                  — sample: ${[...c.wallets].slice(0,6).map(shortAddr).join(", ")}
-                </li>
-              `).join("")}
-            </ul>
-          </div>
-        `:""}
-        ${Array.isArray(cluster.burstTop) && cluster.burstTop.length ? `
-          <div style="margin-top:12px">
-            <b>Same-second burst buckets</b>
-            <ul style="margin:8px 0 0;padding-left:18px;color:rgba(255,255,255,.86)">
-              ${cluster.burstTop.slice(0,6).map(b=>`
-                <li style="margin:6px 0">${b.count} wallets @ ${new Date(b.sec*1000).toISOString()}</li>
-              `).join("")}
-            </ul>
-          </div>
-        `:""}
+  const checksHtml = (scan.checks||[]).map(x => `
+    <div style="border:1px solid rgba(255,255,255,.14);border-radius:14px;padding:12px;background:rgba(255,255,255,.05);margin:10px 0">
+      <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center">
+        <div style="font-weight:900;color:#fff">${esc(x.t||"")}</div>
+        <div style="font-weight:900;opacity:.9">${esc(pillLabel(x.sev))}</div>
       </div>
-    ` : "";
+      <div style="margin-top:6px;color:rgba(255,255,255,.76);font-weight:650">${esc(x.d||"")}</div>
+    </div>
+  `).join("");
 
-    const bubbleBlock = bubbleImg ? `
-      <h2 style="margin:26px 0 10px;font:800 18px/1.2 system-ui;color:#fff">Holder Bubble Map</h2>
-      <div style="border:1px solid rgba(255,255,255,.16);border-radius:14px;padding:14px;background:rgba(255,255,255,.06);color:rgba(255,255,255,.88)">
-        <img src="${bubbleImg}" alt="Holder Bubble Map" style="width:100%;height:auto;border-radius:12px;display:block"/>
-        <div style="margin-top:10px;color:rgba(255,255,255,.70);font-weight:650">Bubble size = holder % (visual heuristic).</div>
+  const todoHtml = (scan.todos||[]).map(x => `
+    <div style="border:1px solid rgba(255,255,255,.14);border-radius:14px;padding:12px;background:rgba(255,255,255,.05);margin:10px 0">
+      <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center">
+        <div style="font-weight:900;color:#fff">${esc(x.t||"")}</div>
+        <div style="font-weight:900;opacity:.9">${esc(pillLabel(x.sev))}</div>
       </div>
-    ` : "";
+      <div style="margin-top:6px;color:rgba(255,255,255,.76);font-weight:650">${esc(x.d||"")}</div>
+    </div>
+  `).join("");
 
-    const checksHtml = (scan.checks||[]).map(x => `
-      <div style="border:1px solid rgba(255,255,255,.14);border-radius:14px;padding:12px;background:rgba(255,255,255,.05);margin:10px 0">
-        <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center">
-          <div style="font-weight:900;color:#fff">${esc(x.t||"")}</div>
-          <div style="font-weight:900;opacity:.9">${esc(pillLabel(x.sev))}</div>
-        </div>
-        <div style="margin-top:6px;color:rgba(255,255,255,.76);font-weight:650">${esc(x.d||"")}</div>
+  const clusterBlock = sig.clusterEnabled ? `
+    <h2 style="margin:26px 0 10px;font:800 18px/1.2 system-ui;color:#fff">Bundles / Connected Wallets</h2>
+    <div style="border:1px solid rgba(255,255,255,.16);border-radius:14px;padding:14px;background:rgba(255,255,255,.06);color:rgba(255,255,255,.88)">
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between">
+        <div><b>Clustered wallets:</b> ${Number(sig.clusteredPctWallets||0).toFixed(1)}%</div>
+        <div><b>Largest cluster hold share:</b> ${Number(sig.largestClusterPctHold||0).toFixed(2)}%</div>
+        <div><b>Bundle score:</b> ${Number(sig.clusterRiskScore||0)}/100</div>
       </div>
-    `).join("");
-
-    const todoHtml = (scan.todos||[]).map(x => `
-      <div style="border:1px solid rgba(255,255,255,.14);border-radius:14px;padding:12px;background:rgba(255,255,255,.05);margin:10px 0">
-        <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center">
-          <div style="font-weight:900;color:#fff">${esc(x.t||"")}</div>
-          <div style="font-weight:900;opacity:.9">${esc(pillLabel(x.sev))}</div>
-        </div>
-        <div style="margin-top:6px;color:rgba(255,255,255,.76);font-weight:650">${esc(x.d||"")}</div>
+      <div style="margin-top:10px;color:rgba(255,255,255,.74);font-weight:650">
+        Heuristics: shared funders (EVM, if available), first-activity bursts (best-effort), and holder concentration.
       </div>
-    `).join("");
+    </div>
+  ` : "";
 
-    return `<!doctype html>
+  const bubbleBlock = bubbleImg ? `
+    <h2 style="margin:26px 0 10px;font:800 18px/1.2 system-ui;color:#fff">Holder Bubble Map</h2>
+    <div style="border:1px solid rgba(255,255,255,.16);border-radius:14px;padding:14px;background:rgba(255,255,255,.06);color:rgba(255,255,255,.88)">
+      <img src="${bubbleImg}" alt="Holder Bubble Map" style="width:100%;height:auto;border-radius:12px;display:block"/>
+      <div style="margin-top:10px;color:rgba(255,255,255,.70);font-weight:650">Bubble size = holder % (visual heuristic).</div>
+    </div>
+  ` : "";
+
+  return `<!doctype html>
 <html>
 <head>
 <meta charset="utf-8"/>
@@ -2734,255 +2361,245 @@
   </div>
 </body>
 </html>`;
+}
+
+function downloadFile(name, mime, text){
+  const blob = new Blob([text], {type:mime});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(()=> URL.revokeObjectURL(url), 1500);
+}
+
+function doExport(){
+  if(!SCAN_STATE.completed || !SCAN_STATE.result) return;
+  const fmt = (CFG.EXPORT.DEFAULT_FORMAT || "html").toLowerCase();
+  const scan = SCAN_STATE.result;
+  if(fmt === "html"){
+    const html = buildReportHtml(scan);
+    downloadFile(`guardian-report-${scan.chain.id}-${Date.now()}.html`, "text/html;charset=utf-8", html);
+  }else{
+    const json = JSON.stringify(scan, null, 2);
+    downloadFile(`guardian-scan-${scan.chain.id}-${Date.now()}.json`, "application/json;charset=utf-8", json);
+  }
+}
+
+/* ===================== MAIN RUN (FIXED FLOW) ===================== */
+async function runScan(){
+  if(SCAN_STATE.scanning) return;
+  SCAN_STATE.scanning = true;
+
+  const btn1 = qs("btnScan");
+  const btn2 = qs("btnScanInline");
+  const btnEx = qs("btnExport");
+  if(btn1) btn1.disabled = true;
+  if(btn2) btn2.disabled = true;
+  if(btnEx) btnEx.disabled = true;
+
+  setStatus("Scanning… pulling on-chain signals.");
+  setText("scanHint", `${activeChain.stamp} • SCANNING`);
+
+  const addr = (qs("mint")?.value || "").trim();
+  if(!addr){
+    setStatus("Paste an address first.");
+    setText("scanHint","—");
+    if(btn1) btn1.disabled = false;
+    if(btn2) btn2.disabled = false;
+    SCAN_STATE.scanning = false;
+    return;
   }
 
-  function downloadFile(name, mime, text){
-    const blob = new Blob([text], {type:mime});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = name;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(()=> URL.revokeObjectURL(url), 1500);
-  }
-
-  function doExport(){
-    if(!LAST_SCAN) return;
-    const fmt = (CFG.EXPORT.DEFAULT_FORMAT || "html").toLowerCase();
-    if(fmt === "html"){
-      const html = buildReportHtml(LAST_SCAN);
-      downloadFile(`guardian-report-${LAST_SCAN.chain.id}-${Date.now()}.html`, "text/html;charset=utf-8", html);
-    }else{
-      const json = JSON.stringify(LAST_SCAN, null, 2);
-      downloadFile(`guardian-scan-${LAST_SCAN.chain.id}-${Date.now()}.json`, "application/json;charset=utf-8", json);
-    }
-  }
-
-  /* ===================== MAIN RUN ===================== */
-  async function runScan(){
-    if(SCANNING) return;
-    SCANNING = true;
-
-    const btn1 = qs("btnScan");
-    const btn2 = qs("btnScanInline");
-    const btnEx = qs("btnExport");
-    if(btn1) btn1.disabled = true;
-    if(btn2) btn2.disabled = true;
-    if(btnEx) btnEx.disabled = true;
-
-    setStatus("Scanning… pulling on-chain signals.");
-    setText("scanHint", `${activeChain.stamp} • SCANNING`);
-
-    const addr = (qs("mint")?.value || "").trim();
-    if(!addr){
-      setStatus("Paste an address first.");
+  // validate
+  if(activeChain.kind === "solana"){
+    if(!looksBase58(addr)){
+      setStatus("Invalid Solana mint (base58).");
       setText("scanHint","—");
       if(btn1) btn1.disabled = false;
       if(btn2) btn2.disabled = false;
-      SCANNING = false;
+      SCAN_STATE.scanning = false;
       return;
     }
-
-    // validate
-    if(activeChain.kind === "solana"){
-      if(!looksBase58(addr)){
-        setStatus("Invalid Solana mint (base58).");
-        setText("scanHint","—");
-        if(btn1) btn1.disabled = false;
-        if(btn2) btn2.disabled = false;
-        SCANNING = false;
-        return;
-      }
-    }else{
-      if(!looksEvmAddress(addr)){
-        setStatus("Invalid EVM address (0x + 40 hex).");
-        setText("scanHint","—");
-        if(btn1) btn1.disabled = false;
-        if(btn2) btn2.disabled = false;
-        SCANNING = false;
-        return;
-      }
-    }
-
-    clearUI();
-    setText("mintShort", addr);
-
-    try{
-      let res = null;
-
-      if(activeChain.kind === "solana"){
-        res = await scanSolana(addr);
-      }else{
-        res = await scanEvm(activeChain, addr);
-      }
-
-      const meta = res.meta || {};
-      const holders = res.holders || [];
-      const signals = res.signals || {};
-      const clusterAnalysis = res.clusterAnalysis || {enabled:false};
-
-      // header
-      applyTokenHeader(meta, addr);
-
-      // scoring + verdict
-      const { score, critical } = computeScore(signals);
-      const verdict = verdictFrom(score, critical);
-
-      setText("verdictTitle", verdict.title);
-      setBadge(qs("verdictBadge"), verdict.label, verdict.mode);
-      setText("scoreBadge", `${score}/100`);
-
-      // metrics
-      const rows = buildMetricRows(meta, signals);
-      renderMetrics(rows);
-
-      // checks + todo
-      const checks = makeChecksFromSignals(signals);
-      const todos  = makeTodoFromSignals(signals);
-
-      renderList(qs("checksList"), checks, "Guardian Checks");
-      renderList(qs("todoList"), todos, "Launch Readiness");
-      renderTokenStandardDetails(activeChain, signals);
-      renderTokenMetadataList(meta);
-
-      // holders list
-      if(holders.length){
-        const ex = explorerBase(activeChain);
-        const listItems = holders.slice(0, 25).map((h, idx) => ({
-          t: `#${idx+1} ${shortAddr(h.wallet)}`,
-          d: `${Number.isFinite(h.pct) ? fmtPct(h.pct) : "—"} of supply`,
-          addr: h.wallet,
-          infoHtml: explain("Top holder", [
-            `Wallet: ${h.wallet}`,
-            `Share: ${Number.isFinite(h.pct) ? fmtPct(h.pct) : "—"}`,
-            "Use explorer to verify labels (LP, burn, treasury, team)."
-          ])
-        }));
-        renderHoldersWithExplorer(listItems, activeChain);
-      }else{
-        renderHoldersEmpty();
-      }
-
-      // clusters append + metrics append + save
-      renderClustersPanel(clusterAnalysis);
-
-      // summary line
-      const clusterRisk = clusterAnalysis?.enabled ? clusterRiskSummary(clusterAnalysis) : null;
-      const clusterTxt = clusterRisk ? ` • Bundles: ${clusterRisk.score}/100 (${clusterRisk.sev.toUpperCase()})` : "";
-      setText("summary", `Guardian Score: ${score}/100 • ${verdict.title}${clusterTxt}`);
-
-      setText("scanHint", `${activeChain.stamp} • COMPLETE`);
-      setStatus("Scan complete.");
-      showToast(`${activeChain.name}: ${verdict.title} • ${score}/100`);
-
-      LAST_SCAN = {
-        ts: Date.now(),
-        chain: activeChain,
-        addr,
-        meta,
-        signals,
-        score,
-        verdict,
-        holders,
-        checks,
-        todos,
-        clusterAnalysis
-      };
-
-      if(btnEx){
-        btnEx.disabled = false;
-        btnEx.textContent = "Download Scan Report";
-      }
-    }catch(e){
-      console.error(e);
-      setStatus(`Scan failed: ${String(e?.message || e).slice(0,240)}`);
-      setText("scanHint", `${activeChain.stamp} • ERROR`);
-      setText("summary","—");
-      renderHoldersEmpty();
-    }finally{
+  }else{
+    if(!looksEvmAddress(addr)){
+      setStatus("Invalid EVM address (0x + 40 hex).");
+      setText("scanHint","—");
       if(btn1) btn1.disabled = false;
       if(btn2) btn2.disabled = false;
-      SCANNING = false;
-      // auto-hide toast after a moment
-      setTimeout(()=> hideToast(), 5200);
+      SCAN_STATE.scanning = false;
+      return;
     }
   }
 
-  /* ===================== EVENTS ===================== */
-  function wireGlobalClicks(){
-    document.addEventListener("click", (ev) => {
-      const t = ev.target;
-      const btn = t?.closest?.("[data-open='1']");
-      if(btn){
-        const title = btn.getAttribute("data-title") || "Guardian Details";
-        const infoId = btn.getAttribute("data-info") || "";
+  // Reset UI but DO NOT wipe after render; we render only once at end.
+  resetUIForNewScan();
+  setText("mintShort", addr);
+
+  try{
+    // Scan + build final state
+    let scanRes = null;
+    if(activeChain.kind === "solana") scanRes = await scanSolana(addr);
+    else scanRes = await scanEvm(activeChain, addr);
+
+    const meta = scanRes.meta || {};
+    const holders = scanRes.holders || [];
+    const signals = scanRes.signals || {};
+
+    applyTokenHeader(meta, addr);
+
+    const { score, critical } = computeScore(signals);
+    const verdict = verdictFrom(score, critical);
+
+    setText("verdictTitle", verdict.title);
+    setBadge(qs("verdictBadge"), verdict.label, verdict.mode);
+    setText("scoreBadge", `${score}/100`);
+
+    const metricRows = buildMetricRows(meta, signals);
+    renderMetrics(metricRows);
+
+    const checks = makeChecksFromSignals(signals);
+    const todos  = makeTodoFromSignals(signals);
+
+    renderList(qs("checksList"), checks, "Guardian Checks");
+    renderList(qs("todoList"), todos, "Launch Readiness");
+    renderTokenStandardDetails(activeChain, signals);
+    renderTokenMetadataList(meta);
+
+    // holders list
+    if(holders.length){
+      const listItems = holders.slice(0, 25).map((h, idx) => ({
+        t: `#${idx+1} ${shortAddr(h.wallet)}`,
+        d: `${Number.isFinite(h.pct) ? fmtPct(h.pct) : "—"} of supply`,
+        addr: h.wallet,
+        infoHtml: explain("Top holder", [
+          `Wallet: ${h.wallet}`,
+          `Share: ${Number.isFinite(h.pct) ? fmtPct(h.pct) : "—"}`,
+          "Use explorer to verify labels (LP, burn, treasury, vesting)."
+        ])
+      }));
+      renderHoldersWithExplorer(listItems, activeChain);
+    }else{
+      renderHoldersEmpty();
+    }
+
+    const clusterTxt = signals.clusterEnabled
+      ? ` • Bundles: ${signals.clusterRiskScore}/100 (${String(signals.clusterRiskSev||"").toUpperCase()})`
+      : "";
+    setText("summary", `Guardian Score: ${score}/100 • ${verdict.title}${clusterTxt}`);
+
+    setText("scanHint", `${activeChain.stamp} • COMPLETE`);
+    setStatus("Scan complete.");
+    showToast(`${activeChain.name}: ${verdict.title} • ${score}/100`);
+
+    // SAVE final scan snapshot (export uses this)
+    SCAN_STATE.completed = true;
+    SCAN_STATE.chain = activeChain;
+    SCAN_STATE.addr = addr;
+
+    SCAN_STATE.result = {
+      ts: Date.now(),
+      chain: activeChain,
+      addr,
+      meta,
+      signals,
+      score,
+      verdict,
+      holders,
+      checks,
+      todos
+    };
+
+    if(btnEx){
+      btnEx.disabled = false;
+      btnEx.textContent = "Download Scan Report";
+    }
+  }catch(e){
+    console.error(e);
+    setStatus(`Scan failed: ${String(e?.message || e).slice(0,240)}`);
+    setText("scanHint", `${activeChain.stamp} • ERROR`);
+    setText("summary","—");
+    renderHoldersEmpty();
+  }finally{
+    if(btn1) btn1.disabled = false;
+    if(btn2) btn2.disabled = false;
+    SCAN_STATE.scanning = false;
+    setTimeout(()=> hideToast(), 5200);
+  }
+}
+
+/* ===================== EVENTS ===================== */
+function wireGlobalClicks(){
+  document.addEventListener("click", (ev) => {
+    const t = ev.target;
+    const btn = t?.closest?.("[data-open='1']");
+    if(btn){
+      const title = btn.getAttribute("data-title") || "Guardian Details";
+      const infoId = btn.getAttribute("data-info") || "";
+      const html = getInfo(infoId) || "<div>—</div>";
+      openModal(title, html);
+    }
+  });
+
+  document.addEventListener("keydown", (ev) => {
+    if(ev.key === "Escape"){
+      closeModal();
+      hideToast();
+    }
+    if(ev.key === "Enter"){
+      const el = document.activeElement;
+      if(el && el.matches && el.matches("[data-open='1']")){
+        const title = el.getAttribute("data-title") || "Guardian Details";
+        const infoId = el.getAttribute("data-info") || "";
         const html = getInfo(infoId) || "<div>—</div>";
         openModal(title, html);
       }
-    });
+    }
+  });
+}
 
-    document.addEventListener("keydown", (ev) => {
-      if(ev.key === "Escape"){
-        closeModal();
-        hideToast();
-      }
-      if(ev.key === "Enter"){
-        const el = document.activeElement;
-        if(el && el.matches && el.matches("[data-open='1']")){
-          const title = el.getAttribute("data-title") || "Guardian Details";
-          const infoId = el.getAttribute("data-info") || "";
-          const html = getInfo(infoId) || "<div>—</div>";
-          openModal(title, html);
-        }
-      }
+/* ===================== INIT ===================== */
+function init(){
+  setText("y", new Date().getFullYear());
+
+  // chain from URL
+  const url = new URL(location.href);
+  const chainId = url.searchParams.get("chain");
+  if(chainId) activeChain = CFG.CHAINS.find(c => c.id === chainId) || activeChain;
+
+  renderChainButtons();
+  setActiveChain(activeChain.id, false);
+
+  // address preset
+  const addr = url.searchParams.get("addr");
+  if(addr){
+    const mint = qs("mint");
+    if(mint) mint.value = addr;
+  }
+
+  startLiveStampTime();
+
+  on("btnScan","click", runScan);
+  on("btnScanInline","click", runScan);
+  on("btnExport","click", doExport);
+
+  on("modalClose","click", closeModal);
+  on("toastClose","click", hideToast);
+
+  const mw = qs("modalWrap");
+  if(mw){
+    mw.addEventListener("click", (ev)=>{
+      if(ev.target === mw) closeModal();
     });
   }
 
-  function init(){
-    // footer year
-    setText("y", new Date().getFullYear());
+  wireGlobalClicks();
+  resetUIForNewScan();
+}
 
-    // chain from URL
-    const url = new URL(location.href);
-    const chainId = url.searchParams.get("chain");
-    if(chainId) activeChain = CFG.CHAINS.find(c => c.id === chainId) || activeChain;
-
-    renderChainButtons();
-    setActiveChain(activeChain.id, false);
-
-    // if address preset
-    const addr = url.searchParams.get("addr");
-    if(addr){
-      const mint = qs("mint");
-      if(mint) mint.value = addr;
-    }
-
-    startLiveStampTime();
-
-    on("btnScan","click", runScan);
-    on("btnScanInline","click", runScan);
-    on("btnExport","click", doExport);
-
-    on("modalClose","click", closeModal);
-    on("toastClose","click", hideToast);
-
-    const mw = qs("modalWrap");
-    if(mw){
-      mw.addEventListener("click", (ev)=>{
-        if(ev.target === mw) closeModal();
-      });
-    }
-
-    wireGlobalClicks();
-
-    clearUI();
-  }
-
-  // kick
-  init();
-  </script>
+init();
+</script>
 </body>
 </html>
-
