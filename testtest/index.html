@@ -3708,56 +3708,6 @@ if(holderItems.length){
   document.body.appendChild(a);
   a.click();
   a.remove();
-  setTimeout(()=>URL.revokeObjectURL(url), 2500);
-}
-
-      const chain = LAST_SCAN.chain;
-      const addr  = LAST_SCAN.addr;
-      const score = LAST_SCAN.score;
-      const when  = new Date(LAST_SCAN.when).toISOString();
-
-      // minimal, instant report (client-side)
-      const html = `
-<!doctype html>
-<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Guardian Report • ${esc(chain)} • ${esc(addr)}</title>
-<style>
-  body{font-family: ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial; padding:22px; background:#070711; color:#fff;}
-  .card{border:1px solid rgba(255,255,255,.14); background:rgba(255,255,255,.06); border-radius:16px; padding:16px; max-width:920px;}
-  .k{opacity:.75; font-size:12px; text-transform:uppercase; letter-spacing:.4px; font-weight:900;}
-  .v{font-size:18px; font-weight:1000; margin-top:6px; word-break:break-word;}
-  .row{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
-  @media(max-width:760px){.row{grid-template-columns:1fr}}
-</style>
-</head>
-<body>
-  <div class="card">
-    <div class="k">Guardian Report</div>
-    <div class="v">Chain: ${esc(chain)}<br>Address: ${esc(addr)}<br>Score: ${esc(String(score))}/100<br>Time: ${esc(when)}</div>
-  </div>
-  <div style="height:14px"></div>
-  <div class="card">
-    <div class="k">Summary</div>
-    <div class="v">${esc(qs("summary")?.textContent || "—")}</div>
-  </div>
-  <div style="height:14px"></div>
-  <div class="card">
-    <div class="k">Key Signals</div>
-    <div class="v">${qs("keySignals")?.innerText ? esc(qs("keySignals").innerText) : "—"}</div>
-  </div>
-</body></html>`.trim();
-
-      const blob = new Blob([html], { type:"text/html;charset=utf-8" });
-      const url = URL.createObjectURL(blob);
-
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `guardian-report_${chain}_${addr.slice(0,8)}.html`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      setTimeout(()=>URL.revokeObjectURL(url), 2500);
-    }
 
     // wiring
     on("btnScan", "click", runScan);
