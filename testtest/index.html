@@ -2805,10 +2805,10 @@ async function solRpc(method, params, signal){
       // resize handling
       window.addEventListener("resize", () => resizeCanvas(), { passive:true });
     }
-
+    
     // wire it now that the DOM exists
-    wireVizInteractions();
-    resizeCanvas();
+    // (moved into init() so a viz error can't kill the whole app)
+
 
         /* =========================================================
        CLUSTERS + GRAPH (best-effort)
@@ -3717,10 +3717,18 @@ if(tokenSrc){
         }
       });
 
-      // initial header
+            // initial header
       applyTokenHeader({name:"—",symbol:"",image:""}, "");
       setText("summary","Run a scan to generate a full Guardian report.");
       setVizStamps();
+
+      // viz wiring (don't let viz errors kill the UI)
+      try{
+        wireVizInteractions();
+        resizeCanvas();
+      }catch(e){
+        console.warn("Viz init failed:", e);
+      }
     }
 
     init();
