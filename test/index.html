@@ -3140,6 +3140,465 @@ async function enrichEvmFromDexscreener(evmChainId, tokenAddr, metaOnChain){
 
   return { ds, lpPairs };
 }
+    /* =========================================================
+   PART 4 — VIZ INTERACTION: hover tooltip + click to explorer
+   ========================================================= */
+
+let VIZ_TIP = null;
+
+function ensureVizTooltip(){
+  const stage = qs("vizStage");
+  if(!stage) return null;
+  if(VIZ_TIP) return VIZ_TIP;
+
+  const d = document.createElement("div");
+  d.style.position = "absolute";
+  d.style.left = "0";
+  d.style.top = "0";
+  d.style.transform = "translate(-9999px,-9999px)";
+  d.style.pointerEvents = "none";
+  d.style.padding = "10px 10px";
+  d.style.borderRadius = "14px";
+  d.style.border = "1px solid rgba(255,255,255,.14)";
+  d.style.background = "rgba(7,7,17,.92)";
+  d.style.backdropFilter = "blur(10px)";
+  d.style.color = "rgba(255,255,255,.92)";
+  d.style.fontWeight = "900";
+  d.style.fontSize = "12.5px";
+  d.style.lineHeight = "1.35";
+  d.style.maxWidth = "260px";
+  d.style.boxShadow = "0 16px 50px rgba(0,0,0,.45)";
+  d.style.zIndex = "5";
+  stage.appendChild(d);
+
+  VIZ_TIP = d;
+  return d;
+}
+
+function currentVizNodes(){
+  return (VIZ.mode === "graph" && Array.isArray(VIZ._graphNodes) && VIZ._graphNodes.length)
+    ? VIZ._graphNodes
+    : VIZ.nodes;
+}
+function currentVizEdges(){
+  return (VIZ.mode === "graph" && Array.isArray(VIZ._graphEdges) && VIZ._graphEdges.length)
+    ? VIZ._graphEdges
+    : VIZ.edges;
+}
+
+function hitTestViz(clientX, clientY){
+  const canvas = qs("vizCanvas");
+  const stage  = qs("vizStage");
+  if(!canvas || !stage) return null;
+
+  const rect = stage.getBoundingClientRect();
+  const dpr = Number(canvas.dataset.dpr || 1);
+
+  // canvas pixel coords
+  const px = (clientX - rect.left) * dpr;
+  const py = (clientY - rect.top) * dpr;
+
+  // invert transforms used in draw
+  const x = (px - (VIZ.panX * dpr)) / (VIZ.zoom || 1);
+  const y = (py - (VIZ.panY * dpr)) / (VIZ.zoom || 1);
+
+  const nodes = currentVizNodes();
+  // iterate top-down: last drawn wins
+  for(let i = nodes.length - 1; i >= 0; i--){
+    const n = nodes[i];
+    const nx = (n.x || 0) * dpr;
+    const ny = (n.y || 0) * dpr;
+    const rr = (n.r || 14) * dpr;
+    const dx = x - nx;
+    const dy = y - ny;
+    if(dx*dx + dy*dy <= rr*rr) return { node:n, index:i };
+  }
+  return null;
+}
+
+function showVizTip(clientX, clientY, html){
+  const tip = ensureVizTooltip();
+  if(!tip) return;
+  const stage = qs("vizStage");
+  const rect = stage.getBoundingClientRect();
+
+  tip.innerHTML = html || "";
+  const x = clientX - rect.left + 12;
+  const y = clientY - rect.top + 12;
+  tip.style.transform = `translate(${x}px, ${y}px)`;
+}
+function hideVizTip(){
+  const tip = ensureVizTooltip();
+  if(!tip) return;
+  tip.style.transform = "translate(-9999px,-9999px)";
+}
+
+/* Patch wireVizInteractions: add hover + click */
+(function patchVizInteractions(){
+  const canvas = qs("vizCanvas");
+  if(!canvas) return;
+
+  canvas.addEventListener("pointermove", (e) => {
+    if(VIZ.dragging) return hideVizTip();
+    const hit = hitTestViz(e.clientX, e.clientY);
+    if(!hit || !hit.node) return hideVizTip();
+
+    const n = hit.node;
+    const addr = n.addr ? String(n.addr) : "";
+    const label = n.label || (addr ? shortAddr(addr) : "Node");
+    const sub = n.sub ? String(n.sub) : "";
+
+    const tag = n.tag ? `<div style="opacity:.8;margin-top:4px">Tag: ${esc(n.tag)}</div>` : "";
+    const aLine = addr ? `<div style="opacity:.8;margin-top:4px">${esc(shortAddr(addr))}</div>` : "";
+
+    showVizTip(e.clientX, e.clientY, `
+      <div style="font-weight:1000; font-size:13px">${esc(label)}</div>
+      <div style="opacity:.86">${esc(sub)}</div>
+      ${aLine}
+      ${tag}
+      <div style="opacity:.65;margin-top:6px">Click → open explorer</div>
+    `);
+  });
+
+  canvas.addEventListener("pointerleave", () => hideVizTip());
+
+  canvas.addEventListener("click", (e) => {
+    const hit = hitTestViz(e.clientX, e.clientY);
+    if(!hit || !hit.node) return;
+
+    const addr = hit.node.addr ? String(hit.node.addr) : "";
+    if(!addr) return;
+
+    const ex = explorerBase(ACTIVE_CHAIN_ID);
+    window.open(ex.base + addr, "_blank", "noopener,noreferrer");
+  });
+})();
+
+    /* =========================================================
+   PART 5 — GRAPH MODE: edges + simple force layout (best-effort)
+   ========================================================= */
+
+function forceLayout(nodes, edges, W, H, steps = 220){
+  // Very small force layout (no libs)
+  const cx = W/2, cy = H/2;
+
+  // init if missing
+  for(const n of nodes){
+    if(!Number.isFinite(n.x)) n.x = cx + (Math.random()-0.5)*W*0.6;
+    if(!Number.isFinite(n.y)) n.y = cy + (Math.random()-0.5)*H*0.6;
+    if(!Number.isFinite(n.vx)) n.vx = 0;
+    if(!Number.isFinite(n.vy)) n.vy = 0;
+  }
+
+  const rep = 2200;     // repulsion strength
+  const spring = 0.01;  // edge spring
+  const damp = 0.86;    // velocity damp
+
+  for(let s=0; s<steps; s++){
+    // repulsion
+    for(let i=0;i<nodes.length;i++){
+      for(let j=i+1;j<nodes.length;j++){
+        const a = nodes[i], b = nodes[j];
+        const dx = (a.x-b.x);
+        const dy = (a.y-b.y);
+        const dist2 = dx*dx + dy*dy + 0.01;
+        const f = rep / dist2;
+        const fx = f*dx;
+        const fy = f*dy;
+        a.vx += fx; a.vy += fy;
+        b.vx -= fx; b.vy -= fy;
+      }
+    }
+
+    // springs
+    for(const e of edges){
+      const a = nodes[e.a];
+      const b = nodes[e.b];
+      if(!a || !b) continue;
+      const dx = b.x - a.x;
+      const dy = b.y - a.y;
+      const dist = Math.sqrt(dx*dx + dy*dy) || 1;
+      const target = e.len || 120;
+      const k = spring * (dist - target);
+      const fx = (k * dx) / dist;
+      const fy = (k * dy) / dist;
+      a.vx += fx; a.vy += fy;
+      b.vx -= fx; b.vy -= fy;
+    }
+
+    // center pull + integrate
+    for(const n of nodes){
+      n.vx += (cx - n.x) * 0.0009;
+      n.vy += (cy - n.y) * 0.0009;
+      n.vx *= damp; n.vy *= damp;
+      n.x += n.vx;  n.y += n.vy;
+
+      // bounds
+      n.x = clamp(n.x, 40, W-40);
+      n.y = clamp(n.y, 40, H-40);
+    }
+  }
+}
+
+function buildGraphFromCurrentBubbles(){
+  const stage = qs("vizStage");
+  if(!stage) return;
+
+  const rect = stage.getBoundingClientRect();
+  const W = Math.max(520, rect.width || 820);
+  const H = Math.max(360, rect.height || 420);
+
+  if(!VIZ.nodes || !VIZ.nodes.length){
+    VIZ._graphNodes = [];
+    VIZ._graphEdges = [];
+    return;
+  }
+
+  // center node
+  const center = {
+    x: W/2, y: H/2, r: 18,
+    sev: "ok",
+    label: "TOKEN",
+    sub: "hub",
+    addr: "" // none
+  };
+
+  const nodes = [center, ...VIZ.nodes.map(n => ({
+    x: n.x, y: n.y,
+    r: clamp((n.r||14)*0.85, 10, 28),
+    sev: n.sev,
+    addr: n.addr,
+    label: n.label,
+    sub: n.sub
+  }))];
+
+  const edges = [];
+  for(let i=1;i<nodes.length;i++){
+    edges.push({ a:0, b:i, len: 110 + (nodes[i].r||14)*2 });
+  }
+
+  forceLayout(nodes, edges, W, H, 220);
+  VIZ._graphNodes = nodes;
+  VIZ._graphEdges = edges;
+}
+
+/* Build “group nodes” for EVM using tags (LP/BURN/ROUTER/CONTRACT/WHALE) */
+function buildGraphForEvmTagged(holders, {chainId, lpPairs}){
+  const stage = qs("vizStage");
+  if(!stage) return;
+  const rect = stage.getBoundingClientRect();
+  const W = Math.max(520, rect.width || 820);
+  const H = Math.max(360, rect.height || 420);
+
+  if(!holders || !holders.length){
+    VIZ._graphNodes = [];
+    VIZ._graphEdges = [];
+    return;
+  }
+
+  const lpSet = new Set((lpPairs||[]).map(x => String(x).toLowerCase()));
+  const groups = [
+    { key:"LP",      match:(h)=>lpSet.has(String(h.addr||"").toLowerCase()) },
+    { key:"BURN",    match:(h)=>isDead(h.addr) },
+    { key:"ROUTER",  match:(h)=>isRouter(chainId, h.addr) },
+    { key:"CONTRACT",match:(h)=>!!h.isContract },
+    { key:"WHALE",   match:(h)=>(h.pct||0) >= 3 }
+  ];
+
+  // center token node
+  const nodes = [{
+    x: W/2, y: H/2, r: 18,
+    sev:"ok", label:"TOKEN", sub:"hub", addr:""
+  }];
+
+  const edges = [];
+
+  // group nodes
+  const groupIndex = new Map();
+  for(const g of groups){
+    nodes.push({
+      x: W/2 + (Math.random()-0.5)*240,
+      y: H/2 + (Math.random()-0.5)*240,
+      r: 16,
+      sev: "warn",
+      label: g.key,
+      sub: "group",
+      tag: g.key
+    });
+    const idx = nodes.length - 1;
+    groupIndex.set(g.key, idx);
+    edges.push({a:0,b:idx,len:140});
+  }
+
+  // holder nodes
+  for(const h of holders){
+    const sev = (h.pct||0) >= 10 ? "bad" : (h.pct||0) >= 3 ? "warn" : "ok";
+    nodes.push({
+      x: W/2 + (Math.random()-0.5)*W*0.7,
+      y: H/2 + (Math.random()-0.5)*H*0.7,
+      r: clamp(10 + (h.pct||0)*1.4, 10, 26),
+      sev,
+      addr: h.addr,
+      label: shortAddr(h.addr||""),
+      sub: Number.isFinite(h.pct) ? (h.pct.toFixed(2)+"%") : "—"
+    });
+    const hi = nodes.length - 1;
+    edges.push({a:0,b:hi,len:150});
+
+    // connect to matching groups
+    for(const g of groups){
+      if(g.match(h)){
+        const gi = groupIndex.get(g.key);
+        if(gi !== undefined) edges.push({a:gi,b:hi,len:110});
+      }
+    }
+  }
+
+  forceLayout(nodes, edges, W, H, 260);
+  VIZ._graphNodes = nodes;
+  VIZ._graphEdges = edges;
+}
+
+/* Patch setVizMode to auto-build graph when switching */
+const _setVizModeBase = setVizMode;
+function setVizMode(mode){
+  VIZ.mode = (mode === "graph") ? "graph" : "bubbles";
+  const b1 = qs("vizModeBubbles");
+  const b2 = qs("vizModeGraph");
+  if(b1 && b2){
+    b1.classList.toggle("active", VIZ.mode === "bubbles");
+    b2.classList.toggle("active", VIZ.mode === "graph");
+    b1.setAttribute("aria-selected", VIZ.mode === "bubbles" ? "true" : "false");
+    b2.setAttribute("aria-selected", VIZ.mode === "graph" ? "true" : "false");
+  }
+
+  // if switching to graph and no graph built yet, build a default star-graph
+  if(VIZ.mode === "graph"){
+    if(!Array.isArray(VIZ._graphNodes) || !VIZ._graphNodes.length){
+      buildGraphFromCurrentBubbles();
+    }
+  }
+  drawViz();
+}
+    /* =========================================================
+   PART 6 — EXPORT: Download Scan Report (HTML)
+   ========================================================= */
+
+function buildReportHtml(){
+  const chain = LAST_SCAN?.chain?.name || ACTIVE_CHAIN_ID;
+  const addr  = LAST_SCAN?.address || "";
+  const score = LAST_SCAN?.score ?? "—";
+  const verdict = LAST_SCAN?.verdict?.label || "—";
+  const when = new Date().toISOString();
+
+  const metrics = (LAST_SCAN?.metrics || []).map(m => `
+    <tr>
+      <td style="padding:8px 10px;border-bottom:1px solid #222;">${esc(m.label||"—")}</td>
+      <td style="padding:8px 10px;border-bottom:1px solid #222;font-weight:800;">${esc(m.value||"—")}</td>
+    </tr>
+  `).join("");
+
+  const checks = (LAST_SCAN?.checks || []).map(c => `
+    <li style="margin:6px 0">
+      <b>${esc(c.t||"—")}</b> — ${esc(c.d||"—")} <span style="opacity:.7">(${esc(pillLabel(c.sev||"warn"))})</span>
+    </li>
+  `).join("");
+
+  const todos = (LAST_SCAN?.todos || []).map(t => `
+    <li style="margin:6px 0">
+      <b>${esc(t.t||"—")}</b> — ${esc(t.d||"—")} <span style="opacity:.7">(${esc(pillLabel(t.sev||"warn"))})</span>
+    </li>
+  `).join("");
+
+  const bubbles = (VIZ.nodes || []).slice(0,30).map(n => `
+    <tr>
+      <td style="padding:8px 10px;border-bottom:1px solid #222;">${esc(n.addr ? shortAddr(n.addr) : (n.label||"—"))}</td>
+      <td style="padding:8px 10px;border-bottom:1px solid #222;">${esc(n.sub||"—")}</td>
+      <td style="padding:8px 10px;border-bottom:1px solid #222;">${esc(pillLabel(n.sev||"warn"))}</td>
+    </tr>
+  `).join("");
+
+  return `<!doctype html>
+<html><head><meta charset="utf-8">
+<title>$SOS Guardian Report</title>
+<style>
+  body{font-family:system-ui,Segoe UI,Arial;background:#0b0b14;color:#fff;margin:0;padding:22px}
+  .card{background:#121224;border:1px solid #222;border-radius:16px;padding:16px;margin:12px 0}
+  h1{margin:0 0 6px 0;font-size:22px}
+  .muted{opacity:.75}
+  table{width:100%;border-collapse:collapse}
+</style>
+</head>
+<body>
+  <h1>$SOS — Guardian Scan Report</h1>
+  <div class="muted">Generated: ${esc(when)}</div>
+
+  <div class="card">
+    <div><b>Chain:</b> ${esc(chain)}</div>
+    <div><b>Address:</b> ${esc(addr)}</div>
+    <div><b>Verdict:</b> ${esc(verdict)}</div>
+    <div><b>Score:</b> ${esc(String(score))}</div>
+  </div>
+
+  <div class="card">
+    <h2 style="margin:0 0 10px 0;font-size:16px">Metrics</h2>
+    <table>${metrics || "<tr><td class='muted'>No metrics</td></tr>"}</table>
+  </div>
+
+  <div class="card">
+    <h2 style="margin:0 0 10px 0;font-size:16px">Guardian Checks</h2>
+    <ul>${checks || "<li class='muted'>No checks</li>"}</ul>
+  </div>
+
+  <div class="card">
+    <h2 style="margin:0 0 10px 0;font-size:16px">Launch Readiness</h2>
+    <ul>${todos || "<li class='muted'>No todos</li>"}</ul>
+  </div>
+
+  <div class="card">
+    <h2 style="margin:0 0 10px 0;font-size:16px">Top Holders (preview)</h2>
+    <table>
+      <tr><th style="text-align:left;padding:8px 10px;border-bottom:1px solid #222;">Wallet</th>
+          <th style="text-align:left;padding:8px 10px;border-bottom:1px solid #222;">Share</th>
+          <th style="text-align:left;padding:8px 10px;border-bottom:1px solid #222;">Signal</th></tr>
+      ${bubbles || ""}
+    </table>
+    <div class="muted" style="margin-top:10px">
+      Note: This HTML report is best-effort from in-app data. For PDF, export via browser print (Ctrl/Cmd+P).
+    </div>
+  </div>
+
+</body></html>`;
+}
+
+function downloadTextFile(filename, text){
+  const blob = new Blob([text], {type:"text/html;charset=utf-8"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 2000);
+}
+
+/* Replace enableExportLite: now it really exports */
+function enableExportLite(){
+  const ex = qs("btnExport");
+  if(!ex) return;
+  ex.disabled = false;
+  ex.onclick = () => {
+    if(!LAST_SCAN){
+      showToast("Run a scan first.");
+      return;
+    }
+    const chain = LAST_SCAN?.chain?.id || ACTIVE_CHAIN_ID;
+    const addr = (LAST_SCAN?.address || "token").slice(0,10);
+    const name = `sos_guardian_report_${chain}_${addr}.html`;
+    downloadTextFile(name, buildReportHtml());
+  };
+}
     /* ===================== FINISH INIT + CALL ===================== */
     init();
   </script>
