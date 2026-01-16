@@ -1610,10 +1610,13 @@
       return `<span class="badge src ${cls}">${esc(label)}</span>`;
     }
     function sevToBadge(sev){
-      const s = sev === "ok" ? "badge good" : sev === "bad" ? "badge bad" : "badge warn";
-      const label = sev === "ok" ? "PASS" : sev === "bad" ? "FAIL" : "WATCH";
-      return `<span class="${s}">${label}</span>`;
-    }
+  const ok = sev === "ok";
+  const bad = sev === "bad";
+  const cls = ok ? "badge good" : bad ? "badge bad" : "badge warn";
+  const icon = ok ? "↑" : bad ? "↓" : "→";
+  const label = ok ? "YES" : bad ? "NO" : "UNKNOWN";
+  return `<span class="${cls}">${icon} ${label}</span>`;
+}
     function renderKeySignals(signals){
       const wrap = qs("keySignals");
       if(!wrap) return;
@@ -3274,6 +3277,14 @@ if(owner){
         checks.push({ sev:"warn", weight:8, t:"DEX data unavailable", d:"No Dexscreener pair found (best-effort).", fix:"Token may be new or not tracked." });
       }
 
+      // If we don't have an image yet, try Dexscreener token logo
+if(ds?.best?.info?.imageUrl){
+  // meta is the object from getErc20Meta(). We can attach an image field.
+  if(!meta.image) meta.image = ds.best.info.imageUrl;
+  // re-apply header so it can use the image
+  applyTokenHeaderWithEvmLogo(meta, tokenAddr, chainId);
+}
+
       // Holders + Transfers (GoldRush)
       const holdersRaw = await goldrushHolders(chainId, tokenAddr, signal);
       let holders = [];
@@ -3290,7 +3301,7 @@ if(owner){
             addr,
             label: `Holder #${i+1}`,
             pct,
-            sub: `Balance: ${String(h?.balance || "—").slice(0,18)}…`,
+            sub: `${pct.toFixed(2)}%`,
             sev: (pct >= 15) ? "warn" : "ok"
           };
         }).filter(x=>x.addr);
@@ -3395,7 +3406,18 @@ if(owner){
       }
       const c = chainObj();
       const brandLogo = await preloadBrandLogo();
-      const tokenImg = (qs("tokenLogo")?.style.display !== "none") ? (qs("tokenLogo")?.src || "") : "";
+      let tokenImg = "";
+const tokenSrc = (qs("tokenLogo")?.style.display !== "none") ? (qs("tokenLogo")?.src || "") : "";
+
+if(tokenSrc){
+  try{
+    const r = await fetch(tokenSrc, { cache:"force-cache" });
+    const b = await r.blob();
+    tokenImg = await blobToDataURL(b);
+  }catch{
+    tokenImg = ""; // fallback, report works without it
+  }
+}
       const vizImg = canvasToDataURL();
 
       const addr = APP.LAST_SCAN.addr || "";
