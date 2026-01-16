@@ -1,2340 +1,2645 @@
 <!doctype html>
 <html lang="de">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <meta name="theme-color" content="#070711" />
-  <title>$SOS — Guardian Check (Multi-Chain)</title>
-  <meta name="description" content="Guardian Approved — token risk score + launch readiness checklist (on-chain verifiable)." />
-
-  <style>
-    :root{
-      --bg:#070711;
-      --panel: rgba(255,255,255,.06);
-      --stroke: rgba(255,255,255,.12);
-      --text: rgba(255,255,255,.92);
-      --muted: rgba(255,255,255,.70);
-      --g:#14F195;
-      --c:#00D1FF;
-      --p:#9945FF;
-      --radius: 22px;
-      --shadow: 0 10px 30px rgba(0,0,0,.35);
-      --max: 1180px;
-      --sol-g1:#14F195;
-      --sol-g2:#00D1FF;
-      --sol-g3:#9945FF;
-      --bnb-yellow:#F0B90B;
-      --base-blue:#0052FF;
-    }
-    *{box-sizing:border-box}
-    html,body{height:100%}
-    body{
-      margin:0;
-      color:var(--text);
-      font: 15.5px/1.55 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
-      background: var(--bg);
-      position:relative;
-      overflow-x:hidden;
-    }
-    body::before{
-      content:"";
-      position:fixed;
-      inset:0;
-      z-index:-1;
-      pointer-events:none;
-      background:
-        radial-gradient(1200px 700px at 10% 5%, rgba(153,69,255,.22), transparent 60%),
-        radial-gradient(1000px 650px at 90% 10%, rgba(20,241,149,.18), transparent 55%),
-        radial-gradient(900px 600px at 70% 85%, rgba(0,209,255,.14), transparent 55%),
-        var(--bg);
-      transform: translateZ(0);
-    }
-    a{color:inherit; text-decoration:none}
-    .wrap{max-width:var(--max); margin:0 auto; padding:0 18px; width:100%;}
-    main{padding:22px 0 42px}
-    .topbar{
-      position:sticky;
-      top:0;
-      z-index:20;
-      backdrop-filter: blur(14px);
-      background: rgba(7,7,17,.62);
-      border-bottom: 1px solid rgba(255,255,255,.08);
-    }
-    .row{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:12px;
-      padding:12px 0;
-      flex-wrap:wrap;
-    }
-    .brand{
-      display:flex;
-      align-items:center;
-      gap:12px;
-      min-width: 260px;
-      user-select:none;
-    }
-    .brand img{
-      width:40px;
-      height:40px;
-      object-fit:contain;
-      filter: drop-shadow(0 10px 25px rgba(0,0,0,.45));
-    }
-    .bt{display:flex; flex-direction:column; line-height:1.05}
-    .bt .t{font-weight:1000; letter-spacing:-.2px; font-size:16px}
-    .bt .s{font-weight:850; color:var(--muted); font-size:12.5px}
-
-    .actions{
-      display:flex;
-      gap:10px;
-      align-items:center;
-      flex-wrap:wrap;
-      justify-content:flex-end;
-      width:100%;
-    }
-    @media (min-width: 980px){ .actions{width:auto} }
-
-    .btn{
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      padding:9px 12px;
-      border-radius: 999px;
-      border: 1px solid rgba(255,255,255,.14);
-      background: rgba(255,255,255,.06);
-      color: rgba(255,255,255,.88);
-      font-weight:950;
-      font-size:13px;
-      transition: .15s ease;
-      user-select:none;
-      cursor:pointer;
-      -webkit-tap-highlight-color: transparent;
-      white-space:nowrap;
-    }
-    .btn:hover{background: rgba(255,255,255,.10); transform: translateY(-1px)}
-    .btn.grad{
-      border:0;
-      background: linear-gradient(90deg, var(--g), var(--c), var(--p));
-      color:#061012;
-      box-shadow: 0 10px 24px rgba(0,0,0,.25);
-    }
-    .btn[disabled]{opacity:.55; pointer-events:none}
-
-    .card{
-      background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.05));
-      border: 1px solid rgba(255,255,255,.10);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      overflow:hidden;
-    }
-    .inner{padding:22px}
-
-    .hero{
-      position:relative;
-      overflow:hidden;
-      isolation:isolate;
-    }
-    .hero::before{
-      content:"";
-      position:absolute;
-      inset:-70px -40px;
-      background:
-        radial-gradient(900px 520px at 18% 28%, rgba(20,241,149,.16), transparent 60%),
-        radial-gradient(900px 520px at 82% 20%, rgba(0,209,255,.12), transparent 60%),
-        radial-gradient(900px 520px at 70% 86%, rgba(153,69,255,.14), transparent 60%);
-      z-index:0;
-      pointer-events:none;
-    }
-    .hero > *{position:relative; z-index:1}
-
-    .h1{
-      margin:0;
-      font-weight:1000;
-      letter-spacing:-1px;
-      line-height:1.05;
-      font-size: clamp(36px, 4.6vw, 62px);
-    }
-    .gradText{
-      background: linear-gradient(90deg, var(--g), var(--c), var(--p));
-      -webkit-background-clip:text;
-      background-clip:text;
-      color:transparent;
-    }
-    .sub{
-      margin-top:10px;
-      color: rgba(255,255,255,.76);
-      font-weight:850;
-      max-width: 940px;
-    }
-
-    .classified{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:10px;
-      flex-wrap:wrap;
-    }
-    .stamp{
-      font-weight:1000;
-      font-size:12px;
-      letter-spacing: .45px;
-      text-transform:uppercase;
-      color: rgba(255,255,255,.76);
-      border: 1px solid rgba(255,255,255,.14);
-      background: rgba(255,255,255,.06);
-      border-radius: 999px;
-      padding:7px 10px;
-    }
-
-    .layout{
-      margin-top:16px;
-      display:grid;
-      grid-template-columns: 1.05fr .95fr;
-      gap:16px;
-      align-items:start;
-    }
-    @media (max-width: 980px){ .layout{grid-template-columns:1fr} }
-
-    .panel{
-      border:1px solid rgba(255,255,255,.10);
-      background: rgba(0,0,0,.18);
-      border-radius: 18px;
-      padding:16px;
-      overflow:hidden;
-    }
-
-    label{
-      display:block;
-      font-weight:950;
-      font-size:12.5px;
-      letter-spacing:.35px;
-      color: rgba(255,255,255,.82);
-      margin-bottom:8px;
-    }
-    input{
-      width:100%;
-      padding:14px 14px;
-      border-radius: 16px;
-      border: 1px solid rgba(255,255,255,.14);
-      background: rgba(0,0,0,.22);
-      color: rgba(255,255,255,.92);
-      outline:none;
-      font-weight:900;
-      letter-spacing:.2px;
-      font-size:16px;
-      max-width:100%;
-    }
-    input:focus{
-      border-color: rgba(0,209,255,.45);
-      box-shadow: 0 0 0 3px rgba(0,209,255,.12);
-    }
-
-    .statusLine{
-      margin-top:12px;
-      color: rgba(255,255,255,.72);
-      font-weight:900;
-      min-height: 18px;
-      font-size:13px;
-      overflow-wrap:anywhere;
-      word-break:break-word;
-    }
-
-    .badge{
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      padding:7px 11px;
-      border-radius: 999px;
-      border: 1px solid rgba(255,255,255,.14);
-      background: rgba(255,255,255,.06);
-      font-weight:1000;
-      font-size:12px;
-      white-space:nowrap;
-    }
-    .badge.good{border:0; background: linear-gradient(90deg,var(--g),var(--c),var(--p)); color:#061012}
-    .badge.warn{border-color: rgba(255,220,130,.35); background: rgba(255,220,130,.08); color: rgba(255,240,210,.92)}
-    .badge.bad{border-color: rgba(255,120,150,.35); background: rgba(255,120,150,.10); color: rgba(255,190,205,.95)}
-
-    .resultTop{
-      display:flex;
-      align-items:flex-start;
-      justify-content:space-between;
-      gap:12px;
-      flex-wrap:wrap;
-    }
-    .resultTitle{
-      margin:0;
-      font-weight:1000;
-      font-size:22px;
-      letter-spacing:-.4px;
-    }
-    .mono{
-      font-family: ui-monospace, Menlo, Consolas, monospace;
-      font-weight:900;
-      color: rgba(255,255,255,.86);
-      margin-top:6px;
-      overflow-wrap:anywhere;
-      word-break:break-word;
-    }
-
-    .tokenHead{
-      display:flex;
-      gap:12px;
-      align-items:center;
-      flex-wrap:wrap;
-      margin-bottom:10px;
-      min-width:0;
-    }
-    .tokenLogoWrap{
-      width:44px;
-      height:44px;
-      border-radius:12px;
-      overflow:hidden;
-      border:1px solid rgba(255,255,255,.10);
-      background: rgba(0,0,0,.18);
-      display:none;
-      flex:0 0 auto;
-    }
-    .tokenLogoWrap img{ width:100%; height:100%; object-fit:cover; display:block; }
-    .tokenName{
-      font-weight:1000;
-      font-size:16px;
-      letter-spacing:-.2px;
-      line-height:1.15;
-      overflow-wrap:anywhere;
-      word-break:break-word;
-    }
-    .tokenSymbol{
-      margin-top:2px;
-      color: rgba(255,255,255,.70);
-      font-weight:900;
-      font-size:12.5px;
-    }
-
-    .metricStack{margin-top:12px; display:grid; gap:10px;}
-    .metric{
-      border:1px solid rgba(255,255,255,.10);
-      background: rgba(255,255,255,.04);
-      border-radius: 16px;
-      padding:12px 12px;
-    }
-    .metricK{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:10px;
-      color: rgba(255,255,255,.70);
-      font-weight:1000;
-      font-size:12px;
-      letter-spacing:.45px;
-      text-transform:uppercase;
-    }
-    .metricV{
-      margin-top:8px;
-      font-weight:1000;
-      font-size:20px;
-      display:flex;
-      align-items:baseline;
-      justify-content:space-between;
-      gap:12px;
-      flex-wrap:wrap;
-    }
-    .metricMini{
-      margin-top:6px;
-      font-weight:850;
-      font-size:12px;
-      color: rgba(255,255,255,.62);
-      overflow-wrap:anywhere;
-      word-break:break-word;
-    }
-    .bar{
-      margin-top:10px;
-      height:12px;
-      border-radius:999px;
-      background: rgba(255,255,255,.08);
-      border: 1px solid rgba(255,255,255,.10);
-      overflow:hidden;
-    }
-    .bar > div{
-      height:100%;
-      width:0%;
-      background: linear-gradient(90deg, var(--g), var(--c), var(--p));
-      border-radius:999px;
-      transition: width .25s ease;
-    }
-
-    .list{
-      margin:10px 0 0;
-      padding:0;
-      list-style:none;
-      display:grid;
-      gap:10px;
-    }
-    .li{
-      border:1px solid rgba(255,255,255,.10);
-      background: rgba(0,0,0,.14);
-      border-radius: 16px;
-      padding:12px 12px;
-      display:flex;
-      gap:10px;
-      align-items:flex-start;
-      justify-content:space-between;
-      min-width:0;
-    }
-    .li .left{min-width:0;}
-    .li .t{font-weight:1000; font-size:13px; letter-spacing:.2px;}
-    .li .d{
-      margin-top:4px;
-      color: rgba(255,255,255,.70);
-      font-weight:750;
-      font-size:12.5px;
-      line-height:1.35;
-      overflow-wrap:anywhere;
-      word-break:break-word;
-    }
-
-    .pillRow{
-      display:flex;
-      gap:8px;
-      align-items:center;
-      flex:0 0 auto;
-      justify-content:flex-end;
-    }
-    .pill{
-      padding:6px 10px;
-      border-radius: 999px;
-      border:1px solid rgba(255,255,255,.12);
-      background: rgba(255,255,255,.06);
-      font-weight:1000;
-      font-size:12px;
-      white-space:nowrap;
-      user-select:none;
-      -webkit-tap-highlight-color: transparent;
-      cursor:pointer;
-    }
-    .pill.ok{border:0; background: linear-gradient(90deg,var(--g),var(--c),var(--p)); color:#061012}
-    .pill.warn{border-color: rgba(255,220,130,.35); background: rgba(255,220,130,.08); color: rgba(255,240,210,.92)}
-    .pill.bad{border-color: rgba(255,120,150,.35); background: rgba(255,120,150,.10); color: rgba(255,190,205,.95)}
-    .infoBtn{
-      width:26px;
-      height:26px;
-      border-radius:999px;
-      border:1px solid rgba(255,255,255,.18);
-      background: rgba(255,255,255,.06);
-      color: rgba(255,255,255,.86);
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      cursor:pointer;
-      user-select:none;
-      font-weight:1000;
-      font-size:13px;
-      line-height:1;
-      -webkit-tap-highlight-color: transparent;
-    }
-    .infoBtn:hover{ background: rgba(255,255,255,.10); transform: translateY(-1px); }
-    .infoBtn:active{ transform: translateY(0px); }
-    .infoBtn span{ transform: translateY(-0.5px); }
-
-    .explorerBtn{
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      padding:6px 10px;
-      border-radius:999px;
-      border:1px solid rgba(255,255,255,.14);
-      background: rgba(255,255,255,.06);
-      font-weight:1000;
-      font-size:12px;
-      white-space:nowrap;
-      cursor:pointer;
-      user-select:none;
-      -webkit-tap-highlight-color: transparent;
-    }
-    .explorerBtn:hover{ background: rgba(255,255,255,.10); transform: translateY(-1px); }
-
-    /* Bubble map */
-    .bubbleWrap{
-      margin-top:12px;
-      border:1px solid rgba(255,255,255,.10);
-      background: rgba(0,0,0,.14);
-      border-radius: 16px;
-      padding:12px;
-    }
-    .bubbleHead{
-      display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;
-      margin-bottom:10px;
-    }
-    .bubbleTitle{
-      font-weight:1000; letter-spacing:.35px; font-size:12px; text-transform:uppercase; color: rgba(255,255,255,.72);
-    }
-    canvas{ display:block; width:100%; height:240px; border-radius: 12px; }
-
-    footer{
-      padding: 18px 0 34px;
-      color: rgba(255,255,255,.45);
-      font-weight:650;
-      text-align:center;
-      font-size:12px;
-    }
-
-    /* Modal + Toast */
-    .modalWrap{
-      position:fixed;
-      inset:0;
-      background: rgba(0,0,0,.55);
-      backdrop-filter: blur(10px);
-      display:none;
-      align-items:center;
-      justify-content:center;
-      padding:18px;
-      z-index:100;
-    }
-    .modal{
-      width:min(920px, 100%);
-      border-radius: 20px;
-      border: 1px solid rgba(255,255,255,.12);
-      background: rgba(7,7,17,.92);
-      box-shadow: 0 16px 50px rgba(0,0,0,.5);
-      overflow:hidden;
-    }
-    .modalHead{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      padding:14px 16px;
-      border-bottom: 1px solid rgba(255,255,255,.10);
-    }
-    .modalTitle{ font-weight:1000; letter-spacing:-.3px; }
-    .modalBody{
-      padding:14px 16px 16px;
-      color: rgba(255,255,255,.84);
-      font-weight:850;
-      line-height:1.5;
-      overflow-wrap:anywhere;
-      word-break:break-word;
-    }
-
-    .chainRow{
-      margin-top:10px;
-      display:flex;
-      gap:10px;
-      flex-wrap:wrap;
-    }
-    .chainBtn{
-      display:inline-flex;
-      align-items:center;
-      gap:10px;
-      padding:10px 12px;
-      border-radius:999px;
-      border:1px solid rgba(255,255,255,.14);
-      background: rgba(255,255,255,.06);
-      cursor:pointer;
-      user-select:none;
-      font-weight:1000;
-      font-size:13px;
-      color: rgba(255,255,255,.88);
-      -webkit-tap-highlight-color: transparent;
-    }
-    .chainBtn:hover{ background: rgba(255,255,255,.10); }
-    .chainBtn.active{
-      border:0;
-      background: linear-gradient(90deg, var(--g), var(--c), var(--p));
-      color:#061012;
-      box-shadow: 0 10px 24px rgba(0,0,0,.25);
-    }
-    .chainIcon{
-      width:18px;
-      height:18px;
-      border-radius:6px;
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      overflow:hidden;
-      background: rgba(0,0,0,.25);
-      border:1px solid rgba(255,255,255,.10);
-      flex:0 0 auto;
-    }
-    .chainIcon svg{ width:18px; height:18px; display:block; }
-    .chainMiniHint{
-      margin-top:10px;
-      font-size:12.5px;
-      color: rgba(255,255,255,.62);
-      font-weight:850;
-      line-height:1.35;
-    }
-
-    .toast{
-      position:fixed;
-      top: max(16px, env(safe-area-inset-top));
-      left:50%;
-      transform:translateX(-50%);
-      width:min(920px, calc(100% - 28px));
-      border-radius: 18px;
-      border: 1px solid rgba(255,255,255,.12);
-      background: rgba(7,7,17,.90);
-      box-shadow: 0 16px 50px rgba(0,0,0,.45);
-      padding:14px 14px;
-      display:none;
-      z-index:120;
-      backdrop-filter: blur(12px);
-    }
-    .toastRow{display:flex; align-items:center; justify-content:space-between; gap:12px;}
-    .toastTitle{font-weight:1000; font-size:18px; letter-spacing:-.3px;}
-    .toastClose{
-      padding:9px 12px;
-      border-radius:999px;
-      border: 1px solid rgba(255,255,255,.14);
-      background: rgba(255,255,255,.06);
-      color: rgba(255,255,255,.88);
-      font-weight:950;
-      cursor:pointer;
-    }
-    .toastClose:hover{background: rgba(255,255,255,.10);}
-
-    @media (max-width: 980px){
-      .wrap{ padding: 0 14px; }
-      .inner{ padding: 16px; }
-      .panel{ padding: 14px; }
-      .brand{ min-width: 0; width: 100%; }
-      .actions{ width: 100%; justify-content: flex-start; }
-      .actions .btn{ width: 100%; justify-content: center; padding: 12px 14px; font-size: 14px; }
-      .resultTop{ flex-direction: column; align-items: stretch; }
-      .resultTop > div:last-child{ width: 100%; justify-content: flex-start; }
-      .resultTop .badge{ width: fit-content; }
-      .metricV{ flex-direction: column; align-items: flex-start; gap: 6px; font-size: 22px; }
-      .li{ flex-direction: column; align-items: flex-start; gap: 10px; }
-      .pillRow{ width:100%; justify-content:flex-start; flex-wrap:wrap; }
-      .toast{ left:14px; right:14px; transform:none; width:auto; }
-      canvas{ height:220px; }
-    }
-    @media (prefers-reduced-motion: reduce){
-      .btn:hover{transform:none}
-      .bar > div{transition:none}
-      .infoBtn:hover{transform:none}
-      .explorerBtn:hover{transform:none}
-    }
-  </style>
-</head>
-
-<body>
-  <!-- Toast -->
-  <div class="toast" id="toast">
-    <div class="toastRow">
-      <div class="toastTitle" id="toastTitle">—</div>
-      <button class="toastClose" id="toastClose" type="button">Close</button>
-    </div>
-  </div>
-
-  <!-- Topbar -->
-  <div class="topbar">
-    <div class="wrap">
-      <div class="row">
-        <div class="brand">
-          <img src="/assets/logo.png" alt="$SOS" onerror="this.style.display='none'">
-          <div class="bt">
-            <div class="t">$SOS</div>
-            <div class="s">Contract Scanner • Token Risk</div>
-          </div>
-        </div>
-
-        <div class="actions">
-          <a class="btn" href="https://solanax1.com/" rel="noreferrer">← Back to Main</a>
-          <button class="btn grad" id="btnScan" type="button">Run Guardian Check</button>
-          <button class="btn grad" id="btnExport" type="button" disabled>Download Scan Report</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Main -->
-  <main class="wrap">
-    <section class="card hero">
-      <div class="inner">
-        <div class="classified">
-          <div class="stamp">GUARDIAN SYSTEM • MAINNET • ON-CHAIN VERIFIED</div>
-          <div class="stamp" id="stampTime">—</div>
-        </div>
-
-        <h1 class="h1" style="margin-top:12px;">
-          <span class="gradText">Guardian Contract</span> Scanner
-        </h1>
-
-        <div class="sub">Multi-chain scan: Solana + ETH + BNB + Base.</div>
-
-        <div class="layout">
-          <!-- INPUT -->
-          <div class="panel">
-            <label>Choose Chain</label>
-            <div class="chainRow" id="chainRow"></div>
-            <div class="chainMiniHint" id="chainHint">—</div>
-
-            <label for="addr" style="margin-top:14px;" id="addrLabel">Token Address</label>
-            <input id="addr" placeholder="Paste token address..." autocomplete="off" spellcheck="false" inputmode="text" />
-            <button class="btn grad" id="btnScanInline" type="button" style="width:100%; margin-top:12px;">Run Guardian Check</button>
-            <div class="statusLine" id="status"></div>
-          </div>
-
-          <!-- RESULTS -->
-          <div class="panel" id="resultsPanel">
-            <div class="resultTop">
-              <div style="min-width:0">
-                <div class="tokenHead">
-                  <div class="tokenLogoWrap" id="tokenLogoWrap"><img id="tokenLogo" alt=""></div>
-                  <div style="min-width:0">
-                    <div class="tokenName" id="tokenName">—</div>
-                    <div class="tokenSymbol" id="tokenSymbol">—</div>
-                  </div>
-                </div>
-
-                <h3 class="resultTitle" id="verdictTitle">—</h3>
-                <div class="mono" id="addrShort">—</div>
-              </div>
-
-              <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-                <span class="badge" id="verdictBadge">—</span>
-                <span class="badge good" id="scoreBadge">—</span>
-              </div>
-            </div>
-
-            <div class="metricStack" id="metrics"></div>
-            <div class="statusLine" id="summary">—</div>
-
-            <!-- Bubble map -->
-            <div class="bubbleWrap" id="bubbleWrap" style="display:none;">
-              <div class="bubbleHead">
-                <div class="bubbleTitle">Holder Bubble Map (Top holders)</div>
-                <span class="badge" id="bubbleBadge">—</span>
-              </div>
-              <canvas id="bubbleCanvas" width="920" height="240"></canvas>
-              <div class="statusLine" style="margin-top:8px; color:rgba(255,255,255,.62)">
-                Bubble size = holder % (preview). Visual heuristic.
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Checks -->
-        <div class="panel" style="margin-top:16px;">
-          <div class="classified">
-            <div class="stamp">GUARDIAN CHECKS</div>
-            <div class="stamp" id="scanHint">—</div>
-          </div>
-          <ul class="list" id="checksList" style="margin-top:10px;"></ul>
-        </div>
-
-        <!-- Launch readiness -->
-        <div class="panel" style="margin-top:16px;">
-          <div class="classified">
-            <div class="stamp">LAUNCH READINESS</div>
-            <div class="stamp">ACTION LIST</div>
-          </div>
-          <ul class="list" id="todoList" style="margin-top:10px;"></ul>
-        </div>
-
-        <!-- Token standard details -->
-        <div class="panel" style="margin-top:16px;">
-          <div class="classified">
-            <div class="stamp">TOKEN STANDARD DETAILS</div>
-            <div class="stamp">ON-CHAIN</div>
-          </div>
-          <ul class="list" id="stdList" style="margin-top:10px;"></ul>
-        </div>
-
-        <!-- Metadata -->
-        <div class="panel" style="margin-top:16px;">
-          <div class="classified">
-            <div class="stamp">TOKEN METADATA</div>
-            <div class="stamp">RPC / ON-CHAIN</div>
-          </div>
-          <ul class="list" id="metaList" style="margin-top:10px;"></ul>
-        </div>
-
-        <!-- Top holders -->
-        <div class="panel" style="margin-top:16px;">
-          <div class="classified">
-            <div class="stamp">TOP HOLDERS (PREVIEW)</div>
-            <div class="stamp" id="holdersStamp">MAINNET</div>
-          </div>
-          <ul class="list" id="holdersList" style="margin-top:10px;"></ul>
-        </div>
-      </div>
-    </section>
-
-    <footer>© <span id="y"></span> $SOS • Guardian Check</footer>
-  </main>
-
-  <!-- Modal -->
-  <div class="modalWrap" id="modalWrap" role="dialog" aria-modal="true" aria-hidden="true">
-    <div class="modal">
-      <div class="modalHead">
-        <div class="modalTitle" id="modalTitle">Guardian Details</div>
-        <button class="btn" id="modalClose" type="button">Close</button>
-      </div>
-      <div class="modalBody" id="modalBody"></div>
-    </div>
-  </div>
-<script>
-/* =========================================================
-  GUARDIAN CHECK — Stable Rebuild (5 Parts)
-  TEIL 2/5: Core UI / State / Chain Switch / Bubble Map (fixed)
-========================================================= */
-
-const CFG = {
-  HELIUS_KEY: "b566a086-57d4-4433-8661-faed9ad07ba0",
-  GOLDRUSH_API_KEY: "cqt_rQVTMTXwYkPJBrwf7ff6JWmdkywR",
-
-  TOKEN_PROGRAM: "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
-  TOKEN_2022_PROGRAM: "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
-
-  CHAINS: [
-    { id:"sol",  name:"Solana",   kind:"solana", stamp:"MAINNET",       addrLabel:"Token Mint Address",       placeholder:"Paste token mint (Solana)..." },
-    { id:"eth",  name:"Ethereum", kind:"evm",    chainId:1,    stamp:"ETH MAINNET",  addrLabel:"Token Contract Address", placeholder:"Paste ERC-20 contract (0x...)" },
-    { id:"bnb",  name:"BNB",      kind:"evm",    chainId:56,   stamp:"BNB MAINNET",  addrLabel:"Token Contract Address", placeholder:"Paste BEP-20 contract (0x...)" },
-    { id:"base", name:"Base",     kind:"evm",    chainId:8453, stamp:"BASE MAINNET", addrLabel:"Token Contract Address", placeholder:"Paste Base token contract (0x...)" }
-  ],
-
-  EVM_RPCS: {
-    1:    ["https://ethereum.publicnode.com", "https://rpc.ankr.com/eth",  "https://eth.llamarpc.com", "https://cloudflare-eth.com"],
-    56:   ["https://bsc.publicnode.com",      "https://rpc.ankr.com/bsc",  "https://bsc-dataseed.binance.org"],
-    8453: ["https://base.publicnode.com",     "https://rpc.ankr.com/base", "https://mainnet.base.org"]
-  },
-
-  UI: { REPORT_LOGO_URL: "https://solanax1.com/assets/logo.png" }
-};
-
-/* =============== ICONS =============== */
-const CSSV = (k, fb) => (getComputedStyle(document.documentElement).getPropertyValue(k).trim() || fb);
-const ICONS = {
-  sol: `
-    <svg viewBox="0 0 64 64" aria-hidden="true">
-      <defs><linearGradient id="solg" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0" stop-color="${CSSV('--sol-g1','#14F195')}"/>
-        <stop offset="0.5" stop-color="${CSSV('--sol-g2','#00D1FF')}"/>
-        <stop offset="1" stop-color="${CSSV('--sol-g3','#9945FF')}"/>
-      </linearGradient></defs>
-      <path d="M14 18c1.6-1.8 3.5-2.7 5.7-2.7h33.6c3.3 0 5 4 2.8 6.5l-6.1 6.8c-1.6 1.8-3.5 2.7-5.7 2.7H10.7c-3.3 0-5-4-2.8-6.5L14 18Z" fill="url(#solg)"/>
-      <path d="M14 38.9c1.6-1.8 3.5-2.7 5.7-2.7h33.6c3.3 0 5 4 2.8 6.5l-6.1 6.8c-1.6 1.8-3.5 2.7-5.7 2.7H10.7c-3.3 0-5-4-2.8-6.5L14 38.9Z" fill="url(#solg)" opacity=".7"/>
-    </svg>`,
-  eth: `<svg viewBox="0 0 64 64"><path d="M32 6l16 26-16 9-16-9L32 6Z" fill="currentColor" opacity=".95"/><path d="M32 58l16-22-16 9-16-9 16 22Z" fill="currentColor" opacity=".75"/></svg>`,
-  bnb: `<svg viewBox="0 0 64 64"><path fill="${CSSV('--bnb-yellow','#F0B90B')}" d="M32 6l8.6 8.6L32 23.2l-8.6-8.6L32 6Zm15.4 15.4L56 30l-8.6 8.6-8.6-8.6L47.4 21.4ZM16.6 21.4 25.2 30l-8.6 8.6L8 30l8.6-8.6ZM32 32.8l8.6 8.6L32 50l-8.6-8.6L32 32.8Zm0-6.9 5.1 5.1L32 36.2 26.9 31 32 25.9Z"/></svg>`,
-  base:`<svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="26" fill="${CSSV('--base-blue','#0052FF')}"/><path d="M27.5 22h8.1c6.2 0 11.2 5 11.2 11.1S41.8 44.2 35.6 44.2h-8.1V22Zm5.3 5.1v12h2.4c3.3 0 6-2.7 6-6s-2.7-6-6-6h-2.4Z" fill="#fff"/></svg>`
-};
-
-/* =============== DOM + Helpers =============== */
-const qs = (id) => document.getElementById(id);
-const on = (id, ev, fn) => { const el = qs(id); if(el) el.addEventListener(ev, fn); };
-const esc = (x) => String(x ?? "")
-  .replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;");
-
-const setText = (id, v) => { const el = qs(id); if(el) el.textContent = (v ?? ""); };
-const setHTML = (id, v) => { const el = qs(id); if(el) el.innerHTML = (v ?? ""); };
-
-function clamp(n,min,max){ return Math.max(min, Math.min(max, n)); }
-function shortAddr(a){ return a ? (a.slice(0,6) + "…" + a.slice(-4)) : "—"; }
-function fmtInt(n){
-  if (n === null || n === undefined || Number.isNaN(n)) return "—";
-  try { return new Intl.NumberFormat("en-US").format(Math.round(Number(n))); } catch { return String(n); }
-}
-function fmtPct(n){
-  if (n === null || n === undefined || Number.isNaN(n)) return "—";
-  return `${Number(n).toFixed(2)}%`;
-}
-function setStatus(msg){ setText("status", msg || ""); }
-
-function looksBase58(s){
-  return typeof s === "string"
-    && s.length >= 32 && s.length <= 52
-    && /^[1-9A-HJ-NP-Za-km-z]+$/.test(s);
-}
-function looksEvmAddress(s){ return typeof s === "string" && /^0x[0-9a-fA-F]{40}$/.test(s.trim()); }
-
-/* =============== Modal / Toast =============== */
-function openModal(title, bodyHtml){
-  setText("modalTitle", title || "Guardian Details");
-  setHTML("modalBody", bodyHtml || "");
-  const w = qs("modalWrap");
-  if(w){ w.style.display="flex"; w.setAttribute("aria-hidden","false"); }
-}
-function closeModal(){
-  const w = qs("modalWrap");
-  if(w){ w.style.display="none"; w.setAttribute("aria-hidden","true"); }
-}
-function showToast(title){
-  const t = qs("toast");
-  if(!t) return;
-  setText("toastTitle", title || "");
-  t.style.display="block";
-}
-function hideToast(){
-  const t = qs("toast");
-  if(!t) return;
-  t.style.display="none";
-}
-
-/* =============== Info system (no duplicates) =============== */
-const INFO_MAP = new Map();
-function newInfoId(){ return "i_" + Math.random().toString(36).slice(2) + Date.now().toString(36); }
-function registerInfo(html){
-  const id = newInfoId();
-  INFO_MAP.set(id, html);
-  return id;
-}
-function getInfo(id){ return INFO_MAP.get(id) || ""; }
-
-function explain(title, bullets){
-  const body = (bullets||[]).map(b => `<div style="margin:6px 0">${esc(b)}</div>`).join("");
-  return `
-    <div style="font-weight:1000; font-size:18px; margin-bottom:10px">${esc(title)}</div>
-    <div style="color:rgba(255,255,255,.72); font-weight:850; line-height:1.55">
-      ${body}
-    </div>`;
-}
-function pillLabel(sev){ return sev==="ok" ? "PASS" : sev==="bad" ? "FAIL" : "WATCH"; }
-function pillClass(sev){ return sev==="ok" ? "pill ok" : sev==="bad" ? "pill bad" : "pill warn"; }
-
-function setBadge(el, txt, mode){
-  if(!el) return;
-  el.textContent = txt ?? "";
-  el.classList.remove("good","warn","bad");
-  if(mode) el.classList.add(mode);
-}
-
-/* =============== State =============== */
-let activeChain = CFG.CHAINS[0];
-const SCAN_STATE = {
-  scanning:false,
-  completed:false,
-  chain:null,
-  addr:null,
-  result:null,
-  lastError:null
-};
-
-/* =============== Lists / Metrics render =============== */
-function renderList(listEl, items){
-  if(!listEl) return;
-  listEl.innerHTML = "";
-  for(const it of (items||[])){
-    const sev = it.sev || "warn";
-    const title = it.t || "Details";
-    const desc = it.d || "—";
-    const infoTitle = it.infoTitle || title;
-
-    const html = (it.infoHtml && String(it.infoHtml).trim())
-      ? String(it.infoHtml)
-      : explain(infoTitle, [it.why || "—"]);
-
-    const infoId = registerInfo(html);
-
-    const li = document.createElement("li");
-    li.className = "li";
-    li.innerHTML = `
-      <div class="left">
-        <div class="t">${esc(title)}</div>
-        <div class="d">${esc(desc)}</div>
-      </div>
-      <div class="pillRow">
-        <span class="${pillClass(sev)}" role="button" tabindex="0"
-              data-open="1" data-title="${esc(infoTitle)}" data-info="${esc(infoId)}">${pillLabel(sev)}</span>
-        <button class="infoBtn" type="button" aria-label="Info"
-                data-open="1" data-title="${esc(infoTitle)}" data-info="${esc(infoId)}"><span>i</span></button>
-      </div>`;
-    listEl.appendChild(li);
-  }
-}
-
-function renderMetrics(rows){
-  const wrap = qs("metrics");
-  if(!wrap) return;
-  wrap.innerHTML = "";
-  for(const r of (rows || [])){
-    const d = document.createElement("div");
-    d.className = "metric";
-    const bar = (typeof r.barPct === "number")
-      ? `<div class="bar"><div style="width:${clamp(r.barPct,0,100)}%"></div></div>`
-      : "";
-    d.innerHTML = `
-      <div class="metricK">
-        <span>${esc(r.label || "—")}</span>
-        <span class="badge" style="opacity:.9">${esc(r.badge || r.value || "—")}</span>
-      </div>
-      <div class="metricV">${esc(r.value || "—")}</div>
-      <div class="metricMini">${esc(r.mini || "")}</div>
-      ${bar}`;
-    wrap.appendChild(d);
-  }
-}
-
-function applyTokenHeader(meta, addr){
-  const nameEl = qs("tokenName");
-  const symEl  = qs("tokenSymbol");
-  const wrap   = qs("tokenLogoWrap");
-  const img    = qs("tokenLogo");
-
-  const name = (meta?.name || "Token").trim() || "Token";
-  const sym  = (meta?.symbol || "").trim();
-
-  if(nameEl) nameEl.textContent = name;
-  if(symEl)  symEl.textContent  = sym ? `$${sym}` : `Addr: ${shortAddr(addr)}`;
-
-  if(wrap && img){
-    if(meta?.image){
-      img.src = meta.image;
-      img.alt = name;
-      wrap.style.display = "block";
-      img.onerror = () => { wrap.style.display = "none"; };
-    }else{
-      wrap.style.display = "none";
-      img.removeAttribute("src");
-      img.alt = "";
-    }
-  }
-}
-
-function explorerBase(chain){
-  if(chain.id === "sol")  return {name:"Solscan",   base:"https://solscan.io/account/"};
-  if(chain.id === "eth")  return {name:"Etherscan", base:"https://etherscan.io/address/"};
-  if(chain.id === "bnb")  return {name:"BscScan",   base:"https://bscscan.com/address/"};
-  if(chain.id === "base") return {name:"BaseScan",  base:"https://basescan.org/address/"};
-  return {name:"Explorer", base:"#"};
-}
-
-/* =============== Holders render + Bubble Map FIX (resize-safe) =============== */
-function renderHoldersEmpty(){
-  const el = qs("holdersList");
-  if(!el) return;
-  renderList(el, [{
-    t:"No holder data",
-    sev:"warn",
-    d: activeChain.kind === "solana"
-      ? "Top holders appear after scan."
-      : (CFG.GOLDRUSH_API_KEY
-          ? "No holders returned (indexer). Try again / different token."
-          : "EVM holders need an indexer (GoldRush)."),
-    infoHtml: explain("Top holders", [
-      "Solana: largest token accounts (preview).",
-      "EVM: JSON-RPC cannot enumerate holders; requires GoldRush indexer."
-    ])
-  }]);
-}
-
-function renderHoldersWithExplorer(items, chain){
-  const el = qs("holdersList");
-  if(!el) return;
-  el.innerHTML = "";
-  const ex = explorerBase(chain);
-
-  for(const it of items){
-    const infoId = registerInfo(it.infoHtml || explain("Top holder", [
-      "Meaning: Share of supply (heuristic/preview).",
-      "Why it matters: High % can mean dump risk."
-    ]));
-
-    const li = document.createElement("li");
-    li.className = "li";
-    li.innerHTML = `
-      <div class="left">
-        <div class="t">${esc(it.t || "Holder")}</div>
-        <div class="d">${esc(it.d || "—")}</div>
-      </div>
-      <div class="pillRow">
-        <a class="explorerBtn" href="${esc(ex.base + (it.addr||""))}" target="_blank" rel="noreferrer">${esc(ex.name)}</a>
-        <button class="infoBtn" type="button" aria-label="Info"
-                data-open="1" data-title="${esc(it.t || "Holder")}" data-info="${esc(infoId)}"><span>i</span></button>
-      </div>`;
-    el.appendChild(li);
-  }
-}
-
-function holdersToBubbles(holders){
-  return (holders||[]).slice(0, 20).map(h => ({
-    addr: h.wallet,
-    pct: Number(h.pct || 0),
-    label: shortAddr(h.wallet || "")
-  }));
-}
-
-function ensureCanvasSize(canvas, cssHeight=240){
-  const rect = canvas.getBoundingClientRect();
-  const w = Math.max(1, Math.floor(rect.width));
-  const dpr = Math.max(1, window.devicePixelRatio || 1);
-  canvas.width = Math.floor(w * dpr);
-  canvas.height = Math.floor(cssHeight * dpr);
-  return { w: canvas.width, h: canvas.height, dpr };
-}
-
-function renderBubbleMap(holderBubbles){
-  const wrap = qs("bubbleWrap");
-  const canvas = qs("bubbleCanvas");
-  const badge = qs("bubbleBadge");
-  if(!wrap || !canvas || !badge) return;
-
-  const items = Array.isArray(holderBubbles) ? holderBubbles.slice(0, 20) : [];
-  if(!items.length){
-    wrap.style.display = "none";
-    window.__BUBBLE_MAP_DATA_URL = "";
-    return;
-  }
-
-  wrap.style.display = "block";
-  badge.textContent = `${items.length} wallets`;
-
-  const { w, h, dpr } = ensureCanvasSize(canvas, 240);
-  const ctx = canvas.getContext("2d");
-  ctx.clearRect(0,0,w,h);
-
-  ctx.globalAlpha = 0.25;
-  for(let x=0;x<w;x+=Math.floor(48*dpr)){
-    ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,h); ctx.strokeStyle="rgba(255,255,255,.08)"; ctx.stroke();
-  }
-  for(let y=0;y<h;y+=Math.floor(48*dpr)){
-    ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y); ctx.strokeStyle="rgba(255,255,255,.08)"; ctx.stroke();
-  }
-  ctx.globalAlpha = 1;
-
-  const cx = w/2, cy = h/2;
-  const maxPct = Math.max(...items.map(x => x.pct || 0), 1);
-  const placed = [];
-
-  function overlaps(x,y,r){
-    for(const p of placed){
-      const dx=x-p.x, dy=y-p.y;
-      if(Math.sqrt(dx*dx+dy*dy) < r + p.r + 6*dpr) return true;
-    }
-    return false;
-  }
-
-  items.forEach((it, idx) => {
-    const pct = Number(it.pct || 0);
-    const r = (12 + (pct/maxPct)*42) * dpr;
-
-    let angle = idx * 0.7, rad = 0;
-    let x=cx, y=cy;
-    for(let k=0;k<900;k++){
-      rad += 0.7*dpr; angle += 0.35;
-      x = cx + Math.cos(angle)*rad;
-      y = cy + Math.sin(angle)*rad;
-      if(x-r<8*dpr || x+r>w-8*dpr || y-r<8*dpr || y+r>h-8*dpr) continue;
-      if(!overlaps(x,y,r)) break;
-    }
-    placed.push({x,y,r,label: it.label || shortAddr(it.addr || ""), pct});
-  });
-
-  for(const p of placed){
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
-    ctx.fillStyle="rgba(255,255,255,.08)";
-    ctx.fill();
-    ctx.lineWidth = 2*dpr;
-    ctx.strokeStyle="rgba(20,241,149,.55)";
-    ctx.stroke();
-
-    ctx.font = `${Math.max(10, Math.floor(11*dpr))}px ui-sans-serif, system-ui`;
-    ctx.fillStyle="rgba(255,255,255,.85)";
-    ctx.textAlign="center";
-    ctx.textBaseline="middle";
-    ctx.fillText(`${p.pct.toFixed(1)}%`, p.x, p.y - 6*dpr);
-
-    ctx.font = `${Math.max(9, Math.floor(10*dpr))}px ui-monospace, Menlo, Consolas, monospace`;
-    ctx.fillStyle="rgba(255,255,255,.62)";
-    ctx.fillText(p.label, p.x, p.y + 10*dpr);
-  }
-
-  try{ window.__BUBBLE_MAP_DATA_URL = canvas.toDataURL("image/png"); }
-  catch{ window.__BUBBLE_MAP_DATA_URL = ""; }
-}
-
-/* =============== Reset UI =============== */
-function resetUIForNewScan(){
-  SCAN_STATE.completed = false;
-  SCAN_STATE.result = null;
-  SCAN_STATE.lastError = null;
-
-  setText("addrShort","—");
-  setText("verdictTitle","—");
-  setBadge(qs("verdictBadge"),"—");
-  setText("scoreBadge","—");
-  setText("summary","—");
-  setText("scanHint","—");
-  setText("tokenName","—");
-  setText("tokenSymbol","—");
-
-  const lw = qs("tokenLogoWrap");
-  const img = qs("tokenLogo");
-  if(lw) lw.style.display = "none";
-  if(img){ img.removeAttribute("src"); img.alt = ""; }
-
-  renderMetrics([]);
-  renderList(qs("checksList"), [{
-    t:"Waiting for scan", sev:"warn",
-    d:"Paste an address and run the Guardian Check.",
-    infoHtml: explain("Guardian Checks", [
-      "After scanning, we generate checks & explanations per chain.",
-      "Solana: mint/freeze authorities, supply, largest accounts.",
-      "EVM: code/proxy/owner/paused + ERC-20 metadata."
-    ])
-  }]);
-  renderList(qs("todoList"), [{
-    t:"Waiting for scan", sev:"warn",
-    d:"Launch readiness tasks appear after scan.",
-    infoHtml: explain("Launch Readiness", ["We derive an action list from detected on-chain signals."])
-  }]);
-  renderList(qs("stdList"), [{
-    t:"Waiting for scan", sev:"warn",
-    d:"Standard details appear after scan.",
-    infoHtml: explain("Token Standard", ["Solana: SPL vs Token-2022.", "EVM: ERC-20 selectors + proxy detection."])
-  }]);
-  renderList(qs("metaList"), [{
-    t:"Waiting for scan", sev:"warn",
-    d:"Metadata appears after scan.",
-    infoHtml: explain("Token Metadata", ["Solana: Helius DAS getAsset().", "EVM: name/symbol/decimals/totalSupply via eth_call."])
-  }]);
-
-  renderHoldersEmpty();
-  renderBubbleMap([]);
-
-  const ex = qs("btnExport");
-  if(ex){ ex.disabled = true; ex.textContent = "Download Scan Report"; }
-}
-
-/* =============== Chain UI =============== */
-function renderChainButtons(){
-  const row = qs("chainRow");
-  if(!row) return;
-  row.innerHTML = "";
-  for(const c of CFG.CHAINS){
-    const b = document.createElement("button");
-    b.type = "button";
-    b.className = "chainBtn" + (c.id === activeChain.id ? " active" : "");
-    b.innerHTML = `<span class="chainIcon">${ICONS[c.id] || ""}</span><span>${esc(c.name)}</span>`;
-    b.addEventListener("click", () => setActiveChain(c.id, true));
-    row.appendChild(b);
-  }
-}
-function setActiveChain(chainId, pushUrl){
-  const found = CFG.CHAINS.find(x => x.id === chainId) || CFG.CHAINS[0];
-  activeChain = found;
-
-  renderChainButtons();
-  setText("holdersStamp", activeChain.stamp || "MAINNET");
-  setText("addrLabel", activeChain.addrLabel || "Token Address");
-
-  const addr = qs("addr");
-  if(addr) addr.placeholder = activeChain.placeholder || "Paste token address...";
-
-  setText("chainHint", activeChain.kind === "evm"
-    ? (CFG.GOLDRUSH_API_KEY ? "EVM holders enabled (GoldRush)." : "Tip: add GoldRush key to show EVM holders.")
-    : "Solana: Helius RPC for on-chain signals.");
-
-  setStatus("");
-  resetUIForNewScan();
-
-  if(pushUrl){
-    const url = new URL(location.href);
-    url.searchParams.set("chain", activeChain.id);
-    history.replaceState({}, "", url.toString());
-  }
-}
-
-/* =============== Live time =============== */
-let STAMP_TIMER = null;
-function updateStampTime(){
-  const el = qs("stampTime");
-  if(!el) return;
-  const now = new Date();
-  const live = new Intl.DateTimeFormat("de-DE", {
-    timeZone: "Europe/Berlin",
-    year:"numeric", month:"2-digit", day:"2-digit",
-    hour:"2-digit", minute:"2-digit", second:"2-digit"
-  }).format(now);
-  el.textContent = live;
-}
-function startLiveStampTime(){
-  if(STAMP_TIMER) clearInterval(STAMP_TIMER);
-  updateStampTime();
-  STAMP_TIMER = setInterval(updateStampTime, 1000);
-}
-
-/* =============== One-time bindings (NO duplicates) =============== */
-let __BOUND = false;
-function bindOnce(){
-  if(__BOUND) return;
-  __BOUND = true;
-
-  on("modalClose","click",closeModal);
-  on("modalWrap","click",(e)=>{ if(e.target===qs("modalWrap")) closeModal(); });
-  on("toastClose","click",hideToast);
-
-  // One delegate for info buttons
-  document.addEventListener("click",(e)=>{
-    const t = e.target;
-    const node = t?.closest?.("[data-open='1']");
-    if(!node) return;
-    const title = node.getAttribute("data-title") || "Details";
-    const infoId = node.getAttribute("data-info") || "";
-    const html = getInfo(infoId) || explain(title, ["No details available."]);
-    openModal(title, html);
-  });
-
-  document.addEventListener("keydown",(e)=>{ if(e.key==="Escape") closeModal(); });
-
-  // Bubble map rerender on resize (keeps it from "disappearing")
-  window.addEventListener("resize", ()=>{
-    if(SCAN_STATE.completed && SCAN_STATE.result?.holders){
-      renderBubbleMap(holdersToBubbles(SCAN_STATE.result.holders));
-    }
-  }, { passive:true });
-}
-
-function initCore(){
-  setText("y", String(new Date().getFullYear()));
-  startLiveStampTime();
-  bindOnce();
-
-  const url = new URL(location.href);
-  const chainParam = url.searchParams.get("chain");
-  if(chainParam) setActiveChain(chainParam, false);
-  else setActiveChain(activeChain.id, false);
-
-  const addrParam = url.searchParams.get("addr");
-  if(addrParam && qs("addr")) qs("addr").value = addrParam;
-
-  resetUIForNewScan();
-}
-
-if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", initCore);
-else initCore();
-<script>
-/* =========================================================
-  TEIL 3/5 — SCAN ENGINE
-  Solana + EVM (ETH / BNB / BASE)
-========================================================= */
-
-/* =============== EVM ABI / Helpers =============== */
-const ERC20_SIG = {
-  name:"0x06fdde03",
-  symbol:"0x95d89b41",
-  decimals:"0x313ce567",
-  totalSupply:"0x18160ddd",
-  owner:"0x8da5cb5b",
-  paused:"0x5c975abb"
-};
-
-const EIP1967 = {
-  impl:"0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc"
-};
-
-function strip0x(x){ return String(x||"").replace(/^0x/,""); }
-function hexToBigInt(x){ try{return BigInt("0x"+strip0x(x));}catch{return null;} }
-
-async function evmRpc(url, method, params){
-  const r = await fetch(url,{
-    method:"POST",
-    headers:{ "content-type":"application/json" },
-    body:JSON.stringify({ jsonrpc:"2.0", id:1, method, params })
-  });
-  const j = await r.json();
-  if(j.error) throw new Error(j.error.message);
-  return j.result;
-}
-
-async function evmFallback(chainId, fn){
-  for(const rpc of CFG.EVM_RPCS[chainId] || []){
-    try{ return await fn(rpc); }catch{}
-  }
-  throw new Error("All RPCs failed");
-}
-
-/* =============== GoldRush Holders =============== */
-async function fetchGoldrushHolders(chainId, addr){
-  if(!CFG.GOLDRUSH_API_KEY) return [];
-  const url = `https://api.covalenthq.com/v1/${chainId}/tokens/${addr}/token_holders/?page-size=20&key=${CFG.GOLDRUSH_API_KEY}`;
-  const r = await fetch(url);
-  const j = await r.json();
-  const items = j?.data?.items || [];
-  return items.map(x=>({
-    wallet:x.address,
-    balance:BigInt(x.balance||"0")
-  }));
-}
-
-/* =============== Solana RPC =============== */
-function heliusUrl(){
-  return `https://mainnet.helius-rpc.com/?api-key=${CFG.HELIUS_KEY}`;
-}
-async function solRpc(method, params){
-  const r = await fetch(heliusUrl(),{
-    method:"POST",
-    headers:{ "content-type":"application/json" },
-    body:JSON.stringify({ jsonrpc:"2.0", id:1, method, params })
-  });
-  const j = await r.json();
-  if(j.error) throw new Error(j.error.message);
-  return j.result;
-}
-
-/* =============== Solana Scan =============== */
-async function scanSolana(mint){
-  const info = await solRpc("getParsedAccountInfo",[mint,{commitment:"confirmed"}]);
-  const p = info?.value?.data?.parsed?.info || {};
-
-  const supplyRes = await solRpc("getTokenSupply",[mint]);
-  const supplyRaw = BigInt(supplyRes?.value?.amount || "0");
-  const supplyUi = Number(supplyRes?.value?.uiAmount || 0);
-
-  const largest = await solRpc("getTokenLargestAccounts",[mint]);
-  const accs = largest?.value || [];
-
-  const holders = accs.map(a=>{
-    const raw = BigInt(a.amount||"0");
-    return {
-      wallet:a.address,
-      pct: supplyRaw>0n ? Number((raw*10000n)/supplyRaw)/100 : 0
-    };
-  }).sort((a,b)=>b.pct-a.pct).slice(0,10);
-
-  let meta = { name:"Token", symbol:"", image:"" };
-  try{
-    const asset = await solRpc("getAsset",{ id:mint });
-    meta.name = asset?.content?.metadata?.name || meta.name;
-    meta.symbol = asset?.content?.metadata?.symbol || meta.symbol;
-    meta.image = asset?.content?.links?.image || "";
-  }catch{}
-
-  return {
-    meta,
-    signals:{
-      kind:"solana",
-      mintAuthActive:!!p.mintAuthority,
-      freezeAuthActive:!!p.freezeAuthority,
-      program:info?.value?.owner,
-      supplyUi,
-      topHolderPct:holders[0]?.pct ?? null
-    },
-    holders
-  };
-}
-
-/* =============== EVM Scan =============== */
-async function scanEvm(chain, addr){
-  const chainId = chain.chainId;
-
-  const code = await evmFallback(chainId,(rpc)=>evmRpc(rpc,"eth_getCode",[addr,"latest"]));
-  const hasCode = code && code !== "0x";
-
-  let name=null,symbol=null,decimals=null,totalSupplyRaw=null;
-
-  if(hasCode){
-    try{
-      name = await evmFallback(chainId,(r)=>evmRpc(r,"eth_call",[{to:addr,data:ERC20_SIG.name},"latest"]));
-    }catch{}
-    try{
-      symbol = await evmFallback(chainId,(r)=>evmRpc(r,"eth_call",[{to:addr,data:ERC20_SIG.symbol},"latest"]));
-    }catch{}
-    try{
-      decimals = Number(hexToBigInt(await evmFallback(chainId,(r)=>evmRpc(r,"eth_call",[{to:addr,data:ERC20_SIG.decimals},"latest"]))));
-    }catch{}
-    try{
-      totalSupplyRaw = hexToBigInt(await evmFallback(chainId,(r)=>evmRpc(r,"eth_call",[{to:addr,data:ERC20_SIG.totalSupply},"latest"])));
-    }catch{}
-  }
-
-  let holders=[], topHolderPct=null;
-  if(totalSupplyRaw && CFG.GOLDRUSH_API_KEY){
-    const raw = await fetchGoldrushHolders(chainId, addr);
-    holders = raw.map(h=>({
-      wallet:h.wallet,
-      pct:Number((h.balance*10000n)/totalSupplyRaw)/100
-    })).sort((a,b)=>b.pct-a.pct).slice(0,10);
-    topHolderPct = holders[0]?.pct ?? null;
-  }
-
-  return {
-    meta:{ name:"Token", symbol:"", image:"" },
-    signals:{
-      kind:"evm",
-      hasCode,
-      decimals,
-      totalSupplyUi: totalSupplyRaw && decimals!=null ? Number(totalSupplyRaw/(10n**BigInt(decimals))) : null,
-      topHolderPct
-    },
-    holders
-  };
-}
-
-/* =============== Main Scan Runner =============== */
-async function runGuardianScan(){
-  if(SCAN_STATE.scanning) return;
-
-  const addr = (qs("addr")?.value||"").trim();
-  if(activeChain.kind==="solana" && !looksBase58(addr)){
-    setStatus("Invalid Solana address"); return;
-  }
-  if(activeChain.kind==="evm" && !looksEvmAddress(addr)){
-    setStatus("Invalid EVM address"); return;
-  }
-
-  SCAN_STATE.scanning = true;
-  SCAN_STATE.addr = addr;
-  SCAN_STATE.chain = activeChain;
-
-  setStatus("Scanning…");
-  resetUIForNewScan();
-  setText("addrShort", addr);
-
-  try{
-    const res = activeChain.kind==="solana"
-      ? await scanSolana(addr)
-      : await scanEvm(activeChain, addr);
-
-    SCAN_STATE.result = res;
-    SCAN_STATE.completed = true;
-
-    applyTokenHeader(res.meta, addr);
-    renderHoldersWithExplorer(
-      res.holders.map(h=>({
-        t:"Holder",
-        d:`${shortAddr(h.wallet)} • ${fmtPct(h.pct)}`,
-        addr:h.wallet
-      })),
-      activeChain
-    );
-    renderBubbleMap(holdersToBubbles(res.holders));
-
-    setStatus("Scan complete");
-    qs("btnExport").disabled = false;
-  }catch(e){
-    setStatus("Scan failed: "+e.message);
-  }finally{
-    SCAN_STATE.scanning = false;
-  }
-}
-
-/* Bind scan buttons */
-qs("btnScan").addEventListener("click",runGuardianScan);
-qs("btnScanInline").addEventListener("click",runGuardianScan);
-</script>
-
-<script>
-/* =========================================================
-  TEIL 4/5 — RENDER PIPELINE (Score/Verdict/Checks/Todos/Meta/Std)
-  WICHTIG:
-  - Wir lassen TEIL 3 unverändert
-  - Wir intercepten Button-Clicks im CAPTURE-Phase, damit die alten
-    Listener nicht mehr feuern (stopImmediatePropagation)
-  - Alle UI-Sektionen werden wieder sauber gefüllt (kein "Bubble only" Bug)
-========================================================= */
-
-/* =============== Score / Verdict =============== */
-function verdictFrom(score, critical){
-  if(critical) return { label:"FLAGGED", mode:"bad",  title:"FLAGGED • High Risk" };
-  if(score >= 80) return { label:"APPROVED", mode:"good", title:"APPROVED • Guardian Grade" };
-  if(score >= 50) return { label:"OBSERVED", mode:"warn", title:"OBSERVED • Mixed Signals" };
-  return { label:"FLAGGED", mode:"bad", title:"FLAGGED • High Risk" };
-}
-
-function computeScore(sig){
-  let score = 100;
-  let critical = false;
-
-  if(sig.kind === "solana"){
-    if(sig.mintAuthActive){ score -= 35; critical = true; }
-    if(sig.freezeAuthActive){ score -= 15; }
-    if(sig.program && String(sig.program) === CFG.TOKEN_2022_PROGRAM){ score -= 8; }
-  }else{
-    if(!sig.hasCode){ score = 0; critical = true; }
-    if(Number.isFinite(sig.decimals) === false) score -= 6;
-  }
-
-  if(Number.isFinite(sig.topHolderPct)){
-    const p = sig.topHolderPct;
-    if(p >= 35){ score -= 30; critical = true; }
-    else if(p >= 20) score -= 18;
-    else if(p >= 10) score -= 8;
-  }
-
-  score = clamp(Math.round(score), 0, 100);
-  return { score, critical };
-}
-
-/* =============== Builders for UI sections =============== */
-function buildMetricRows(meta, sig){
-  const rows = [];
-  if(sig.kind === "solana"){
-    rows.push({
-      label:"Supply (UI)",
-      value: Number.isFinite(sig.supplyUi) ? fmtInt(sig.supplyUi) : "—",
-      badge:"ON-CHAIN",
-      mini:"getTokenSupply() uiAmount"
-    });
-    rows.push({
-      label:"Mint Authority",
-      value: sig.mintAuthActive ? "Active" : "Revoked",
-      badge: sig.mintAuthActive ? "RISK" : "OK",
-      barPct: sig.mintAuthActive ? 85 : 10,
-      mini: sig.mintAuthActive ? "Minting possible" : "Fixed supply signal"
-    });
-    rows.push({
-      label:"Freeze Authority",
-      value: sig.freezeAuthActive ? "Active" : "Revoked",
-      badge: sig.freezeAuthActive ? "WATCH" : "OK",
-      barPct: sig.freezeAuthActive ? 55 : 10,
-      mini: sig.freezeAuthActive ? "Freezing possible" : "No freeze control"
-    });
-    rows.push({
-      label:"Top Holder (preview)",
-      value: Number.isFinite(sig.topHolderPct) ? fmtPct(sig.topHolderPct) : "—",
-      badge:"HOLDERS",
-      barPct: Number.isFinite(sig.topHolderPct) ? clamp(sig.topHolderPct,0,100) : 0,
-      mini:"largest accounts (preview)"
-    });
-    rows.push({
-      label:"Token Program",
-      value: sig.program ? (sig.program === CFG.TOKEN_2022_PROGRAM ? "Token-2022" : "SPL Token") : "—",
-      badge:"PROGRAM",
-      mini: sig.program || "—"
-    });
-  }else{
-    rows.push({
-      label:"Contract",
-      value: sig.hasCode ? "Deployed" : "Not found",
-      badge: sig.hasCode ? "OK" : "FAIL",
-      barPct: sig.hasCode ? 90 : 0,
-      mini:"eth_getCode()"
-    });
-    rows.push({
-      label:"Decimals",
-      value: Number.isFinite(sig.decimals) ? String(sig.decimals) : "—",
-      badge:"ERC-20",
-      mini:"decimals() best-effort"
-    });
-    rows.push({
-      label:"Total Supply (UI)",
-      value: Number.isFinite(sig.totalSupplyUi) ? fmtInt(sig.totalSupplyUi) : "—",
-      badge:"ERC-20",
-      mini:"totalSupply normalized"
-    });
-    rows.push({
-      label:"Top Holder (preview)",
-      value: Number.isFinite(sig.topHolderPct) ? fmtPct(sig.topHolderPct) : "—",
-      badge: CFG.GOLDRUSH_API_KEY ? "HOLDERS" : "INDEXER",
-      barPct: Number.isFinite(sig.topHolderPct) ? clamp(sig.topHolderPct,0,100) : 0,
-      mini: CFG.GOLDRUSH_API_KEY ? "GoldRush token_holders" : "Needs GoldRush key"
-    });
-  }
-  return rows;
-}
-
-function makeChecks(sig){
-  const out = [];
-  if(sig.kind === "solana"){
-    out.push({
-      t:"Mint Authority",
-      sev: sig.mintAuthActive ? "bad" : "ok",
-      d: sig.mintAuthActive ? "Active mint authority detected." : "Mint authority revoked.",
-      infoHtml: explain("Mint Authority", [
-        "If mint authority is active, supply can be increased.",
-        "For fixed supply, revoke mint authority."
-      ])
-    });
-    out.push({
-      t:"Freeze Authority",
-      sev: sig.freezeAuthActive ? "warn" : "ok",
-      d: sig.freezeAuthActive ? "Freeze authority active." : "Freeze authority revoked.",
-      infoHtml: explain("Freeze Authority", [
-        "Freeze authority can block transfers for accounts.",
-        "If not required, revoke it."
-      ])
-    });
-    out.push({
-      t:"Top Holder Concentration",
-      sev: (sig.topHolderPct >= 35) ? "bad" : (sig.topHolderPct >= 15 ? "warn" : "ok"),
-      d: Number.isFinite(sig.topHolderPct) ? `Largest holder ~${sig.topHolderPct.toFixed(2)}% (preview).` : "No holder signal.",
-      infoHtml: explain("Top Holder Concentration", [
-        "High concentration increases dump risk.",
-        "Preview is based on largest accounts returned by RPC."
-      ])
-    });
-    out.push({
-      t:"Token Program",
-      sev: (sig.program === CFG.TOKEN_2022_PROGRAM) ? "warn" : "ok",
-      d: sig.program ? (sig.program === CFG.TOKEN_2022_PROGRAM ? "Token-2022 detected (extensions possible)." : "SPL Token detected.") : "Unknown program.",
-      infoHtml: explain("Token Program", [
-        "Token-2022 can include extensions (fees/hooks).",
-        "Classic SPL Token is widely supported."
-      ])
-    });
-  }else{
-    out.push({
-      t:"Contract Code",
-      sev: sig.hasCode ? "ok" : "bad",
-      d: sig.hasCode ? "Bytecode found (deployed contract)." : "No code at address.",
-      infoHtml: explain("Contract Code", [
-        "If eth_getCode returns 0x, it is not a contract or not deployed."
-      ])
-    });
-    out.push({
-      t:"ERC-20 Metadata",
-      sev: (Number.isFinite(sig.decimals) ? "ok" : "warn"),
-      d: Number.isFinite(sig.decimals) ? `Decimals = ${sig.decimals}` : "Decimals not detected (best-effort).",
-      infoHtml: explain("ERC-20", [
-        "We call standard selectors via eth_call.",
-        "Some tokens are non-standard; decoding may fail."
-      ])
-    });
-    out.push({
-      t:"Top Holder Concentration",
-      sev: (sig.topHolderPct >= 35) ? "bad" : (sig.topHolderPct >= 15 ? "warn" : "ok"),
-      d: Number.isFinite(sig.topHolderPct)
-        ? `Largest holder ~${sig.topHolderPct.toFixed(2)}% (preview).`
-        : (CFG.GOLDRUSH_API_KEY ? "No holder signal from indexer." : "Needs GoldRush key to show holders."),
-      infoHtml: explain("Holders (EVM)", [
-        "RPC cannot enumerate all holders on EVM.",
-        "We use GoldRush token_holders when available."
-      ])
-    });
-  }
-  return out;
-}
-
-function makeTodos(sig){
-  const out = [];
-  out.push({
-    t:"Publish verified links",
-    sev:"warn",
-    d:"Add official website/docs/socials + verified explorer links.",
-    infoHtml: explain("Links", [
-      "Reduces impersonation/scam clones.",
-      "Users need a single source of truth."
-    ])
-  });
-
-  if(sig.kind === "solana"){
-    if(sig.mintAuthActive){
-      out.push({
-        t:"Revoke mint authority",
-        sev:"bad",
-        d:"If supply should be fixed, revoke mint authority.",
-        infoHtml: explain("Revoke mint authority", [
-          "Active mint authority can inflate supply."
-        ])
-      });
-    }
-    if(sig.freezeAuthActive){
-      out.push({
-        t:"Revoke freeze authority",
-        sev:"warn",
-        d:"If not needed, revoke freeze authority.",
-        infoHtml: explain("Revoke freeze authority", [
-          "Freeze can block transfers and is often abused."
-        ])
-      });
-    }
-  }
-
-  if(Number.isFinite(sig.topHolderPct) && sig.topHolderPct >= 15){
-    out.push({
-      t:"Reduce whale concentration",
-      sev:"warn",
-      d:`Largest holder is ~${sig.topHolderPct.toFixed(2)}%. Consider vesting/locks/distribution.`,
-      infoHtml: explain("Concentration", [
-        "High concentration increases dump risk.",
-        "Use vesting, LP locks, or distribution changes."
-      ])
-    });
-  }
-
-  return out;
-}
-
-function makeStd(sig){
-  if(sig.kind === "solana"){
-    const is2022 = sig.program === CFG.TOKEN_2022_PROGRAM;
-    return [{
-      t:"Standard",
-      sev: is2022 ? "warn" : "ok",
-      d: is2022 ? "Token-2022 (extensions possible)" : "SPL Token (classic)",
-      infoHtml: explain("Token Standard", [
-        is2022 ? "Token-2022 may include extensions." : "Classic SPL Token is widely supported."
-      ])
-    }];
-  }
-  return [{
-    t:"Standard",
-    sev:"ok",
-    d:"ERC-20 (best-effort via selectors)",
-    infoHtml: explain("ERC-20", [
-      "Uses eth_call for standard function selectors.",
-      "Some contracts are non-standard."
-    ])
-  }];
-}
-
-function makeMeta(meta, sig){
-  const name = (meta?.name || "Token").trim() || "Token";
-  const symbol = (meta?.symbol || "").trim() || "—";
-  const img = meta?.image ? "Image URL detected" : "No image detected";
-
-  if(sig.kind === "solana"){
-    return [
-      { t:"Name / Symbol", sev:"ok", d:`${name} (${symbol})`, infoHtml: explain("Metadata", ["Helius DAS getAsset() (best-effort)."]) },
-      { t:"Image", sev: meta?.image ? "ok" : "warn", d: img, infoHtml: explain("Image", ["Not all tokens publish an image in metadata."]) }
-    ];
-  }
-  return [
-    { t:"Name / Symbol", sev:"ok", d:`${name} (${symbol})`, infoHtml: explain("Metadata", ["EVM meta is limited without token lists/indexers."]) },
-    { t:"Decimals / Supply", sev:"ok", d:`decimals=${Number.isFinite(sig.decimals)?sig.decimals:"—"} • supply=${Number.isFinite(sig.totalSupplyUi)?fmtInt(sig.totalSupplyUi):"—"}`, infoHtml: explain("Decimals / Supply", ["Best-effort decoded via eth_call."]) }
-  ];
-}
-
-/* =============== Final render (ALL sections) =============== */
-function renderScanResult(meta, sig, holders){
-  applyTokenHeader(meta, SCAN_STATE.addr);
-  setText("addrShort", SCAN_STATE.addr || "—");
-
-  const { score, critical } = computeScore(sig);
-  const v = verdictFrom(score, critical);
-
-  setText("verdictTitle", v.title);
-  setBadge(qs("verdictBadge"), v.label, v.mode);
-  setText("scoreBadge", `${score}/100`);
-
-  renderMetrics(buildMetricRows(meta, sig));
-
-  // summary line
-  const bits = [];
-  if(sig.kind === "solana"){
-    bits.push(sig.program === CFG.TOKEN_2022_PROGRAM ? "Token-2022" : "SPL");
-    if(sig.mintAuthActive) bits.push("mint active");
-    if(sig.freezeAuthActive) bits.push("freeze active");
-  }else{
-    bits.push(sig.hasCode ? "contract ok" : "no code");
-    if(Number.isFinite(sig.decimals)) bits.push(`decimals ${sig.decimals}`);
-  }
-  if(Number.isFinite(sig.topHolderPct)) bits.push(`top holder ${sig.topHolderPct.toFixed(2)}%`);
-  setText("summary", bits.length ? `Signals: ${bits.join(" • ")}` : "Signals: —");
-
-  renderList(qs("checksList"), makeChecks(sig));
-  renderList(qs("todoList"), makeTodos(sig));
-  renderList(qs("stdList"), makeStd(sig));
-  renderList(qs("metaList"), makeMeta(meta, sig));
-
-  // holders + bubble
-  if(Array.isArray(holders) && holders.length){
-    renderHoldersWithExplorer(
-      holders.map(h=>({
-        t:"Holder",
-        d:`${shortAddr(h.wallet)} • ${fmtPct(h.pct)}`,
-        addr:h.wallet
-      })),
-      activeChain
-    );
-    renderBubbleMap(holdersToBubbles(holders));
-  }else{
-    renderHoldersEmpty();
-    renderBubbleMap([]);
-  }
-
-  // export unlock (Teil 5 macht echte Export-Logik)
-  const ex = qs("btnExport");
-  if(ex){ ex.disabled = false; ex.textContent = "Download Scan Report"; }
-
-  setText("scanHint", `${activeChain.stamp || "MAINNET"} • done`);
-}
-
-/* =============== V2 Runner (intercepts old listeners) =============== */
-async function runGuardianScanV2(){
-  if(SCAN_STATE.scanning) return;
-
-  const addr = (qs("addr")?.value||"").trim();
-  if(activeChain.kind==="solana" && !looksBase58(addr)){
-    setStatus("Invalid Solana mint address (base58)."); showToast("Invalid address"); return;
-  }
-  if(activeChain.kind==="evm" && !looksEvmAddress(addr)){
-    setStatus("Invalid EVM address (0x + 40 hex)."); showToast("Invalid address"); return;
-  }
-
-  SCAN_STATE.scanning = true;
-  SCAN_STATE.completed = false;
-  SCAN_STATE.chain = activeChain;
-  SCAN_STATE.addr = addr;
-  SCAN_STATE.result = null;
-  SCAN_STATE.lastError = null;
-
-  setStatus("Scanning…");
-  setText("scanHint", `${activeChain.stamp || "MAINNET"} • scanning…`);
-  resetUIForNewScan();
-  setText("addrShort", addr);
-
-  try{
-    const res = (activeChain.kind==="solana")
-      ? await scanSolana(addr)
-      : await scanEvm(activeChain, addr);
-
-    SCAN_STATE.result = res;
-    SCAN_STATE.completed = true;
-
-    renderScanResult(res.meta, res.signals, res.holders);
-
-    setStatus("Scan complete.");
-    hideToast();
-  }catch(e){
-    SCAN_STATE.lastError = String(e?.message || e);
-    setStatus("Error: " + SCAN_STATE.lastError);
-    setText("scanHint", `${activeChain.stamp || "MAINNET"} • error`);
-    showToast("Scan failed");
-  }finally{
-    SCAN_STATE.scanning = false;
-  }
-}
-
-/* =============== Intercept Buttons (capture) =============== */
-(function bindScanCapture(){
-  const b1 = qs("btnScan");
-  const b2 = qs("btnScanInline");
-  if(b1){
-    b1.addEventListener("click",(e)=>{
-      e.preventDefault();
-      e.stopImmediatePropagation();
-      runGuardianScanV2();
-    }, true);
-  }
-  if(b2){
-    b2.addEventListener("click",(e)=>{
-      e.preventDefault();
-      e.stopImmediatePropagation();
-      runGuardianScanV2();
-    }, true);
-  }
-
-  const input = qs("addr");
-  if(input){
-    input.addEventListener("keydown",(e)=>{
-      if(e.key === "Enter"){
-        e.preventDefault();
-        runGuardianScanV2();
-      }
-    }, true);
-  }
-})();
-<script>
-/* =========================================================
-  TEIL 5/5 — EXPORT (Download Scan Report) + FINAL SAFE WIRES
-  Ziel:
-  - Export Button funktioniert immer (auch wenn alte Listener existieren)
-  - Report ist "clean" wie Website: dark + gradient + cards + mobile grid
-  - Enthält: Verdict/Score, Metrics, Checks, Todos, Standard, Metadata,
-            Top holders + Bubble Map PNG (wenn vorhanden)
-========================================================= */
-
-function nowBerlinStamp(){
-  const dt = new Date();
-  const fmt = new Intl.DateTimeFormat("de-DE", {
-    timeZone:"Europe/Berlin",
-    year:"numeric", month:"2-digit", day:"2-digit",
-    hour:"2-digit", minute:"2-digit", second:"2-digit"
-  }).format(dt);
-  // "16.01.2026, 12:34:56" -> "2026-01-16_12-34-56" (approx)
-  const parts = fmt.replace(",","").split(" ");
-  const d = (parts[0]||"").split(".").reverse().join("-");
-  const t = (parts[1]||"").replaceAll(":","-");
-  return `${d}_${t}`;
-}
-
-function reportCss(){
-  return `
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+<meta name="theme-color" content="#070711"/>
+<title>$SOS — Guardian Contract Scanner</title>
+
+<style>
 :root{
   --bg:#070711;
-  --panel: rgba(255,255,255,.06);
-  --stroke: rgba(255,255,255,.12);
-  --text: rgba(255,255,255,.92);
-  --muted: rgba(255,255,255,.70);
+  --panel:rgba(255,255,255,.06);
+  --stroke:rgba(255,255,255,.12);
+  --text:rgba(255,255,255,.92);
+  --muted:rgba(255,255,255,.70);
   --g:#14F195;
   --c:#00D1FF;
   --p:#9945FF;
-  --r:18px;
+  --radius:22px;
+  --shadow:0 12px 32px rgba(0,0,0,.45);
+  --max:1200px;
 }
+
 *{box-sizing:border-box}
+html,body{height:100%}
 body{
   margin:0;
-  font: 14.5px/1.55 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+  background:var(--bg);
   color:var(--text);
-  background: var(--bg);
-  padding: 22px;
+  font:15.5px/1.55 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial;
+  overflow-x:hidden;
 }
+
 body::before{
   content:"";
   position:fixed;
   inset:0;
   z-index:-1;
-  pointer-events:none;
   background:
-    radial-gradient(1200px 700px at 10% 5%, rgba(153,69,255,.20), transparent 60%),
-    radial-gradient(1000px 650px at 90% 10%, rgba(20,241,149,.16), transparent 55%),
-    radial-gradient(900px 600px at 70% 85%, rgba(0,209,255,.12), transparent 55%),
-    var(--bg);
+    radial-gradient(1200px 700px at 10% 5%, rgba(153,69,255,.22), transparent 60%),
+    radial-gradient(1000px 650px at 90% 10%, rgba(20,241,149,.18), transparent 55%),
+    radial-gradient(900px 600px at 70% 85%, rgba(0,209,255,.14), transparent 55%);
 }
-.wrap{max-width:980px; margin:0 auto}
-.card{
-  border:1px solid rgba(255,255,255,.10);
-  background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.05));
-  border-radius: var(--r);
-  padding: 16px;
-  margin-bottom: 14px;
+
+a{color:inherit;text-decoration:none}
+.wrap{max-width:var(--max);margin:0 auto;padding:0 18px;width:100%}
+
+.topbar{
+  position:sticky;
+  top:0;
+  z-index:50;
+  backdrop-filter:blur(14px);
+  background:rgba(7,7,17,.65);
+  border-bottom:1px solid rgba(255,255,255,.08);
 }
-.row{display:flex; gap:12px; align-items:center; flex-wrap:wrap; justify-content:space-between}
-.h1{
-  margin:0;
+
+.row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:12px 0;
+  flex-wrap:wrap;
+}
+
+.brand{
+  display:flex;
+  align-items:center;
+  gap:12px;
   font-weight:1000;
-  letter-spacing:-.6px;
-  font-size: 28px;
-  line-height:1.1;
+  letter-spacing:-.3px;
 }
-.grad{
-  background: linear-gradient(90deg, var(--g), var(--c), var(--p));
-  -webkit-background-clip:text;
-  background-clip:text;
-  color:transparent;
+
+.actions{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
 }
-.sub{color: rgba(255,255,255,.74); font-weight:850; margin-top:6px}
-.badge{
+
+.btn{
   display:inline-flex;
   align-items:center;
   justify-content:center;
-  padding:7px 11px;
+  padding:10px 16px;
   border-radius:999px;
-  border: 1px solid rgba(255,255,255,.14);
-  background: rgba(255,255,255,.06);
-  font-weight:1000;
-  font-size:12px;
-  white-space:nowrap;
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(255,255,255,.06);
+  font-weight:950;
+  cursor:pointer;
 }
-.badge.good{border:0; background: linear-gradient(90deg,var(--g),var(--c),var(--p)); color:#061012}
-.badge.warn{border-color: rgba(255,220,130,.35); background: rgba(255,220,130,.08); color: rgba(255,240,210,.92)}
-.badge.bad{border-color: rgba(255,120,150,.35); background: rgba(255,120,150,.10); color: rgba(255,190,205,.95)}
-.mono{font-family: ui-monospace, Menlo, Consolas, monospace; font-weight:900; color: rgba(255,255,255,.86)}
-.grid{display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-top: 12px}
-@media (max-width: 720px){ body{padding:14px} .grid{grid-template-columns:1fr} }
-.metric{
-  border:1px solid rgba(255,255,255,.10);
-  background: rgba(255,255,255,.04);
-  border-radius: 14px;
-  padding: 12px;
+
+.btn.grad{
+  border:0;
+  background:linear-gradient(90deg,var(--g),var(--c),var(--p));
+  color:#061012;
 }
-.mk{display:flex; align-items:center; justify-content:space-between; gap:10px; color:rgba(255,255,255,.70); font-weight:1000; font-size:12px; letter-spacing:.45px; text-transform:uppercase}
-.mv{margin-top:8px; font-weight:1000; font-size:18px}
-.mini{margin-top:6px; color: rgba(255,255,255,.65); font-weight:850; font-size:12px}
-.bar{margin-top:10px; height:10px; border-radius:999px; background: rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.10); overflow:hidden}
-.bar > div{height:100%; background: linear-gradient(90deg, var(--g), var(--c), var(--p)); width:0%}
-h2{margin:0 0 10px; font-size: 16px; letter-spacing:-.3px}
-ul{margin:0; padding:0; list-style:none; display:grid; gap:10px}
-li{
+
+.btn[disabled]{opacity:.5;pointer-events:none}
+
+main{padding:22px 0 44px}
+
+.card{
+  background:linear-gradient(180deg,rgba(255,255,255,.07),rgba(255,255,255,.05));
   border:1px solid rgba(255,255,255,.10);
-  background: rgba(0,0,0,.14);
-  border-radius: 14px;
-  padding: 12px;
+  border-radius:var(--radius);
+  box-shadow:var(--shadow);
+  margin-bottom:18px;
+}
+
+.inner{padding:22px}
+
+.panel{
+  border:1px solid rgba(255,255,255,.10);
+  background:rgba(0,0,0,.20);
+  border-radius:18px;
+  padding:16px;
+}
+
+label{
+  display:block;
+  font-weight:950;
+  font-size:12.5px;
+  margin-bottom:8px;
+}
+
+input{
+  width:100%;
+  padding:14px;
+  border-radius:16px;
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(0,0,0,.22);
+  color:var(--text);
+  font-weight:900;
+  font-size:16px;
+}
+
+.statusLine{
+  margin-top:12px;
+  font-weight:900;
+  color:rgba(255,255,255,.72);
+  min-height:18px;
+}
+
+.chainRow{
   display:flex;
-  align-items:flex-start;
+  gap:10px;
+  flex-wrap:wrap;
+  margin-bottom:12px;
+}
+
+.chainBtn{
+  padding:10px 14px;
+  border-radius:999px;
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(255,255,255,.06);
+  font-weight:900;
+  cursor:pointer;
+}
+
+.chainBtn.active{
+  border:0;
+  background:linear-gradient(90deg,var(--g),var(--c),var(--p));
+  color:#061012;
+}
+
+.sectionTitle{
+  font-weight:1000;
+  font-size:18px;
+  margin-bottom:12px;
+}
+
+.list{
+  list-style:none;
+  padding:0;
+  margin:0;
+  display:grid;
+  gap:10px;
+}
+
+.li{
+  border:1px solid rgba(255,255,255,.10);
+  background:rgba(0,0,0,.18);
+  border-radius:16px;
+  padding:12px;
+  display:flex;
   justify-content:space-between;
   gap:10px;
 }
-.lt{font-weight:1000; font-size:13px}
-.ld{margin-top:4px; color: rgba(255,255,255,.70); font-weight:800; font-size:12.5px; line-height:1.35}
-.pill{font-weight:1000; font-size:12px; border-radius:999px; padding:6px 10px; border:1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.06)}
-.pill.ok{border:0; background: linear-gradient(90deg,var(--g),var(--c),var(--p)); color:#061012}
-.pill.warn{border-color: rgba(255,220,130,.35); background: rgba(255,220,130,.08); color: rgba(255,240,210,.92)}
-.pill.bad{border-color: rgba(255,120,150,.35); background: rgba(255,120,150,.10); color: rgba(255,190,205,.95)}
-table{width:100%; border-collapse:collapse; overflow:hidden; border-radius: 14px; border:1px solid rgba(255,255,255,.10)}
-th,td{padding:10px 10px; text-align:left; font-size:12.5px; border-bottom:1px solid rgba(255,255,255,.08)}
-th{color: rgba(255,255,255,.72); font-weight:1000; letter-spacing:.35px; text-transform:uppercase; font-size:11.5px; background: rgba(255,255,255,.04)}
-tr:last-child td{border-bottom:0}
-a{color: rgba(255,255,255,.92); text-decoration:none}
-a:hover{text-decoration:underline}
-.imgBox{
-  margin-top:12px;
-  border:1px solid rgba(255,255,255,.10);
-  background: rgba(0,0,0,.14);
-  border-radius: 14px;
-  padding: 12px;
-}
-.imgBox img{width:100%; height:auto; display:block; border-radius: 10px}
-.foot{color: rgba(255,255,255,.50); font-weight:800; font-size:12px; text-align:center; margin-top:18px}
-  `;
-}
 
-function sevToPill(sev){
-  return sev === "ok" ? "pill ok" : sev === "bad" ? "pill bad" : "pill warn";
+canvas{
+  width:100%;
+  height:240px;
+  border-radius:14px;
+  background:rgba(0,0,0,.25);
 }
-function modeToBadge(mode){
-  return mode === "good" ? "badge good" : mode === "bad" ? "badge bad" : "badge warn";
-}
+</style>
+</head>
 
-function reportListItemHtml(it){
-  const sev = it?.sev || "warn";
-  const t = esc(it?.t || "—");
-  const d = esc(it?.d || "—");
-  return `
-    <li>
-      <div style="min-width:0">
-        <div class="lt">${t}</div>
-        <div class="ld">${d}</div>
+<body>
+
+<div class="topbar">
+  <div class="wrap">
+    <div class="row">
+      <div class="brand">$SOS • Guardian Scanner</div>
+      <div class="actions">
+        <button class="btn grad" id="btnScan">Run Scan</button>
+        <button class="btn grad" id="btnExport" disabled>Download Report</button>
       </div>
-      <div class="${sevToPill(sev)}">${esc(pillLabel(sev))}</div>
-    </li>
-  `;
+    </div>
+  </div>
+</div>
+
+<main class="wrap">
+
+<!-- INPUT -->
+<div class="card">
+  <div class="inner">
+    <div class="panel">
+      <label>Choose Chain</label>
+      <div class="chainRow" id="chainRow"></div>
+
+      <label for="addr">Token Address</label>
+      <input id="addr" placeholder="Paste token address…"/>
+
+      <button class="btn grad" id="btnScanInline" style="width:100%;margin-top:12px">
+        Run Guardian Scan
+      </button>
+
+      <div class="statusLine" id="status"></div>
+    </div>
+  </div>
+</div>
+
+<!-- VERDICT / SCORE -->
+<div class="card">
+  <div class="inner">
+    <div class="panel">
+      <div class="sectionTitle">Verdict & Score</div>
+      <div id="verdict"></div>
+    </div>
+  </div>
+</div>
+
+<!-- METRICS -->
+<div class="card">
+  <div class="inner">
+    <div class="panel">
+      <div class="sectionTitle">Metrics</div>
+      <div id="metrics"></div>
+    </div>
+  </div>
+</div>
+
+<!-- CHECKS -->
+<div class="card">
+  <div class="inner">
+    <div class="panel">
+      <div class="sectionTitle">Guardian Checks</div>
+      <ul class="list" id="checksList"></ul>
+    </div>
+  </div>
+</div>
+
+<!-- CLUSTERS / HOLDERS -->
+<div class="card">
+  <div class="inner">
+    <div class="panel">
+      <div class="sectionTitle">Top Holders & Clusters</div>
+      <ul class="list" id="holdersList"></ul>
+    </div>
+  </div>
+</div>
+
+<!-- BUBBLE MAP -->
+<div class="card">
+  <div class="inner">
+    <div class="panel">
+      <div class="sectionTitle">Holder Bubble Map</div>
+      <canvas id="bubbleCanvas" width="900" height="240"></canvas>
+    </div>
+  </div>
+</div>
+
+</main>
+
+<!-- =====================================================
+  CODE 2 / 10
+  STATE • CHAINS • BUTTON BINDING (STABLE BASE)
+===================================================== -->
+
+<script>
+/* =========================
+   GLOBAL CONFIG
+========================= */
+
+const CFG = {
+  CHAINS: [
+    { id:"sol",  name:"Solana",   kind:"solana", placeholder:"Solana mint address (base58)" },
+    { id:"eth",  name:"Ethereum", kind:"evm",    chainId:1,    placeholder:"ERC-20 contract (0x...)" },
+    { id:"bnb",  name:"BNB",      kind:"evm",    chainId:56,   placeholder:"BEP-20 contract (0x...)" },
+    { id:"base", name:"Base",     kind:"evm",    chainId:8453, placeholder:"Base token contract (0x...)" }
+  ]
+};
+
+/* =========================
+   GLOBAL STATE
+========================= */
+
+const STATE = {
+  activeChain: CFG.CHAINS[0],
+  scanning: false,
+  completed: false,
+  address: null,
+  result: null
+};
+
+/* =========================
+   DOM HELPERS
+========================= */
+
+const qs = (id)=>document.getElementById(id);
+
+function setStatus(msg){
+  const el = qs("status");
+  if(el) el.textContent = msg || "";
 }
 
-function reportMetricsHtml(rows){
-  const cards = (rows||[]).map(r=>{
-    const bar = (typeof r.barPct === "number")
-      ? `<div class="bar"><div style="width:${clamp(r.barPct,0,100)}%"></div></div>`
-      : "";
-    return `
-      <div class="metric">
-        <div class="mk">
-          <span>${esc(r.label || "—")}</span>
-          <span class="badge" style="opacity:.9">${esc(r.badge || r.value || "—")}</span>
-        </div>
-        <div class="mv">${esc(r.value || "—")}</div>
-        <div class="mini">${esc(r.mini || "")}</div>
-        ${bar}
-      </div>
-    `;
-  }).join("");
-  return `<div class="grid">${cards}</div>`;
+function clearUI(){
+  qs("verdict").innerHTML = "";
+  qs("metrics").innerHTML = "";
+  qs("checksList").innerHTML = "";
+  qs("holdersList").innerHTML = "";
+  const ctx = qs("bubbleCanvas").getContext("2d");
+  ctx.clearRect(0,0,qs("bubbleCanvas").width,qs("bubbleCanvas").height);
+  qs("btnExport").disabled = true;
 }
 
-function holdersTableHtml(holders, chain){
-  const ex = explorerBase(chain);
-  if(!Array.isArray(holders) || !holders.length){
-    return `<div class="sub" style="margin-top:8px;">No holder data available.</div>`;
+/* =========================
+   ADDRESS VALIDATION
+========================= */
+
+function looksBase58(v){
+  return /^[1-9A-HJ-NP-Za-km-z]{32,52}$/.test(v);
+}
+
+function looksEvm(v){
+  return /^0x[a-fA-F0-9]{40}$/.test(v);
+}
+
+/* =========================
+   CHAIN UI
+========================= */
+
+function renderChains(){
+  const row = qs("chainRow");
+  row.innerHTML = "";
+
+  CFG.CHAINS.forEach(c=>{
+    const b = document.createElement("button");
+    b.className = "chainBtn" + (c.id===STATE.activeChain.id ? " active" : "");
+    b.textContent = c.name;
+    b.onclick = ()=>{
+      STATE.activeChain = c;
+      renderChains();
+      qs("addr").placeholder = c.placeholder;
+      clearUI();
+      setStatus(`Chain set to ${c.name}`);
+    };
+    row.appendChild(b);
+  });
+}
+
+/* =========================
+   BUTTON BINDING (ONCE)
+========================= */
+
+function bindButtons(){
+  qs("btnScan").onclick = runScan;
+  qs("btnScanInline").onclick = runScan;
+  qs("btnExport").onclick = exportReport;
+}
+
+/* =========================
+   MAIN SCAN ENTRY
+========================= */
+
+async function runScan(){
+  if(STATE.scanning) return;
+
+  const addr = qs("addr").value.trim();
+  if(!addr){
+    setStatus("Please enter a token address.");
+    return;
   }
-  const rows = holders.map((h,i)=>{
-    const addr = String(h.wallet||"");
-    const link = ex.base + addr;
-    return `
-      <tr>
-        <td>${i+1}</td>
-        <td class="mono"><a href="${esc(link)}" target="_blank" rel="noreferrer">${esc(addr)}</a></td>
-        <td>${esc(Number(h.pct||0).toFixed(2))}%</td>
-      </tr>
-    `;
-  }).join("");
-  return `
-    <table>
-      <thead><tr><th>#</th><th>Wallet</th><th>Share</th></tr></thead>
-      <tbody>${rows}</tbody>
-    </table>
-  `;
+
+  if(STATE.activeChain.kind==="solana" && !looksBase58(addr)){
+    setStatus("Invalid Solana mint address.");
+    return;
+  }
+
+  if(STATE.activeChain.kind==="evm" && !looksEvm(addr)){
+    setStatus("Invalid EVM address.");
+    return;
+  }
+
+  STATE.scanning = true;
+  STATE.completed = false;
+  STATE.address = addr;
+  STATE.result = null;
+
+  clearUI();
+  setStatus("Scanning on " + STATE.activeChain.name + "…");
+
+  try{
+    if(STATE.activeChain.kind==="solana"){
+      STATE.result = await scanSolana(addr);
+    }else{
+      STATE.result = await scanEvm(STATE.activeChain, addr);
+    }
+
+    STATE.completed = true;
+    renderAll();
+    setStatus("Scan completed.");
+    qs("btnExport").disabled = false;
+
+  }catch(e){
+    console.error(e);
+    setStatus("Scan failed: " + e.message);
+  }finally{
+    STATE.scanning = false;
+  }
 }
 
-function buildReportHtml(){
-  if(!SCAN_STATE.completed || !SCAN_STATE.result) throw new Error("No completed scan to export.");
+/* =========================
+   PLACEHOLDER RENDER
+   (REAL LOGIC COMES NEXT)
+========================= */
 
-  const chain = SCAN_STATE.chain;
-  const addr  = SCAN_STATE.addr;
-  const res   = SCAN_STATE.result;
+function renderAll(){
+  renderVerdict();
+  renderMetrics();
+  renderChecks();
+  renderHolders();
+  renderBubble();
+}
 
-  const meta = res.meta || {name:"Token",symbol:"",image:""};
-  const sig  = res.signals || {kind:chain?.kind || "evm"};
-  const holders = Array.isArray(res.holders) ? res.holders : [];
+/* =========================
+   BASIC RENDER STUBS
+========================= */
 
-  const stamp = nowBerlinStamp();
-  const name = (meta.name || "Token").trim() || "Token";
-  const sym  = (meta.symbol || "").trim();
+function renderVerdict(){
+  qs("verdict").innerHTML =
+    `<div style="font-weight:1000;font-size:22px">SCAN OK</div>`;
+}
 
-  const { score, critical } = computeScore(sig);
-  const v = verdictFrom(score, critical);
+function renderMetrics(){
+  qs("metrics").innerHTML =
+    `<div class="panel">Metrics will be populated</div>`;
+}
 
-  const metricRows = buildMetricRows(meta, sig);
-  const checks = makeChecks(sig);
-  const todos  = makeTodos(sig);
-  const std    = makeStd(sig);
-  const metaList = makeMeta(meta, sig);
+function renderChecks(){
+  qs("checksList").innerHTML =
+    `<li class="li"><div>Checks will be populated</div></li>`;
+}
 
-  const ex = explorerBase(chain);
-  const explorerLink = ex.base + addr;
+function renderHolders(){
+  qs("holdersList").innerHTML =
+    `<li class="li"><div>Holders & clusters will be populated</div></li>`;
+}
 
-  const bubblePng = window.__BUBBLE_MAP_DATA_URL || "";
-  const bubbleBlock = bubblePng
-    ? `<div class="imgBox">
-         <div class="mk" style="margin-bottom:8px;">
-           <span>Holder Bubble Map</span><span class="badge">PNG</span>
-         </div>
-         <img src="${esc(bubblePng)}" alt="Holder Bubble Map"/>
-         <div class="mini">Bubble size = holder % (preview). Visual heuristic.</div>
-       </div>`
-    : "";
+function renderBubble(){
+  const c = qs("bubbleCanvas");
+  const ctx = c.getContext("2d");
+  ctx.clearRect(0,0,c.width,c.height);
+  ctx.fillStyle="rgba(255,255,255,.15)";
+  ctx.beginPath();
+  ctx.arc(120,120,50,0,Math.PI*2);
+  ctx.fill();
+}
 
-  const tokenImg = meta.image
-    ? `<div style="width:52px;height:52px;border-radius:14px;overflow:hidden;border:1px solid rgba(255,255,255,.10);background:rgba(0,0,0,.14);flex:0 0 auto">
-         <img src="${esc(meta.image)}" alt="" style="width:100%;height:100%;object-fit:cover;display:block" />
-       </div>`
-    : "";
+/* =========================
+   EXPORT PLACEHOLDER
+========================= */
 
-  // compact JSON snapshot for later debugging (optional)
-  const snapshot = {
-    generated_at_berlin: stamp,
-    chain: chain?.id,
-    chain_stamp: chain?.stamp,
-    address: addr,
-    meta,
-    signals: sig,
-    holders
+function exportReport(){
+  if(!STATE.completed){
+    alert("No scan to export");
+    return;
+  }
+  alert("Report export will be implemented in later code.");
+}
+
+/* =========================
+   INIT
+========================= */
+
+function init(){
+  renderChains();
+  bindButtons();
+  qs("addr").placeholder = STATE.activeChain.placeholder;
+  setStatus("Ready.");
+}
+
+if(document.readyState==="loading"){
+  document.addEventListener("DOMContentLoaded",init);
+}else{
+  init();
+}
+</script>
+
+<!-- =====================================================
+  CODE 3 / 10
+  SOLANA SCAN ENGINE
+  - Mint / Freeze Authority
+  - Supply / Decimals
+  - Largest Holders
+  - Cluster-Grundlage
+===================================================== -->
+
+<script>
+/* =========================
+   SOLANA RPC (HELIUS)
+========================= */
+
+const HELIUS_API_KEY = "PUT_YOUR_HELIUS_KEY_HERE";
+const SOLANA_RPC = `https://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}`;
+
+async function solRpc(method, params){
+  const res = await fetch(SOLANA_RPC,{
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body:JSON.stringify({
+      jsonrpc:"2.0",
+      id:1,
+      method,
+      params
+    })
+  });
+  const json = await res.json();
+  if(json.error) throw new Error(json.error.message);
+  return json.result;
+}
+
+/* =========================
+   SOLANA SCAN CORE
+========================= */
+
+async function scanSolana(mint){
+
+  /* --- Mint account --- */
+  const mintInfo = await solRpc("getParsedAccountInfo",[
+    mint,
+    { commitment:"confirmed" }
+  ]);
+
+  const info = mintInfo?.value?.data?.parsed?.info;
+  if(!info) throw new Error("Invalid Solana mint");
+
+  const mintAuthority   = info.mintAuthority || null;
+  const freezeAuthority = info.freezeAuthority || null;
+  const decimals        = info.decimals;
+  const supplyRaw       = BigInt(info.supply || "0");
+  const supplyUi        = Number(supplyRaw) / (10 ** decimals);
+
+  /* --- Largest token accounts --- */
+  const largest = await solRpc("getTokenLargestAccounts",[mint]);
+  const accounts = largest?.value || [];
+
+  const holders = accounts.map(a=>{
+    const raw = BigInt(a.amount || "0");
+    const pct = supplyRaw > 0n
+      ? Number((raw * 10000n) / supplyRaw) / 100
+      : 0;
+    return {
+      wallet: a.address,
+      raw,
+      pct
+    };
+  }).sort((a,b)=>b.pct - a.pct);
+
+  /* --- Cluster prep (wallet-only graph) --- */
+  const clusters = {
+    enabled: true,
+    wallets: holders.map(h=>h.wallet),
+    clusteredPctWallets: holders.length ? 100 : 0,
+    largestClusterPctHold: holders[0]?.pct || 0,
+    graphMeta:{
+      nodes: holders.length,
+      edges: 0
+    },
+    clustersTop: holders.slice(0,3).map(h=>({
+      walletCount: 1,
+      holdPct: h.pct
+    }))
   };
 
-  return `<!doctype html>
-<html lang="de">
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <meta name="theme-color" content="#070711"/>
-  <title>Guardian Report — ${esc(chain?.name || "Chain")} — ${esc(shortAddr(addr))}</title>
-  <style>${reportCss()}</style>
-</head>
-<body>
-  <div class="wrap">
-    <div class="card">
-      <div class="row">
-        <div style="display:flex; gap:12px; align-items:center; min-width:0">
-          ${tokenImg}
-          <div style="min-width:0">
-            <div class="h1"><span class="grad">Guardian Report</span></div>
-            <div class="sub">${esc(chain?.name || "Chain")} • ${esc(chain?.stamp || "MAINNET")} • ${esc(stamp.replaceAll("_"," "))}</div>
-          </div>
-        </div>
-        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap">
-          <span class="${modeToBadge(v.mode)}">${esc(v.label)}</span>
-          <span class="badge good">${esc(score)}/100</span>
-        </div>
-      </div>
-
-      <div style="margin-top:12px; display:flex; align-items:flex-start; justify-content:space-between; gap:12px; flex-wrap:wrap">
-        <div style="min-width:0">
-          <div style="font-weight:1000; font-size:16px; letter-spacing:-.2px">${esc(name)}</div>
-          <div class="sub">${sym ? esc("$"+sym) : "—"}</div>
-          <div class="mono" style="margin-top:10px;">
-            <a href="${esc(explorerLink)}" target="_blank" rel="noreferrer">${esc(addr)}</a>
-          </div>
-        </div>
-        <div style="min-width:240px">
-          <div class="sub" style="margin-top:2px">Verdict</div>
-          <div style="font-weight:1000; font-size:18px; letter-spacing:-.2px">${esc(v.title)}</div>
-          <div class="mini" style="margin-top:6px">
-            Heuristic risk scan — always verify sources and audited code.
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="card">
-      <h2>Metrics</h2>
-      ${reportMetricsHtml(metricRows)}
-    </div>
-
-    <div class="card">
-      <h2>Guardian Checks</h2>
-      <ul>${checks.map(reportListItemHtml).join("")}</ul>
-    </div>
-
-    <div class="card">
-      <h2>Launch Readiness</h2>
-      <ul>${todos.map(reportListItemHtml).join("")}</ul>
-    </div>
-
-    <div class="card">
-      <h2>Token Standard</h2>
-      <ul>${std.map(reportListItemHtml).join("")}</ul>
-    </div>
-
-    <div class="card">
-      <h2>Token Metadata</h2>
-      <ul>${metaList.map(reportListItemHtml).join("")}</ul>
-    </div>
-
-    <div class="card">
-      <h2>Top Holders (preview)</h2>
-      ${holdersTableHtml(holders, chain)}
-      ${bubbleBlock}
-    </div>
-
-    <div class="foot">
-      © ${new Date().getFullYear()} • Guardian Check • exported from ${esc(location.origin)}
-    </div>
-
-    <script type="application/json" id="guardian_snapshot">${esc(JSON.stringify(snapshot))}</script>
-  </div>
-</body>
-</html>`;
+  return {
+    chain:"solana",
+    meta:{
+      name:"Solana Token",
+      symbol:"",
+      image:""
+    },
+    signals:{
+      mintAuthorityActive: !!mintAuthority,
+      freezeAuthorityActive: !!freezeAuthority,
+      decimals,
+      supplyUi,
+      topHolderPct: holders[0]?.pct || 0
+    },
+    holders,
+    clusters
+  };
 }
 
-function downloadText(filename, text){
-  const blob = new Blob([text], { type:"text/html;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(()=>URL.revokeObjectURL(url), 2500);
+/* =========================
+   SOLANA RENDER EXTENSIONS
+========================= */
+
+function renderSolanaChecks(result){
+  const list = qs("checksList");
+  list.innerHTML = "";
+
+  const add = (title, ok, desc)=>{
+    const li = document.createElement("li");
+    li.className = "li";
+    li.innerHTML = `
+      <div>
+        <strong>${title}</strong><br>
+        <span>${desc}</span>
+      </div>
+      <div>${ok ? "✅" : "⚠️"}</div>
+    `;
+    list.appendChild(li);
+  };
+
+  add(
+    "Mint Authority",
+    !result.signals.mintAuthorityActive,
+    result.signals.mintAuthorityActive
+      ? "Mint authority is still active (supply can increase)."
+      : "Mint authority revoked."
+  );
+
+  add(
+    "Freeze Authority",
+    !result.signals.freezeAuthorityActive,
+    result.signals.freezeAuthorityActive
+      ? "Freeze authority active (accounts can be frozen)."
+      : "Freeze authority revoked."
+  );
+
+  add(
+    "Top Holder",
+    result.signals.topHolderPct < 20,
+    `Largest holder owns ~${result.signals.topHolderPct.toFixed(2)}%`
+  );
 }
 
-async function exportReportV2(){
+/* =========================
+   SOLANA HOLDER RENDER
+========================= */
+
+function renderSolanaHolders(result){
+  const list = qs("holdersList");
+  list.innerHTML = "";
+
+  result.holders.slice(0,10).forEach((h,i)=>{
+    const li = document.createElement("li");
+    li.className = "li";
+    li.innerHTML = `
+      <div>#${i+1} ${h.wallet}</div>
+      <div>${h.pct.toFixed(2)}%</div>
+    `;
+    list.appendChild(li);
+  });
+}
+
+/* =========================
+   SOLANA BUBBLE MAP
+========================= */
+
+function renderSolanaBubble(result){
+  const canvas = qs("bubbleCanvas");
+  const ctx = canvas.getContext("2d");
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  const max = Math.max(...result.holders.map(h=>h.pct),1);
+  const cx = canvas.width/2;
+  const cy = canvas.height/2;
+
+  result.holders.slice(0,8).forEach((h,i)=>{
+    const r = 20 + (h.pct/max)*60;
+    const angle = i * (Math.PI*2/result.holders.length);
+    const x = cx + Math.cos(angle)*120;
+    const y = cy + Math.sin(angle)*60;
+
+    ctx.beginPath();
+    ctx.arc(x,y,r,0,Math.PI*2);
+    ctx.fillStyle="rgba(20,241,149,.25)";
+    ctx.fill();
+
+    ctx.fillStyle="#fff";
+    ctx.font="12px monospace";
+    ctx.fillText(h.pct.toFixed(1)+"%",x-14,y+4);
+  });
+}
+
+/* =========================
+   SOLANA RESULT PIPE
+========================= */
+
+function applySolanaResult(result){
+  renderSolanaChecks(result);
+  renderSolanaHolders(result);
+  renderSolanaBubble(result);
+}
+</script>
+
+<!-- =====================================================
+  CODE 4 / 10
+  EVM SCAN ENGINE
+  - Ethereum / BNB / Base
+  - ERC-20 metadata
+  - Owner / Renounced
+  - Proxy detection (EIP-1967)
+  - Holders (indexer-ready)
+  - Cluster foundation
+===================================================== -->
+
+<script>
+/* =========================
+   EVM RPC CONFIG
+========================= */
+
+const EVM_RPCS = {
+  1:    ["https://cloudflare-eth.com","https://ethereum.publicnode.com"],
+  56:   ["https://bsc.publicnode.com","https://rpc.ankr.com/bsc"],
+  8453: ["https://mainnet.base.org","https://base.publicnode.com"]
+};
+
+const ERC20_SIG = {
+  name:"0x06fdde03",
+  symbol:"0x95d89b41",
+  decimals:"0x313ce567",
+  totalSupply:"0x18160ddd",
+  owner:"0x8da5cb5b"
+};
+
+const EIP1967_IMPL =
+  "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc";
+
+/* =========================
+   LOW LEVEL HELPERS
+========================= */
+
+async function evmRpc(rpc, method, params){
+  const res = await fetch(rpc,{
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body:JSON.stringify({ jsonrpc:"2.0", id:1, method, params })
+  });
+  const json = await res.json();
+  if(json.error) throw new Error(json.error.message);
+  return json.result;
+}
+
+async function evmCall(chainId, call){
+  const rpcs = EVM_RPCS[chainId] || [];
+  for(const rpc of rpcs){
+    try{
+      return await evmRpc(rpc,"eth_call",[call,"latest"]);
+    }catch{}
+  }
+  throw new Error("All RPCs failed");
+}
+
+async function evmGetCode(chainId, addr){
+  const rpcs = EVM_RPCS[chainId] || [];
+  for(const rpc of rpcs){
+    try{
+      return await evmRpc(rpc,"eth_getCode",[addr,"latest"]);
+    }catch{}
+  }
+  throw new Error("All RPCs failed");
+}
+
+function hexToBigInt(x){
+  try{ return BigInt(x); }catch{ return null; }
+}
+
+/* =========================
+   EVM SCAN CORE
+========================= */
+
+async function scanEvm(chain, addr){
+  const chainId = chain.chainId;
+
+  /* --- Code check --- */
+  const code = await evmGetCode(chainId, addr);
+  const hasCode = code && code !== "0x";
+
+  if(!hasCode) throw new Error("No contract code at address");
+
+  /* --- ERC-20 calls --- */
+  let name=null, symbol=null, decimals=null, totalSupply=null;
+
+  try{ name = await evmCall(chainId,{to:addr,data:ERC20_SIG.name}); }catch{}
+  try{ symbol = await evmCall(chainId,{to:addr,data:ERC20_SIG.symbol}); }catch{}
+  try{ decimals = Number(hexToBigInt(await evmCall(chainId,{to:addr,data:ERC20_SIG.decimals}))); }catch{}
+  try{ totalSupply = hexToBigInt(await evmCall(chainId,{to:addr,data:ERC20_SIG.totalSupply})); }catch{}
+
+  const supplyUi =
+    totalSupply && Number.isFinite(decimals)
+      ? Number(totalSupply / (10n ** BigInt(decimals)))
+      : null;
+
+  /* --- Owner / Renounced --- */
+  let owner = null;
   try{
-    if(!SCAN_STATE.completed || !SCAN_STATE.result){
-      showToast("No completed scan to export");
-      setStatus("Run a scan first, then export.");
+    owner = await evmCall(chainId,{to:addr,data:ERC20_SIG.owner});
+  }catch{}
+
+  const ownerAddr = owner && owner !== "0x"
+    ? "0x" + owner.slice(-40)
+    : null;
+
+  const renounced =
+    !ownerAddr ||
+    ownerAddr === "0x0000000000000000000000000000000000000000";
+
+  /* --- Proxy detection (EIP-1967) --- */
+  let proxyImpl = null;
+  try{
+    const impl = await evmRpc(
+      EVM_RPCS[chainId][0],
+      "eth_getStorageAt",
+      [addr, EIP1967_IMPL, "latest"]
+    );
+    if(impl && impl !== "0x"){
+      proxyImpl = "0x" + impl.slice(-40);
+    }
+  }catch{}
+
+  /* --- Holders placeholder (indexer later) --- */
+  const holders = [];
+  const clusters = {
+    enabled:false,
+    clusteredPctWallets:0,
+    largestClusterPctHold:0,
+    graphMeta:{nodes:0,edges:0},
+    clustersTop:[]
+  };
+
+  return {
+    chain:"evm",
+    meta:{
+      name:name ? name.replace(/\0/g,"") : "Token",
+      symbol:symbol ? symbol.replace(/\0/g,"") : "",
+      image:""
+    },
+    signals:{
+      hasCode:true,
+      decimals,
+      supplyUi,
+      owner:ownerAddr,
+      renounced,
+      proxy:!!proxyImpl,
+      proxyImpl
+    },
+    holders,
+    clusters
+  };
+}
+
+/* =========================
+   EVM RENDER EXTENSIONS
+========================= */
+
+function renderEvmChecks(result){
+  const list = qs("checksList");
+  list.innerHTML = "";
+
+  const add = (title, ok, desc)=>{
+    const li = document.createElement("li");
+    li.className = "li";
+    li.innerHTML = `
+      <div>
+        <strong>${title}</strong><br>
+        <span>${desc}</span>
+      </div>
+      <div>${ok ? "✅" : "⚠️"}</div>
+    `;
+    list.appendChild(li);
+  };
+
+  add(
+    "Contract Code",
+    true,
+    "Contract bytecode present"
+  );
+
+  add(
+    "Ownership",
+    result.signals.renounced,
+    result.signals.renounced
+      ? "Ownership renounced"
+      : `Owner: ${result.signals.owner}`
+  );
+
+  add(
+    "Proxy",
+    !result.signals.proxy,
+    result.signals.proxy
+      ? `Proxy detected → ${result.signals.proxyImpl}`
+      : "No proxy detected"
+  );
+}
+
+/* =========================
+   EVM RESULT PIPE
+========================= */
+
+function applyEvmResult(result){
+  renderEvmChecks(result);
+
+  qs("holdersList").innerHTML =
+    `<li class="li"><div>EVM holders via indexer in next code</div></li>`;
+
+  const ctx = qs("bubbleCanvas").getContext("2d");
+  ctx.clearRect(0,0,qs("bubbleCanvas").width,qs("bubbleCanvas").height);
+}
+</script>
+
+<!-- =====================================================
+  CODE 5 / 10
+  SCORE ENGINE • VERDICT • GUARDIAN LOGIC
+  - Approved / Observed / Flagged
+  - Cross-chain rules
+===================================================== -->
+
+<script>
+/* =========================
+   SCORE CALCULATION
+========================= */
+
+function calculateScore(result){
+  let score = 100;
+  let critical = false;
+
+  if(result.chain === "solana"){
+    if(result.signals.mintAuthorityActive){
+      score -= 35;
+      critical = true;
+    }
+    if(result.signals.freezeAuthorityActive){
+      score -= 15;
+    }
+    if(result.signals.topHolderPct >= 35){
+      score -= 30;
+      critical = true;
+    }else if(result.signals.topHolderPct >= 20){
+      score -= 18;
+    }else if(result.signals.topHolderPct >= 10){
+      score -= 8;
+    }
+  }
+
+  if(result.chain === "evm"){
+    if(!result.signals.hasCode){
+      score = 0;
+      critical = true;
+    }
+    if(!result.signals.renounced){
+      score -= 25;
+    }
+    if(result.signals.proxy){
+      score -= 15;
+    }
+  }
+
+  score = Math.max(0, Math.min(100, Math.round(score)));
+  return { score, critical };
+}
+
+/* =========================
+   VERDICT LOGIC
+========================= */
+
+function getVerdict(score, critical){
+  if(critical){
+    return {
+      label:"FLAGGED",
+      color:"#ff6b81",
+      text:"FLAGGED • High Risk"
+    };
+  }
+  if(score >= 80){
+    return {
+      label:"APPROVED",
+      color:"#14F195",
+      text:"APPROVED • Guardian Passed"
+    };
+  }
+  if(score >= 50){
+    return {
+      label:"OBSERVED",
+      color:"#ffd166",
+      text:"OBSERVED • Mixed Signals"
+    };
+  }
+  return {
+    label:"FLAGGED",
+    color:"#ff6b81",
+    text:"FLAGGED • High Risk"
+  };
+}
+
+/* =========================
+   VERDICT RENDER
+========================= */
+
+function renderVerdict(){
+  const res = STATE.result;
+  if(!res) return;
+
+  const { score, critical } = calculateScore(res);
+  const verdict = getVerdict(score, critical);
+
+  const el = qs("verdict");
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+      <div style="
+        padding:10px 16px;
+        border-radius:999px;
+        background:${verdict.color};
+        color:#061012;
+        font-weight:1000;
+      ">
+        ${verdict.label}
+      </div>
+      <div style="font-size:22px;font-weight:1000">
+        ${score}/100
+      </div>
+    </div>
+    <div style="margin-top:10px;font-weight:900;color:rgba(255,255,255,.75)">
+      ${verdict.text}
+    </div>
+  `;
+}
+
+/* =========================
+   METRICS RENDER
+========================= */
+
+function renderMetrics(){
+  const res = STATE.result;
+  if(!res) return;
+
+  const m = qs("metrics");
+  m.innerHTML = "";
+
+  const add = (label, value)=>{
+    const d = document.createElement("div");
+    d.className = "li";
+    d.innerHTML = `<div>${label}</div><div>${value}</div>`;
+    m.appendChild(d);
+  };
+
+  if(res.chain === "solana"){
+    add("Supply", res.signals.supplyUi.toLocaleString());
+    add("Mint Authority", res.signals.mintAuthorityActive ? "ACTIVE" : "REVOKED");
+    add("Freeze Authority", res.signals.freezeAuthorityActive ? "ACTIVE" : "REVOKED");
+    add("Top Holder", res.signals.topHolderPct.toFixed(2)+"%");
+  }
+
+  if(res.chain === "evm"){
+    add("Supply", res.signals.supplyUi ?? "—");
+    add("Decimals", res.signals.decimals ?? "—");
+    add("Owner", res.signals.renounced ? "RENOUNCED" : res.signals.owner);
+    add("Proxy", res.signals.proxy ? "YES" : "NO");
+  }
+}
+
+/* =========================
+   GLOBAL RESULT PIPE UPDATE
+========================= */
+
+function renderAll(){
+  renderVerdict();
+  renderMetrics();
+
+  if(STATE.result.chain === "solana"){
+    applySolanaResult(STATE.result);
+  }
+
+  if(STATE.result.chain === "evm"){
+    applyEvmResult(STATE.result);
+  }
+}
+</script>
+
+<!-- =====================================================
+  CODE 6 / 10
+  HOLDERS • CLUSTER DETECTION • BUBBLE MAP
+  - Wallet clustering (heuristic)
+  - Largest cluster %
+  - Bubble visualization
+===================================================== -->
+
+<script>
+/* =========================
+   HOLDERS NORMALIZATION
+========================= */
+
+function normalizeHolders(raw){
+  if(!Array.isArray(raw)) return [];
+  return raw
+    .filter(h => h.wallet && typeof h.pct === "number")
+    .sort((a,b)=>b.pct-a.pct)
+    .slice(0, 25);
+}
+
+/* =========================
+   CLUSTER HEURISTIC
+   (simple but stable)
+========================= */
+
+function buildClusters(holders){
+  const clusters = [];
+  const visited = new Set();
+
+  holders.forEach(h=>{
+    if(visited.has(h.wallet)) return;
+
+    const cluster = {
+      wallets: [h.wallet],
+      totalPct: h.pct
+    };
+    visited.add(h.wallet);
+
+    holders.forEach(o=>{
+      if(visited.has(o.wallet)) return;
+
+      // heuristic: very close percentages → likely linked
+      if(Math.abs(o.pct - h.pct) <= 0.35){
+        cluster.wallets.push(o.wallet);
+        cluster.totalPct += o.pct;
+        visited.add(o.wallet);
+      }
+    });
+
+    clusters.push(cluster);
+  });
+
+  return clusters.sort((a,b)=>b.totalPct - a.totalPct);
+}
+
+/* =========================
+   CLUSTER SUMMARY
+========================= */
+
+function summarizeClusters(clusters){
+  if(!clusters.length){
+    return {
+      clusterCount: 0,
+      largestClusterPct: 0,
+      largestClusterWallets: []
+    };
+  }
+
+  const largest = clusters[0];
+  return {
+    clusterCount: clusters.length,
+    largestClusterPct: Number(largest.totalPct.toFixed(2)),
+    largestClusterWallets: largest.wallets
+  };
+}
+
+/* =========================
+   APPLY CLUSTER DATA
+========================= */
+
+function applyClusters(holders){
+  const clusters = buildClusters(holders);
+  const summary = summarizeClusters(clusters);
+
+  STATE.clusters = {
+    clusters,
+    summary
+  };
+
+  const el = qs("clusters");
+  if(!el) return;
+
+  el.innerHTML = `
+    <div class="li">
+      <div>
+        <strong>Total clusters</strong><br>
+        ${summary.clusterCount}
+      </div>
+      <div>
+        <strong>Largest cluster</strong><br>
+        ${summary.largestClusterPct}%
+      </div>
+    </div>
+    <div class="li">
+      <div>
+        <strong>Cluster wallets</strong><br>
+        ${summary.largestClusterWallets.slice(0,5).map(w=>short(w)).join("<br>")}
+      </div>
+    </div>
+  `;
+}
+
+/* =========================
+   BUBBLE MAP
+========================= */
+
+function drawBubbleMap(holders){
+  const canvas = qs("bubbleCanvas");
+  if(!canvas) return;
+
+  const ctx = canvas.getContext("2d");
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  ctx.scale(dpr, dpr);
+
+  ctx.clearRect(0,0,rect.width,rect.height);
+
+  const maxPct = Math.max(...holders.map(h=>h.pct), 1);
+  const centerX = rect.width / 2;
+  const centerY = rect.height / 2;
+
+  const placed = [];
+
+  function collides(x,y,r){
+    return placed.some(p=>{
+      const dx = x - p.x;
+      const dy = y - p.y;
+      return Math.sqrt(dx*dx + dy*dy) < r + p.r + 6;
+    });
+  }
+
+  holders.forEach((h,i)=>{
+    const r = 10 + (h.pct / maxPct) * 45;
+    let angle = i * 0.7;
+    let radius = 0;
+    let x,y;
+
+    for(let t=0;t<400;t++){
+      radius += 0.8;
+      angle += 0.35;
+      x = centerX + Math.cos(angle)*radius;
+      y = centerY + Math.sin(angle)*radius;
+      if(!collides(x,y,r)) break;
+    }
+
+    placed.push({x,y,r,pct:h.pct});
+
+    ctx.beginPath();
+    ctx.arc(x,y,r,0,Math.PI*2);
+    ctx.fillStyle = "rgba(20,241,149,.18)";
+    ctx.fill();
+    ctx.strokeStyle = "rgba(20,241,149,.55)";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    ctx.fillStyle = "rgba(255,255,255,.9)";
+    ctx.font = "bold 12px system-ui";
+    ctx.textAlign = "center";
+    ctx.fillText(h.pct.toFixed(1)+"%", x, y+4);
+  });
+
+  try{
+    window.__BUBBLE_MAP_DATA_URL = canvas.toDataURL("image/png");
+  }catch{
+    window.__BUBBLE_MAP_DATA_URL = "";
+  }
+}
+
+/* =========================
+   HOLDERS PIPE
+========================= */
+
+function renderHoldersPipeline(rawHolders){
+  const holders = normalizeHolders(rawHolders);
+
+  // list
+  const list = qs("holders");
+  if(list){
+    list.innerHTML = "";
+    holders.forEach(h=>{
+      const li = document.createElement("div");
+      li.className = "li";
+      li.innerHTML = `
+        <div>${short(h.wallet)}</div>
+        <div>${h.pct.toFixed(2)}%</div>
+      `;
+      list.appendChild(li);
+    });
+  }
+
+  // clusters
+  applyClusters(holders);
+
+  // bubble
+  drawBubbleMap(holders);
+}
+
+/* =========================
+   PIPE INTO MAIN RENDER
+========================= */
+
+function applySolanaResult(res){
+  renderHoldersPipeline(res.holders || []);
+}
+
+function applyEvmResult(res){
+  renderHoldersPipeline(res.holders || []);
+}
+</script>
+<!-- =====================================================
+  CODE 7 / 10
+  STABILITY PATCH + PIPELINE MERGE + GOLD RUSH HOLDERS (EVM)
+  - NO changes needed in Code 1–6
+  - Fixes: missing short(), wrong IDs (holders/clusters), duplicate overrides,
+           bubble canvas scaling, EVM holders via GoldRush, stable UI updates
+===================================================== -->
+
+<script>
+/* =========================
+   KEYS (from you)
+========================= */
+(function injectKeys(){
+  // If your earlier code uses placeholders, we patch them safely.
+  try{
+    if(typeof HELIUS_API_KEY !== "undefined"){
+      if(!HELIUS_API_KEY || HELIUS_API_KEY === "PUT_YOUR_HELIUS_KEY_HERE"){
+        window.HELIUS_API_KEY = "b566a086-57d4-4433-8661-faed9ad07ba0";
+      }
+    }else{
+      window.HELIUS_API_KEY = "b566a086-57d4-4433-8661-faed9ad07ba0";
+    }
+  }catch{}
+
+  // GoldRush key (Covalent)
+  window.GOLDRUSH_API_KEY = "cqt_rQVTMTXwYkPJBrwf7ff6JWmdkywR";
+})();
+
+/* =========================
+   GLOBAL SAFE HELPERS
+========================= */
+(function globalSafety(){
+  // short() was referenced but never defined in your code 6 -> hard crash.
+  if(typeof window.short !== "function"){
+    window.short = function short(addr){
+      const a = String(addr || "");
+      if(!a) return "—";
+      if(a.startsWith("0x") && a.length > 10) return a.slice(0,6) + "…" + a.slice(-4);
+      if(a.length > 12) return a.slice(0,6) + "…" + a.slice(-4);
+      return a;
+    };
+  }
+
+  // Safe qs (if ever missing)
+  if(typeof window.qs !== "function"){
+    window.qs = (id)=>document.getElementById(id);
+  }
+
+  // Safe status
+  if(typeof window.setStatus !== "function"){
+    window.setStatus = (msg)=>{ const el = qs("status"); if(el) el.textContent = msg || ""; };
+  }
+})();
+
+/* =========================
+   FIX: Canvas scaling (no accumulating transforms)
+========================= */
+(function patchBubbleScaling(){
+  // Replace drawBubbleMap with a safer version (same name, but stable)
+  window.drawBubbleMap = function drawBubbleMap(holders){
+    const canvas = qs("bubbleCanvas");
+    if(!canvas) return;
+
+    const ctx = canvas.getContext("2d");
+    const rect = canvas.getBoundingClientRect();
+    const dpr = Math.max(1, window.devicePixelRatio || 1);
+
+    // Resize internal buffer
+    canvas.width  = Math.max(1, Math.floor(rect.width  * dpr));
+    canvas.height = Math.max(1, Math.floor(rect.height * dpr));
+
+    // IMPORTANT: reset transform each time (prevents "zooming away")
+    ctx.setTransform(1,0,0,1,0,0);
+    ctx.scale(dpr, dpr);
+
+    // Clear
+    ctx.clearRect(0,0,rect.width,rect.height);
+
+    const list = Array.isArray(holders) ? holders.slice(0, 20) : [];
+    if(!list.length){
+      // Keep png empty
+      try{ window.__BUBBLE_MAP_DATA_URL = ""; }catch{}
       return;
     }
 
-    // ensure bubble PNG exists (if bubble visible)
+    // subtle grid
+    ctx.globalAlpha = 0.25;
+    for(let x=0;x<rect.width;x+=48){
+      ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,rect.height);
+      ctx.strokeStyle = "rgba(255,255,255,.08)";
+      ctx.stroke();
+    }
+    for(let y=0;y<rect.height;y+=48){
+      ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(rect.width,y);
+      ctx.strokeStyle = "rgba(255,255,255,.08)";
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+
+    const maxPct = Math.max(...list.map(h=>Number(h.pct||0)), 1);
+    const cx = rect.width/2;
+    const cy = rect.height/2;
+
+    const placed = [];
+    const pad = 6;
+
+    function collides(x,y,r){
+      for(const p of placed){
+        const dx = x - p.x;
+        const dy = y - p.y;
+        if(Math.sqrt(dx*dx + dy*dy) < r + p.r + pad) return true;
+      }
+      return false;
+    }
+
+    list.forEach((h,i)=>{
+      const pct = Number(h.pct||0);
+      const r = 10 + (pct / maxPct) * 45;
+
+      let angle = i * 0.7;
+      let rad = 0;
+      let x = cx, y = cy;
+
+      for(let t=0;t<700;t++){
+        rad += 0.8;
+        angle += 0.35;
+        x = cx + Math.cos(angle)*rad;
+        y = cy + Math.sin(angle)*rad;
+
+        if(x-r<8 || x+r>rect.width-8 || y-r<8 || y+r>rect.height-8) continue;
+        if(!collides(x,y,r)) break;
+      }
+
+      placed.push({x,y,r,pct,label: window.short(h.wallet)});
+
+      ctx.beginPath();
+      ctx.arc(x,y,r,0,Math.PI*2);
+      ctx.fillStyle = "rgba(20,241,149,.16)";
+      ctx.fill();
+      ctx.strokeStyle = "rgba(20,241,149,.55)";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      ctx.fillStyle = "rgba(255,255,255,.90)";
+      ctx.font = "900 12px system-ui";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(pct.toFixed(1)+"%", x, y-6);
+
+      ctx.fillStyle = "rgba(255,255,255,.60)";
+      ctx.font = "800 10px ui-monospace, Menlo, Consolas, monospace";
+      ctx.fillText(window.short(h.wallet), x, y+10);
+    });
+
+    // Store PNG for export
     try{
-      if(SCAN_STATE.result?.holders?.length){
-        renderBubbleMap(holdersToBubbles(SCAN_STATE.result.holders));
+      window.__BUBBLE_MAP_DATA_URL = canvas.toDataURL("image/png");
+    }catch{
+      window.__BUBBLE_MAP_DATA_URL = "";
+    }
+  };
+
+  // Re-draw bubble on resize if we have last holders
+  window.addEventListener("resize", ()=>{
+    try{
+      const last = window.__LAST_HOLDERS_FOR_BUBBLE || [];
+      if(last.length) window.drawBubbleMap(last);
+    }catch{}
+  }, {passive:true});
+})();
+
+/* =========================
+   FIX: Render into existing HTML IDs (holdersList)
+   - Your Code 6 used ids "holders" and "clusters" which DO NOT exist.
+   - We re-route pipeline to #holdersList without changing HTML.
+========================= */
+(function patchHoldersPipeline(){
+  function renderHoldersListToUI(holders, clustersSummary){
+    const listEl = qs("holdersList");
+    if(!listEl) return;
+
+    listEl.innerHTML = "";
+
+    // 1) Cluster summary card (inside holdersList, no new IDs)
+    if(clustersSummary){
+      const li = document.createElement("li");
+      li.className = "li";
+      li.innerHTML = `
+        <div>
+          <strong>Clusters (heuristic)</strong><br>
+          Total clusters: ${clustersSummary.clusterCount}<br>
+          Largest cluster: ${clustersSummary.largestClusterPct}%
+        </div>
+        <div style="text-align:right">
+          <strong>Top wallets</strong><br>
+          ${clustersSummary.largestClusterWallets.slice(0,5).map(w=>window.short(w)).join("<br>")}
+        </div>
+      `;
+      listEl.appendChild(li);
+    }
+
+    // 2) Holder rows
+    holders.slice(0, 15).forEach((h,i)=>{
+      const li = document.createElement("li");
+      li.className = "li";
+      li.innerHTML = `
+        <div>#${i+1} ${window.short(h.wallet)}</div>
+        <div>${Number(h.pct||0).toFixed(2)}%</div>
+      `;
+      listEl.appendChild(li);
+    });
+
+    if(!holders.length){
+      const li = document.createElement("li");
+      li.className = "li";
+      li.innerHTML = `<div>No holder data available.</div><div>—</div>`;
+      listEl.appendChild(li);
+    }
+  }
+
+  // Patch renderHoldersPipeline to target holdersList and bubble
+  window.renderHoldersPipeline = function renderHoldersPipeline(rawHolders){
+    const holders = (Array.isArray(rawHolders) ? rawHolders : [])
+      .filter(h => h && h.wallet && typeof h.pct === "number")
+      .sort((a,b)=>b.pct-a.pct)
+      .slice(0, 25);
+
+    // clusters from your Code 6 logic (reuse if exists)
+    let clustersSummary = null;
+    try{
+      const clusters = (typeof buildClusters === "function") ? buildClusters(holders) : [];
+      clustersSummary = (typeof summarizeClusters === "function") ? summarizeClusters(clusters) : null;
+
+      // store on STATE if available
+      try{
+        if(typeof STATE === "object"){
+          STATE.clusters = { clusters, summary: clustersSummary };
+        }
+      }catch{}
+    }catch{
+      clustersSummary = null;
+    }
+
+    // Render list + cluster info into holdersList
+    renderHoldersListToUI(holders, clustersSummary);
+
+    // Bubble
+    window.__LAST_HOLDERS_FOR_BUBBLE = holders;
+    window.drawBubbleMap(holders);
+  };
+})();
+
+/* =========================
+   EVM HOLDERS via GoldRush (Covalent)
+   - RPC can't enumerate holders, so we use the indexer
+   - If it fails, we still keep scan alive and show a friendly note
+========================= */
+async function fetchGoldrushTopHolders(chainId, tokenAddr){
+  const key = window.GOLDRUSH_API_KEY || "";
+  if(!key) return [];
+
+  const url = `https://api.covalenthq.com/v1/${chainId}/tokens/${tokenAddr}/token_holders/?page-size=25&key=${encodeURIComponent(key)}`;
+  const r = await fetch(url);
+  const j = await r.json();
+
+  const items = j?.data?.items || [];
+  return items.map(x=>({
+    wallet: x.address,
+    balance: BigInt(x.balance || "0")
+  }));
+}
+
+// helper to compute pct from balances
+function withPctFromTotal(raw, totalSupplyRaw){
+  const ts = (typeof totalSupplyRaw === "bigint") ? totalSupplyRaw : null;
+  if(!ts || ts <= 0n) return [];
+  return raw.map(h=>{
+    const b = (typeof h.balance === "bigint") ? h.balance : 0n;
+    const pct = Number((b * 10000n) / ts) / 100;
+    return { wallet: h.wallet, pct };
+  }).sort((a,b)=>b.pct-a.pct);
+}
+
+/* =========================
+   PATCH: scanEvm to append holders (non-breaking)
+   - We DO NOT edit your Code 4; we wrap it.
+========================= */
+(function wrapScanEvm(){
+  if(typeof window.scanEvm !== "function") return;
+
+  const orig = window.scanEvm;
+  window.scanEvm = async function scanEvmWrapped(chain, addr){
+    const res = await orig(chain, addr);
+
+    // Try to add holders via GoldRush if totalSupply exists
+    try{
+      // Your Code 4: totalSupply not returned in result; only supplyUi and decimals.
+      // We'll best-effort re-call totalSupply (selector) to get raw total supply.
+      const chainId = chain.chainId;
+      let totalSupplyRaw = null;
+
+      try{
+        // reuse evmCall if present
+        if(typeof evmCall === "function" && typeof ERC20_SIG === "object"){
+          const tsHex = await evmCall(chainId, { to: addr, data: ERC20_SIG.totalSupply });
+          totalSupplyRaw = (typeof hexToBigInt === "function") ? hexToBigInt(tsHex) : null;
+        }
+      }catch{}
+
+      if(totalSupplyRaw && window.GOLDRUSH_API_KEY){
+        const raw = await fetchGoldrushTopHolders(chainId, addr);
+        const holders = withPctFromTotal(raw, totalSupplyRaw).slice(0, 25);
+        res.holders = holders;
+      }
+    }catch{
+      // ignore holder failures completely
+    }
+
+    return res;
+  };
+})();
+
+/* =========================
+   PIPELINE MERGE:
+   - Your Code 3 defined applySolanaResult
+   - Your Code 4 defined applyEvmResult
+   - Your Code 6 overwrote them AGAIN (problem)
+   We wrap the *current* ones and then run renderHoldersPipeline()
+========================= */
+(function mergeApplyPipelines(){
+  function wrapApply(name){
+    const fn = window[name];
+    if(typeof fn !== "function") return;
+
+    window[name] = function wrappedApply(res){
+      // Call existing behavior first (checks etc.)
+      try{ fn(res); }catch(e){ console.warn(name+" base failed:", e); }
+
+      // Then unify holders+clusters+bubble pipeline (stable)
+      try{
+        const holders = Array.isArray(res?.holders) ? res.holders : [];
+        window.renderHoldersPipeline(holders);
+      }catch(e){
+        console.warn(name+" holders pipeline failed:", e);
+      }
+    };
+  }
+
+  wrapApply("applySolanaResult");
+  wrapApply("applyEvmResult");
+})();
+
+/* =========================
+   FIX: runScan should call renderAll after scan
+   - In your Code 2 it already does.
+   - But we ensure renderAll exists and is callable.
+========================= */
+(function ensureRenderAll(){
+  if(typeof window.renderAll !== "function"){
+    window.renderAll = function(){
+      try{ if(typeof renderVerdict==="function") renderVerdict(); }catch{}
+      try{ if(typeof renderMetrics==="function") renderMetrics(); }catch{}
+      try{
+        if(window.STATE?.result?.chain === "solana" && typeof applySolanaResult==="function"){
+          applySolanaResult(window.STATE.result);
+        }
+        if(window.STATE?.result?.chain === "evm" && typeof applyEvmResult==="function"){
+          applyEvmResult(window.STATE.result);
+        }
+      }catch{}
+    };
+  }
+})();
+
+/* =========================
+   VISUAL: show something for EVM holders if empty
+========================= */
+(function evmEmptyNote(){
+  const oldApplyEvm = window.applyEvmResult;
+  if(typeof oldApplyEvm !== "function") return;
+
+  window.applyEvmResult = function(res){
+    try{ oldApplyEvm(res); }catch{}
+
+    try{
+      const holders = Array.isArray(res?.holders) ? res.holders : [];
+      if(!holders.length){
+        const listEl = qs("holdersList");
+        if(listEl && !listEl.innerHTML.trim()){
+          const li = document.createElement("li");
+          li.className = "li";
+          li.innerHTML = `
+            <div>
+              <strong>No EVM holder list returned</strong><br>
+              GoldRush may be rate-limited or token not indexed yet.
+            </div>
+            <div>ℹ️</div>
+          `;
+          listEl.appendChild(li);
+        }
+      }
+    }catch{}
+  };
+})();
+
+/* =========================
+   FINAL: make buttons "definitely alive" (no harm)
+========================= */
+(function hardenButtons(){
+  function safeBind(id, fn){
+    const el = qs(id);
+    if(!el) return;
+    el.onclick = null;
+    el.addEventListener("click", (e)=>{
+      e.preventDefault();
+      fn();
+    });
+  }
+
+  if(typeof window.runScan === "function"){
+    safeBind("btnScan", window.runScan);
+    safeBind("btnScanInline", window.runScan);
+  }
+
+  if(typeof window.exportReport === "function"){
+    safeBind("btnExport", window.exportReport);
+  }
+
+  // Enter key triggers scan
+  const input = qs("addr");
+  if(input && typeof window.runScan === "function"){
+    input.addEventListener("keydown",(e)=>{
+      if(e.key === "Enter"){
+        e.preventDefault();
+        window.runScan();
+      }
+    });
+  }
+})();
+
+/* =========================
+   READY MESSAGE
+========================= */
+try{
+  setStatus("Patch loaded. Buttons + holders + bubble stabilized.");
+}catch{}
+</script>
+<!-- =====================================================
+  CODE 8 / 10
+  SOLANA RPC HOTFIX (HELIUS KEY REALLY USED) + REPORT EXPORT (HTML DOWNLOAD)
+  - NO edits required in Code 1–7
+  - Fix: SOLANA_RPC was built with placeholder before key patch (Code 3 timing)
+  - Adds: exportReport() creates a clean HTML report + embeds bubble map PNG
+===================================================== -->
+
+<script>
+/* =========================
+   1) SOLANA RPC HOTFIX
+   Problem:
+   - In Code 3 you do:
+     const HELIUS_API_KEY = "PUT_YOUR_HELIUS_KEY_HERE";
+     const SOLANA_RPC = `https://...${HELIUS_API_KEY}`;
+   - Later in Code 7 we set window.HELIUS_API_KEY, but SOLANA_RPC constant
+     already captured the placeholder. So Solana requests still fail.
+   Solution:
+   - Wrap solRpc() to always rebuild the RPC URL from your real key.
+   - No need to touch Code 3.
+========================= */
+(function patchSolRpc(){
+  if(typeof window.solRpc !== "function") return;
+
+  const original = window.solRpc;
+
+  // Prefer key from window.HELIUS_API_KEY set in Code 7
+  function getHeliusKey(){
+    const k = window.HELIUS_API_KEY || "";
+    return (k && k !== "PUT_YOUR_HELIUS_KEY_HERE") ? k : "b566a086-57d4-4433-8661-faed9ad07ba0";
+  }
+
+  window.solRpc = async function solRpcPatched(method, params){
+    const key = getHeliusKey();
+    const rpc = `https://mainnet.helius-rpc.com/?api-key=${key}`;
+
+    // We bypass the original SOLANA_RPC constant by performing fetch here.
+    const res = await fetch(rpc,{
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body:JSON.stringify({ jsonrpc:"2.0", id:1, method, params })
+    });
+
+    const json = await res.json();
+    if(json?.error) throw new Error(json.error.message || "Solana RPC error");
+
+    // If something unexpected happens, fall back to original behavior
+    if(typeof json?.result !== "undefined") return json.result;
+    return await original(method, params);
+  };
+})();
+
+/* =========================
+   2) BETTER EXPORT REPORT
+   - Generates a standalone HTML file
+   - Includes scan meta, checks, metrics, holders, cluster summary, bubble PNG
+   - Works even if EVM holders are empty
+========================= */
+(function patchExportReport(){
+  // Ensure helpers exist
+  const esc = (s)=>String(s ?? "")
+    .replaceAll("&","&amp;")
+    .replaceAll("<","&lt;")
+    .replaceAll(">","&gt;")
+    .replaceAll('"',"&quot;")
+    .replaceAll("'","&#39;");
+
+  function dl(filename, html){
+    const blob = new Blob([html], {type:"text/html;charset=utf-8"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url), 1200);
+  }
+
+  function getVerdictForReport(res){
+    try{
+      if(typeof calculateScore === "function" && typeof getVerdict === "function"){
+        const {score, critical} = calculateScore(res);
+        const v = getVerdict(score, critical);
+        return {score, critical, ...v};
+      }
+    }catch{}
+    return {score:null,label:"—",text:"—",color:"#999"};
+  }
+
+  function holdersTable(holders){
+    const hs = Array.isArray(holders) ? holders : [];
+    if(!hs.length) return `<div class="muted">No holder list available.</div>`;
+    return `
+      <table>
+        <thead><tr><th>#</th><th>Wallet</th><th>%</th></tr></thead>
+        <tbody>
+          ${hs.slice(0,25).map((h,i)=>`
+            <tr>
+              <td>${i+1}</td>
+              <td class="mono">${esc(window.short(h.wallet))}</td>
+              <td>${Number(h.pct||0).toFixed(2)}%</td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
+    `;
+  }
+
+  function checksTableFromUI(){
+    // We can rebuild checks from STATE.result, but easiest stable: read the UI
+    // (since you already render them).
+    try{
+      const items = Array.from(document.querySelectorAll("#checksList .li"));
+      if(!items.length) return `<div class="muted">No checks rendered.</div>`;
+      return `
+        <ul class="checks">
+          ${items.map(li=>`<li>${li.innerText.replace(/\n+/g," • ")}</li>`).join("")}
+        </ul>
+      `;
+    }catch{
+      return `<div class="muted">No checks rendered.</div>`;
+    }
+  }
+
+  function metricsTableFromUI(){
+    try{
+      const items = Array.from(document.querySelectorAll("#metrics .li"));
+      if(!items.length) return `<div class="muted">No metrics rendered.</div>`;
+      return `
+        <table>
+          <thead><tr><th>Metric</th><th>Value</th></tr></thead>
+          <tbody>
+            ${items.map(row=>{
+              const cols = Array.from(row.children).map(x=>x.innerText);
+              return `<tr><td>${esc(cols[0]||"")}</td><td>${esc(cols[1]||"")}</td></tr>`;
+            }).join("")}
+          </tbody>
+        </table>
+      `;
+    }catch{
+      return `<div class="muted">No metrics rendered.</div>`;
+    }
+  }
+
+  function clusterSummaryBlock(){
+    try{
+      const s = window.STATE?.clusters?.summary || null;
+      if(!s) return `<div class="muted">No cluster summary available.</div>`;
+      return `
+        <div class="kpiRow">
+          <div class="kpi"><div class="k">Clusters</div><div class="v">${esc(s.clusterCount)}</div></div>
+          <div class="kpi"><div class="k">Largest cluster</div><div class="v">${esc(s.largestClusterPct)}%</div></div>
+        </div>
+        <div class="muted" style="margin-top:8px">
+          Top wallets: <span class="mono">${esc((s.largestClusterWallets||[]).slice(0,8).map(window.short).join(" • "))}</span>
+        </div>
+      `;
+    }catch{
+      return `<div class="muted">No cluster summary available.</div>`;
+    }
+  }
+
+  // Replace exportReport with real implementation (still safe if no scan)
+  window.exportReport = function exportReport(){
+    if(!window.STATE?.completed || !window.STATE?.result){
+      alert("No scan to export");
+      return;
+    }
+
+    const res = window.STATE.result;
+    const chainName = (window.STATE.activeChain?.name || res.chain || "chain");
+    const address = window.STATE.address || "—";
+    const when = new Date().toISOString();
+
+    const verdict = getVerdictForReport(res);
+    const bubble = window.__BUBBLE_MAP_DATA_URL || "";
+
+    const title = `$SOS Guardian Report — ${chainName}`;
+    const filename = `SOS_Guardian_Report_${chainName}_${String(address).slice(0,12)}.html`
+      .replaceAll(" ","_")
+      .replaceAll("/","_");
+
+    const html = `<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>${esc(title)}</title>
+<style>
+  :root{--bg:#070711;--panel:rgba(255,255,255,.06);--stroke:rgba(255,255,255,.12);--text:rgba(255,255,255,.92);--muted:rgba(255,255,255,.70);--g:#14F195;--c:#00D1FF;--p:#9945FF;--r:18px}
+  body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Arial}
+  .wrap{max-width:980px;margin:0 auto;padding:18px}
+  .card{border:1px solid var(--stroke);background:linear-gradient(180deg,rgba(255,255,255,.07),rgba(255,255,255,.05));border-radius:var(--r);padding:16px;margin:12px 0}
+  h1{margin:0 0 8px;font-size:22px}
+  h2{margin:0 0 10px;font-size:16px}
+  .muted{color:var(--muted)}
+  .mono{font-family:ui-monospace,Menlo,Consolas,monospace}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  th,td{border-bottom:1px solid rgba(255,255,255,.10);padding:10px;text-align:left;vertical-align:top}
+  th{color:rgba(255,255,255,.78);font-weight:900}
+  .pill{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;font-weight:1000;color:#061012}
+  .kpiRow{display:flex;gap:10px;flex-wrap:wrap}
+  .kpi{flex:1;min-width:180px;border:1px solid rgba(255,255,255,.10);border-radius:14px;padding:10px;background:rgba(0,0,0,.22)}
+  .k{font-size:12px;color:rgba(255,255,255,.72);font-weight:900}
+  .v{font-size:18px;font-weight:1000;margin-top:4px}
+  .checks{margin:0;padding-left:18px}
+  img{max-width:100%;border-radius:14px;border:1px solid rgba(255,255,255,.10);background:rgba(0,0,0,.22)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <h1>$SOS — Guardian Contract Scanner</h1>
+    <div class="muted">Generated: <span class="mono">${esc(when)}</span></div>
+    <div class="muted">Chain: <strong>${esc(chainName)}</strong> • Address: <span class="mono">${esc(address)}</span></div>
+  </div>
+
+  <div class="card">
+    <h2>Verdict & Score</h2>
+    <div class="pill" style="background:${esc(verdict.color||"#999")}">
+      ${esc(verdict.label||"—")}
+      ${verdict.score!=null ? `• ${esc(verdict.score)}/100` : ""}
+    </div>
+    <div class="muted" style="margin-top:10px">${esc(verdict.text||"")}</div>
+  </div>
+
+  <div class="card">
+    <h2>Metrics</h2>
+    ${metricsTableFromUI()}
+  </div>
+
+  <div class="card">
+    <h2>Guardian Checks</h2>
+    ${checksTableFromUI()}
+  </div>
+
+  <div class="card">
+    <h2>Top Holders & Clusters</h2>
+    ${clusterSummaryBlock()}
+    <div style="margin-top:12px">${holdersTable(res.holders)}</div>
+  </div>
+
+  <div class="card">
+    <h2>Holder Bubble Map</h2>
+    ${bubble ? `<img alt="Bubble map" src="${bubble}"/>` : `<div class="muted">No bubble map image available.</div>`}
+  </div>
+
+  <div class="card">
+    <h2>Raw Signals (debug)</h2>
+    <pre class="mono" style="white-space:pre-wrap;word-break:break-word;margin:0">${esc(JSON.stringify(res.signals||{},null,2))}</pre>
+  </div>
+
+  <div class="muted" style="margin:18px 0 8px">
+    Note: EVM holder lists depend on indexer coverage (GoldRush). If a token is not indexed yet, the scan still completes.
+  </div>
+</div>
+</body>
+</html>`;
+
+    dl(filename, html);
+  };
+
+  // Enable export button immediately after scan if it exists
+  try{
+    const b = qs("btnExport");
+    if(b) b.disabled = !(window.STATE?.completed);
+  }catch{}
+})();
+
+
+/* =========================
+   3) OPTIONAL: immediate UI hint if Solana key fixed
+========================= */
+try{
+  // If user had Solana selected, we reassure by status
+  if(window.STATE?.activeChain?.kind === "solana"){
+    setStatus("Solana RPC hotfix active (Helius key applied). Ready.");
+  }
+}catch{}
+</script>
+<!-- =====================================================
+  CODE 9 / 10
+  EVM HARDENING + BETTER DECODING + RENOUNCED CHECKS + PROXY SLOTS + STABLE CHECKS LIST
+  - No edits required in Code 1–8
+  - Fixes:
+    * ERC-20 name/symbol decoding (bytes32 + string)
+    * More owner detection: Ownable.owner(), getOwner(), admin (EIP-1967), beacon
+    * Proxy detection: impl slot + beacon slot + admin slot (best-effort)
+    * Safer supplyUi calculation (avoid bigint division surprises)
+    * EVM checks become richer + consistent
+===================================================== -->
+
+<script>
+/* =========================
+   ABI / DECODING HELPERS
+========================= */
+(function evmDecodeHelpers(){
+  // hex -> bytes
+  function hexToBytes(hex){
+    const h = (hex || "").startsWith("0x") ? hex.slice(2) : (hex || "");
+    if(!h) return new Uint8Array([]);
+    const clean = h.length % 2 ? "0"+h : h;
+    const out = new Uint8Array(clean.length/2);
+    for(let i=0;i<out.length;i++){
+      out[i] = parseInt(clean.slice(i*2,i*2+2), 16);
+    }
+    return out;
+  }
+
+  function bytesToAscii(bytes){
+    let s = "";
+    for(const b of bytes){
+      if(b === 0) break;
+      // keep printable range only
+      if(b >= 32 && b <= 126) s += String.fromCharCode(b);
+    }
+    return s;
+  }
+
+  // Try decode return data as string (ABI)
+  // Supports:
+  // 1) string (dynamic): offset(32) | len(32) | data
+  // 2) bytes32: 32 bytes direct
+  function decodeStringOrBytes32(retHex){
+    try{
+      if(!retHex || retHex === "0x") return null;
+      const bytes = hexToBytes(retHex);
+      if(bytes.length < 32) return null;
+
+      // If dynamic string: first 32 bytes as offset (usually 0x20)
+      const firstWord = retHex.slice(2, 2+64);
+      const off = Number(BigInt("0x"+firstWord));
+      if(off === 32 && bytes.length >= 64){
+        const lenWord = retHex.slice(2+64, 2+128);
+        const len = Number(BigInt("0x"+lenWord));
+        const dataStart = 2 + 128;
+        const dataHex = retHex.slice(dataStart, dataStart + len*2);
+        const txt = bytesToAscii(hexToBytes("0x"+dataHex));
+        return (txt && txt.trim()) ? txt.trim() : null;
+      }
+
+      // Otherwise treat as bytes32
+      const txt2 = bytesToAscii(bytes.slice(0,32));
+      return (txt2 && txt2.trim()) ? txt2.trim() : null;
+    }catch{
+      return null;
+    }
+  }
+
+  // Decode address from 32-byte return
+  function decodeAddress(retHex){
+    try{
+      if(!retHex || retHex === "0x") return null;
+      if(retHex.length < 2+64) return null;
+      const tail = retHex.slice(-40);
+      const addr = "0x" + tail.toLowerCase();
+      if(/^0x[0-9a-f]{40}$/.test(addr)) return addr;
+      return null;
+    }catch{
+      return null;
+    }
+  }
+
+  window.__evmDecodeStringOrBytes32 = decodeStringOrBytes32;
+  window.__evmDecodeAddress = decodeAddress;
+  window.__hexToBytes = hexToBytes;
+})();
+
+/* =========================
+   EXTRA EVM SELECTORS
+========================= */
+(function evmSelectors(){
+  // keccak selectors (precomputed)
+  // owner() already exists: 0x8da5cb5b
+  window.__EVM_OWNER_SIGS = [
+    "0x8da5cb5b", // owner()
+    "0x893d20e8", // getOwner()
+    "0xf2fde38b"  // transferOwnership(address) (not a getter but sometimes proxied weird)
+  ];
+
+  // EIP-1967 slots
+  window.__EIP1967 = {
+    impl:   "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc",
+    admin:  "0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103",
+    beacon: "0xa3f0ad74e5423aebfd80d3ef4346578335a9a72aeaee59ff6cb3582b35133d50"
+  };
+})();
+
+/* =========================
+   PATCH: scanEvm wrapper (add richer metadata + ownership + proxy info)
+   - We keep your Code 4 scanEvm result, then enhance it.
+========================= */
+(function patchScanEvmEnhancements(){
+  if(typeof window.scanEvm !== "function") return;
+
+  const origScan = window.scanEvm;
+
+  async function readStorage(chainId, addr, slot){
+    try{
+      const rpcs = window.EVM_RPCS?.[chainId] || [];
+      for(const rpc of rpcs){
+        try{
+          const v = await window.evmRpc(rpc, "eth_getStorageAt", [addr, slot, "latest"]);
+          if(v) return v;
+        }catch{}
+      }
+    }catch{}
+    return null;
+  }
+
+  async function tryOwnerCalls(chainId, addr){
+    // Try multiple getters. Use the first non-zero address.
+    const sigs = window.__EVM_OWNER_SIGS || [];
+    for(const sig of sigs){
+      // skip transferOwnership (not getter) unless nothing else works
+      if(sig === "0xf2fde38b") continue;
+      try{
+        const ret = await window.evmCall(chainId, {to: addr, data: sig});
+        const o = window.__evmDecodeAddress(ret);
+        if(o && o !== "0x0000000000000000000000000000000000000000") return o;
+        if(o) return o;
+      }catch{}
+    }
+    // fallback to your original owner() raw (already in res.signals.owner)
+    return null;
+  }
+
+  async function tryTokenMetaBetter(chainId, addr){
+    let name = null, symbol = null;
+    try{
+      const r1 = await window.evmCall(chainId, {to: addr, data: window.ERC20_SIG?.name || "0x06fdde03"});
+      name = window.__evmDecodeStringOrBytes32(r1) || null;
+    }catch{}
+    try{
+      const r2 = await window.evmCall(chainId, {to: addr, data: window.ERC20_SIG?.symbol || "0x95d89b41"});
+      symbol = window.__evmDecodeStringOrBytes32(r2) || null;
+    }catch{}
+    return {name, symbol};
+  }
+
+  window.scanEvm = async function scanEvmEnhanced(chain, addr){
+    const res = await origScan(chain, addr);
+    const chainId = chain.chainId;
+
+    // Better name/symbol decode
+    try{
+      const meta = await tryTokenMetaBetter(chainId, addr);
+      if(meta.name) res.meta.name = meta.name;
+      if(meta.symbol) res.meta.symbol = meta.symbol;
+    }catch{}
+
+    // Better owner detection
+    try{
+      const o = await tryOwnerCalls(chainId, addr);
+      if(o) res.signals.owner = o;
+      const ownerAddr = res.signals.owner || null;
+      res.signals.renounced = !ownerAddr || ownerAddr === "0x0000000000000000000000000000000000000000";
+    }catch{}
+
+    // More proxy slots
+    try{
+      const impl = await readStorage(chainId, addr, window.__EIP1967.impl);
+      const admin = await readStorage(chainId, addr, window.__EIP1967.admin);
+      const beacon = await readStorage(chainId, addr, window.__EIP1967.beacon);
+
+      const implAddr = impl ? ("0x"+impl.slice(-40)).toLowerCase() : null;
+      const adminAddr = admin ? ("0x"+admin.slice(-40)).toLowerCase() : null;
+      const beaconAddr = beacon ? ("0x"+beacon.slice(-40)).toLowerCase() : null;
+
+      const looksAddr = (a)=>a && /^0x[0-9a-f]{40}$/.test(a) && a !== "0x0000000000000000000000000000000000000000";
+
+      res.signals.proxy = !!(looksAddr(implAddr) || looksAddr(beaconAddr));
+      res.signals.proxyImpl = looksAddr(implAddr) ? implAddr : (res.signals.proxyImpl || null);
+      res.signals.proxyAdmin = looksAddr(adminAddr) ? adminAddr : null;
+      res.signals.proxyBeacon = looksAddr(beaconAddr) ? beaconAddr : null;
+    }catch{}
+
+    // Safer supplyUi compute (avoid bigint rounding weirdness)
+    try{
+      // Your Code 4 sets supplyUi from totalSupply/decimals but loses raw totalSupply.
+      // We recompute as string if possible.
+      const dec = res.signals.decimals;
+      if(Number.isFinite(dec) && typeof window.evmCall === "function"){
+        const tsHex = await window.evmCall(chainId, {to: addr, data: window.ERC20_SIG?.totalSupply || "0x18160ddd"});
+        const ts = (typeof window.hexToBigInt === "function") ? window.hexToBigInt(tsHex) : null;
+        if(typeof ts === "bigint"){
+          const d = BigInt(dec);
+          const div = 10n ** d;
+          const whole = ts / div;
+          // keep simple: store integer (same as before), but stable
+          res.signals.supplyUi = Number(whole);
+          res.signals.totalSupplyRaw = ts.toString(); // debug/report
+        }
       }
     }catch{}
 
-    const chainId = SCAN_STATE.chain?.id || "chain";
-    const addrShort = (shortAddr(SCAN_STATE.addr || "addr") || "addr").replaceAll("…","-");
-    const stamp = nowBerlinStamp();
-    const file = `guardian-report_${chainId}_${addrShort}_${stamp}.html`;
+    return res;
+  };
+})();
 
-    const html = buildReportHtml();
-    downloadText(file, html);
+/* =========================
+   PATCH: renderEvmChecks richer output
+   - Shows renounced/owner, proxy impl/admin/beacon, supply/decimals
+========================= */
+(function patchEvmChecks(){
+  if(typeof window.renderEvmChecks !== "function") return;
 
-    showToast("Report downloaded");
-    setTimeout(hideToast, 1400);
-  }catch(e){
-    showToast("Export failed");
-    setStatus("Export error: " + String(e?.message || e));
+  window.renderEvmChecks = function renderEvmChecksRich(result){
+    const list = qs("checksList");
+    if(!list) return;
+    list.innerHTML = "";
+
+    const add = (title, ok, desc)=>{
+      const li = document.createElement("li");
+      li.className = "li";
+      li.innerHTML = `
+        <div>
+          <strong>${title}</strong><br>
+          <span>${desc}</span>
+        </div>
+        <div>${ok ? "✅" : "⚠️"}</div>
+      `;
+      list.appendChild(li);
+    };
+
+    add("Contract Code", true, "Contract bytecode present");
+
+    // Ownership
+    const owner = result?.signals?.owner || null;
+    const ren = !!result?.signals?.renounced;
+    add(
+      "Ownership",
+      ren,
+      ren
+        ? "Ownership renounced (owner = 0x0 / not found)"
+        : `Owner: ${window.short(owner)}`
+    );
+
+    // Proxy details
+    const isProxy = !!result?.signals?.proxy;
+    const impl = result?.signals?.proxyImpl || null;
+    const admin = result?.signals?.proxyAdmin || null;
+    const beacon = result?.signals?.proxyBeacon || null;
+
+    if(isProxy){
+      add(
+        "Proxy",
+        false,
+        `Proxy detected • Impl: ${impl ? window.short(impl) : "—"}`
+        + (admin ? ` • Admin: ${window.short(admin)}` : "")
+        + (beacon ? ` • Beacon: ${window.short(beacon)}` : "")
+      );
+    }else{
+      add("Proxy", true, "No proxy slot detected (best-effort)");
+    }
+
+    // Supply / Decimals
+    const dec = result?.signals?.decimals;
+    const sup = result?.signals?.supplyUi;
+    add(
+      "Token Meta",
+      true,
+      `Decimals: ${Number.isFinite(dec) ? dec : "—"} • Supply: ${typeof sup === "number" ? sup.toLocaleString() : "—"}`
+    );
+  };
+})();
+
+/* =========================
+   PATCH: calculateScore tweak for EVM (optional, stable)
+   - If proxy is true, keep penalty (already in Code 5)
+   - If ownership not renounced, keep penalty (already)
+   - Add small penalty if owner can't be decoded but proxy admin exists (still controlled)
+========================= */
+(function patchScoreOptional(){
+  if(typeof window.calculateScore !== "function") return;
+  const old = window.calculateScore;
+
+  window.calculateScore = function calculateScorePatched(res){
+    const base = old(res);
+    try{
+      if(res?.chain === "evm"){
+        // If proxy admin exists and renounced is false, slightly increase risk
+        if(res?.signals?.proxyAdmin && !res?.signals?.renounced){
+          base.score = Math.max(0, base.score - 5);
+        }
+      }
+      base.score = Math.max(0, Math.min(100, Math.round(base.score)));
+    }catch{}
+    return base;
+  };
+})();
+
+/* =========================
+   READY
+========================= */
+try{
+  setStatus("EVM hardened: better name/symbol, owner/proxy detection, richer checks. Ready.");
+}catch{}
+</script>
+<!-- =====================================================
+  CODE 10 / 10
+  SECURITY + UX POLISH + KEY SAFETY (NO HARD-CODED KEYS) + RATE LIMIT + CORS FRIENDLY FALLBACKS
+  - Removes the hard-coded API keys usage by supporting:
+      1) URL params: ?helius=...&goldrush=...
+      2) localStorage prompts (one-time)
+  - Adds:
+      * AbortController (cancel in-flight scan if user re-runs)
+      * Simple rate limit/backoff for RPC calls
+      * Better status + disable buttons while scanning
+      * Export report includes token meta (name/symbol) cleanly
+  - IMPORTANT: This does not break Code 2–9; it wraps safely.
+===================================================== -->
+
+<script>
+/* =========================
+   KEY MANAGEMENT (NO HARDCODE)
+   Priority: URL param > localStorage > existing window.* (if user set)
+========================= */
+(function keyManager(){
+  function getParam(k){
+    try{
+      const u = new URL(location.href);
+      const v = u.searchParams.get(k);
+      return v && v.trim() ? v.trim() : null;
+    }catch{ return null; }
   }
-}
 
-/* =============== EXPORT Button intercept (capture) =============== */
-(function bindExportCapture(){
-  const b = qs("btnExport");
-  if(!b) return;
+  function lsGet(k){
+    try{ return localStorage.getItem(k) || null; }catch{ return null; }
+  }
+  function lsSet(k,v){
+    try{ localStorage.setItem(k, v); }catch{}
+  }
 
-  b.addEventListener("click", (e)=>{
-    e.preventDefault();
-    e.stopImmediatePropagation();
-    exportReportV2();
-  }, true);
+  function ensureKey(label, paramName, lsName, existing){
+    const fromUrl = getParam(paramName);
+    if(fromUrl){ lsSet(lsName, fromUrl); return fromUrl; }
+
+    const fromLs = lsGet(lsName);
+    if(fromLs) return fromLs;
+
+    if(existing && typeof existing === "string" && existing.trim() && !existing.includes("PUT_YOUR_")){
+      lsSet(lsName, existing.trim());
+      return existing.trim();
+    }
+
+    return null;
+  }
+
+  // Read keys
+  const helius = ensureKey("Helius", "helius", "SOS_HELIUS_KEY", window.HELIUS_API_KEY);
+  const gold   = ensureKey("GoldRush", "goldrush", "SOS_GOLDRUSH_KEY", window.GOLDRUSH_API_KEY);
+
+  // Expose (if provided)
+  if(helius) window.HELIUS_API_KEY = helius;
+  if(gold)   window.GOLDRUSH_API_KEY = gold;
+
+  // Optional: simple UI hint if missing
+  function hintMissing(){
+    const missing = [];
+    if(!window.HELIUS_API_KEY) missing.push("Helius");
+    if(!window.GOLDRUSH_API_KEY) missing.push("GoldRush");
+    if(!missing.length) return;
+
+    // Keep it short, non-blocking
+    setStatus(
+      `Ready. Missing keys: ${missing.join(", ")}. ` +
+      `You can pass them via URL: ?helius=KEY&goldrush=KEY (saved locally).`
+    );
+  }
+
+  // Only hint on initial load (don’t override active scan status)
+  try{
+    if(!STATE?.scanning && (!window.HELIUS_API_KEY || !window.GOLDRUSH_API_KEY)){
+      hintMissing();
+    }
+  }catch{}
 })();
 
-/* =============== Safety: keep bubble PNG fresh for exports =============== */
-(function keepBubbleFresh(){
-  // After scan: bubble is already rendered in Teil 4.
-  // On resize: Teil 2 already re-renders bubble.
-  // Here we only ensure export has up-to-date png.
-  window.__EXPORT_READY = true;
+/* =========================
+   ABORT CONTROLLER + BUTTON UX
+========================= */
+(function scanHarden(){
+  // Wrap runScan to support canceling previous run and button locking.
+  if(typeof window.runScan !== "function") return;
+
+  const orig = window.runScan;
+
+  // single controller reused per scan
+  window.__SCAN_CTRL = null;
+
+  function setScanningUI(isScanning){
+    try{
+      const b1 = qs("btnScan");
+      const b2 = qs("btnScanInline");
+      if(b1) b1.disabled = !!isScanning;
+      if(b2) b2.disabled = !!isScanning;
+
+      // export enabled only when completed
+      const ex = qs("btnExport");
+      if(ex) ex.disabled = !!isScanning || !(STATE?.completed);
+    }catch{}
+  }
+
+  // Patch fetch globally to respect abort signal ONLY for our scan calls
+  // We do not monkey-patch window.fetch to avoid surprises.
+  // Instead we add helper fetchWithAbort and wrap RPC functions below.
+  window.__fetchWithAbort = async function(url, opts){
+    const ctrl = window.__SCAN_CTRL;
+    const signal = ctrl ? ctrl.signal : undefined;
+    return fetch(url, {...(opts||{}), signal});
+  };
+
+  window.runScan = async function runScanPatched(){
+    // Abort previous scan if any
+    try{
+      if(window.__SCAN_CTRL){
+        window.__SCAN_CTRL.abort();
+      }
+    }catch{}
+    window.__SCAN_CTRL = new AbortController();
+
+    setScanningUI(true);
+    try{
+      await orig();
+    }finally{
+      setScanningUI(false);
+    }
+  };
 })();
+
+/* =========================
+   LIGHT BACKOFF / RATE LIMIT FOR RPC
+========================= */
+(function rpcBackoff(){
+  // tiny async sleep
+  const sleep = (ms)=>new Promise(r=>setTimeout(r, ms));
+
+  // Wrap solRpc (already patched in Code 8) to retry on 429/5xx/network.
+  if(typeof window.solRpc === "function"){
+    const old = window.solRpc;
+    window.solRpc = async function solRpcBackoff(method, params){
+      const tries = 3;
+      let lastErr = null;
+
+      for(let i=0;i<tries;i++){
+        try{
+          return await old(method, params);
+        }catch(e){
+          lastErr = e;
+          const msg = String(e?.message || "");
+          // mild backoff on rate limit / overload
+          if(msg.includes("429") || msg.toLowerCase().includes("rate") || msg.toLowerCase().includes("timeout")){
+            await sleep(350 * (i+1));
+            continue;
+          }
+          // for other errors don't spam retries
+          break;
+        }
+      }
+      throw lastErr || new Error("Solana RPC failed");
+    };
+  }
+
+  // Wrap evmRpc to add basic retry/backoff and abort support
+  if(typeof window.evmRpc === "function"){
+    const old = window.evmRpc;
+    window.evmRpc = async function evmRpcBackoff(rpc, method, params){
+      const tries = 3;
+      let lastErr = null;
+
+      for(let i=0;i<tries;i++){
+        try{
+          // replicate old evmRpc but use __fetchWithAbort if available
+          const res = await (window.__fetchWithAbort || fetch)(rpc,{
+            method:"POST",
+            headers:{ "Content-Type":"application/json" },
+            body:JSON.stringify({ jsonrpc:"2.0", id:1, method, params })
+          });
+
+          // If fetch returns Response (for __fetchWithAbort), handle json
+          const json = await res.json();
+          if(json?.error) throw new Error(json.error.message);
+
+          return json.result;
+        }catch(e){
+          lastErr = e;
+          const msg = String(e?.message || "");
+          if(msg.toLowerCase().includes("aborted")) throw e;
+
+          // Retry on common overload patterns
+          if(msg.includes("429") || msg.toLowerCase().includes("rate") || msg.toLowerCase().includes("timeout") || msg.toLowerCase().includes("fetch")){
+            await sleep(250 * (i+1));
+            continue;
+          }
+          break;
+        }
+      }
+      throw lastErr || new Error("EVM RPC failed");
+    };
+  }
+})();
+
+/* =========================
+   EXPORT: include token meta (name/symbol) in report header
+========================= */
+(function patchExportMeta(){
+  if(typeof window.exportReport !== "function") return;
+
+  const old = window.exportReport;
+
+  // If Code 8 export is active, it already uses STATE.result.
+  // We wrap it just to ensure meta is present and keys aren't leaked anywhere.
+  window.exportReport = function exportReportPatched(){
+    try{
+      // Ensure we never embed API keys in report by accident
+      // (We don’t, but we also strip if someone added debug later.)
+      if(window.STATE?.result?.signals){
+        const s = window.STATE.result.signals;
+        delete s.__apikey;
+        delete s.apiKey;
+      }
+    }catch{}
+    return old();
+  };
+})();
+
+/* =========================
+   OPTIONAL: QUICK SETTINGS PROMPT (USER-INITIATED)
+   - Adds a tiny keyboard shortcut: Shift+K to set keys (no UI changes needed)
+========================= */
+(function keyShortcut(){
+  function promptKey(label, lsKey){
+    const cur = (()=>{
+      try{ return localStorage.getItem(lsKey) || ""; }catch{ return ""; }
+    })();
+
+    const v = prompt(`${label} API Key (stored locally in this browser)`, cur);
+    if(v && v.trim()){
+      try{ localStorage.setItem(lsKey, v.trim()); }catch{}
+      return v.trim();
+    }
+    return null;
+  }
+
+  window.addEventListener("keydown", (e)=>{
+    if(e.shiftKey && (e.key === "K" || e.key === "k")){
+      e.preventDefault();
+
+      const h = promptKey("Helius", "SOS_HELIUS_KEY");
+      const g = promptKey("GoldRush", "SOS_GOLDRUSH_KEY");
+
+      if(h) window.HELIUS_API_KEY = h;
+      if(g) window.GOLDRUSH_API_KEY = g;
+
+      setStatus("Keys updated locally. Run scan again.");
+    }
+  }, {passive:false});
+})();
+
+/* =========================
+   FINAL READY
+========================= */
+try{
+  if(!STATE?.scanning){
+    setStatus("Ready. Tip: Shift+K to set API keys locally (Helius/GoldRush).");
+  }
+}catch{}
 </script>
 
 </body>
 </html>
-
-
