@@ -2835,8 +2835,22 @@
               })
             : [];
           renderClusterLite(holderForCluster);
+          
+          LAST_SCAN = {
+  chain,
+  address: addr,
+  score,
+  verdict,
+  metrics: metricRows,
+  checks,
+  todos: todoSol(sig),
+  signals: {
+    top1Pct: top1Pct ?? undefined,
+    top3Pct: top3Pct ?? undefined,
+    top20Pct: top20 ?? undefined
+  }
+};
 
-          LAST_SCAN = { chain, address: addr, score, verdict, metrics: metricRows, checks, todos: todoSol(sig) };
           enableExportLite();
 
           qs("vizOverlay").style.display = (VIZ.nodes.length ? "none" : "flex");
@@ -2937,6 +2951,19 @@ renderClusterCardsEvm({ chainId: evmChainId, holders: holdersForTags.slice(0,10)
         SCANNING = false;
       }
     }
+// === Holder % signals (Solana) ===
+let top1Pct = null;
+let top3Pct = null;
+
+if(Number.isFinite(uiSupply) && uiSupply > 0 && Array.isArray(largest) && largest.length){
+  const top1Amt = Number(largest[0]?.uiAmount || 0);
+  top1Pct = (top1Amt / uiSupply) * 100;
+
+  top3Pct = largest.slice(0,3).reduce((acc, x) => {
+    const amt = Number(x?.uiAmount || 0);
+    return acc + (amt / uiSupply) * 100;
+  }, 0);
+}
 
     /* =========================================================
    PART 3 — EVM UPGRADE: better logos + address tagging + richer cluster cards
