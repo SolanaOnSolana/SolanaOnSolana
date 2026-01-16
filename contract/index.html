@@ -2508,10 +2508,10 @@
         setText("scanHint", programType === "TOKEN_2022" ? "Token-2022 • Review extensions" : "Standard checks");
 
         const metricRows = [
-          { label:"Guardian Score", value:`${score}/100`, badge: verdict.label, barPct: score, mini:"Composite risk score (on-chain)."
+          { label:"Guardian Score", value:`${score}/100`, badge: verdict.label, barPct: score, mini:"Composite risk score (heuristic)." },
           { label:"Token Standard", value: programType==="TOKEN_2022" ? "Token-2022" : (programType==="SPL_TOKEN" ? "SPL Token" : "Unknown"), badge:"On-chain", mini:"Mint owner program." },
           { label:"Total Supply", value: Number.isFinite(uiSupply) ? fmtInt(uiSupply) : "—", badge:"Supply", mini:"From getTokenSupply." },
-          { label:"Top20 Concentration", value: Number.isFinite(top20) ? fmtPct(top20) : "—", badge:"Holders", mini:"Derived from on-chain largest holder data.", barPct: Number.isFinite(top20) ? clamp(top20,0,100) : undefined }
+          { label:"Top20 Concentration", value: Number.isFinite(top20) ? fmtPct(top20) : "—", badge:"Holders", mini:"Approx via largest accounts.", barPct: Number.isFinite(top20) ? clamp(top20,0,100) : undefined }
         ];
         renderMetrics(metricRows);
 
@@ -2584,7 +2584,7 @@
         const supplyText = supplyReadable ? formatUnits(metaOnChain.totalSupply, metaOnChain.decimals ?? 18) : "—";
 
         const metricRows = [
-          { label:"Guardian Score", value:`${score}/100`, badge: verdict.label, barPct: score, mini:"Composite risk score derived from on-chain data." },
+          { label:"Guardian Score", value:`${score}/100`, badge: verdict.label, barPct: score, mini:"Composite risk score (heuristic)." },
           { label:"Owner", value: owner ? shortAddr(owner) : "—", badge: owner ? "Admin" : "Unknown", mini:"Best-effort owner() call." },
           { label:"Proxy", value: proxy?.isProxy ? "Upgradeable" : "No signal", badge: proxy?.isProxy ? "WATCH" : "PASS", mini:"EIP-1967 slots check." },
           { label:"Total Supply", value: supplyText || "—", badge: supplyReadable ? "On-chain" : "Unknown", mini:"From totalSupply()." }
