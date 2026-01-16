@@ -3930,5 +3930,758 @@ function rewireScanButtonsForPart3(){
   }
 })();
 </script>
+
+  <script>
+/* ============================================================
+   PART 4 — Real Transfer Edges (EVM via GoldRush) + Cluster v2
+            + Export Scan Report (Brand + Token Logo + Viz Snapshot)
+   - Adds transfer-based graph edges on EVM
+   - Upgrades cluster intelligence to use real edges (when available)
+   - Enables Download Scan Report
+============================================================ */
+
+/* ===========================
+   BigInt-safe formatting
+   =========================== */
+function bi(x){
+  try{
+    if(typeof x === "bigint") return x;
+    if(typeof x === "number" && Number.isFinite(x)) return BigInt(Math.trunc(x));
+    const s = String(x ?? "").trim();
+    if(!s) return null;
+    if(s.startsWith("0x") || s.startsWith("0X")) return BigInt(s);
+    return BigInt(s);
+  }catch{ return null; }
+}
+
+function formatUnitsBI(amountBI, decimals){
+  try{
+    const d = Math.max(0, Math.min(80, Number(decimals ?? 0)));
+    const base = 10n ** BigInt(d);
+    const whole = amountBI / base;
+    const frac = amountBI % base;
+
+    // keep 6 decimals max (trim zeros)
+    const fracStrRaw = frac.toString().padStart(d, "0");
+    const fracStr = fracStrRaw.slice(0, Math.min(6, d)).replace(/0+$/,"");
+    return fracStr ? `${whole.toString()}.${fracStr}` : whole.toString();
+  }catch{
+    return null;
+  }
+}
+
+function fmtTokenAmount(raw, decimals){
+  const a = bi(raw);
+  if(a === null) return "—";
+  const s = formatUnitsBI(a, decimals);
+  if(!s) return a.toString();
+  // shorten huge numbers lightly
+  const n = Number(s);
+  if(Number.isFinite(n)){
+    if(n >= 1e9) return (n/1e9).toFixed(2)+"B";
+    if(n >= 1e6) return (n/1e6).toFixed(2)+"M";
+    if(n >= 1e3) return (n/1e3).toFixed(2)+"K";
+    return n.toFixed(4).replace(/0+$/,"").replace(/\.$/,"");
+  }
+  return s;
+}
+
+/* ===========================
+   GoldRush Transfer Fetch (best-effort)
+   We try multiple endpoints because naming differs across versions.
+   =========================== */
+async function goldrushFetchFirstOk(urls){
+  const k = (CFG.GOLDRUSH_API_KEY || "").trim();
+  if(!k) throw new Error("No GoldRush key set");
+
+  let lastErr = null;
+  for(const url of urls){
+    try{
+      const res = await safeFetch(url, {
+        method: "GET",
+        headers: { "Authorization": "Bearer " + k }
+      }, { key: "gold:any:" + url, cache:false, timeoutMs: 20000, retries: 1 });
+
+      const j = await res.json().catch(()=>null);
+      if(j && j.data) return { url, json: j };
+      lastErr = new Error("No data field");
+    }catch(e){
+      lastErr = e;
+      continue;
+    }
+  }
+  throw lastErr || new Error("GoldRush transfers failed");
+}
+
+function parseTransfersFromGoldrush(json){
+  // Best-effort extraction across shapes:
+  // data.items[] or data.items[].transfers or data.transactions etc.
+  const d = json?.data;
+  if(!d) return [];
+
+  let items = null;
+  if(Array.isArray(d.items)) items = d.items;
+  else if(Array.isArray(d.transfers)) items = d.transfers;
+  else if(Array.isArray(d.transactions)) items = d.transactions;
+
+  if(!Array.isArray(items)) return [];
+
+  // Normalize to {from,to,value,tx,ts}
+  const out = [];
+  for(const it of items){
+    // Common fields
+    const from = it?.from_address || it?.from || it?.sender_address || it?.sender || it?.from_address_label || "";
+    const to   = it?.to_address   || it?.to   || it?.receiver_address || it?.receiver || it?.to_address_label || "";
+    const val  = it?.delta || it?.value || it?.transfer_amount || it?.amount || it?.value_quote || it?.raw_amount || null;
+
+    const tx   = it?.tx_hash || it?.transaction_hash || it?.hash || it?.tx || "";
+    const ts   = it?.block_signed_at || it?.block_timestamp || it?.timestamp || it?.date || "";
+
+    if(from && to){
+      out.push({
+        from: String(from),
+        to: String(to),
+        value: val,
+        tx: String(tx || ""),
+        ts: String(ts || "")
+      });
+    }else if(Array.isArray(it?.transfers)){
+      // Sometimes items are transactions containing transfers
+      for(const tr of it.transfers){
+        const f = tr?.from_address || tr?.from || "";
+        const t = tr?.to_address || tr?.to || "";
+        const v = tr?.delta || tr?.value || tr?.amount || tr?.transfer_amount || null;
+        if(f && t){
+          out.push({
+            from: String(f),
+            to: String(t),
+            value: v,
+            tx: String(it?.tx_hash || it?.transaction_hash || it?.hash || ""),
+            ts: String(it?.block_signed_at || it?.block_timestamp || it?.timestamp || "")
+          });
+        }
+      }
+    }
+  }
+  return out;
+}
+
+async function goldrushTokenTransfers(chainId, tokenAddr, pageSize){
+  const ps = clamp(Number(pageSize || 200), 50, 500);
+  // Try common candidates (v1/v2 naming differences)
+  const urls = [
+    `https://api.covalenthq.com/v1/${chainId}/tokens/${tokenAddr}/token_transfers_v2/?page-size=${ps}&page-number=0`,
+    `https://api.covalenthq.com/v1/${chainId}/tokens/${tokenAddr}/token_transfers/?page-size=${ps}&page-number=0`,
+    `https://api.covalenthq.com/v1/${chainId}/tokens/${tokenAddr}/transactions_v2/?page-size=${ps}&page-number=0`,
+    `https://api.covalenthq.com/v1/${chainId}/tokens/${tokenAddr}/transactions/?page-size=${ps}&page-number=0`
+  ];
+
+  const { json } = await goldrushFetchFirstOk(urls);
+  const transfers = parseTransfersFromGoldrush(json);
+  return { transfers, raw: json };
+}
+
+/* ===========================
+   Build real edges from transfers
+   - Focuses on top holder nodes + their counterparties
+   - Weight edges by frequency (and optionally amount)
+   =========================== */
+function buildEdgesFromTransfers(scan, transfers){
+  const chainId = scan?.chain || APP.ACTIVE_CHAIN_ID;
+  const maxEdges = clamp(Number(CFG.GRAPH_EDGE_LIMIT || 90), 30, 400);
+
+  const holders = Array.isArray(scan?.holders) ? scan.holders : [];
+  const top = holders.slice(0, clamp(CFG.HOLDER_COUNT || 10, 5, 50));
+
+  // normalize holder set
+  const holderSet = new Set(top.map(h => normalizeAddrForChain(chainId, h?.address)).filter(Boolean));
+
+  const edgeMap = new Map(); // key "a|b" -> {a,b,w,amt}
+  const touchCount = new Map(); // address -> count
+
+  for(const tr of transfers){
+    const a = normalizeAddrForChain(chainId, tr?.from);
+    const b = normalizeAddrForChain(chainId, tr?.to);
+    if(!a || !b) continue;
+
+    // only keep edges that touch top holders (for readability)
+    const touches = holderSet.has(a) || holderSet.has(b);
+    if(!touches) continue;
+
+    touchCount.set(a, (touchCount.get(a)||0)+1);
+    touchCount.set(b, (touchCount.get(b)||0)+1);
+
+    const k = a < b ? `${a}|${b}` : `${b}|${a}`;
+    const prev = edgeMap.get(k) || { a:(a<b?a:b), b:(a<b?b:a), w:0, amt:0n };
+    prev.w += 1;
+
+    // best-effort amount add
+    const vBI = bi(tr?.value);
+    if(vBI !== null){
+      try{ prev.amt = prev.amt + vBI; }catch{}
+    }
+    edgeMap.set(k, prev);
+  }
+
+  // If we got too few edges, allow “secondary nodes”:
+  // include edges where one side is a frequent counterparty of top holders
+  if(edgeMap.size < 12){
+    const frequent = [...touchCount.entries()]
+      .sort((x,y)=> (y[1]-x[1]))
+      .slice(0, 20)
+      .map(x=>x[0]);
+    const freqSet = new Set(frequent);
+
+    for(const tr of transfers){
+      const a = normalizeAddrForChain(chainId, tr?.from);
+      const b = normalizeAddrForChain(chainId, tr?.to);
+      if(!a || !b) continue;
+      if(!(freqSet.has(a) || freqSet.has(b))) continue;
+
+      const k = a < b ? `${a}|${b}` : `${b}|${a}`;
+      if(edgeMap.has(k)) continue;
+
+      const prev = { a:(a<b?a:b), b:(a<b?b:a), w:1, amt:0n };
+      const vBI = bi(tr?.value);
+      if(vBI !== null){
+        try{ prev.amt = prev.amt + vBI; }catch{}
+      }
+      edgeMap.set(k, prev);
+      if(edgeMap.size >= maxEdges) break;
+    }
+  }
+
+  // Take strongest edges
+  const edges = [...edgeMap.values()]
+    .sort((x,y)=> (y.w - x.w))
+    .slice(0, maxEdges)
+    .map(e => ({ a:e.a, b:e.b, w: e.w, amt: e.amt }));
+
+  return edges;
+}
+
+/* ===========================
+   Cluster v2 from edges (connected components)
+   =========================== */
+function clustersFromEdges(nodes, edges){
+  const parent = new Map();
+  const rank = new Map();
+  const idx = new Map(nodes.map(n => [n.id, n]));
+
+  function find(x){
+    let p = parent.get(x) || x;
+    if(p !== x){
+      p = find(p);
+      parent.set(x, p);
+    }
+    return p;
+  }
+  function union(a,b){
+    const ra = find(a), rb = find(b);
+    if(ra === rb) return;
+    const rka = rank.get(ra)||0;
+    const rkb = rank.get(rb)||0;
+    if(rka < rkb){ parent.set(ra, rb); }
+    else if(rka > rkb){ parent.set(rb, ra); }
+    else{ parent.set(rb, ra); rank.set(ra, rka+1); }
+  }
+
+  // init
+  for(const n of nodes){
+    parent.set(n.id, n.id);
+    rank.set(n.id, 0);
+  }
+
+  // union on edges
+  for(const e of edges){
+    if(!idx.has(e.a) || !idx.has(e.b)) continue;
+    union(e.a, e.b);
+  }
+
+  // group
+  const groups = new Map();
+  for(const n of nodes){
+    if(n.isHub) continue;
+    const r = find(n.id);
+    if(!groups.has(r)) groups.set(r, []);
+    groups.get(r).push(n);
+  }
+
+  const arr = [...groups.values()].map(g => {
+    // compute combined pct if available
+    const pctSum = g.reduce((a,n)=> a + (Number(n.pct||0)||0), 0);
+    const top = g.slice().sort((a,b)=> (Number(b.pct||0)-Number(a.pct||0)))[0];
+    return { nodes:g, size:g.length, pctSum, top };
+  });
+
+  // sort biggest cluster first
+  arr.sort((a,b)=> (b.pctSum - a.pctSum) || (b.size - a.size));
+  return arr;
+}
+
+/* ===========================
+   Upgrade cluster renderer to use real clusters if present
+   =========================== */
+function renderClustersV2FromViz(){
+  if(!VIZ?.nodes?.length) return;
+  if(!Array.isArray(VIZ.edges) || !VIZ.edges.length) return;
+
+  const comps = clustersFromEdges(VIZ.nodes, VIZ.edges)
+    .slice(0, clamp(Number(CFG.CLUSTER_LIMIT || 10), 5, 20));
+
+  const grid = qs("clusterGrid");
+  if(!grid) return;
+
+  // If clusters are trivial (all singles), fall back to v1 render
+  const nonTrivial = comps.filter(c => c.size >= 2);
+  if(!nonTrivial.length) return;
+
+  grid.innerHTML = "";
+  for(const c of nonTrivial){
+    const sev =
+      c.pctSum >= 25 ? "bad" :
+      c.pctSum >= 12 ? "warn" : "ok";
+
+    const title =
+      sev === "bad"  ? `Linked cluster: ~${nicePct(c.pctSum)} combined (HIGH)` :
+      sev === "warn" ? `Linked cluster: ~${nicePct(c.pctSum)} combined` :
+                       `Linked cluster: ~${nicePct(c.pctSum)} combined`;
+
+    const members = c.nodes
+      .slice()
+      .sort((a,b)=> (Number(b.pct||0)-Number(a.pct||0)))
+      .slice(0, 6)
+      .map(n => `${shortAddr(n.addr)}${isNum(n.pct) ? ` (${nicePct(n.pct)})` : ""}`);
+
+    const desc = `Detected connected wallets via transfer edges (best-effort). Members: ${members.join(", ")}${c.size>6 ? ` (+${c.size-6} more)`:""}.`;
+
+    const dotCls = sev === "ok" ? "dot good" : sev === "bad" ? "dot bad" : "dot warn";
+    const badgeCls = sev === "ok" ? "badge good" : sev === "bad" ? "badge bad" : "badge warn";
+    const badgeTxt = sev === "ok" ? "PASS" : sev === "bad" ? "RISK" : "WATCH";
+
+    const infoHtml = explain(title, [
+      desc,
+      "This uses transfer-based edges (GoldRush).",
+      "Interpretation tip: If a cluster includes several top holders, sell pressure can correlate.",
+      "Best-effort: mixers / routers / CEX wallets can create false positives."
+    ]);
+    const infoId = registerInfo(infoHtml);
+
+    const card = document.createElement("div");
+    card.className = "clusterCard";
+    card.innerHTML = `
+      <div class="clusterLeft">
+        <div class="clusterT">
+          <span class="${dotCls}"></span>
+          ${esc(title)}
+          <span class="badge" style="opacity:.85">${esc(`Members: ${c.size}`)}</span>
+        </div>
+        <div class="clusterD">${esc(desc)}</div>
+      </div>
+      <div class="clusterRight">
+        <span class="${badgeCls}" data-open="1" role="button" tabindex="0"
+              data-title="${esc(title)}" data-info="${esc(infoId)}">${badgeTxt}</span>
+        <button class="infoBtn" type="button" data-open="1" data-title="${esc(title)}" data-info="${esc(infoId)}"><span>i</span></button>
+      </div>
+    `;
+    grid.appendChild(card);
+  }
+
+  setText("clusterFoot", "Cluster v2 uses real transfer edges (GoldRush best-effort). Click bubbles to open explorers.");
+}
+
+/* ===========================
+   Patch Part 2 EVM metadata rendering (supply)
+   =========================== */
+(function patchEvmSupplyDisplay(){
+  // Monkey patch ENGINES.scanEvm to improve supply formatting, without rewriting everything.
+  if(!ENGINES?.scanEvm) return;
+
+  const old = ENGINES.scanEvm;
+  ENGINES.scanEvm = async function(addr){
+    const res = await old(addr);
+
+    // Try to improve Total supply display in metaList by re-rendering metaList once.
+    try{
+      // Re-run ERC20 meta quickly from cached state in old scan? We stored decimals and totalSupply in old scan as m.*
+      // We can't access 'm' directly, so re-read minimal using eth_call (fast).
+      const chainId = evmChainIdFromActive();
+      const m = await erc20Meta(chainId, addr);
+
+      // build meta list again with BigInt-safe supply
+      const metaList = [];
+      metaList.push({ t:"Name", d: res?.meta?.name || "—", sev: res?.meta?.name ? "ok":"warn" });
+      metaList.push({ t:"Symbol", d: res?.meta?.symbol ? "$"+res.meta.symbol : "—", sev: res?.meta?.symbol ? "ok":"warn" });
+      metaList.push({ t:"Decimals", d: m.decimals!=null ? String(m.decimals) : "—", sev: m.decimals!=null ? "ok":"warn" });
+
+      if(m.totalSupply!=null && m.decimals!=null){
+        const s = fmtTokenAmount(m.totalSupply, m.decimals);
+        metaList.push({ t:"Total supply", d: s || "—", sev:"warn" });
+      }else{
+        metaList.push({ t:"Total supply", d: "—", sev:"warn" });
+      }
+
+      metaList.push({ t:"Owner", d: m.owner ? String(m.owner) : "—", sev:"warn" });
+
+      // keep dexscreener info if present
+      if(res?.dexPair){
+        const dexPair = res.dexPair;
+        metaList.push({ t:"Dex pair", d: `${dexPair?.dexId || "DEX"} • ${dexPair?.baseToken?.symbol || ""}/${dexPair?.quoteToken?.symbol || ""}`, sev:"ok" });
+        metaList.push({ t:"Liquidity", d: dexPair?.liquidity?.usd!=null ? ("$"+formatUsd(dexPair.liquidity.usd)) : "—", sev:"warn" });
+        metaList.push({ t:"FDV", d: dexPair?.fdv!=null ? ("$"+formatUsd(dexPair.fdv)) : "—", sev:"warn" });
+      }
+      renderList(qs("metaList"), metaList, "Metadata");
+    }catch{}
+
+    return res;
+  };
+})();
+
+/* ===========================
+   Augment scan with transfer edges (EVM)
+   Called after runScan completes.
+   =========================== */
+async function augmentScanWithEdges(scan){
+  const chain = scan?.chain || APP.ACTIVE_CHAIN_ID;
+  const isEvm = chain !== "sol";
+  if(!isEvm) return scan;
+
+  const chainId = evmChainIdFromActive();
+  const tokenAddr = scan?.addr || scan?.mint || "";
+  if(!looksEvmAddress(tokenAddr)) return scan;
+
+  const key = (CFG.GOLDRUSH_API_KEY || "").trim();
+  if(!key){
+    scan.edges = [];
+    scan.edgeNote = "No GoldRush key → transfer edges unavailable.";
+    return scan;
+  }
+
+  try{
+    const { transfers } = await goldrushTokenTransfers(chainId, tokenAddr, 250);
+    if(!transfers.length){
+      scan.edges = [];
+      scan.edgeNote = "No transfers returned (token may be new / endpoint limited).";
+      return scan;
+    }
+    const edges = buildEdgesFromTransfers(scan, transfers);
+    scan.edges = edges;
+    scan.edgeNote = edges.length ? `Loaded ${edges.length} transfer edges (best-effort).` : "Transfers parsed but no useful edges.";
+    return scan;
+  }catch(e){
+    scan.edges = [];
+    scan.edgeNote = "Failed to load transfer edges: " + (e?.message || e);
+    return scan;
+  }
+}
+
+/* ===========================
+   Patch runScan to include augment step
+   (Part 3 wrapper will then call initViz with enriched data)
+   =========================== */
+(function patchRunScanForEdges(){
+  if(typeof runScan !== "function") return;
+  const oldRun = runScan;
+  runScan = async function(){
+    await oldRun();
+    if(APP?.LAST_SCAN){
+      try{
+        await augmentScanWithEdges(APP.LAST_SCAN);
+        // Update UI stamp note
+        if(APP.LAST_SCAN?.edgeNote){
+          setText("clusterFoot", APP.LAST_SCAN.edgeNote);
+        }
+      }catch{}
+    }
+  };
+})();
+
+/* ===========================
+   Patch ENGINES.initViz to prefer real edges
+   =========================== */
+(function patchInitViz(){
+  if(!ENGINES?.initViz) return;
+  const old = ENGINES.initViz;
+  ENGINES.initViz = function(scan){
+    old(scan);
+
+    // If we have real edges, replace VIZ.edges with them (graph mode becomes meaningful)
+    try{
+      if(scan?.edges && Array.isArray(scan.edges) && scan.edges.length){
+        const chainId = scan.chain || APP.ACTIVE_CHAIN_ID;
+        // VIZ.nodes include hub in graph mode builder; we’ll map addresses to node IDs.
+        // We just need edges referencing node IDs present in VIZ.nodes.
+        const idSet = new Set((VIZ.nodes||[]).map(n=>n.id));
+        const cleaned = [];
+        for(const e of scan.edges){
+          const a = normalizeAddrForChain(chainId, e.a);
+          const b = normalizeAddrForChain(chainId, e.b);
+          if(!a || !b) continue;
+          if(!idSet.has(a) || !idSet.has(b)) continue;
+          cleaned.push({ a, b, w: e.w || 1 });
+          if(cleaned.length >= 240) break;
+        }
+        if(cleaned.length){
+          VIZ.edges = cleaned;
+          // enable graph
+          const g = qs("vizModeGraph");
+          if(g){ g.disabled = false; }
+          setText("vizHint", "Tip: Hover for wallet info. Click bubbles to open explorer. Graph edges are transfer-based (best-effort).");
+          vizSetLegend("Transfer edges (GoldRush)");
+          renderClustersV2FromViz();
+        }
+      }
+    }catch{}
+  };
+})();
+
+/* ===========================
+   Export Report (HTML download)
+   - includes brand logo + token logo + viz snapshot
+   =========================== */
+async function urlToDataURL(url){
+  try{
+    const res = await safeFetch(url, { method:"GET" }, { key:"dl:"+url, cache:true, timeoutMs: 15000, retries: 1 });
+    const blob = await res.blob();
+    return await new Promise((resolve, reject) => {
+      const fr = new FileReader();
+      fr.onload = () => resolve(fr.result);
+      fr.onerror = reject;
+      fr.readAsDataURL(blob);
+    });
+  }catch{
+    return ""; // best-effort
+  }
+}
+
+function buildReportHtml(scan, vizPngDataUrl, brandDataUrl, tokenLogoDataUrl){
+  const chain = scan?.chain || APP.ACTIVE_CHAIN_ID;
+  const addr = scan?.mint || scan?.addr || "";
+  const meta = scan?.meta || {};
+  const holders = Array.isArray(scan?.holders) ? scan.holders : [];
+  const dexPair = scan?.dexPair || null;
+
+  const ex = explorerBase(chain);
+
+  const holderRows = holders.slice(0, clamp(CFG.HOLDER_COUNT||10, 5, 50)).map(h => {
+    const a = h?.address || "";
+    const pct = h?.pct;
+    const amount = h?.uiAmount ?? h?.balance ?? null;
+    return `
+      <tr>
+        <td><a href="${ex.base}${encodeURIComponent(a)}" target="_blank" rel="noreferrer">${esc(shortAddr(a))}</a></td>
+        <td>${esc(pct==null ? "—" : nicePct(Number(pct)))}</td>
+        <td>${esc(amount==null ? "—" : String(amount))}</td>
+      </tr>
+    `;
+  }).join("");
+
+  const dexBlock = dexPair ? `
+    <div class="card">
+      <div class="k">Dex Pair</div>
+      <div class="v">${esc(dexPair?.dexId || "DEX")} • ${esc((dexPair?.baseToken?.symbol||"") + "/" + (dexPair?.quoteToken?.symbol||""))}</div>
+      <div class="m">Liquidity: ${dexPair?.liquidity?.usd!=null ? "$"+formatUsd(dexPair.liquidity.usd) : "—"} • FDV: ${dexPair?.fdv!=null ? "$"+formatUsd(dexPair.fdv) : "—"}</div>
+    </div>
+  ` : "";
+
+  const created = new Intl.DateTimeFormat("de-DE", {
+    timeZone:"Europe/Berlin",
+    year:"numeric", month:"2-digit", day:"2-digit",
+    hour:"2-digit", minute:"2-digit", second:"2-digit"
+  }).format(new Date());
+
+  const title = `${meta?.name || "Token"} ${meta?.symbol ? "($" + meta.symbol + ")" : ""}`.trim();
+
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>$SOS • Guardian Report</title>
+<style>
+  :root{
+    --bg:#070711; --panel: rgba(255,255,255,.06); --stroke: rgba(255,255,255,.12);
+    --text: rgba(255,255,255,.92); --muted: rgba(255,255,255,.70);
+    --g:#14F195; --c:#00D1FF; --p:#9945FF;
+    --radius: 18px;
+    --shadow: 0 12px 32px rgba(0,0,0,.45);
+    --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+    --mono: ui-monospace, Menlo, Consolas, monospace;
+  }
+  body{ margin:0; font: 15px/1.55 var(--sans); background: var(--bg); color: var(--text); }
+  .wrap{ max-width: 980px; margin:0 auto; padding: 22px 16px 34px; }
+  .top{
+    display:flex; gap:12px; align-items:center; justify-content:space-between; flex-wrap:wrap;
+    border:1px solid var(--stroke); background: rgba(255,255,255,.04);
+    border-radius: var(--radius); padding: 14px 14px; box-shadow: var(--shadow);
+  }
+  .brand{ display:flex; gap:12px; align-items:center; }
+  .logo{ width:44px; height:44px; border-radius:12px; overflow:hidden; border:1px solid rgba(255,255,255,.12); background: rgba(0,0,0,.25); }
+  .logo img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .h1{ font-weight:1000; letter-spacing:-.6px; font-size: 22px; margin:0; }
+  .sub{ color: var(--muted); font-weight:850; font-size:12.5px; margin-top:2px; }
+  .pill{ display:inline-flex; padding:7px 10px; border-radius:999px; border:1px solid var(--stroke); background: rgba(255,255,255,.05); font-weight:1000; font-size:12px; }
+  .pill.good{ border:0; background: linear-gradient(90deg,var(--g),var(--c),var(--p)); color:#061012; }
+  .grid{ display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-top:12px; }
+  @media(max-width:860px){ .grid{ grid-template-columns: 1fr; } }
+  .card{
+    border:1px solid var(--stroke); background: rgba(255,255,255,.04);
+    border-radius: var(--radius); padding: 12px 12px; box-shadow: var(--shadow);
+  }
+  .k{ color: var(--muted); font-weight:1000; letter-spacing:.35px; text-transform:uppercase; font-size:12px; }
+  .v{ font-weight:1000; font-size:16px; margin-top:6px; }
+  .m{ margin-top:6px; color: rgba(255,255,255,.70); font-weight:850; font-size:12.5px; }
+  .mono{ font-family: var(--mono); }
+  table{ width:100%; border-collapse: collapse; margin-top:10px; overflow:hidden; border-radius: 14px; }
+  th,td{ text-align:left; padding:10px 10px; border-bottom:1px solid rgba(255,255,255,.08); font-size:13px; }
+  th{ color: rgba(255,255,255,.70); font-weight:1000; text-transform:uppercase; letter-spacing:.35px; font-size:12px; }
+  a{ color: rgba(255,255,255,.90); }
+  .img{ margin-top:12px; border:1px solid var(--stroke); border-radius: 18px; overflow:hidden; background: rgba(0,0,0,.18); }
+  .img img{ width:100%; height:auto; display:block; }
+  .foot{ margin-top:14px; color: rgba(255,255,255,.55); font-size:12px; font-weight:800; text-align:center; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="top">
+      <div class="brand">
+        <div class="logo">${brandDataUrl ? `<img src="${brandDataUrl}" alt="$SOS">` : ""}</div>
+        <div>
+          <div class="h1">$SOS • Guardian Report</div>
+          <div class="sub">Created ${esc(created)} • ${esc(String(chain).toUpperCase())} • ${esc(ex.name)} links</div>
+        </div>
+      </div>
+      <div class="brand">
+        <div class="logo">${tokenLogoDataUrl ? `<img src="${tokenLogoDataUrl}" alt="token">` : ""}</div>
+        <div>
+          <div class="h1">${esc(title || "Token")}</div>
+          <div class="sub mono">${esc(addr)}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <div class="k">Explorer</div>
+        <div class="v"><a href="${ex.base}${encodeURIComponent(addr)}" target="_blank" rel="noreferrer">Open ${esc(ex.name)} for token</a></div>
+        <div class="m">Chain: ${esc(String(chain).toUpperCase())}</div>
+      </div>
+
+      <div class="card">
+        <div class="k">Edge coverage</div>
+        <div class="v">${esc(scan?.edgeNote || "—")}</div>
+        <div class="m">Graph edges are best-effort and depend on providers.</div>
+      </div>
+
+      ${dexBlock}
+    </div>
+
+    ${vizPngDataUrl ? `
+      <div class="img">
+        <img src="${vizPngDataUrl}" alt="Bubble map snapshot">
+      </div>
+    ` : ""}
+
+    <div class="card" style="margin-top:12px;">
+      <div class="k">Top holders</div>
+      <div class="m">Preview only. Click addresses to open explorer.</div>
+      <table>
+        <thead><tr><th>Wallet</th><th>Share</th><th>Amount</th></tr></thead>
+        <tbody>
+          ${holderRows || `<tr><td colspan="3">No holder data</td></tr>`}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="foot">© ${new Date().getFullYear()} $SOS • Guardian Check • Client-only best-effort report</div>
+  </div>
+</body>
+</html>`;
+}
+
+ENGINES.exportReport = async function(){
+  const scan = APP.LAST_SCAN;
+  if(!scan){
+    showToast("No scan data to export yet.");
+    return;
+  }
+
+  // Snapshot viz
+  let vizPng = "";
+  try{
+    const canvas = qs("vizCanvas");
+    if(canvas){
+      vizPng = canvas.toDataURL("image/png");
+    }
+  }catch{}
+
+  // Brand logo (embed if possible)
+  if(!APP.BRAND_LOGO_DATAURL){
+    APP.BRAND_LOGO_DATAURL = await urlToDataURL("assets/logo.png");
+  }
+
+  // Token logo (best-effort embed)
+  let tokenLogo = "";
+  try{
+    const imgUrl = scan?.meta?.image || "";
+    if(imgUrl){
+      // try embed; if fails, keep original url
+      const d = await urlToDataURL(imgUrl);
+      tokenLogo = d || imgUrl;
+    }
+  }catch{}
+
+  const html = buildReportHtml(scan, vizPng, APP.BRAND_LOGO_DATAURL, tokenLogo);
+
+  try{
+    const blob = new Blob([html], { type:"text/html;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `SOS_Guardian_Report_${(scan?.chain || "chain").toUpperCase()}_${Date.now()}.html`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+
+    setTimeout(()=> URL.revokeObjectURL(url), 3000);
+    showToast("Report downloaded.");
+  }catch(e){
+    showToast("Export failed: " + (e?.message || e));
+  }
+};
+
+/* ===========================
+   Enable export button after scans
+   =========================== */
+(function wireExport(){
+  // click
+  on("btnExport","click", async ()=>{
+    try{ await ENGINES.exportReport?.(); }
+    catch(e){ showToast("Export failed."); }
+  });
+
+  // Patch setStatus area: when scan finishes, enable export if last scan exists
+  const oldSetStatus = setStatus;
+  window.setStatus = function(msg){
+    oldSetStatus(msg);
+    try{
+      const exBtn = qs("btnExport");
+      if(exBtn){
+        exBtn.disabled = !(APP?.LAST_SCAN && typeof ENGINES.exportReport === "function");
+      }
+    }catch{}
+  };
+
+  // Also enable export immediately if scan already exists
+  try{
+    const exBtn = qs("btnExport");
+    if(exBtn){
+      exBtn.disabled = !(APP?.LAST_SCAN && typeof ENGINES.exportReport === "function");
+    }
+  }catch{}
+})();
+</script>
+
   
   
