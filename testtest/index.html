@@ -3336,23 +3336,28 @@ async function buildEvmEdgesFromTransfers(chainId, tokenAddr, wallets){
       ], "Metadata");
 
       // holders + viz + cluster
-      if(holderItems.length){
-        renderHoldersWithExplorer(holderItems, chainObj());
-        buildBubblesFromHolders(holderItems);
-        renderClusterLite(holderItems);
-      }else{
-        renderHoldersEmpty();
-        buildBubblesFromHolders([]);
-        renderClusterLite([]);
-      }
-      // ✅ HOOK GRAPH (EVM)
-try{
-  const wallets = holderItems.map(x => x.addr).filter(Boolean);
-  const g = await buildEvmEdgesFromTransfers(chainId, addr, wallets);
-  VIZ.edges = g.edges || [];
-  setGraphAvailability(VIZ.edges.length > 0);
-  drawViz();
-}catch{
+if(holderItems.length){
+  renderHoldersWithExplorer(holderItems, chainObj());
+  buildBubblesFromHolders(holderItems);
+  renderClusterLite(holderItems);
+
+  // ✅ HOOK GRAPH (EVM) – HIER rein
+  try{
+    const wallets = holderItems.map(x => x.addr).filter(Boolean);
+    const g = await buildEvmEdgesFromTransfers(chainId, addr, wallets);
+    VIZ.edges = g.edges || [];
+    setGraphAvailability(VIZ.edges.length > 0);
+    drawViz();
+  }catch{
+    VIZ.edges = [];
+    setGraphAvailability(false);
+    drawViz();
+  }
+
+}else{
+  renderHoldersEmpty();
+  buildBubblesFromHolders([]);
+  renderClusterLite([]);
   VIZ.edges = [];
   setGraphAvailability(false);
   drawViz();
