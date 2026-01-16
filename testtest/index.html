@@ -1615,9 +1615,6 @@
 async function getTx(sig){
   return await solRpc("getTransaction", [sig, { encoding:"jsonParsed", maxSupportedTransactionVersion: 0 }]);
 }
-async function getTx(sig){
-  return await solRpc("getTransaction", [sig, { encoding:"jsonParsed", maxSupportedTransactionVersion: 0 }]);
-}
     /* ===== Dexscreener token endpoint (works across chains; address can be Sol mint or EVM token) ===== */
     async function fetchDexscreenerToken(addr){
       try{
@@ -3292,45 +3289,50 @@ async function buildEvmEdgesFromTransfers(chainId, tokenAddr, wallets){
         if(bestPair) lpStatus = await analyzeLpEvm(chainId, bestPair);
       }catch{}
 
-      // holders via GoldRush
-      let holderItems = [];
-      let top10Pct = NaN;
-      if(CFG.GOLDRUSH_API_KEY){
-        const holders = await goldrushHolders(chainId, addr);
-        const items = Array.isArray(holders) ? holders.slice(0, 10) : [];
-        holderItems = items.map((h, idx) => {
-  const a = String(h?.address || "");
+     // holders via GoldRush
+let holderItems = [];
+let top10Pct = NaN;
 
-  // Prefer balance/totalSupply math (most reliable)
-  let pct = 0;
+if(CFG.GOLDRUSH_API_KEY){
+  const holders = await goldrushHolders(chainId, addr);
+  const items = Array.isArray(holders) ? holders.slice(0, 10) : [];
 
-  const balRaw = (h?.balance ?? h?.balance_raw ?? h?.token_balance ?? null);
-  if(balRaw != null && meta?.totalSupply != null){
-    pct = pctFromRaw(balRaw, meta.totalSupply);
-  }else{
-    // fallback: API-provided percentage (normalize scaling)
-    pct = normalizePct(h?.percentage ?? h?.pct ?? 0);
-  }
+  holderItems = items.map((h, idx) => {
+    const a = String(h?.address || "");
 
-  const sev = pct >= 10 ? "bad" : pct >= 4 ? "warn" : "ok";
-  const pctText = (pct > 0 && pct < 0.01) ? "<0.01%" : `${pct.toFixed(2)}%`;
+    // Prefer balance/totalSupply math (most reliable)
+    let pct = 0;
+    const balRaw = (h?.balance ?? h?.balance_raw ?? h?.token_balance ?? null);
 
-  return {
-    addr: a,
-    pct,
-    sev,
-    label: `#${idx+1} ${shortAddr(a)}`,
-    sub: pctText,
-    t: `Holder #${idx+1}`,
-    d: `${shortAddr(a)} • ${pctText}`,
-    infoHtml: explain(`Holder #${idx+1}`, [
-      `Wallet: ${a}`,
-      `Share (computed): ${pctText}`,
-      "Method: balance / totalSupply (best-effort).",
-      "Tip: Identify LP/treasury/team/burn wallets."
-    ])
-  };
-});
+    if(balRaw != null && meta?.totalSupply != null){
+      pct = pctFromRaw(balRaw, meta.totalSupply);
+    }else{
+      pct = normalizePct(h?.percentage ?? h?.pct ?? 0);
+    }
+
+    const sev = pct >= 10 ? "bad" : pct >= 4 ? "warn" : "ok";
+    const pctText = (pct > 0 && pct < 0.01) ? "<0.01%" : `${pct.toFixed(2)}%`;
+
+    return {
+      addr: a,
+      pct,
+      sev,
+      label: `#${idx+1} ${shortAddr(a)}`,
+      sub: pctText,
+      t: `Holder #${idx+1}`,
+      d: `${shortAddr(a)} • ${pctText}`,
+      infoHtml: explain(`Holder #${idx+1}`, [
+        `Wallet: ${a}`,
+        `Share (computed): ${pctText}`,
+        "Method: balance / totalSupply (best-effort).",
+        "Tip: Identify LP/treasury/team/burn wallets."
+      ])
+    };
+  });
+
+  top10Pct = holderItems.reduce((a,x)=>a+(x.pct||0),0);
+}
+
 
       // score + checks/todos
       const scored = scoreEvmLite({ owner, proxy, paused, liquidityUsd, lpStatus, top10Pct });
