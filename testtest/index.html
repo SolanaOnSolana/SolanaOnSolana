@@ -32,12 +32,15 @@
       --bad:  rgba(255,120,150,.16);
       --gridGap: 16px;
 
-      /* NEW: confidence/source colors */
       --src-onchain: rgba(20,241,149,.16);
       --src-indexer: rgba(0,209,255,.14);
       --src-api: rgba(153,69,255,.14);
       --src-heur: rgba(255,220,130,.12);
+
+      --focus: rgba(0,209,255,.45);
+      --focusGlow: rgba(0,209,255,.12);
     }
+
     *{box-sizing:border-box}
     html,body{height:100%}
     body{
@@ -64,6 +67,7 @@
     a{color:inherit; text-decoration:none}
     .wrap{max-width:var(--max); margin:0 auto; padding:0 18px; width:100%;}
     main{padding:22px 0 42px}
+
     .topbar{
       position:sticky;
       top:0;
@@ -80,6 +84,7 @@
       padding:12px 0;
       flex-wrap:wrap;
     }
+
     .brand{
       display:flex;
       align-items:center;
@@ -133,7 +138,16 @@
       color:#061012;
       box-shadow: 0 10px 24px rgba(0,0,0,.25);
     }
+    .btn.ghost{
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.12);
+    }
     .btn[disabled]{opacity:.55; pointer-events:none}
+    .btn:focus{outline:none}
+    .btn:focus-visible{
+      box-shadow: 0 0 0 3px var(--focusGlow);
+      border-color: var(--focus);
+    }
 
     .card{
       background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.05));
@@ -181,6 +195,7 @@
       font-weight:850;
       max-width: 940px;
     }
+
     .classified{
       display:flex;
       align-items:center;
@@ -279,8 +294,8 @@
       max-width:100%;
     }
     input:focus{
-      border-color: rgba(0,209,255,.45);
-      box-shadow: 0 0 0 3px rgba(0,209,255,.12);
+      border-color: var(--focus);
+      box-shadow: 0 0 0 3px var(--focusGlow);
     }
 
     .statusLine{
@@ -309,7 +324,6 @@
     .badge.warn{border-color: rgba(255,220,130,.35); background: rgba(255,220,130,.08); color: rgba(255,240,210,.92)}
     .badge.bad{border-color: rgba(255,120,150,.35); background: rgba(255,120,150,.10); color: rgba(255,190,205,.95)}
 
-    /* NEW: source/confidence pills */
     .badge.src{border:1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.05); color: rgba(255,255,255,.84)}
     .badge.src.onchain{border-color: rgba(20,241,149,.26); background: var(--src-onchain);}
     .badge.src.indexer{border-color: rgba(0,209,255,.26); background: var(--src-indexer);}
@@ -594,11 +608,7 @@
       background: rgba(255,255,255,.10);
       color: rgba(255,255,255,.92);
     }
-    /* NEW: disabled graph button style */
-    .seg button[disabled]{
-      opacity:.45;
-      cursor:not-allowed;
-    }
+    .seg button[disabled]{ opacity:.45; cursor:not-allowed; }
 
     .vizStage{
       height: 420px;
@@ -632,11 +642,7 @@
     }
 
     /* ===== cluster cards ===== */
-    .clusterGrid{
-      display:grid;
-      grid-template-columns: 1fr;
-      gap:10px;
-    }
+    .clusterGrid{ display:grid; grid-template-columns: 1fr; gap:10px; }
     .clusterCard{
       border:1px solid rgba(255,255,255,.10);
       background: rgba(0,0,0,.14);
@@ -705,6 +711,10 @@
       color:#061012;
       box-shadow: 0 10px 24px rgba(0,0,0,.25);
     }
+    .chainBtn:focus-visible{
+      outline:none;
+      box-shadow: 0 0 0 3px var(--focusGlow);
+    }
     .chainIcon{
       width:18px;
       height:18px;
@@ -770,6 +780,34 @@
       overflow-wrap:anywhere;
       word-break:break-word;
     }
+    .modalBody .field{
+      display:grid;
+      grid-template-columns: 1fr;
+      gap:6px;
+      margin:12px 0;
+      padding:12px;
+      border:1px solid rgba(255,255,255,.10);
+      border-radius: 16px;
+      background: rgba(0,0,0,.12);
+    }
+    .modalBody .field input{
+      border-radius: 14px;
+      padding:12px 12px;
+      font-size:14px;
+    }
+    .modalBody .help{
+      color: rgba(255,255,255,.66);
+      font-weight:850;
+      font-size:12.5px;
+      line-height:1.35;
+    }
+    .modalActions{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      justify-content:flex-end;
+      margin-top:12px;
+    }
 
     .toast{
       position:fixed;
@@ -787,7 +825,7 @@
       backdrop-filter: blur(12px);
     }
     .toastRow{display:flex; align-items:center; justify-content:space-between; gap:12px;}
-    .toastTitle{font-weight:1000; font-size:18px; letter-spacing:-.3px;}
+    .toastTitle{font-weight:1000; font-size:16px; letter-spacing:-.2px;}
     .toastClose{
       padding:9px 12px;
       border-radius:999px;
@@ -799,7 +837,7 @@
     }
     .toastClose:hover{background: rgba(255,255,255,.10);}
 
-    /* NEW: Key Signals cards (rechte Spalte Profi-Scanner) */
+    /* Key Signals cards */
     .signalCard{
       border:1px solid rgba(255,255,255,.10);
       background: rgba(255,255,255,.04);
@@ -873,6 +911,7 @@
     }
   </style>
 </head>
+
 <body>
   <!-- Toast -->
   <div class="toast" id="toast">
@@ -886,16 +925,16 @@
     <div class="wrap">
       <div class="row">
         <div class="brand">
-          <img src="/assets/logo.png" alt="$SOS" onerror="this.style.display='none'">
+          <img id="brandLogo" src="/assets/logo.png" alt="$SOS" onerror="this.style.display='none'">
           <div class="bt">
             <div class="t">$SOS</div>
             <div class="s">Contract Scanner • Token Risk • Clusters</div>
           </div>
         </div>
 
-        <!-- IMPORTANT: Buttons NOT removed -->
         <div class="actions">
           <a class="btn" href="https://solanax1.com/" rel="noreferrer">← Back to Main</a>
+          <button class="btn ghost" id="btnKeys" type="button">API Keys</button>
           <button class="btn grad" id="btnScan" type="button">Run Guardian Check</button>
           <button class="btn grad" id="btnExport" type="button" disabled>Download Scan Report</button>
         </div>
@@ -923,13 +962,28 @@
         <div class="layout">
           <!-- INPUT -->
           <div class="panel">
+            <div class="panelHead">
+              <div>
+                <div class="panelTitle">Scan Input</div>
+                <div class="panelSub">Paste token address. We auto-validate per chain. Tip: press Enter to scan.</div>
+              </div>
+              <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end;">
+                <span class="badge" id="netStamp">—</span>
+              </div>
+            </div>
+
             <label>Choose Chain</label>
             <div class="chainRow" id="chainRow"></div>
             <div class="chainMiniHint" id="chainHint">—</div>
 
             <label for="mint" style="margin-top:14px;" id="addrLabel">Token Address</label>
             <input id="mint" placeholder="Paste token address..." autocomplete="off" spellcheck="false" inputmode="text" />
-            <button class="btn grad" id="btnScanInline" type="button" style="width:100%; margin-top:12px;">Run Guardian Check</button>
+            <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:12px;">
+              <button class="btn grad" id="btnScanInline" type="button" style="flex:1 1 220px;">Run Guardian Check</button>
+              <button class="btn" id="btnPaste" type="button" style="flex:0 0 auto;">Paste</button>
+              <button class="btn" id="btnClear" type="button" style="flex:0 0 auto;">Clear</button>
+            </div>
+
             <div class="statusLine" id="status"></div>
           </div>
 
@@ -961,7 +1015,7 @@
             <div class="metricStack" id="metrics"></div>
             <div class="statusLine" id="summary">—</div>
 
-            <!-- KEY SIGNALS (Pro Scanner Column) -->
+            <!-- KEY SIGNALS -->
             <div class="metricStack" id="keySignals"></div>
           </div>
         </div>
@@ -972,7 +1026,7 @@
             <div class="panelHead">
               <div>
                 <div class="panelTitle">
-                  <span class="badge">NEW</span>
+                  <span class="badge">LIVE</span>
                   Bubble Map • Wallet Graph
                 </div>
                 <div class="panelSub" id="vizSub">
@@ -983,7 +1037,6 @@
               <div class="vizControls">
                 <div class="seg" role="tablist" aria-label="Visualization mode">
                   <button type="button" id="vizModeBubbles" class="active" aria-selected="true">Bubbles</button>
-                  <!-- NEW: graph disabled until real edges exist -->
                   <button type="button" id="vizModeGraph" aria-selected="false" disabled>Graph</button>
                 </div>
                 <button class="btn" id="btnVizReset" type="button">Reset View</button>
@@ -995,7 +1048,7 @@
                 <div style="min-width:0">
                   <div class="vizTitle">Holders & Clusters (Live)</div>
                   <div class="vizHint" id="vizHint">
-                    Tip: Hover bubbles for wallet info. Click to open explorer (when enabled).
+                    Tip: Hover for wallet info. Click to open explorer. Zoom with trackpad/wheel.
                   </div>
                 </div>
                 <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; justify-content:flex-end;">
@@ -1022,7 +1075,7 @@
                   Cluster Intelligence
                 </div>
                 <div class="panelSub" id="clusterSub">
-                  Detects linked wallets, split wallets, bundle-like patterns (best-effort).
+                  Detects linked wallets, split-wallet patterns, shared funders (best-effort).
                 </div>
               </div>
               <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end;">
@@ -1109,10 +1162,13 @@
 
   <script>
     /* =========================================================
-       PART 1–3 — FOUNDATION + HELPERS + CHAIN UI
+       $SOS GUARDIAN SCANNER — CLEAN REWRITE (single-file)
+       - Stable UI + safer scanning + better export (offline)
+       - Export includes: brand logo + coin logo + viz snapshot
+       - Graph mode enabled only when real edges exist
        ========================================================= */
 
-    /* ===== DOM helpers ===== */
+    /* ========== DOM helpers ========== */
     const qs = (id) => document.getElementById(id);
     const setText = (id, v) => { const el = qs(id); if (el) el.textContent = (v ?? ""); };
     const setHTML = (id, v) => { const el = qs(id); if (el) el.innerHTML = (v ?? ""); };
@@ -1126,15 +1182,41 @@
 
     function clamp(n, min, max){ return Math.max(min, Math.min(max, n)); }
     function shortAddr(a){ return a ? (a.slice(0,4) + "…" + a.slice(-4)) : "—"; }
+
+    function formatUsd(n){
+      const x = Number(n);
+      if(!Number.isFinite(x)) return "—";
+      if(x >= 1e9) return (x/1e9).toFixed(2) + "B";
+      if(x >= 1e6) return (x/1e6).toFixed(2) + "M";
+      if(x >= 1e3) return (x/1e3).toFixed(2) + "K";
+      return x.toFixed(2);
+    }
+
+    function fmtInt(n){
+      if(n === null || n === undefined || Number.isNaN(n)) return "—";
+      try { return new Intl.NumberFormat("en-US").format(Math.round(Number(n))); }
+      catch { return String(n); }
+    }
+    function fmtPct(n){
+      if(n === null || n === undefined || Number.isNaN(n)) return "—";
+      return `${Number(n).toFixed(2)}%`;
+    }
+
     function pillLabel(sev){ return sev==="ok" ? "PASS" : sev==="bad" ? "FAIL" : "WATCH"; }
     function pillClass(sev){ return sev==="ok" ? "pill ok" : sev==="bad" ? "pill bad" : "pill warn"; }
 
-    /* ===== global scan state ===== */
-    let ACTIVE_CHAIN_ID = "sol";
-    let SCANNING = false;
-    let LAST_SCAN = null;
+    /* ========== App State ========== */
+    const APP = {
+      ACTIVE_CHAIN_ID: "sol",
+      SCANNING: false,
+      LAST_SCAN: null,
+      ABORT: null,            // AbortController for any in-flight scan
+      CACHE: new Map(),       // simple memo cache (per run)
+      INFO_MAP: new Map(),    // modal content registry
+      BRAND_LOGO_DATAURL: "", // cached for export
+    };
 
-    /* ===== icon svgs ===== */
+    /* ========== Icons ========== */
     const ICONS = {
       sol: `
         <svg viewBox="0 0 64 64" aria-hidden="true">
@@ -1172,17 +1254,16 @@
     };
 
     const CHAINS = [
-      { id:"sol",  name:"Solana",   kind:"solana", stamp:"MAINNET", addrLabel:"Token Mint Address",       placeholder:"Paste token mint (Solana)..." },
-      { id:"eth",  name:"Ethereum", kind:"evm",    stamp:"ETH MAINNET", addrLabel:"Token Contract Address", placeholder:"Paste ERC-20 contract (0x...)" },
-      { id:"bnb",  name:"BNB",      kind:"evm",    stamp:"BNB MAINNET", addrLabel:"Token Contract Address", placeholder:"Paste BEP-20 contract (0x...)" },
-      { id:"base", name:"Base",     kind:"evm",    stamp:"BASE MAINNET", addrLabel:"Token Contract Address", placeholder:"Paste Base token contract (0x...)" }
+      { id:"sol",  name:"Solana",   kind:"solana", stamp:"SOL MAINNET",  addrLabel:"Token Mint Address",        placeholder:"Paste token mint (Solana)..." },
+      { id:"eth",  name:"Ethereum", kind:"evm",    stamp:"ETH MAINNET",  addrLabel:"Token Contract Address",    placeholder:"Paste ERC-20 contract (0x...)" },
+      { id:"bnb",  name:"BNB",      kind:"evm",    stamp:"BNB MAINNET",  addrLabel:"Token Contract Address",    placeholder:"Paste BEP-20 contract (0x...)" },
+      { id:"base", name:"Base",     kind:"evm",    stamp:"BASE MAINNET", addrLabel:"Token Contract Address",    placeholder:"Paste Base token contract (0x...)" }
     ];
-
     function chainObj(){
-      return CHAINS.find(c => c.id === ACTIVE_CHAIN_ID) || CHAINS[0];
+      return CHAINS.find(c => c.id === APP.ACTIVE_CHAIN_ID) || CHAINS[0];
     }
 
-    /* ===== live stamp time ===== */
+    /* ========== Live time stamp (Berlin) ========== */
     let STAMP_TIMER = null;
     function updateStampTime(){
       const el = qs("stampTime");
@@ -1190,12 +1271,8 @@
       const now = new Date();
       el.textContent = new Intl.DateTimeFormat("de-DE", {
         timeZone: "Europe/Berlin",
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit"
+        year: "numeric", month: "2-digit", day: "2-digit",
+        hour: "2-digit", minute: "2-digit", second: "2-digit"
       }).format(now);
     }
     function startLiveStampTime(){
@@ -1204,17 +1281,7 @@
       STAMP_TIMER = setInterval(updateStampTime, 1000);
     }
 
-    /* ===== toast + modal ===== */
-    function openModal(title, bodyHtml){
-      setText("modalTitle", title || "Guardian Details");
-      setHTML("modalBody", bodyHtml || "");
-      const w = qs("modalWrap");
-      if(w){ w.style.display = "flex"; w.setAttribute("aria-hidden","false"); }
-    }
-    function closeModal(){
-      const w = qs("modalWrap");
-      if(w){ w.style.display = "none"; w.setAttribute("aria-hidden","true"); }
-    }
+    /* ========== Toast + Modal ========== */
     function showToast(title){
       const t = qs("toast");
       if(!t) return;
@@ -1226,8 +1293,56 @@
       if(!t) return;
       t.style.display = "none";
     }
+    function openModal(title, bodyHtml){
+      setText("modalTitle", title || "Guardian Details");
+      setHTML("modalBody", bodyHtml || "");
+      const w = qs("modalWrap");
+      if(w){ w.style.display = "flex"; w.setAttribute("aria-hidden","false"); }
+    }
+    function closeModal(){
+      const w = qs("modalWrap");
+      if(w){ w.style.display = "none"; w.setAttribute("aria-hidden","true"); }
+    }
 
-    /* ===== identicon fallback ===== */
+    /* ========== Info registry ========== */
+    function newInfoId(){ return "i_" + Math.random().toString(36).slice(2) + Date.now().toString(36); }
+    function registerInfo(html){ const id = newInfoId(); APP.INFO_MAP.set(id, html); return id; }
+    function getInfo(id){ return APP.INFO_MAP.get(id) || ""; }
+
+    function explain(title, bullets){
+      const body = (bullets||[]).map(b => `<div style="margin:6px 0">${esc(b)}</div>`).join("");
+      return `
+        <div style="font-weight:1000; font-size:18px; margin-bottom:10px">${esc(title)}</div>
+        <div style="color:rgba(255,255,255,.72); font-weight:850; line-height:1.55">${body}</div>
+      `;
+    }
+
+    /* ========== Modal click wiring for info pills ========== */
+    (function wireInfoClicks(){
+      document.addEventListener("click", (e) => {
+        const t = e.target;
+        const openEl = t?.closest?.("[data-open='1']");
+        if(openEl){
+          const title = openEl.getAttribute("data-title") || "Details";
+          const infoId = openEl.getAttribute("data-info") || "";
+          const html = getInfo(infoId);
+          if(html) openModal(title, html);
+        }
+      });
+      document.addEventListener("keydown", (e) => {
+        if(e.key !== "Enter" && e.key !== " ") return;
+        const a = document.activeElement;
+        if(a && a.matches && a.matches("[data-open='1']")){
+          e.preventDefault();
+          const title = a.getAttribute("data-title") || "Details";
+          const infoId = a.getAttribute("data-info") || "";
+          const html = getInfo(infoId);
+          if(html) openModal(title, html);
+        }
+      });
+    })();
+
+    /* ========== Identicon (fallback) ========== */
     function hash32(str){
       let h = 2166136261 >>> 0;
       const s = String(str || "");
@@ -1311,7 +1426,7 @@
       }
     }
 
-    /* ===== chain buttons ===== */
+    /* ========== Chain UI ========== */
     function renderChainButtons(){
       const row = qs("chainRow");
       if(!row) return;
@@ -1319,27 +1434,14 @@
       for(const c of CHAINS){
         const b = document.createElement("button");
         b.type = "button";
-        b.className = "chainBtn" + (c.id === ACTIVE_CHAIN_ID ? " active" : "");
+        b.className = "chainBtn" + (c.id === APP.ACTIVE_CHAIN_ID ? " active" : "");
         b.innerHTML = `<span class="chainIcon">${ICONS[c.id] || ""}</span><span>${esc(c.name)}</span>`;
         b.addEventListener("click", () => setActiveChain(c.id, true));
         row.appendChild(b);
       }
     }
 
-    function setStatus(msg){ setText("status", msg || ""); }
-
-    function setActiveChain(chainId, pushUrl){
-      const found = CHAINS.find(x => x.id === chainId) || CHAINS[0];
-      ACTIVE_CHAIN_ID = found.id;
-
-      renderChainButtons();
-      setText("holdersStamp", found.stamp || "MAINNET");
-      setText("addrLabel", found.addrLabel || "Token Address");
-
-      const mint = qs("mint");
-      if(mint) mint.placeholder = found.placeholder || "Paste token address...";
-
-      setText("chainHint", "");
+    function resetUiForNewChain(){
       setText("status", "");
       setText("mintShort", "—");
       setText("verdictTitle", "—");
@@ -1350,37 +1452,66 @@
       setText("vizStamp", "—");
       setText("vizLegend", "—");
       setText("vizSub", "Shows holder bubbles + linked wallet edges (best-effort). Run a scan to populate.");
-      setText("clusterStamp", found.stamp || "MAINNET");
       setText("clusterFoot", "—");
 
-      qs("metrics").innerHTML = "";
-      qs("checksList").innerHTML = "";
-      qs("todoList").innerHTML = "";
-      qs("extList").innerHTML = "";
-      qs("metaList").innerHTML = "";
-      qs("holdersList").innerHTML = "";
-      qs("keySignals").innerHTML = "";
+      const idsToClear = ["metrics","checksList","todoList","extList","metaList","holdersList","keySignals"];
+      for(const id of idsToClear){
+        const el = qs(id);
+        if(el) el.innerHTML = "";
+      }
 
-      qs("vizOverlay").style.display = "flex";
-      setText("vizOverlay", "No visualization data yet. Run a scan.");
+      const overlay = qs("vizOverlay");
+      if(overlay){
+        overlay.style.display = "flex";
+        overlay.textContent = "No visualization data yet. Run a scan.";
+      }
 
-      // graph mode disabled until real relationship edges exist
-      const gbtn = qs("vizModeGraph");
-      if(gbtn){ gbtn.disabled = true; gbtn.classList.remove("active"); gbtn.setAttribute("aria-selected","false"); }
+      // disable graph
+      setGraphAvailability(false);
+      setVizMode("bubbles", true);
 
-      qs("clusterGrid").innerHTML = `
-        <div class="clusterCard">
-          <div class="clusterLeft">
-            <div class="clusterT"><span class="dot warn"></span> No scan yet</div>
-            <div class="clusterD">Run a scan to generate cluster groups, linked wallets, and bundle/split heuristics.</div>
+      const grid = qs("clusterGrid");
+      if(grid){
+        grid.innerHTML = `
+          <div class="clusterCard">
+            <div class="clusterLeft">
+              <div class="clusterT"><span class="dot warn"></span> No scan yet</div>
+              <div class="clusterD">Run a scan to generate cluster groups, linked wallets, and bundle/split heuristics.</div>
+            </div>
+            <div class="clusterRight">
+              <span class="badge warn">WAIT</span>
+            </div>
           </div>
-          <div class="clusterRight">
-            <span class="badge warn">WAIT</span>
-          </div>
-        </div>
-      `;
+        `;
+      }
 
       applyTokenHeader({name:"—", symbol:"", image:""}, "");
+      APP.LAST_SCAN = null;
+      const exBtn = qs("btnExport");
+      if(exBtn) exBtn.disabled = true;
+    }
+
+    function setActiveChain(chainId, pushUrl){
+      const found = CHAINS.find(x => x.id === chainId) || CHAINS[0];
+      APP.ACTIVE_CHAIN_ID = found.id;
+
+      renderChainButtons();
+      setText("holdersStamp", found.stamp || "MAINNET");
+      setText("clusterStamp", found.stamp || "MAINNET");
+      setText("scanHint", found.stamp || "MAINNET");
+      setText("addrLabel", found.addrLabel || "Token Address");
+      setText("netStamp", found.stamp || "MAINNET");
+
+      const mint = qs("mint");
+      if(mint) mint.placeholder = found.placeholder || "Paste token address...";
+
+      setText("chainHint",
+        found.kind === "solana"
+          ? "Solana: validates base58 mint. On-chain checks via RPC; holders via largest accounts."
+          : "EVM: validates 0x address. On-chain reads via public RPC. Holders/Transfers need an indexer key."
+      );
+
+      resetUiForNewChain();
 
       if(pushUrl){
         const url = new URL(location.href);
@@ -1388,25 +1519,8 @@
         history.replaceState({}, "", url.toString());
       }
     }
-    /* =========================================================
-       PART 4 — RENDERERS + KEY SIGNALS (Pro Column)
-       ========================================================= */
 
-    /* ===== info modal registry ===== */
-    const INFO_MAP = new Map();
-    function newInfoId(){ return "i_" + Math.random().toString(36).slice(2) + Date.now().toString(36); }
-    function registerInfo(html){ const id = newInfoId(); INFO_MAP.set(id, html); return id; }
-    function getInfo(id){ return INFO_MAP.get(id) || ""; }
-
-    function explain(title, bullets){
-      const body = (bullets||[]).map(b => `<div style="margin:6px 0">${esc(b)}</div>`).join("");
-      return `
-        <div style="font-weight:1000; font-size:18px; margin-bottom:10px">${esc(title)}</div>
-        <div style="color:rgba(255,255,255,.72); font-weight:850; line-height:1.55">${body}</div>
-      `;
-    }
-
-    /* list renderer */
+    /* ========== Render helpers ========== */
     function renderList(listEl, items, defaultTitle){
       if(!listEl) return;
       listEl.innerHTML = "";
@@ -1458,7 +1572,6 @@
       }
     }
 
-    /* metrics renderer */
     function renderMetrics(rows){
       const wrap = qs("metrics");
       if(!wrap) return;
@@ -1484,36 +1597,6 @@
       }
     }
 
-    /* click -> modal */
-    (function wireInfoClicks(){
-      document.addEventListener("click", (e) => {
-        const t = e.target;
-        const openEl = t?.closest?.("[data-open='1']");
-        if(openEl){
-          const title = openEl.getAttribute("data-title") || "Details";
-          const infoId = openEl.getAttribute("data-info") || "";
-          const html = getInfo(infoId);
-          if(html) openModal(title, html);
-        }
-      });
-
-      document.addEventListener("keydown", (e) => {
-        if(e.key !== "Enter" && e.key !== " ") return;
-        const a = document.activeElement;
-        if(a && a.matches && a.matches("[data-open='1']")){
-          e.preventDefault();
-          const title = a.getAttribute("data-title") || "Details";
-          const infoId = a.getAttribute("data-info") || "";
-          const html = getInfo(infoId);
-          if(html) openModal(title, html);
-        }
-      });
-    })();
-
-    /* =========================================================
-       KEY SIGNALS (Badges/Ampel + Confidence/Source)
-       src: onchain | indexer | api | heur
-       ========================================================= */
     function srcBadge(src){
       const s = String(src || "heur").toLowerCase();
       const cls =
@@ -1526,13 +1609,11 @@
         cls === "api" ? "API signal" : "Heuristic";
       return `<span class="badge src ${cls}">${esc(label)}</span>`;
     }
-
     function sevToBadge(sev){
       const s = sev === "ok" ? "badge good" : sev === "bad" ? "badge bad" : "badge warn";
       const label = sev === "ok" ? "PASS" : sev === "bad" ? "FAIL" : "WATCH";
       return `<span class="${s}">${label}</span>`;
     }
-
     function renderKeySignals(signals){
       const wrap = qs("keySignals");
       if(!wrap) return;
@@ -1561,21 +1642,45 @@
       }
     }
 
-    function setGraphAvailability(hasEdges){
-      const g = qs("vizModeGraph");
-      if(!g) return;
-      g.disabled = !hasEdges;
-      if(!hasEdges && (VIZ.mode === "graph")){
-        setVizMode("bubbles");
+    /* ========== Verdict ========== */
+    function setVerdict(score, critical){
+      const badge = qs("verdictBadge");
+      const scoreEl = qs("scoreBadge");
+      if(scoreEl) scoreEl.textContent = `SCORE ${score}/100`;
+
+      let title = "WATCHLIST";
+      let sev = "warn";
+      if(score >= 85 && !critical){ title = "GUARDIAN APPROVED"; sev = "ok"; }
+      else if(score >= 70){ title = "CONDITIONAL PASS"; sev = "warn"; }
+      else { title = "HIGH RISK"; sev = "bad"; }
+
+      setText("verdictTitle", title);
+      if(badge){
+        badge.className = "badge " + (sev==="ok" ? "good" : sev==="bad" ? "bad" : "warn");
+        badge.textContent = sev==="ok" ? "APPROVED" : sev==="bad" ? "RISK" : "WATCH";
+      }
+      if(scoreEl){
+        scoreEl.className = "badge " + (score >= 85 ? "good" : score >= 60 ? "warn" : "bad");
       }
     }
-    /* =========================================================
-       PART 5 — CONFIG + SOLANA ENGINE + DEXSCREENER LIQUIDITY
-       ========================================================= */
 
-    const CFG = {
-      HELIUS_KEY: "b566a086-57d4-4433-8661-faed9ad07ba0",
-      GOLDRUSH_API_KEY: "cqt_rQVTMTXwYkPJBrwf7ff6JWmdkywR",
+    function setScanButtons(disabled){
+      const b1 = qs("btnScan");
+      const b2 = qs("btnScanInline");
+      if(b1) b1.disabled = !!disabled;
+      if(b2) b2.disabled = !!disabled;
+      const b3 = qs("btnExport");
+      if(b3 && disabled) b3.disabled = true;
+    }
+
+    function setStatus(msg){ setText("status", msg || ""); }
+
+    /* =========================================================
+       CONFIG (keys stored locally — DO NOT hardcode secrets in prod)
+       ========================================================= */
+    const CFG_DEFAULT = {
+      HELIUS_KEY: "",
+      GOLDRUSH_API_KEY: "",
       EVM_RPCS: {
         1:    ["https://ethereum.publicnode.com", "https://rpc.ankr.com/eth", "https://cloudflare-eth.com"],
         56:   ["https://bsc.publicnode.com", "https://rpc.ankr.com/bsc", "https://bsc-dataseed.binance.org"],
@@ -1585,13 +1690,84 @@
       TOKEN_2022_PROGRAM: "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
     };
 
+    const CFG = loadCfg();
+
+    function loadCfg(){
+      try{
+        const raw = localStorage.getItem("sos_guardian_cfg_v1");
+        if(!raw) return {...CFG_DEFAULT};
+        const j = JSON.parse(raw);
+        return {
+          ...CFG_DEFAULT,
+          ...j,
+          EVM_RPCS: {...CFG_DEFAULT.EVM_RPCS, ...(j?.EVM_RPCS || {})}
+        };
+      }catch{
+        return {...CFG_DEFAULT};
+      }
+    }
+    function saveCfg(next){
+      try{
+        localStorage.setItem("sos_guardian_cfg_v1", JSON.stringify(next));
+      }catch{}
+    }
+
+    function openKeysModal(){
+      const html = `
+        ${explain("API Keys (local only)", [
+          "Keys are stored in your browser (localStorage).",
+          "For production: move calls to a backend to avoid exposing keys publicly.",
+          "You can run without keys, but EVM holder/transfer graph needs GoldRush; Solana RPC needs Helius for best results."
+        ])}
+
+        <div class="field">
+          <label>Helius (Solana RPC key)</label>
+          <input id="k_helius" placeholder="paste helius key..." value="${esc(CFG.HELIUS_KEY || "")}">
+          <div class="help">Used for Solana RPC methods like getAccountInfo / getAsset. Without it, Solana scan may fail.</div>
+        </div>
+
+        <div class="field">
+          <label>GoldRush / Covalent key (EVM holders + transfers)</label>
+          <input id="k_goldrush" placeholder="paste goldrush key..." value="${esc(CFG.GOLDRUSH_API_KEY || "")}">
+          <div class="help">Used for EVM top holders + transfer graph. Without it, EVM holder list & graph will be limited.</div>
+        </div>
+
+        <div class="modalActions">
+          <button class="btn" type="button" id="k_cancel">Cancel</button>
+          <button class="btn grad" type="button" id="k_save">Save</button>
+        </div>
+      `;
+      openModal("API Keys", html);
+
+      setTimeout(() => {
+        const bCancel = document.getElementById("k_cancel");
+        const bSave = document.getElementById("k_save");
+        if(bCancel) bCancel.onclick = closeModal;
+        if(bSave) bSave.onclick = () => {
+          const helius = (document.getElementById("k_helius")?.value || "").trim();
+          const gold = (document.getElementById("k_goldrush")?.value || "").trim();
+          CFG.HELIUS_KEY = helius;
+          CFG.GOLDRUSH_API_KEY = gold;
+          saveCfg({
+            HELIUS_KEY: CFG.HELIUS_KEY,
+            GOLDRUSH_API_KEY: CFG.GOLDRUSH_API_KEY,
+            EVM_RPCS: CFG.EVM_RPCS
+          });
+          closeModal();
+          showToast("Saved keys locally.");
+        };
+      }, 0);
+    }
+
+    /* =========================================================
+       ADDRESS VALIDATION + EXPLORERS
+       ========================================================= */
     function looksBase58(s){
       return typeof s === "string" && s.length >= 32 && s.length <= 52 && /^[1-9A-HJ-NP-Za-km-z]+$/.test(s);
     }
     function looksEvmAddress(s){
       return typeof s === "string" && /^0x[0-9a-fA-F]{40}$/.test(s.trim());
     }
-
     function explorerBase(chainId){
       if(chainId === "sol")  return {name:"Solscan", base:"https://solscan.io/account/"};
       if(chainId === "eth")  return {name:"Etherscan", base:"https://etherscan.io/address/"};
@@ -1600,26 +1776,52 @@
       return {name:"Explorer", base:"#"};
     }
 
-    function formatUsd(n){
-      const x = Number(n);
-      if(!Number.isFinite(x)) return "—";
-      if(x >= 1e9) return (x/1e9).toFixed(2) + "B";
-      if(x >= 1e6) return (x/1e6).toFixed(2) + "M";
-      if(x >= 1e3) return (x/1e3).toFixed(2) + "K";
-      return x.toFixed(2);
+    /* =========================================================
+       NETWORK: SAFE FETCH + CACHING + ABORT
+       ========================================================= */
+    async function safeFetch(url, opts = {}, { timeoutMs = 15000, key = "" } = {}){
+      const cacheKey = key || (opts?.method || "GET") + "::" + url;
+      if(APP.CACHE.has(cacheKey)) return APP.CACHE.get(cacheKey);
+
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), timeoutMs);
+
+      // link to global abort (cancel scan)
+      const signals = [];
+      if(opts.signal) signals.push(opts.signal);
+      signals.push(ctrl.signal);
+
+      const combined = new AbortController();
+      const onAbort = () => combined.abort();
+      for(const s of signals){
+        if(!s) continue;
+        if(s.aborted){ combined.abort(); break; }
+        s.addEventListener("abort", onAbort, { once:true });
+      }
+
+      try{
+        const res = await fetch(url, { ...opts, signal: combined.signal });
+        if(!res.ok){
+          const tx = await res.text().catch(()=> "");
+          throw new Error(`HTTP ${res.status}: ${tx.slice(0,140)}`);
+        }
+        const out = res;
+        APP.CACHE.set(cacheKey, out.clone ? out.clone() : out);
+        return out;
+      } finally {
+        clearTimeout(t);
+        for(const s of signals){
+          try{ s.removeEventListener("abort", onAbort); }catch{}
+        }
+      }
     }
 
-    async function getSignatures(addr, limit=20){
-  return await solRpc("getSignaturesForAddress", [addr, { limit }]);
-}
-async function getTx(sig){
-  return await solRpc("getTransaction", [sig, { encoding:"jsonParsed", maxSupportedTransactionVersion: 0 }]);
-}
-    /* ===== Dexscreener token endpoint (works across chains; address can be Sol mint or EVM token) ===== */
-    async function fetchDexscreenerToken(addr){
+    /* =========================================================
+       DEXSCREENER
+       ========================================================= */
+    async function fetchDexscreenerToken(addr, signal){
       try{
-        const r = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${addr}`);
-        if(!r.ok) return null;
+        const r = await safeFetch(`https://api.dexscreener.com/latest/dex/tokens/${encodeURIComponent(addr)}`, { signal }, { timeoutMs: 14000 });
         const j = await r.json();
         const pairs = Array.isArray(j?.pairs) ? j.pairs : [];
         if(!pairs.length) return { pairs: [] };
@@ -1630,27 +1832,29 @@ async function getTx(sig){
       }
     }
 
-    /* ===== Solana RPC (Helius) ===== */
+    /* =========================================================
+       SOLANA ENGINE (Helius RPC)
+       ========================================================= */
     function HELIUS_RPC(){
+      if(!CFG.HELIUS_KEY) return "";
       return `https://mainnet.helius-rpc.com/?api-key=${encodeURIComponent(CFG.HELIUS_KEY)}`;
     }
-    async function solRpc(method, params){
-      if(!CFG.HELIUS_KEY) throw new Error("Helius key missing in CFG. Set CFG.HELIUS_KEY.");
-      const res = await fetch(HELIUS_RPC(), {
+    async function solRpc(method, params, signal){
+      const url = HELIUS_RPC();
+      if(!url) throw new Error("Helius key missing. Click 'API Keys' and add HELIUS_KEY.");
+      const res = await safeFetch(url, {
         method:"POST",
         headers:{ "Content-Type":"application/json" },
-        body: JSON.stringify({ jsonrpc:"2.0", id:1, method, params })
-      });
-      if(!res.ok){
-        const t = await res.text().catch(()=> "");
-        throw new Error(`Solana RPC HTTP ${res.status}: ${t.slice(0,180)}`);
-      }
+        body: JSON.stringify({ jsonrpc:"2.0", id:1, method, params }),
+        signal
+      }, { timeoutMs: 20000 });
       const j = await res.json();
       if(j?.error) throw new Error(j.error.message || "Solana RPC error");
       return j.result;
     }
-    async function getMintParsed(mint){
-      const r = await solRpc("getAccountInfo", [mint, { encoding:"jsonParsed", commitment:"confirmed" }]);
+
+    async function getMintParsed(mint, signal){
+      const r = await solRpc("getAccountInfo", [mint, { encoding:"jsonParsed", commitment:"confirmed" }], signal);
       const v = r?.value;
       if(!v) return null;
       const owner = v.owner;
@@ -1658,31 +1862,26 @@ async function getTx(sig){
       const info = parsed?.info || null;
       return { owner, info, rawParsed: parsed };
     }
-    async function getTokenSupply(mint){
-      const r = await solRpc("getTokenSupply", [mint]);
+    async function getTokenSupply(mint, signal){
+      const r = await solRpc("getTokenSupply", [mint], signal);
       return r?.value || null;
     }
-    async function getLargest(mint){
-      const r = await solRpc("getTokenLargestAccounts", [mint]);
+    async function getLargest(mint, signal){
+      const r = await solRpc("getTokenLargestAccounts", [mint], signal);
       return r?.value || [];
     }
-    async function getTokenAccountOwners(tokenAccountAddrs){
-  const addrs = (tokenAccountAddrs || []).filter(Boolean);
-  if(!addrs.length) return [];
-
-  // getMultipleAccounts: schneller als 10x getAccountInfo
-  const res = await solRpc("getMultipleAccounts", [addrs, { encoding:"jsonParsed", commitment:"confirmed" }]);
-  const values = Array.isArray(res?.value) ? res.value : [];
-
-  return values.map(v => {
-    const parsed = v?.data?.parsed;
-    const info = parsed?.info;
-    // Token account owner wallet
-    return info?.owner || null;
-  });
-}
-    async function getAsset(mint){
-      try { return await solRpc("getAsset", [mint]); }
+    async function getMultipleAccounts(addrs, signal){
+      const res = await solRpc("getMultipleAccounts", [addrs, { encoding:"jsonParsed", commitment:"confirmed" }], signal);
+      return Array.isArray(res?.value) ? res.value : [];
+    }
+    async function getTokenAccountOwners(tokenAccountAddrs, signal){
+      const addrs = (tokenAccountAddrs || []).filter(Boolean);
+      if(!addrs.length) return [];
+      const values = await getMultipleAccounts(addrs, signal);
+      return values.map(v => v?.data?.parsed?.info?.owner || null);
+    }
+    async function getAsset(mint, signal){
+      try { return await solRpc("getAsset", [mint], signal); }
       catch { return null; }
     }
     function pickTokenMetaFromAsset(asset){
@@ -1704,185 +1903,23 @@ async function getTx(sig){
       return { name, symbol, image, uri, description };
     }
 
-    function fmtInt(n){
-      if(n === null || n === undefined || Number.isNaN(n)) return "—";
-      try { return new Intl.NumberFormat("en-US").format(Math.round(Number(n))); }
-      catch { return String(n); }
-    }
-    function fmtPct(n){
-      if(n === null || n === undefined || Number.isNaN(n)) return "—";
-      return `${Number(n).toFixed(2)}%`;
-    }
-    // ===== NEW: stable holder % from raw balance / raw totalSupply (EVM) =====
-function pctFromRaw(balanceRaw, totalSupplyRaw){
-  try{
-    const bal = BigInt(balanceRaw);
-    const sup = BigInt(totalSupplyRaw);
-    if(sup <= 0n) return 0;
-    // keep 4 decimals of precision in percent
-    const scaled = (bal * 1000000n) / sup; // percent * 10000
-    return Number(scaled) / 10000; // -> percent with 4 decimals
-  }catch{
-    return 0;
-  }
-}
-
-// If API gives "percentage", normalize it (some APIs return 0..1 fraction)
-function normalizePct(p){
-  const x = Number(p);
-  if(!Number.isFinite(x) || x < 0) return 0;
-  if(x > 0 && x <= 1) return x * 100;     // fraction -> percent
-  if(x > 1000) return x / 100;            // safety: basis points -> percent (rare)
-  return x;                               // already percent
-}
-
-    /* ===== Solana scoring (kept, clean) ===== */
-    function scoreSol(sig){
-      let score = 100;
-      const checks = [];
-
-      if(sig.freezeActive){
-        score -= 35;
-        checks.push({ t:"Freeze Authority", sev:"bad", d:"Freeze authority is active — wallets can be frozen.", why:"Freeze is set.",
-          infoHtml: explain("Freeze Authority", ["Admin can freeze token accounts.", "Risk: buyers might be unable to sell/transfer.", "PASS = freeze authority removed."])
-        });
-      }else{
-        checks.push({ t:"Freeze Authority", sev:"ok", d:"Freeze authority removed (good).", why:"Freeze is null." });
-      }
-
-      if(sig.mintAuthActive){
-        score -= 30;
-        checks.push({ t:"Mint Authority", sev:"bad", d:"Mint authority is active — supply can be increased.", why:"Mint is set.",
-          infoHtml: explain("Mint Authority", ["Admin can mint new tokens.", "Risk: inflation / rug mechanics.", "PASS = mint authority renounced."])
-        });
-      }else{
-        checks.push({ t:"Mint Authority", sev:"ok", d:"Mint authority renounced (good).", why:"Mint is null." });
-      }
-
-      const t20 = Number(sig.top20 || 0);
-      if(t20 >= 75){ score -= 28; checks.push({ t:"Holder concentration (Top20)", sev:"bad", d:`Top20 hold ~${t20.toFixed(2)}% (very high).`, why:"Extreme concentration." }); }
-      else if(t20 >= 55){ score -= 18; checks.push({ t:"Holder concentration (Top20)", sev:"warn", d:`Top20 hold ~${t20.toFixed(2)}% (high).`, why:"High concentration." }); }
-      else if(t20 >= 35){ score -= 8;  checks.push({ t:"Holder concentration (Top20)", sev:"warn", d:`Top20 hold ~${t20.toFixed(2)}% (moderate).`, why:"Moderate concentration." }); }
-      else { checks.push({ t:"Holder concentration (Top20)", sev:"ok", d:`Top20 hold ~${t20.toFixed(2)}% (better).`, why:"Lower concentration." }); }
-
-      if(sig.programType === "TOKEN_2022"){
-        score -= 6;
-        checks.push({ t:"Token Standard", sev:"warn", d:"Token-2022 detected (extensions possible).", why:"Token-2022 can include extra rules." });
-      }else if(sig.programType === "SPL_TOKEN"){
-        checks.push({ t:"Token Standard", sev:"ok", d:"Standard SPL Token program.", why:"Mint owned by Token Program." });
-      }else{
-        score -= 10;
-        checks.push({ t:"Token Standard", sev:"warn", d:"Unknown token program (caution).", why:"Not standard program." });
-      }
-
-      if(sig.meta && (sig.meta.name || sig.meta.symbol)){
-        checks.push({ t:"Metadata", sev:"ok", d:"Name/symbol found.", why:"Metadata loaded." });
-      }else{
-        score -= 4;
-        checks.push({ t:"Metadata", sev:"warn", d:"Metadata missing/unreadable.", why:"No name/symbol." });
-      }
-
-      score = clamp(Math.round(score), 0, 100);
-      const critical = !!(sig.freezeActive || sig.mintAuthActive);
-      return { score, checks, critical };
-    }
-
-    function todoSol(sig){
-      const t = [];
-      t.push(sig.freezeActive
-        ? {t:"Remove Freeze Authority", sev:"bad", d:"Freeze can block buyers.", why:"Freeze is active — remove it."}
-        : {t:"Freeze Authority", sev:"ok", d:"Already removed.", why:"Freeze not active."}
-      );
-      t.push(sig.mintAuthActive
-        ? {t:"Renounce Mint Authority", sev:"bad", d:"Mint can inflate supply.", why:"Mint is active — renounce it."}
-        : {t:"Mint Authority", sev:"ok", d:"Already renounced.", why:"Mint not active."}
-      );
-      const t20 = Number(sig.top20 || 0);
-      if(t20 >= 55) t.push({t:"Reduce whale concentration", sev:"warn", d:`Top20 ~${t20.toFixed(2)}%.`, why:"High concentration — inspect wallets."});
-      else if(t20 >= 35) t.push({t:"Monitor distribution", sev:"warn", d:`Top20 ~${t20.toFixed(2)}%.`, why:"Moderate concentration — monitor."});
-      else t.push({t:"Distribution", sev:"ok", d:`Top20 ~${t20.toFixed(2)}% (better).`, why:"Healthier distribution."});
-
-      return t.map(x => ({...x, infoHtml: explain(x.t, [x.d, "Status: " + pillLabel(x.sev)])}));
-    }
-
-    /* ===== Solana Key Signals builder ===== */
-    function keySignalsSol({mintAuthActive, freezeActive, programType, liquidityUsd, top20}){
-      const s = [];
-      s.push({
-        k:"Mint Authority",
-        v: mintAuthActive ? "ACTIVE ❌" : "RENOUNCED ✅",
-        sev: mintAuthActive ? "bad" : "ok",
-        src:"onchain",
-        mini:"Solana mintAuthority on the mint account."
-      });
-      s.push({
-        k:"Freeze Authority",
-        v: freezeActive ? "ACTIVE ❌" : "RENOUNCED ✅",
-        sev: freezeActive ? "bad" : "ok",
-        src:"onchain",
-        mini:"Solana freezeAuthority on the mint account."
-      });
-
-      s.push({
-        k:"Token Standard",
-        v: programType === "TOKEN_2022" ? "TOKEN-2022 (WATCH)" : (programType === "SPL_TOKEN" ? "SPL (PASS)" : "UNKNOWN"),
-        sev: programType === "SPL_TOKEN" ? "ok" : "warn",
-        src:"onchain",
-        mini:"Mint owner program."
-      });
-
-      s.push({
-        k:"Top20 Concentration",
-        v: Number.isFinite(top20) ? `${top20.toFixed(2)}%` : "—",
-        sev: Number.isFinite(top20) ? (top20 >= 75 ? "bad" : top20 >= 35 ? "warn" : "ok") : "warn",
-        src:"onchain",
-        mini:"Computed from getTokenLargestAccounts (best-effort)."
-      });
-
-      s.push({
-        k:"Liquidity",
-        v: Number.isFinite(liquidityUsd) ? `$${formatUsd(liquidityUsd)}` : "—",
-        sev: Number.isFinite(liquidityUsd) ? (liquidityUsd < 3000 ? "bad" : liquidityUsd < 20000 ? "warn" : "ok") : "warn",
-        src:"api",
-        mini:"Dexscreener best pair liquidity (USD)."
-      });
-
-      s.push({
-        k:"LP",
-        v:"UNKNOWN ❓",
-        sev:"warn",
-        src:"heur",
-        mini:"Solana LP lock/burn is DEX-specific. Needs Raydium/Orca/Meteora-specific logic."
-      });
-
-      return s;
-    }
     /* =========================================================
-       PART 6 — EVM ENGINE + LP BURN/LOCK (best-effort)
+       EVM ENGINE (public RPC best-effort)
        ========================================================= */
-
-    async function evmRpc(chainId, method, params){
+    async function evmRpc(chainId, method, params, signal){
       const urls = CFG.EVM_RPCS[chainId] || [];
       if(!urls.length) throw new Error("No RPC configured for this chain.");
 
       const errors = [];
       for(const url of urls){
-        const ctrl = new AbortController();
-        const timer = setTimeout(() => ctrl.abort(), 12000);
         try{
-          const res = await fetch(url, {
+          const res = await safeFetch(url, {
             method:"POST",
             headers:{ "Content-Type":"application/json" },
             body: JSON.stringify({ jsonrpc:"2.0", id:1, method, params }),
-            signal: ctrl.signal
-          });
-          clearTimeout(timer);
+            signal
+          }, { timeoutMs: 14000, key: `${url}::${method}::${JSON.stringify(params)}` });
 
-          if(!res.ok){
-            const t = await res.text().catch(()=> "");
-            errors.push(`HTTP ${res.status} ${t.slice(0,120)}`);
-            continue;
-          }
           const j = await res.json();
           if(j?.error){
             errors.push(String(j.error?.message || "RPC error").slice(0,120));
@@ -1890,21 +1927,20 @@ function normalizePct(p){
           }
           return j.result;
         }catch(e){
-          clearTimeout(timer);
           errors.push(String(e?.message || e).slice(0,120));
         }
       }
       throw new Error(`All RPCs failed. ${errors.slice(-3).join(" • ")}`);
     }
 
-    async function ethCall(chainId, to, data){
-      return await evmRpc(chainId, "eth_call", [{to, data}, "latest"]);
+    async function ethCall(chainId, to, data, signal){
+      return await evmRpc(chainId, "eth_call", [{to, data}, "latest"], signal);
     }
-    async function getCode(chainId, addr){
-      return await evmRpc(chainId, "eth_getCode", [addr, "latest"]);
+    async function getCode(chainId, addr, signal){
+      return await evmRpc(chainId, "eth_getCode", [addr, "latest"], signal);
     }
-    async function getStorageAt(chainId, addr, slot){
-      return await evmRpc(chainId, "eth_getStorageAt", [addr, slot, "latest"]);
+    async function getStorageAt(chainId, addr, slot, signal){
+      return await evmRpc(chainId, "eth_getStorageAt", [addr, slot, "latest"], signal);
     }
 
     const SEL = {
@@ -1960,25 +1996,25 @@ function normalizePct(p){
       }catch{ return ""; }
     }
 
-    async function getErc20Meta(chainId, addr){
+    async function getErc20Meta(chainId, addr, signal){
       const out = { name:"", symbol:"", decimals:null, totalSupply:null };
-      try { out.name = decodeString(await ethCall(chainId, addr, SEL.name)); } catch {}
-      try { out.symbol = decodeString(await ethCall(chainId, addr, SEL.symbol)); } catch {}
+      try { out.name = decodeString(await ethCall(chainId, addr, SEL.name, signal)); } catch {}
+      try { out.symbol = decodeString(await ethCall(chainId, addr, SEL.symbol, signal)); } catch {}
       try {
-        const v = decodeUint256(await ethCall(chainId, addr, SEL.decimals));
+        const v = decodeUint256(await ethCall(chainId, addr, SEL.decimals, signal));
         out.decimals = (v === null) ? null : Number(v);
         if(!Number.isFinite(out.decimals)) out.decimals = null;
       } catch {}
-      try { out.totalSupply = decodeUint256(await ethCall(chainId, addr, SEL.totalSupply)); } catch {}
+      try { out.totalSupply = decodeUint256(await ethCall(chainId, addr, SEL.totalSupply, signal)); } catch {}
       return out;
     }
-    async function getOwner(chainId, addr){
-      try{ return decodeAddressFrom32(await ethCall(chainId, addr, SEL.owner)); }
+    async function getOwner(chainId, addr, signal){
+      try{ return decodeAddressFrom32(await ethCall(chainId, addr, SEL.owner, signal)); }
       catch{ return null; }
     }
-    async function getPaused(chainId, addr){
+    async function getPaused(chainId, addr, signal){
       try{
-        const r = await ethCall(chainId, addr, SEL.paused);
+        const r = await ethCall(chainId, addr, SEL.paused, signal);
         const v = decodeUint256(r || "0x");
         if(v === null) return null;
         return v !== 0n;
@@ -1987,27 +2023,14 @@ function normalizePct(p){
       }
     }
 
-    async function goldrushTransfers(chainId, tokenAddr, pageSize=200){
-  if(!CFG.GOLDRUSH_API_KEY) return [];
-  const url = `https://api.covalenthq.com/v1/${goldrushChain(chainId)}/tokens/${tokenAddr}/token_transfers/?page-size=${pageSize}&key=${encodeURIComponent(CFG.GOLDRUSH_API_KEY)}`;
-  try{
-    const r = await fetch(url);
-    if(!r.ok) return [];
-    const j = await r.json();
-    return Array.isArray(j?.data?.items) ? j.data.items : [];
-  }catch{
-    return [];
-  }
-}
-
     /* Proxy detection (EIP-1967) */
     const SLOT_IMPL  = "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc";
     const SLOT_ADMIN = "0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103";
-    async function detectProxy(chainId, addr){
+    async function detectProxy(chainId, addr, signal){
       try{
         const [implRaw, adminRaw] = await Promise.all([
-          getStorageAt(chainId, addr, SLOT_IMPL),
-          getStorageAt(chainId, addr, SLOT_ADMIN)
+          getStorageAt(chainId, addr, SLOT_IMPL, signal),
+          getStorageAt(chainId, addr, SLOT_ADMIN, signal)
         ]);
         const impl  = decodeAddressFrom32(implRaw  || "0x");
         const admin = decodeAddressFrom32(adminRaw || "0x");
@@ -2020,7 +2043,7 @@ function normalizePct(p){
       }
     }
 
-    /* ===== TrustWallet logo fallback (EVM) ===== */
+    /* TrustWallet logo fallback (EVM) */
     function trustWalletLogo(chainId, addr){
       const a = String(addr || "").trim();
       if(!a) return [];
@@ -2073,19 +2096,31 @@ function normalizePct(p){
       tryNext();
     }
 
-    /* ===== GoldRush holders (token holders + also works for LP token if pairAddress is ERC20 LP) ===== */
+    /* =========================================================
+       INDEXER (GoldRush) — holders + transfers
+       ========================================================= */
     function goldrushChain(chainId){
       if(chainId === 1) return "eth-mainnet";
       if(chainId === 56) return "bsc-mainnet";
       if(chainId === 8453) return "base-mainnet";
       return "eth-mainnet";
     }
-    async function goldrushHolders(chainId, addr){
+    async function goldrushHolders(chainId, addr, signal){
       if(!CFG.GOLDRUSH_API_KEY) return [];
       const url = `https://api.covalenthq.com/v1/${goldrushChain(chainId)}/tokens/${addr}/token_holders/?page-size=10&key=${encodeURIComponent(CFG.GOLDRUSH_API_KEY)}`;
       try{
-        const r = await fetch(url);
-        if(!r.ok) return [];
+        const r = await safeFetch(url, { signal }, { timeoutMs: 20000 });
+        const j = await r.json();
+        return Array.isArray(j?.data?.items) ? j.data.items : [];
+      }catch{
+        return [];
+      }
+    }
+    async function goldrushTransfers(chainId, tokenAddr, pageSize=200, signal){
+      if(!CFG.GOLDRUSH_API_KEY) return [];
+      const url = `https://api.covalenthq.com/v1/${goldrushChain(chainId)}/tokens/${tokenAddr}/token_transfers/?page-size=${pageSize}&key=${encodeURIComponent(CFG.GOLDRUSH_API_KEY)}`;
+      try{
+        const r = await safeFetch(url, { signal }, { timeoutMs: 22000 });
         const j = await r.json();
         return Array.isArray(j?.data?.items) ? j.data.items : [];
       }catch{
@@ -2093,128 +2128,76 @@ function normalizePct(p){
       }
     }
 
-    function isDeadEvm(addr){
-      const a = String(addr||"").toLowerCase();
-      return a === "0x000000000000000000000000000000000000dead" || a === "0x0000000000000000000000000000000000000000";
+    function pctFromRaw(balanceRaw, totalSupplyRaw){
+      try{
+        const bal = BigInt(balanceRaw);
+        const sup = BigInt(totalSupplyRaw);
+        if(sup <= 0n) return 0;
+        const scaled = (bal * 1000000n) / sup; // percent * 10000
+        return Number(scaled) / 10000;
+      }catch{
+        return 0;
+      }
+    }
+    function normalizePct(p){
+      const x = Number(p);
+      if(!Number.isFinite(x) || x < 0) return 0;
+      if(x > 0 && x <= 1) return x * 100;
+      if(x > 1000) return x / 100;
+      return x;
     }
 
-    /* ===== LP LOCKERS (best-effort, extend as needed) ===== */
-    const LOCKERS = {
-      1: [
-        "0x663a5c229c09b049e36dcc11a9b0d4a8eb9db214" /* Unicrypt (example) */
-      ],
-      56: [
-        /* add PinkLock/Unicrypt BSC addresses here */
-      ],
-      8453: [
-        /* base lockers */
-      ]
-    };
-
-    async function analyzeLpEvm(chainId, bestPair){
-      const pairAddress = String(bestPair?.pairAddress || "").trim();
-      const dexId = String(bestPair?.dexId || "").toLowerCase();
-
-      if(!pairAddress){
-        return { sev:"warn", v:"UNKNOWN ❓", src:"api", mini:"Dexscreener returned no pairAddress." };
-      }
-      if(dexId.includes("v3")){
-        return { sev:"warn", v:"UNKNOWN ❓", src:"api", mini:"V3-style liquidity (LP is not an ERC-20). Cannot compute burned/locked this way." };
-      }
-
-      const holders = await goldrushHolders(chainId, pairAddress);
-      if(!holders.length){
-        return { sev:"warn", v:"UNKNOWN ❓", src:"indexer", mini:"LP-holder distribution requires indexer coverage." };
-      }
-
-      let deadPct = 0;
-      let lockedPct = 0;
-
-      for(const h of holders){
-        const a = String(h?.address || "").toLowerCase();
-        const p = Number(h?.percentage ?? h?.pct ?? NaN);
-        if(!Number.isFinite(p)) continue;
-
-        if(isDeadEvm(a)) deadPct += p;
-
-        const lockerList = LOCKERS[chainId] || [];
-        if(lockerList.some(x => String(x).toLowerCase() === a)) lockedPct += p;
-      }
-
-      if(deadPct >= 90) return { sev:"ok", v:`BURNED ✅ (${deadPct.toFixed(1)}%)`, src:"indexer", mini:"Computed from LP token holders to dead wallets (best-effort)." };
-      if(lockedPct >= 50) return { sev:"ok", v:`LOCKED 🔒 (${lockedPct.toFixed(1)}%)`, src:"indexer", mini:"Computed via known locker addresses list (best-effort)." };
-      if(deadPct >= 50) return { sev:"warn", v:`PARTIAL BURN (${deadPct.toFixed(1)}%)`, src:"indexer", mini:"Some LP in dead wallets, not fully burned." };
-      if(lockedPct > 0) return { sev:"warn", v:`PARTIAL LOCK (${lockedPct.toFixed(1)}%)`, src:"indexer", mini:"Some LP appears in known lockers list." };
-
-      return { sev:"warn", v:"NOT BURNED/LOCKED", src:"indexer", mini:"No strong burn/lock signal detected (best-effort)." };
-    }
-
-    /* ===== EVM Key Signals builder ===== */
-    function keySignalsEvm({owner, proxy, paused, liquidityUsd, lpStatus}){
-      const zero = "0x0000000000000000000000000000000000000000";
-      const ownerKnown = !!owner;
-      const ownerRenounced = ownerKnown && owner.toLowerCase() === zero;
-
-      const s = [];
-
-      s.push({
-        k:"Owner",
-        v: ownerKnown ? (ownerRenounced ? "RENOUNCED ✅" : `ACTIVE ⚠️ (${shortAddr(owner)})`) : "UNKNOWN ❓",
-        sev: ownerKnown ? (ownerRenounced ? "ok" : "warn") : "warn",
-        src:"onchain",
-        mini: ownerKnown ? "owner() best-effort read." : "owner() missing/unreadable (custom admin possible)."
-      });
-
-      s.push({
-        k:"Proxy",
-        v: proxy?.isProxy ? "YES ⚠️ (UPGRADEABLE)" : "NO ✅",
-        sev: proxy?.isProxy ? "warn" : "ok",
-        src:"onchain",
-        mini: "EIP-1967 slots check."
-      });
-
-      s.push({
-        k:"Pausable",
-        v: paused === true ? "YES ⚠️ (PAUSED NOW)" : (paused === false ? "YES ⚠️ (NOT PAUSED)" : "NO ✅ / UNKNOWN"),
-        sev: paused === true ? "bad" : (paused === false ? "warn" : "ok"),
-        src:"onchain",
-        mini: "paused() best-effort."
-      });
-
-      s.push({
-        k:"Liquidity",
-        v: Number.isFinite(liquidityUsd) ? `$${formatUsd(liquidityUsd)}` : "—",
-        sev: Number.isFinite(liquidityUsd) ? (liquidityUsd < 3000 ? "bad" : liquidityUsd < 20000 ? "warn" : "ok") : "warn",
-        src:"api",
-        mini:"Dexscreener best pair liquidity (USD)."
-      });
-
-      s.push({
-        k:"LP",
-        v: lpStatus?.v || "UNKNOWN ❓",
-        sev: lpStatus?.sev || "warn",
-        src: lpStatus?.src || "heur",
-        mini: lpStatus?.mini || "LP burned/locked requires LP token holder data."
-      });
-
-      return s;
-    }
     /* =========================================================
-       PART 7 — VIZ: collision packing + smart labels + hover state
+       VIZ ENGINE — stable coordinate system (CSS px)
        ========================================================= */
-
     const VIZ = {
       mode: "bubbles",
       nodes: [],
       edges: [],
-      panX: 0,
-      panY: 0,
+      panX: 0, panY: 0,
       zoom: 1,
       dragging: false,
-      lastX: 0,
-      lastY: 0,
+      lastX: 0, lastY: 0,
       hoverAddr: ""
     };
+
+    function setGraphAvailability(hasEdges){
+      const g = qs("vizModeGraph");
+      if(!g) return;
+      g.disabled = !hasEdges;
+      if(!hasEdges && (VIZ.mode === "graph")){
+        setVizMode("bubbles");
+      }
+    }
+
+    function setVizMode(mode, silent){
+      const next = (mode === "graph") ? "graph" : "bubbles";
+      if(next === "graph"){
+        const g = qs("vizModeGraph");
+        if(g && g.disabled){
+          if(!silent) showToast("Graph mode is disabled until real relationship edges exist.");
+          return;
+        }
+      }
+      VIZ.mode = next;
+      const b1 = qs("vizModeBubbles");
+      const b2 = qs("vizModeGraph");
+      if(b1 && b2){
+        b1.classList.toggle("active", VIZ.mode === "bubbles");
+        b2.classList.toggle("active", VIZ.mode === "graph");
+        b1.setAttribute("aria-selected", VIZ.mode === "bubbles" ? "true" : "false");
+        b2.setAttribute("aria-selected", VIZ.mode === "graph" ? "true" : "false");
+      }
+      drawViz();
+    }
+
+    function resetViz(){
+      VIZ.panX = 0;
+      VIZ.panY = 0;
+      VIZ.zoom = 1;
+      VIZ.hoverAddr = "";
+      drawViz();
+    }
 
     function resizeCanvas(){
       const canvas = qs("vizCanvas");
@@ -2228,23 +2211,19 @@ function normalizePct(p){
       drawViz();
     }
 
-    /* ===== collision packing using spatial grid (fast; "quadtree-like") ===== */
     function packNoOverlap(nodes, W, H){
       const cx = W/2, cy = H/2;
       const ITER = 220;
 
-      // initial center pull
       for(const n of nodes){
         if(!Number.isFinite(n.x)) n.x = cx + (Math.random()-0.5)*W*0.6;
         if(!Number.isFinite(n.y)) n.y = cy + (Math.random()-0.5)*H*0.6;
       }
 
-      // choose cell size by max radius
       const maxR = nodes.reduce((m,n)=>Math.max(m, n.r||14), 14);
       const cellSize = Math.max(28, Math.floor((maxR*2)+10));
 
       for(let k=0;k<ITER;k++){
-        // build grid
         const grid = new Map();
         function key(ix,iy){ return ix+"|"+iy; }
         function put(i, x, y){
@@ -2255,17 +2234,13 @@ function normalizePct(p){
           grid.get(kk).push(i);
         }
 
-        for(let i=0;i<nodes.length;i++){
-          put(i, nodes[i].x, nodes[i].y);
-        }
+        for(let i=0;i<nodes.length;i++) put(i, nodes[i].x, nodes[i].y);
 
-        // center pull
         for(const n of nodes){
           n.x += (cx - n.x) * 0.0032;
           n.y += (cy - n.y) * 0.0032;
         }
 
-        // collision resolve
         for(let i=0;i<nodes.length;i++){
           const a = nodes[i];
           const aix = Math.floor(a.x / cellSize);
@@ -2296,7 +2271,6 @@ function normalizePct(p){
           }
         }
 
-        // bounds
         for(const n of nodes){
           n.x = clamp(n.x, 40, W-40);
           n.y = clamp(n.y, 40, H-40);
@@ -2304,7 +2278,6 @@ function normalizePct(p){
       }
     }
 
-    /* ===== Build bubbles from holders (Distribution mode) ===== */
     function buildBubblesFromHolders(holderItems){
       const stage = qs("vizStage");
       if(!stage) return;
@@ -2319,10 +2292,8 @@ function normalizePct(p){
       for(const it of items){
         const pct = Number(it.pct || 0);
         const r = clamp(10 + (pct * 2.4), 12, 52);
-
         nodes.push({
-          x: NaN,
-          y: NaN,
+          x: NaN, y: NaN,
           r,
           sev: it.sev || "ok",
           addr: it.addr || "",
@@ -2335,22 +2306,23 @@ function normalizePct(p){
       packNoOverlap(nodes, W, H);
 
       VIZ.nodes = nodes;
-      VIZ.edges = []; // edges only when we have real relationships
+      VIZ.edges = [];
       VIZ.panX = 0;
       VIZ.panY = 0;
       VIZ.zoom = 1;
       VIZ.hoverAddr = "";
 
-      qs("vizOverlay").style.display = nodes.length ? "none" : "flex";
-      drawViz();
+      const overlay = qs("vizOverlay");
+      if(overlay) overlay.style.display = nodes.length ? "none" : "flex";
 
-      // No relationship edges here => graph disabled
       setGraphAvailability(false);
+      drawViz();
     }
 
     function drawViz(){
       const canvas = qs("vizCanvas");
-      if(!canvas) return;
+      const stage  = qs("vizStage");
+      if(!canvas || !stage) return;
       const ctx = canvas.getContext("2d");
       if(!ctx) return;
 
@@ -2359,10 +2331,14 @@ function normalizePct(p){
       const h = canvas.height;
       ctx.clearRect(0,0,w,h);
 
-      const nodes = VIZ.nodes;
-      const edges = VIZ.edges;
+      const rect = stage.getBoundingClientRect();
+      const W = rect.width || 1;
+      const H = rect.height || 1;
 
-      if(!nodes || !nodes.length){
+      const nodes = VIZ.nodes || [];
+      const edges = VIZ.edges || [];
+
+      if(!nodes.length){
         ctx.save();
         ctx.globalAlpha = 0.22;
         for(let y=20*dpr;y<h;y+=34*dpr){
@@ -2377,24 +2353,28 @@ function normalizePct(p){
         return;
       }
 
+      // transform (CSS px -> canvas px)
       ctx.save();
-      ctx.translate(VIZ.panX*dpr, VIZ.panY*dpr);
+      ctx.translate((VIZ.panX)*dpr, (VIZ.panY)*dpr);
       ctx.scale(VIZ.zoom, VIZ.zoom);
 
-      if(VIZ.mode === "graph"){
-  ctx.globalAlpha = 0.35;
-  ctx.lineWidth = 1.2*dpr;
-  ctx.strokeStyle = "rgba(255,255,255,0.22)";
-  for(const e of (edges||[])){
-    const a = nodes[e.a];
-    const b = nodes[e.b];
-    if(!a || !b) continue;
-    ctx.beginPath();
-    ctx.moveTo((a.x||0)*dpr, (a.y||0)*dpr);
-    ctx.lineTo((b.x||0)*dpr, (b.y||0)*dpr);
-    ctx.stroke();
-  }
-}
+      // edges first
+      if(VIZ.mode === "graph" && edges.length){
+        ctx.globalAlpha = 0.35;
+        ctx.lineWidth = 1.2*dpr;
+        ctx.strokeStyle = "rgba(255,255,255,0.22)";
+        for(const e of edges){
+          const a = nodes[e.a];
+          const b = nodes[e.b];
+          if(!a || !b) continue;
+          ctx.beginPath();
+          ctx.moveTo((a.x||0)*dpr, (a.y||0)*dpr);
+          ctx.lineTo((b.x||0)*dpr, (b.y||0)*dpr);
+          ctx.stroke();
+        }
+      }
+
+      // nodes
       for(const n of nodes){
         const fill = n.sev === "bad" ? "rgba(255,120,150,0.30)"
                    : n.sev === "warn" ? "rgba(255,220,130,0.24)"
@@ -2407,21 +2387,16 @@ function normalizePct(p){
         ctx.fill();
 
         // hover ring
-        if(VIZ.hoverAddr && n.addr && String(n.addr).toLowerCase() === String(VIZ.hoverAddr).toLowerCase()){
-          ctx.globalAlpha = 0.9;
-          ctx.lineWidth = 2.2*dpr;
-          ctx.strokeStyle = "rgba(255,255,255,0.35)";
-        }else{
-          ctx.globalAlpha = 0.95;
-          ctx.lineWidth = 1.2*dpr;
-          ctx.strokeStyle = "rgba(255,255,255,0.14)";
-        }
+        const isHover = !!(VIZ.hoverAddr && n.addr && String(n.addr).toLowerCase() === String(VIZ.hoverAddr).toLowerCase());
+        ctx.globalAlpha = 0.9;
+        ctx.lineWidth = (isHover ? 2.2 : 1.2) * dpr;
+        ctx.strokeStyle = isHover ? "rgba(255,255,255,0.35)" : "rgba(255,255,255,0.14)";
         ctx.stroke();
 
-        // smart labels (no messy overlap)
+        // labels
         const showLabel =
           (typeof n.pct === "number" && n.pct >= 2.0) ||
-          (VIZ.hoverAddr && n.addr && String(n.addr).toLowerCase() === String(VIZ.hoverAddr).toLowerCase()) ||
+          isHover ||
           (VIZ.zoom >= 1.6);
 
         const label = showLabel ? (n.sub || "") : "";
@@ -2438,40 +2413,7 @@ function normalizePct(p){
       ctx.restore();
     }
 
-    function setVizMode(mode){
-      const next = (mode === "graph") ? "graph" : "bubbles";
-      if(next === "graph"){
-        // graph only when enabled
-        const g = qs("vizModeGraph");
-        if(g && g.disabled){
-          showToast("Graph mode is disabled until real relationship edges exist.");
-          return;
-        }
-      }
-      VIZ.mode = next;
-
-      const b1 = qs("vizModeBubbles");
-      const b2 = qs("vizModeGraph");
-      if(b1 && b2){
-        b1.classList.toggle("active", VIZ.mode === "bubbles");
-        b2.classList.toggle("active", VIZ.mode === "graph");
-        b1.setAttribute("aria-selected", VIZ.mode === "bubbles" ? "true" : "false");
-        b2.setAttribute("aria-selected", VIZ.mode === "graph" ? "true" : "false");
-      }
-      drawViz();
-    }
-
-    function resetViz(){
-      VIZ.panX = 0;
-      VIZ.panY = 0;
-      VIZ.zoom = 1;
-      VIZ.hoverAddr = "";
-      drawViz();
-    }
-    /* =========================================================
-       PART 8 — VIZ tooltip + click explorer + holders rendering + cluster lite
-       ========================================================= */
-
+    // tooltip
     let VIZ_TIP = null;
     function ensureVizTooltip(){
       const stage = qs("vizStage");
@@ -2501,11 +2443,10 @@ function normalizePct(p){
       VIZ_TIP = d;
       return d;
     }
-
     function showVizTip(clientX, clientY, html){
       const tip = ensureVizTooltip();
-      if(!tip) return;
       const stage = qs("vizStage");
+      if(!tip || !stage) return;
       const rect = stage.getBoundingClientRect();
       tip.innerHTML = html || "";
       const x = clientX - rect.left + 12;
@@ -2524,1225 +2465,1111 @@ function normalizePct(p){
       if(!canvas || !stage) return null;
 
       const rect = stage.getBoundingClientRect();
-      const dpr = Number(canvas.dataset.dpr || 1);
+      // mouse in CSS px (stage)
+      const mx = (clientX - rect.left);
+      const my = (clientY - rect.top);
 
-      const px = (clientX - rect.left) * dpr;
-      const py = (clientY - rect.top) * dpr;
-
-      const x = (px - (VIZ.panX * dpr)) / (VIZ.zoom || 1);
-      const y = (py - (VIZ.panY * dpr)) / (VIZ.zoom || 1);
+      // invert pan/zoom (stored in CSS px)
+      const x = (mx - VIZ.panX) / (VIZ.zoom || 1);
+      const y = (my - VIZ.panY) / (VIZ.zoom || 1);
 
       for(let i = VIZ.nodes.length - 1; i >= 0; i--){
         const n = VIZ.nodes[i];
-        const nx = (n.x || 0) * dpr;
-        const ny = (n.y || 0) * dpr;
-        const rr = (n.r || 14) * dpr;
-        const dx = x - nx;
-        const dy = y - ny;
+        const dx = x - (n.x || 0);
+        const dy = y - (n.y || 0);
+        const rr = (n.r || 14);
         if(dx*dx + dy*dy <= rr*rr) return { node:n, index:i };
       }
       return null;
     }
 
-    function wireVizInteractions(){
-      const canvas = qs("vizCanvas");
-      if(!canvas) return;
+        function wireVizInteractions(){
+      if(VIZ._wired) return;
+      VIZ._wired = true;
 
-      // pan
-      canvas.addEventListener("pointerdown", (e) => {
-        VIZ.dragging = true;
-        VIZ.lastX = e.clientX;
-        VIZ.lastY = e.clientY;
-        canvas.setPointerCapture(e.pointerId);
-      });
-      canvas.addEventListener("pointermove", (e) => {
-        if(VIZ.dragging){
+      const stage  = qs("vizStage");
+      const canvas = qs("vizCanvas");
+      if(!stage || !canvas) return;
+
+      const explorer = () => explorerBase(APP.ACTIVE_CHAIN_ID);
+
+      // ----- pointer drag (pan) -----
+      const state = {
+        pointerId: null,
+        downX: 0,
+        downY: 0,
+        startPanX: 0,
+        startPanY: 0,
+        moved: false,
+        lastTap: 0,
+        touchMode: false,
+        pinch: {
+          active: false,
+          id1: null,
+          id2: null,
+          d0: 0,
+          z0: 1,
+          cx0: 0,
+          cy0: 0,
+          panX0: 0,
+          panY0: 0
+        }
+      };
+
+      function setCursor(type){
+        stage.style.cursor = type || "default";
+      }
+
+      function clampZoom(z){
+        return clamp(z, 0.55, 3.2);
+      }
+
+      function stagePointFromClient(clientX, clientY){
+        const rect = stage.getBoundingClientRect();
+        return { x: clientX - rect.left, y: clientY - rect.top };
+      }
+
+      function zoomAt(clientX, clientY, nextZoom){
+        const z1 = clampZoom(nextZoom);
+        const z0 = VIZ.zoom || 1;
+
+        const p = stagePointFromClient(clientX, clientY);
+        // world coords before
+        const wx = (p.x - VIZ.panX) / z0;
+        const wy = (p.y - VIZ.panY) / z0;
+
+        // adjust pan to keep point stable
+        VIZ.zoom = z1;
+        VIZ.panX = p.x - wx * z1;
+        VIZ.panY = p.y - wy * z1;
+
+        drawViz();
+      }
+
+      function updateHoverFromEvent(e){
+        const hit = hitTestViz(e.clientX, e.clientY);
+        if(hit?.node?.addr){
+          const addr = hit.node.addr;
+          if(String(VIZ.hoverAddr || "").toLowerCase() !== String(addr).toLowerCase()){
+            VIZ.hoverAddr = addr;
+            drawViz();
+          }
+
+          const s = hit.node.sub ? esc(hit.node.sub) : "";
+          const a = esc(shortAddr(addr));
+          const pct = (typeof hit.node.pct === "number") ? `${hit.node.pct.toFixed(2)}%` : "";
+          showVizTip(e.clientX, e.clientY, `
+            <div style="font-weight:1000; font-size:13px; margin-bottom:4px">${a}</div>
+            <div style="color:rgba(255,255,255,.72); font-weight:850">
+              ${s ? `Holder: <span style="color:rgba(255,255,255,.92)">${s}</span><br/>` : ""}
+              ${pct ? `Share: <span style="color:rgba(255,255,255,.92)">${esc(pct)}</span><br/>` : ""}
+              Mode: <span style="color:rgba(255,255,255,.92)">${esc(VIZ.mode)}</span>
+            </div>
+          `);
+          setCursor("pointer");
+          return true;
+        }else{
+          if(VIZ.hoverAddr){
+            VIZ.hoverAddr = "";
+            drawViz();
+          }
           hideVizTip();
-          const dx = e.clientX - VIZ.lastX;
-          const dy = e.clientY - VIZ.lastY;
-          VIZ.lastX = e.clientX;
-          VIZ.lastY = e.clientY;
-          VIZ.panX += dx;
-          VIZ.panY += dy;
-          drawViz();
+          setCursor(state.pointerId ? "grabbing" : "grab");
+          return false;
+        }
+      }
+
+      // default cursor
+      setCursor("grab");
+
+      // ----- pointer events -----
+      stage.addEventListener("pointerdown", (e) => {
+        // capture pointer for smooth dragging
+        stage.setPointerCapture?.(e.pointerId);
+
+        // handle pinch start if 2 touches
+        if(e.pointerType === "touch"){
+          state.touchMode = true;
+        }
+
+        // if pinch already active, just record second pointer
+        if(state.touchMode){
+          // build pinch pair
+          if(!state.pinch.active){
+            if(state.pinch.id1 === null){
+              state.pinch.id1 = e.pointerId;
+            }else if(state.pinch.id2 === null && e.pointerId !== state.pinch.id1){
+              state.pinch.id2 = e.pointerId;
+              state.pinch.active = true;
+
+              const p1 = stagePointFromClient(e.clientX, e.clientY);
+              // we need other pointer position; we’ll approximate until next move updates
+              state.pinch.cx0 = p1.x;
+              state.pinch.cy0 = p1.y;
+              state.pinch.d0 = 40; // fallback until we measure real distance
+              state.pinch.z0 = VIZ.zoom || 1;
+              state.pinch.panX0 = VIZ.panX;
+              state.pinch.panY0 = VIZ.panY;
+            }
+          }
+        }
+
+        // start pan drag
+        state.pointerId = e.pointerId;
+        state.downX = e.clientX;
+        state.downY = e.clientY;
+        state.startPanX = VIZ.panX;
+        state.startPanY = VIZ.panY;
+        state.moved = false;
+
+        setCursor("grabbing");
+      });
+
+      stage.addEventListener("pointermove", (e) => {
+        // hover/tooltip first when not dragging
+        const isDragging = !!state.pointerId;
+        if(!isDragging){
+          updateHoverFromEvent(e);
           return;
         }
 
-        const hit = hitTestViz(e.clientX, e.clientY);
-        if(!hit || !hit.node){
+        // dragging pan OR pinch zoom
+        const dx = e.clientX - state.downX;
+        const dy = e.clientY - state.downY;
+
+        if(Math.abs(dx) > 2 || Math.abs(dy) > 2) state.moved = true;
+
+        // pinch: if we have 2 pointers, use pinch zoom (best-effort)
+        if(state.touchMode && state.pinch.active){
+          // We can’t directly query the other pointer position without tracking both moves;
+          // so we track two latest points via a map.
+          if(!VIZ._ptr) VIZ._ptr = new Map();
+          VIZ._ptr.set(e.pointerId, { x:e.clientX, y:e.clientY });
+
+          const p1 = VIZ._ptr.get(state.pinch.id1);
+          const p2 = VIZ._ptr.get(state.pinch.id2);
+
+          if(p1 && p2){
+            const a = stagePointFromClient(p1.x, p1.y);
+            const b = stagePointFromClient(p2.x, p2.y);
+
+            const cx = (a.x + b.x) / 2;
+            const cy = (a.y + b.y) / 2;
+            const ddx = (b.x - a.x);
+            const ddy = (b.y - a.y);
+            const d = Math.sqrt(ddx*ddx + ddy*ddy) || 0.001;
+
+            // init baseline properly once we can measure
+            if(state.pinch.d0 === 40){
+              state.pinch.d0 = d;
+              state.pinch.cx0 = cx;
+              state.pinch.cy0 = cy;
+              state.pinch.z0  = VIZ.zoom || 1;
+              state.pinch.panX0 = VIZ.panX;
+              state.pinch.panY0 = VIZ.panY;
+            }
+
+            const scale = d / (state.pinch.d0 || 1);
+            const nextZ = clampZoom(state.pinch.z0 * scale);
+
+            // zoom around pinch center
+            const rect = stage.getBoundingClientRect();
+            const clientCX = rect.left + cx;
+            const clientCY = rect.top + cy;
+            zoomAt(clientCX, clientCY, nextZ);
+
+            return;
+          }
+        }
+
+        // regular pan drag
+        VIZ.panX = state.startPanX + dx;
+        VIZ.panY = state.startPanY + dy;
+        drawViz();
+      });
+
+      stage.addEventListener("pointerup", (e) => {
+        // tap/click on node opens explorer if not dragging
+        const wasMoved = state.moved;
+
+        // clean pointer tracking
+        if(VIZ._ptr) VIZ._ptr.delete(e.pointerId);
+
+        // end pinch pointers
+        if(state.touchMode){
+          if(e.pointerId === state.pinch.id1) state.pinch.id1 = null;
+          if(e.pointerId === state.pinch.id2) state.pinch.id2 = null;
+          if(state.pinch.id1 === null || state.pinch.id2 === null){
+            state.pinch.active = false;
+            state.pinch.d0 = 40;
+          }
+        }
+
+        state.pointerId = null;
+        setCursor("grab");
+
+        if(!wasMoved){
+          const hit = hitTestViz(e.clientX, e.clientY);
+          if(hit?.node?.addr){
+            const { base, name } = explorer();
+            const url = base + hit.node.addr;
+            window.open(url, "_blank", "noreferrer");
+            showToast(`Opened in ${name}`);
+          }else{
+            hideVizTip();
+          }
+        }
+
+        // double-tap to reset (touch)
+        if(e.pointerType === "touch"){
+          const now = Date.now();
+          if(now - state.lastTap < 320){
+            resetViz();
+            showToast("View reset.");
+            state.lastTap = 0;
+          }else{
+            state.lastTap = now;
+          }
+        }
+      });
+
+      stage.addEventListener("pointercancel", (e) => {
+        if(VIZ._ptr) VIZ._ptr.delete(e.pointerId);
+        state.pointerId = null;
+        state.pinch.active = false;
+        state.pinch.id1 = null;
+        state.pinch.id2 = null;
+        state.pinch.d0 = 40;
+        setCursor("grab");
+        hideVizTip();
+      });
+
+      stage.addEventListener("pointerleave", () => {
+        if(!state.pointerId){
           VIZ.hoverAddr = "";
           hideVizTip();
           drawViz();
-          return;
         }
-
-        const n = hit.node;
-        VIZ.hoverAddr = n.addr || "";
-        drawViz();
-
-        const addr = n.addr ? String(n.addr) : "";
-        const label = n.label || (addr ? shortAddr(addr) : "Node");
-        const sub = n.sub ? String(n.sub) : "";
-
-        showVizTip(e.clientX, e.clientY, `
-          <div style="font-weight:1000; font-size:13px">${esc(label)}</div>
-          <div style="opacity:.86">${esc(sub)}</div>
-          ${addr ? `<div style="opacity:.75;margin-top:4px">${esc(shortAddr(addr))}</div>` : ""}
-          <div style="opacity:.65;margin-top:6px">Click → open explorer</div>
-        `);
       });
 
-      canvas.addEventListener("pointerleave", () => {
-        VIZ.hoverAddr = "";
-        hideVizTip();
-        drawViz();
-      });
-
-      // click open explorer
-      canvas.addEventListener("click", (e) => {
-        const hit = hitTestViz(e.clientX, e.clientY);
-        if(!hit || !hit.node) return;
-        const addr = hit.node.addr ? String(hit.node.addr) : "";
-        if(!addr) return;
-        const ex = explorerBase(ACTIVE_CHAIN_ID);
-        window.open(ex.base + addr, "_blank", "noopener,noreferrer");
-      });
-
-      // zoom
-      canvas.addEventListener("wheel", (e) => {
+      // ----- wheel zoom (trackpad/mouse) -----
+      stage.addEventListener("wheel", (e) => {
         e.preventDefault();
-        const delta = Math.sign(e.deltaY);
-        const factor = delta > 0 ? 0.92 : 1.08;
-        VIZ.zoom = Math.max(0.55, Math.min(2.4, VIZ.zoom * factor));
-        drawViz();
+        const delta = e.deltaY;
+        const z = VIZ.zoom || 1;
+
+        // smooth zoom factor
+        const factor = Math.exp(-delta * 0.0012);
+        const next = clampZoom(z * factor);
+
+        zoomAt(e.clientX, e.clientY, next);
       }, { passive:false });
+
+      // ----- mode buttons -----
+      on("vizModeBubbles", "click", () => setVizMode("bubbles"));
+      on("vizModeGraph",   "click", () => setVizMode("graph"));
+      on("btnVizReset",    "click", () => { resetViz(); showToast("View reset."); });
+
+      // resize handling
+      window.addEventListener("resize", () => resizeCanvas(), { passive:true });
     }
 
-    /* ===== holders list renderer ===== */
-    function renderHoldersWithExplorer(items, chain){
-      const el = qs("holdersList");
-      if(!el) return;
-      el.innerHTML = "";
-      const ex = explorerBase(chain.id);
+    // wire it now that the DOM exists
+    wireVizInteractions();
+    resizeCanvas();
 
-      for(const it of items){
-        const infoId = registerInfo(it.infoHtml || explain("Top holder", [
-          "Meaning: Share of supply.",
-          "Why it matters: high % = dump risk.",
-          "Tip: check if LP/Burn/Team/Treasury."
-        ]));
+        /* =========================================================
+       CLUSTERS + GRAPH (best-effort)
+       ========================================================= */
 
+    function makeVizLegend(){
+      const n = VIZ.nodes?.length || 0;
+      const e = VIZ.edges?.length || 0;
+      const mode = VIZ.mode;
+      return `${n} nodes • ${e} edges • ${mode}`;
+    }
+
+    function setVizStamps(){
+      const c = chainObj();
+      const now = new Date();
+      const stamp = `${c.stamp || "MAINNET"} • ${now.toLocaleTimeString("de-DE",{timeZone:"Europe/Berlin"})}`;
+      setText("vizStamp", stamp);
+      setText("vizLegend", makeVizLegend());
+      setText("clusterStamp", c.stamp || "MAINNET");
+    }
+
+    function computeEdgesFromTransfers_EVM(transfers, topAddrsSet){
+      // Build edges between addresses that appear in transfers
+      // (best-effort, keep only those within our shown nodes)
+      const nodesIndex = new Map();
+      (VIZ.nodes || []).forEach((n, i) => {
+        const a = String(n.addr || "").toLowerCase();
+        if(a) nodesIndex.set(a, i);
+      });
+
+      const edgeMap = new Map(); // key "a|b" -> weight
+      for(const t of (transfers || [])){
+        const from = String(t?.from_address || "").toLowerCase();
+        const to   = String(t?.to_address   || "").toLowerCase();
+        if(!from || !to || from === to) continue;
+        if(topAddrsSet && topAddrsSet.size){
+          if(!topAddrsSet.has(from) && !topAddrsSet.has(to)) continue;
+        }
+        const ia = nodesIndex.get(from);
+        const ib = nodesIndex.get(to);
+        if(ia === undefined || ib === undefined) continue;
+
+        const a = Math.min(ia, ib);
+        const b = Math.max(ia, ib);
+        const key = a + "|" + b;
+        edgeMap.set(key, (edgeMap.get(key) || 0) + 1);
+      }
+
+      const edges = [];
+      for(const [key, w] of edgeMap.entries()){
+        const [a,b] = key.split("|").map(Number);
+        edges.push({ a, b, w });
+      }
+
+      // keep strongest edges only to avoid clutter
+      edges.sort((x,y)=> (y.w - x.w));
+      return edges.slice(0, 80);
+    }
+
+    function buildClustersFromEdges(){
+      // connected components over VIZ.edges
+      const n = VIZ.nodes?.length || 0;
+      const adj = Array.from({length:n}, ()=>[]);
+      for(const e of (VIZ.edges || [])){
+        if(e.a == null || e.b == null) continue;
+        adj[e.a].push(e.b);
+        adj[e.b].push(e.a);
+      }
+
+      const seen = new Array(n).fill(false);
+      const comps = [];
+      for(let i=0;i<n;i++){
+        if(seen[i]) continue;
+        const stack = [i];
+        seen[i] = true;
+        const comp = [];
+        while(stack.length){
+          const u = stack.pop();
+          comp.push(u);
+          for(const v of adj[u]){
+            if(!seen[v]){
+              seen[v] = true;
+              stack.push(v);
+            }
+          }
+        }
+        comps.push(comp);
+      }
+
+      // sort largest first, ignore singletons unless few nodes
+      comps.sort((a,b)=> b.length - a.length);
+
+      const clusters = [];
+      for(const comp of comps){
+        if(comp.length < 2 && n > 8) continue;
+        const nodes = comp.map(i => VIZ.nodes[i]).filter(Boolean);
+
+        // severity heuristic: if any bad -> bad, else if any warn -> warn, else ok
+        let sev = "ok";
+        if(nodes.some(x=>x.sev==="bad")) sev = "bad";
+        else if(nodes.some(x=>x.sev==="warn")) sev = "warn";
+
+        const pctSum = nodes.reduce((s,x)=> s + (Number(x.pct)||0), 0);
+        const addrList = nodes.map(x => x.addr).filter(Boolean);
+
+        clusters.push({
+          sev,
+          size: nodes.length,
+          pct: pctSum,
+          addrs: addrList
+        });
+      }
+      return clusters;
+    }
+
+    function renderClusters(clusters){
+      const grid = qs("clusterGrid");
+      if(!grid) return;
+
+      if(!clusters || !clusters.length){
+        grid.innerHTML = `
+          <div class="clusterCard">
+            <div class="clusterLeft">
+              <div class="clusterT"><span class="dot warn"></span> No clusters detected</div>
+              <div class="clusterD">No strong wallet relationships found (best-effort). Try enabling GoldRush for EVM transfers.</div>
+            </div>
+            <div class="clusterRight"><span class="badge warn">WATCH</span></div>
+          </div>
+        `;
+        setText("clusterFoot","Clusters are best-effort. Edges require transfers/holders data.");
+        return;
+      }
+
+      grid.innerHTML = "";
+      const { name: exName, base: exBase } = explorerBase(APP.ACTIVE_CHAIN_ID);
+
+      clusters.slice(0, 8).forEach((c, idx) => {
+        const dotCls = c.sev === "bad" ? "dot bad" : c.sev === "warn" ? "dot warn" : "dot good";
+        const badgeCls = c.sev === "bad" ? "badge bad" : c.sev === "warn" ? "badge warn" : "badge good";
+        const badgeTxt = c.sev === "bad" ? "RISK" : c.sev === "warn" ? "WATCH" : "OK";
+
+        const top = c.addrs.slice(0, 3).map(a =>
+          `<a class="explorerBtn" target="_blank" rel="noreferrer" href="${exBase}${encodeURIComponent(a)}">${esc(shortAddr(a))}</a>`
+        ).join("");
+
+        const card = document.createElement("div");
+        card.className = "clusterCard";
+        card.innerHTML = `
+          <div class="clusterLeft">
+            <div class="clusterT"><span class="${dotCls}"></span> Cluster #${idx+1} • ${c.size} wallets • ~${c.pct.toFixed(2)}%</div>
+            <div class="clusterD">
+              Linked wallets (best-effort). Open in ${esc(exName)}:
+              <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;">${top}</div>
+            </div>
+          </div>
+          <div class="clusterRight">
+            <span class="${badgeCls}">${badgeTxt}</span>
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+
+      setText("clusterFoot", `Showing ${Math.min(8, clusters.length)} clusters. Relationships based on available transfer/holder data.`);
+    }
+
+    /* =========================================================
+       CHECKS + SCORING (simple, stable)
+       ========================================================= */
+    function scoreFromChecks(checks){
+      // checks: [{sev:"ok|warn|bad", weight:int}]
+      let score = 100;
+      let critical = false;
+      for(const c of (checks||[])){
+        const w = Number(c.weight || 8);
+        if(c.sev === "bad"){ score -= w; if(w >= 18) critical = true; }
+        if(c.sev === "warn"){ score -= Math.max(4, Math.floor(w/2)); }
+      }
+      score = clamp(Math.round(score), 0, 100);
+      return { score, critical };
+    }
+
+    function buildTodoFromChecks(checks){
+      // simple action list derived from warn/bad
+      const todos = [];
+      for(const c of (checks||[])){
+        if(c.sev === "bad"){
+          todos.push({ sev:"warn", t:`Fix: ${c.t || "Critical issue"}`, d:`Action: ${c.fix || "Mitigate risk before launch."}` });
+        }else if(c.sev === "warn"){
+          todos.push({ sev:"warn", t:`Improve: ${c.t || "Potential issue"}`, d:`Action: ${c.fix || "Review and harden."}` });
+        }
+      }
+      if(!todos.length){
+        todos.push({ sev:"ok", t:"Ready checklist", d:"No major blockers detected (best-effort). Still verify manually." });
+      }
+      return todos.slice(0, 10);
+    }
+
+    /* =========================================================
+       RENDER RESULT SECTIONS
+       ========================================================= */
+    function setSummaryLine(lines){
+      setText("summary", lines || "—");
+    }
+
+    function renderHoldersList(rows){
+      const ul = qs("holdersList");
+      if(!ul) return;
+      ul.innerHTML = "";
+
+      const { name: exName, base: exBase } = explorerBase(APP.ACTIVE_CHAIN_ID);
+
+      const arr = Array.isArray(rows) ? rows : [];
+      for(const r of arr){
+        const addr = r.addr || "";
         const li = document.createElement("li");
         li.className = "li";
         li.innerHTML = `
           <div class="left">
-            <div class="t">${esc(it.t || "Holder")}</div>
-            <div class="d">${esc(it.d || "—")}</div>
+            <div class="t">${esc(r.label || shortAddr(addr))}</div>
+            <div class="d">Share: <b>${esc(fmtPct(r.pct||0))}</b> • ${esc(r.sub || "")}</div>
           </div>
           <div class="pillRow">
-            <a class="explorerBtn" href="${esc(ex.base + (it.addr||""))}" target="_blank" rel="noreferrer">${esc(ex.name)}</a>
-            <button class="infoBtn" type="button" aria-label="Info"
-                    data-open="1" data-title="${esc(it.t || "Holder")}" data-info="${esc(infoId)}"><span>i</span></button>
+            <a class="explorerBtn" target="_blank" rel="noreferrer" href="${exBase}${encodeURIComponent(addr)}">Open ${esc(exName)}</a>
           </div>
         `;
-        el.appendChild(li);
+        ul.appendChild(li);
+      }
+      if(!arr.length){
+        const li = document.createElement("li");
+        li.className = "li";
+        li.innerHTML = `<div class="left"><div class="t">No holder data</div><div class="d">Run scan with required keys/indexer.</div></div>`;
+        ul.appendChild(li);
       }
     }
 
-    function renderHoldersEmpty(){
-      const chain = chainObj();
-      renderList(qs("holdersList"), [{
-        t:"No holder data",
-        sev:"warn",
-        d: chain.kind === "solana"
-          ? "Holders will load after scan."
-          : (CFG.GOLDRUSH_API_KEY ? "Indexer returned no data." : "EVM holders need an indexer key (GoldRush)."),
-        infoHtml: explain("Top holders", [
-          "Meaning: Distribution shows whale risk.",
-          "Solana: via RPC largest accounts.",
-          "EVM: needs an indexer (RPC alone cannot list holders)."
-        ])
-      }], "Top Holders");
-    }
-
-    /* ===== cluster lite (kept) ===== */
-    function renderClusterLite(holderItems){
-      const grid = qs("clusterGrid");
-      if(!grid) return;
-
-      if(!holderItems || !holderItems.length){
-        grid.innerHTML = `
-          <div class="clusterCard">
-            <div class="clusterLeft">
-              <div class="clusterT"><span class="dot warn"></span> No cluster data</div>
-              <div class="clusterD">Run a scan and ensure holders are available to generate cluster intelligence.</div>
-            </div>
-            <div class="clusterRight">
-              <span class="badge warn">WAIT</span>
-            </div>
-          </div>
-        `;
-        setText("clusterFoot", "—");
-        return;
-      }
-
-            const top1 = holderItems[0]?.pct ?? 0;
-      const top3 = holderItems.slice(0,3).reduce((a,x)=>a+(x.pct||0),0);
-      const top10 = holderItems.slice(0,10).reduce((a,x)=>a+(x.pct||0),0);
-
-      const sev =
-        top1 >= 20 ? "bad" :
-        top1 >= 10 ? "warn" : "ok";
-
-      const sev2 =
-        top3 >= 45 ? "bad" :
-        top3 >= 30 ? "warn" : "ok";
-
-      const sev3 =
-        top10 >= 70 ? "bad" :
-        top10 >= 50 ? "warn" : "ok";
-
-      const dotCls = (s)=> s==="ok" ? "dot good" : s==="bad" ? "dot bad" : "dot warn";
-      const badgeCls = (s)=> s==="ok" ? "badge good" : s==="bad" ? "badge bad" : "badge warn";
-
-      grid.innerHTML = `
-        <div class="clusterCard">
-          <div class="clusterLeft">
-            <div class="clusterT"><span class="${dotCls(sev)}"></span> Whale dominance (Top1)</div>
-            <div class="clusterD">Largest holder controls ~${top1.toFixed(2)}%. High Top1 can mean team/LP/treasury — verify wallet type.</div>
-          </div>
-          <div class="clusterRight">
-            <span class="${badgeCls(sev)}">${pillLabel(sev)}</span>
-          </div>
-        </div>
-
-        <div class="clusterCard">
-          <div class="clusterLeft">
-            <div class="clusterT"><span class="${dotCls(sev2)}"></span> Cluster risk (Top3)</div>
-            <div class="clusterD">Top3 holders control ~${top3.toFixed(2)}%. If these are linked wallets, dump risk increases.</div>
-          </div>
-          <div class="clusterRight">
-            <span class="${badgeCls(sev2)}">${pillLabel(sev2)}</span>
-          </div>
-        </div>
-
-        <div class="clusterCard">
-          <div class="clusterLeft">
-            <div class="clusterT"><span class="${dotCls(sev3)}"></span> Distribution (Top10)</div>
-            <div class="clusterD">Top10 holders control ~${top10.toFixed(2)}%. Lower is generally healthier.</div>
-          </div>
-          <div class="clusterRight">
-            <span class="${badgeCls(sev3)}">${pillLabel(sev3)}</span>
-          </div>
-        </div>
-      `;
-
-      // tiny "bundle/split" heuristic (best-effort): similar sized chunks can indicate splitting
-      const pcts = holderItems.slice(0,10).map(x=>Number(x.pct||0)).filter(Number.isFinite).sort((a,b)=>b-a);
-      let similarPairs = 0;
-      for(let i=0;i<pcts.length;i++){
-        for(let j=i+1;j<pcts.length;j++){
-          const a = pcts[i], b = pcts[j];
-          if(a <= 0 || b <= 0) continue;
-          const ratio = a>b ? (a/b) : (b/a);
-          if(ratio <= 1.12) similarPairs++;
-        }
-      }
-      const splitSev = similarPairs >= 6 ? "warn" : "ok";
-      const splitText = similarPairs >= 6
-        ? `Possible split pattern: many similar-sized holdings among Top10 (pairs=${similarPairs}).`
-        : `No strong split pattern detected (pairs=${similarPairs}).`;
-
-      setText(
-        "clusterFoot",
-        `Heuristics: Top1=${top1.toFixed(2)}% • Top3=${top3.toFixed(2)}% • Top10=${top10.toFixed(2)}% • ${splitText}`
-      );
-
-      // add a 4th card if heuristic triggers
-      if(splitSev !== "ok"){
-        const extra = document.createElement("div");
-        extra.className = "clusterCard";
-        extra.innerHTML = `
-          <div class="clusterLeft">
-            <div class="clusterT"><span class="${dotCls(splitSev)}"></span> Split-wallet heuristic</div>
-            <div class="clusterD">${esc(splitText)} This does not prove linkage — verify via transfers or known tags.</div>
-          </div>
-          <div class="clusterRight"><span class="${badgeCls(splitSev)}">${pillLabel(splitSev)}</span></div>
-        `;
-        grid.appendChild(extra);
-      }
-    }
-
-    function buildGraphFromEdges(baseNodes, edges){
-  // baseNodes: [{addr,pct,sev,label,sub,r}]
-  const stage = qs("vizStage");
-  if(!stage) return;
-
-  const rect = stage.getBoundingClientRect();
-  const W = Math.max(520, rect.width || 820);
-  const H = Math.max(360, rect.height || 420);
-
-  const nodes = baseNodes.map(n => ({
-    x: NaN, y: NaN,
-    r: n.r,
-    sev: n.sev,
-    addr: n.addr,
-    label: n.label,
-    sub: n.sub,
-    pct: n.pct
-  }));
-
-  packNoOverlap(nodes, W, H);
-
-  VIZ.nodes = nodes;
-  VIZ.edges = edges || [];
-  VIZ.panX = 0;
-  VIZ.panY = 0;
-  VIZ.zoom = 1;
-  VIZ.hoverAddr = "";
-
-  qs("vizOverlay").style.display = nodes.length ? "none" : "flex";
-  setGraphAvailability((VIZ.edges || []).length > 0);
-  drawViz();
-}
-
-// --------- SOL graph: shared fee-payer / shared counterparty (best-effort) ----------
-async function buildSolEdgesFromRecent(wallets){
-  // wallets: array of wallet addrs
-  const maxWallets = wallets.slice(0, 8);
-  const feePayerMap = new Map(); // feePayer -> set(wallet)
-  const directPairs = new Set(); // "a|b"
-
-  for(const w of maxWallets){
-    let sigs = [];
-    try{ sigs = await getSignatures(w, 18); }catch{ sigs = []; }
-    const picks = sigs.slice(0, 3); // keep fast
-
-    for(const s of picks){
-      const sig = s?.signature;
-      if(!sig) continue;
-      let tx = null;
-      try{ tx = await getTx(sig); }catch{ tx = null; }
-      if(!tx) continue;
-
-      const feePayer = tx?.transaction?.message?.accountKeys?.[0]?.pubkey || null;
-      if(feePayer){
-        if(!feePayerMap.has(feePayer)) feePayerMap.set(feePayer, new Set());
-        feePayerMap.get(feePayer).add(w);
-      }
-
-      // try to find a simple counterparty (first non-self key)
-      const keys = tx?.transaction?.message?.accountKeys || [];
-      for(const k of keys){
-        const pk = k?.pubkey;
-        if(pk && pk !== w){
-          // record direct pair (w <-> pk) only if pk is one of our top wallets
-          if(maxWallets.includes(pk)){
-            const a = [w, pk].sort().join("|");
-            directPairs.add(a);
-          }
-          break;
-        }
-      }
-    }
-  }
-
-  // edges: connect wallets that share same feePayer
-  const edges = [];
-  const walletIndex = new Map(maxWallets.map((a,i)=>[a,i]));
-
-  // fee payer clusters
-  for(const [, set] of feePayerMap){
-    const arr = Array.from(set);
-    if(arr.length < 2) continue;
-    for(let i=0;i<arr.length;i++){
-      for(let j=i+1;j<arr.length;j++){
-        const a = walletIndex.get(arr[i]);
-        const b = walletIndex.get(arr[j]);
-        if(a==null || b==null) continue;
-        edges.push({ a, b });
-      }
-    }
-  }
-
-  // direct transfer-ish pairs
-  for(const p of directPairs){
-    const [x,y] = p.split("|");
-    const a = walletIndex.get(x);
-    const b = walletIndex.get(y);
-    if(a==null || b==null) continue;
-    edges.push({ a, b });
-  }
-
-  // dedupe
-  const seen = new Set();
-  const out = [];
-  for(const e of edges){
-    const k = e.a<e.b ? `${e.a}|${e.b}` : `${e.b}|${e.a}`;
-    if(seen.has(k)) continue;
-    seen.add(k);
-    out.push(e);
-  }
-  return { nodesWallets: maxWallets, edges: out };
-}
-
-// --------- EVM graph: shared source / direct transfers (best-effort) ----------
-async function buildEvmEdgesFromTransfers(chainId, tokenAddr, wallets){
-  const maxWallets = wallets.slice(0, 10).map(a => String(a).toLowerCase());
-  const idx = new Map(maxWallets.map((a,i)=>[a,i]));
-
-  const items = await goldrushTransfers(chainId, tokenAddr, 200);
-  if(!items.length) return { nodesWallets: maxWallets, edges: [] };
-
-  // map: source -> set(receivers among top wallets)
-  const srcMap = new Map();
-  const edges = [];
-
-  for(const it of items){
-    const from = String(it?.from_address || "").toLowerCase();
-    const to   = String(it?.to_address || "").toLowerCase();
-    if(!from || !to) continue;
-
-    const fromIn = idx.has(from);
-    const toIn   = idx.has(to);
-
-    // direct between top wallets
-    if(fromIn && toIn && from !== to){
-      edges.push({ a: idx.get(from), b: idx.get(to) });
-    }
-
-    // shared source funding top wallets
-    if(toIn && from){
-      if(!srcMap.has(from)) srcMap.set(from, new Set());
-      srcMap.get(from).add(to);
-    }
-  }
-
-  for(const [, set] of srcMap){
-    const arr = Array.from(set);
-    if(arr.length < 2) continue;
-    for(let i=0;i<arr.length;i++){
-      for(let j=i+1;j<arr.length;j++){
-        const a = idx.get(arr[i]);
-        const b = idx.get(arr[j]);
-        if(a==null || b==null) continue;
-        edges.push({ a, b });
-      }
-    }
-  }
-
-  // dedupe
-  const seen = new Set();
-  const out = [];
-  for(const e of edges){
-    const k = e.a<e.b ? `${e.a}|${e.b}` : `${e.b}|${e.a}`;
-    if(seen.has(k)) continue;
-    seen.add(k);
-    out.push(e);
-  }
-  return { nodesWallets: maxWallets, edges: out };
-}
     /* =========================================================
-       PART 9 — SCAN ORCHESTRATOR (Solana + EVM) + RENDER PIPELINE
+       SCAN: SOLANA
        ========================================================= */
-
-    function setVerdict(score, critical){
-      const badge = qs("verdictBadge");
-      const scoreEl = qs("scoreBadge");
-      if(scoreEl) scoreEl.textContent = `SCORE ${score}/100`;
-
-      let title = "WATCHLIST";
-      let sev = "warn";
-      if(score >= 85 && !critical){ title = "GUARDIAN APPROVED"; sev = "ok"; }
-      else if(score >= 70){ title = "CONDITIONAL PASS"; sev = "warn"; }
-      else { title = "HIGH RISK"; sev = "bad"; }
-
-      setText("verdictTitle", title);
-      if(badge){
-        badge.className = "badge " + (sev==="ok" ? "good" : sev==="bad" ? "bad" : "warn");
-        badge.textContent = sev==="ok" ? "APPROVED" : sev==="bad" ? "RISK" : "WATCH";
-      }
-      if(scoreEl){
-        scoreEl.className = "badge " + (score >= 85 ? "good" : score >= 60 ? "warn" : "bad");
-      }
-    }
-
-    function setScanButtons(disabled){
-      const b1 = qs("btnScan");
-      const b2 = qs("btnScanInline");
-      if(b1) b1.disabled = !!disabled;
-      if(b2) b2.disabled = !!disabled;
-    }
-
-    function normalizeInputAddr(raw){
-      return String(raw || "").trim();
-    }
-
-    async function scanSol(mint){
-  // basic validation
-  if(!looksBase58(mint)) throw new Error("Invalid Solana mint (base58).");
-
-  setText("mintShort", shortAddr(mint));
-  setText("scanHint", "SOLANA MAINNET");
-  setText("vizStamp", "SOL");
-  setText("clusterStamp", "SOL");
-  setText("vizLegend", "Green=OK • Yellow=Watch • Red=Risk");
-
-  // on-chain mint parse
-  const parsed = await getMintParsed(mint);
-  if(!parsed || !parsed.info) throw new Error("Mint account not found / not parseable.");
-
-  const ownerProgram = parsed.owner;
-  const info = parsed.info;
-
-  const mintAuth = info.mintAuthority ?? null;
-  const freezeAuth = info.freezeAuthority ?? null;
-
-  const mintAuthActive = !!mintAuth;
-  const freezeActive = !!freezeAuth;
-
-  const programType =
-    ownerProgram === CFG.TOKEN_2022_PROGRAM ? "TOKEN_2022" :
-    ownerProgram === CFG.TOKEN_PROGRAM ? "SPL_TOKEN" : "UNKNOWN";
-
-  // supply + decimals
-  const supply = await getTokenSupply(mint);
-  const decimals = Number(supply?.decimals ?? info.decimals ?? 0);
-  const uiAmount = Number(supply?.uiAmount ?? 0);
-  const totalUi = Number.isFinite(uiAmount) ? uiAmount : 0;
-
-  // largest accounts
-  const largest = await getLargest(mint);
-  const top = Array.isArray(largest) ? largest.slice(0, 10) : [];
-
-  // resolve token accounts -> owner wallets (important!)
-  const tokenAccounts = top.map(x => x?.address).filter(Boolean);
-  const owners = await getTokenAccountOwners(tokenAccounts);
-
-  const holderItems = top.map((x, idx) => {
-    const tokenAcc = x?.address || "";
-    const ownerWallet = owners[idx] || tokenAcc; // fallback
-    const amtUi = Number(x?.uiAmount ?? 0);
-    const pct = (totalUi > 0) ? (amtUi / totalUi * 100) : 0;
-
-    const sev = pct >= 10 ? "bad" : pct >= 4 ? "warn" : "ok";
-
-    return {
-      addr: ownerWallet,          // <- Wallet (nicht TokenAccount)
-      tokenAccount: tokenAcc,     // <- optional fürs Info
-      pct,
-      sev,
-      label: `#${idx+1} ${shortAddr(ownerWallet)}`,
-      sub: `${pct.toFixed(2)}%`,
-      t: `Holder #${idx+1}`,
-      d: `${shortAddr(ownerWallet)} • ${pct.toFixed(2)}%`,
-      infoHtml: explain(`Holder #${idx+1}`, [
-        `Owner wallet: ${ownerWallet}`,
-        `Token account: ${tokenAcc}`,
-        `Share of supply: ${pct.toFixed(2)}%`,
-        "Tip: check if this is LP/treasury/team/burn."
-      ])
-    };
-  });
-
-  const top20 = Array.isArray(largest)
-    ? largest.slice(0, 20).reduce((a,x)=>{
-        const amtUi = Number(x?.uiAmount ?? 0);
-        return a + ((totalUi > 0) ? (amtUi/totalUi*100) : 0);
-      }, 0)
-    : 0;
-
-  // metadata via Helius getAsset (best-effort)
-  const asset = await getAsset(mint);
-  const meta = pickTokenMetaFromAsset(asset) || { name:"Token", symbol:"", image:"", uri:"", description:"" };
-  applyTokenHeader(meta, mint);
-
-  // Dexscreener liquidity
-  let liquidityUsd = NaN;
-  try{
-    const ds = await fetchDexscreenerToken(mint);
-    liquidityUsd = Number(ds?.best?.liquidity?.usd || NaN);
-  }catch{}
-
-  // signals object
-  const sig = {
-    mintAuthActive,
-    freezeActive,
-    programType,
-    top20,
-    meta
-  };
-
-  // score + checks + todos
-  const scored = scoreSol(sig);
-  const todos = todoSol(sig);
-
-  setVerdict(scored.score, scored.critical);
-  setText("summary",
-    `Solana scan: ${mintAuthActive ? "mint active" : "mint renounced"} • ${freezeActive ? "freeze active" : "freeze removed"} • Top20≈${top20.toFixed(2)}%`
-  );
-
-  renderList(qs("checksList"), scored.checks, "Checks");
-  renderList(qs("todoList"), todos, "Launch Readiness");
-
-  // token standard details
-  renderList(qs("extList"), [
-    { t:"Token Program", sev: programType==="SPL_TOKEN" ? "ok" : "warn", d: ownerProgram, why:"Mint owner program." },
-    { t:"Decimals", sev:"ok", d: String(decimals), why:"Mint decimals / supply decimals." },
-    { t:"Total Supply (UI)", sev:"ok", d: fmtInt(totalUi), why:"getTokenSupply uiAmount." },
-  ], "Token Standard");
-
-  // metadata list
-  renderList(qs("metaList"), [
-    { t:"Name", sev: meta?.name ? "ok" : "warn", d: meta?.name || "—" },
-    { t:"Symbol", sev: meta?.symbol ? "ok" : "warn", d: meta?.symbol || "—" },
-    { t:"Description", sev: meta?.description ? "ok" : "warn", d: meta?.description || "—" },
-    { t:"URI", sev: meta?.uri ? "ok" : "warn", d: meta?.uri || "—" },
-  ], "Metadata");
-
-    // holders + viz + cluster
-  if(holderItems.length){
-    renderHoldersWithExplorer(holderItems, chainObj());
-    buildBubblesFromHolders(holderItems);
-    renderClusterLite(holderItems);
-
-    // ✅ HOOK GRAPH (Solana)
-    try{
-      const wallets = holderItems.map(x => x.addr).filter(Boolean);
-      const g = await buildSolEdgesFromRecent(wallets);
-      VIZ.edges = g.edges || [];
-      setGraphAvailability(VIZ.edges.length > 0);
-      drawViz();
-    }catch{
-      VIZ.edges = [];
-      setGraphAvailability(false);
-      drawViz();
-    }
-
-  }else{
-    renderHoldersEmpty();
-    buildBubblesFromHolders([]);
-    renderClusterLite([]);
-    VIZ.edges = [];
-    setGraphAvailability(false);
-    drawViz();
-  }
-
-  // key signals (pro column)
-  renderKeySignals(
-    keySignalsSol({
-      mintAuthActive,
-      freezeActive,
-      programType,
-      liquidityUsd,
-      top20
-    })
-  );
-
-  LAST_SCAN = { chain:"sol", addr: mint, meta, score: scored.score, when: Date.now() };
-  return LAST_SCAN;
-}
-    
-    function scoreEvmLite({ owner, proxy, paused, liquidityUsd, lpStatus, top10Pct }){
-      let score = 100;
+    async function scanSolana(mint, signal){
       const checks = [];
-      const rawOwner = owner || "";
-      const zero = "0x0000000000000000000000000000000000000000";
-      const renounced = rawOwner && rawOwner.toLowerCase() === zero;
+      const metaList = [];
+      const extList = [];
+      const keySignals = [];
 
-      if(!owner){
-        score -= 10;
-        checks.push({ t:"Owner()", sev:"warn", d:"owner() not readable (custom admin possible).", why:"Non-standard ownership." });
-      }else if(!renounced){
-        score -= 10;
-        checks.push({ t:"Owner Renounced", sev:"warn", d:`Owner active (${shortAddr(owner)}).`, why:"Owner may change config / fees (depends on contract)." });
-      }else{
-        checks.push({ t:"Owner Renounced", sev:"ok", d:"Owner is renounced (0x0).", why:"Ownership removed (best-effort)." });
+      // mint + supply
+      const parsed = await getMintParsed(mint, signal);
+      if(!parsed || !parsed.info){
+        checks.push({ sev:"bad", weight:24, t:"Invalid mint / not found", d:"Mint account not found.", fix:"Verify mint address and RPC key." });
+        return { checks, metaList, extList, keySignals, holders:[], holdersNodes:[], edges:[], tokenMeta:{name:"—",symbol:"",image:""} };
       }
 
-      if(proxy?.isProxy){
-        score -= 12;
-        checks.push({ t:"Upgradeable Proxy", sev:"warn", d:"Proxy detected (upgradeable).", why:"Implementation can change." });
-      }else{
-        checks.push({ t:"Upgradeable Proxy", sev:"ok", d:"No proxy signal found.", why:"EIP-1967 slots show no impl/admin." });
-      }
+      const ownerProg = parsed.owner || "";
+      const isToken2022 = ownerProg === CFG.TOKEN_2022_PROGRAM;
+      const isToken = ownerProg === CFG.TOKEN_PROGRAM;
 
-      if(paused === true){
-        score -= 30;
-        checks.push({ t:"Paused", sev:"bad", d:"Token appears PAUSED now.", why:"Transfers may be blocked." });
-      }else if(paused === false){
-        score -= 6;
-        checks.push({ t:"Pausable", sev:"warn", d:"Contract supports pause (not paused).", why:"Admin can pause later." });
-      }else{
-        checks.push({ t:"Pausable", sev:"ok", d:"No pause signal found.", why:"paused() not present or returns unknown." });
-      }
+      extList.push({
+        sev: isToken || isToken2022 ? "ok" : "warn",
+        t: "Token program",
+        d: isToken2022 ? "Token-2022 program" : isToken ? "SPL Token program" : `Unknown owner program: ${ownerProg}`,
+        weight: isToken || isToken2022 ? 6 : 12,
+        fix: "Verify token standard program owner."
+      });
 
-      if(Number.isFinite(liquidityUsd)){
-        if(liquidityUsd < 3000){ score -= 18; checks.push({ t:"Liquidity", sev:"bad", d:`Low liquidity: ~$${formatUsd(liquidityUsd)}`, why:"Thin liquidity => slippage/rug risk." }); }
-        else if(liquidityUsd < 20000){ score -= 8; checks.push({ t:"Liquidity", sev:"warn", d:`Moderate liquidity: ~$${formatUsd(liquidityUsd)}`, why:"Monitor liquidity." }); }
-        else checks.push({ t:"Liquidity", sev:"ok", d:`Healthy: ~$${formatUsd(liquidityUsd)}`, why:"More robust trading depth." });
-      }else{
-        score -= 6;
-        checks.push({ t:"Liquidity", sev:"warn", d:"No liquidity data found (Dexscreener).", why:"Token may be unlisted / no pairs." });
-      }
+      const supply = await getTokenSupply(mint, signal).catch(()=> null);
+      const decimals = Number(supply?.decimals ?? parsed.info?.decimals ?? 0);
+      const uiSupply = supply?.uiAmountString || "—";
 
-      if(lpStatus?.sev === "ok"){
-        checks.push({ t:"LP", sev:"ok", d: lpStatus.v, why:"LP burned/locked signal present (best-effort)." });
-      }else if(lpStatus?.v){
-        score -= (lpStatus.v.includes("NOT") ? 10 : 6);
-        checks.push({ t:"LP", sev:"warn", d: lpStatus.v, why:"LP safety unclear." });
-      }else{
-        score -= 6;
-        checks.push({ t:"LP", sev:"warn", d:"LP unknown.", why:"Cannot compute LP holders." });
-      }
+      keySignals.push({ k:"Supply", v:String(uiSupply), mini:`Decimals: ${Number.isFinite(decimals)?decimals:"—"}`, src:"onchain", sev:"ok" });
 
-      if(Number.isFinite(top10Pct)){
-        if(top10Pct >= 70){ score -= 20; checks.push({ t:"Top10 concentration", sev:"bad", d:`Top10 ≈ ${top10Pct.toFixed(2)}%`, why:"Very high concentration." }); }
-        else if(top10Pct >= 50){ score -= 10; checks.push({ t:"Top10 concentration", sev:"warn", d:`Top10 ≈ ${top10Pct.toFixed(2)}%`, why:"High concentration." }); }
-        else checks.push({ t:"Top10 concentration", sev:"ok", d:`Top10 ≈ ${top10Pct.toFixed(2)}%`, why:"Better distribution (within top10 view)." });
-      }else{
-        score -= 6;
-        checks.push({ t:"Top holders", sev:"warn", d:"No holder distribution (indexer required).", why:"RPC cannot list holders; needs GoldRush." });
-      }
+      // metadata via getAsset (best effort)
+      const asset = await getAsset(mint, signal);
+      const meta = pickTokenMetaFromAsset(asset) || {name:"Token", symbol:"", image:""};
+      applyTokenHeader(meta, mint);
 
-      score = clamp(Math.round(score), 0, 100);
-      const critical = (paused === true);
-      return { score, checks, critical };
-    }
+      metaList.push({ sev:"ok", t:"Name", d: meta.name || "—" });
+      metaList.push({ sev:"ok", t:"Symbol", d: meta.symbol || "—" });
+      metaList.push({ sev: meta.uri ? "ok":"warn", t:"Metadata URI", d: meta.uri || "—", fix:"Ensure metadata JSON is accessible." });
 
-    function todoEvmLite({ owner, proxy, paused, liquidityUsd, lpStatus, top10Pct }){
-      const t = [];
-      const zero = "0x0000000000000000000000000000000000000000";
-      if(!owner) t.push({ t:"Ownership", sev:"warn", d:"owner() unknown; verify admin model.", why:"Non-standard ownership patterns exist." });
-      else if(owner.toLowerCase() !== zero) t.push({ t:"Ownership", sev:"warn", d:`Owner active (${shortAddr(owner)}).`, why:"Ensure multisig/timelock if possible." });
-      else t.push({ t:"Ownership", sev:"ok", d:"Owner renounced.", why:"Lower admin risk." });
+      // top holders (largest token accounts) + owners
+      const largest = await getLargest(mint, signal).catch(()=> []);
+      const topTA = largest.slice(0, 10).map(x => x?.address).filter(Boolean);
+      const owners = topTA.length ? await getTokenAccountOwners(topTA, signal).catch(()=>[]) : [];
 
-      t.push(proxy?.isProxy
-        ? { t:"Upgradeable proxy", sev:"warn", d:"Proxy detected; verify impl/admin.", why:"Upgradeable risk." }
-        : { t:"Upgradeable proxy", sev:"ok", d:"No proxy signal found.", why:"Lower upgrade risk." }
-      );
+      // compute pct (Solana RPC gives uiAmount & supply info)
+      const totalUi = Number(supply?.uiAmount ?? 0);
+      const holders = largest.slice(0, 10).map((x, i) => {
+        const ui = Number(x?.uiAmount ?? 0);
+        const pct = (totalUi > 0) ? (ui / totalUi * 100) : 0;
+        const addr = owners[i] || x?.address || "";
+        return {
+          addr,
+          label: `Holder #${i+1}`,
+          pct,
+          sub: `~${fmtInt(ui)} tokens`,
+          sev: (pct >= 15) ? "warn" : "ok"
+        };
+      }).filter(x=>x.addr);
 
-      if(paused === true) t.push({ t:"Unpause / verify trading", sev:"bad", d:"Paused now — trading may be blocked.", why:"Critical usability risk." });
-      else if(paused === false) t.push({ t:"Pausable", sev:"warn", d:"Pause exists; ensure trust model.", why:"Admin can pause later." });
-      else t.push({ t:"Pausable", sev:"ok", d:"No pause signal.", why:"Ok." });
+      renderHoldersList(holders);
+      buildBubblesFromHolders(holders);
 
-      if(Number.isFinite(liquidityUsd) && liquidityUsd < 20000){
-        t.push({ t:"Liquidity", sev:"warn", d:`Increase liquidity (now ~$${formatUsd(liquidityUsd)}).`, why:"Improve depth; reduce slippage." });
-      }else{
-        t.push({ t:"Liquidity", sev:"ok", d:"Liquidity looks acceptable (or unknown).", why:"Monitor." });
-      }
+      // basic concentration checks
+      const top1 = holders[0]?.pct || 0;
+      const top5 = holders.slice(0,5).reduce((s,h)=>s+(h.pct||0),0);
+      if(top1 >= 25) checks.push({ sev:"bad", weight:22, t:"High whale concentration", d:`Top holder ~${top1.toFixed(2)}%`, fix:"Verify if treasury/LP/lock wallets are excluded. Consider distribution/vesting." });
+      else if(top1 >= 15) checks.push({ sev:"warn", weight:12, t:"Concentration watch", d:`Top holder ~${top1.toFixed(2)}%`, fix:"Review top holders, label known wallets." });
+      else checks.push({ sev:"ok", weight:6, t:"Top holder concentration", d:`Top holder ~${top1.toFixed(2)}%` });
 
-      t.push(lpStatus?.sev === "ok"
-        ? { t:"LP safety", sev:"ok", d: lpStatus.v, why:"Best-effort signal looks good." }
-        : { t:"LP safety", sev:"warn", d: lpStatus?.v || "Unknown", why:"Confirm via DEX/locker dashboards." }
-      );
+      if(top5 >= 60) checks.push({ sev:"warn", weight:12, t:"Top 5 concentration", d:`Top 5 ~${top5.toFixed(2)}%`, fix:"Review distribution and lockups." });
+      else checks.push({ sev:"ok", weight:6, t:"Top 5 concentration", d:`Top 5 ~${top5.toFixed(2)}%` });
 
-      if(Number.isFinite(top10Pct) && top10Pct >= 50){
-        t.push({ t:"Distribution", sev:"warn", d:`Top10 ≈ ${top10Pct.toFixed(2)}%.`, why:"Reduce whale concentration / verify wallets." });
-      }else{
-        t.push({ t:"Distribution", sev:"ok", d:"No strong whale alarm (within top10 view).", why:"Keep monitoring." });
-      }
+      // Fill UI sections
+      renderList(qs("checksList"), checks.map(c=>({sev:c.sev,t:c.t,d:c.d,fix:c.fix})), "Checks");
+      renderList(qs("todoList"), buildTodoFromChecks(checks), "Launch readiness");
+      renderList(qs("extList"), extList, "Token standard details");
+      renderList(qs("metaList"), metaList, "Token metadata");
+      renderKeySignals(keySignals);
 
-      return t.map(x => ({...x, infoHtml: explain(x.t, [x.d, "Status: " + pillLabel(x.sev)])}));
-    }
-
-    async function scanEvm(chainIdStr, addr){
-      if(!looksEvmAddress(addr)) throw new Error("Invalid EVM address (must be 0x + 40 hex).");
-
-      const chain = chainObj();
-      const chainId =
-        chainIdStr === "eth" ? 1 :
-        chainIdStr === "bnb" ? 56 :
-        chainIdStr === "base" ? 8453 : 1;
-
-      setText("mintShort", shortAddr(addr));
-      setText("scanHint", `${chain.stamp}`);
-      setText("vizStamp", chainIdStr.toUpperCase());
-      setText("clusterStamp", chainIdStr.toUpperCase());
-      setText("vizLegend", "Green=OK • Yellow=Watch • Red=Risk");
-
-      const code = await getCode(chainId, addr);
-      if(!code || code === "0x") throw new Error("No contract code at address.");
-
-      // meta on-chain (best-effort)
-      const meta = await getErc20Meta(chainId, addr);
-      applyTokenHeaderWithEvmLogo(meta, addr, chainId);
-
-      const [owner, paused, proxy] = await Promise.all([
-        getOwner(chainId, addr),
-        getPaused(chainId, addr),
-        detectProxy(chainId, addr)
-      ]);
-
-      // Dexscreener
-      let liquidityUsd = NaN;
-      let bestPair = null;
-      try{
-        const ds = await fetchDexscreenerToken(addr);
-        bestPair = ds?.best || null;
-        liquidityUsd = Number(bestPair?.liquidity?.usd || NaN);
-      }catch{}
-
-      // LP status best-effort (only works for V2-ish LP tokens)
-      let lpStatus = { sev:"warn", v:"UNKNOWN ❓", src:"heur", mini:"LP analysis not available." };
-      try{
-        if(bestPair) lpStatus = await analyzeLpEvm(chainId, bestPair);
-      }catch{}
-
-     // holders via GoldRush
-let holderItems = [];
-let top10Pct = NaN;
-
-if(CFG.GOLDRUSH_API_KEY){
-  const holders = await goldrushHolders(chainId, addr);
-  const items = Array.isArray(holders) ? holders.slice(0, 10) : [];
-
-  holderItems = items.map((h, idx) => {
-    const a = String(h?.address || "");
-
-    // Prefer balance/totalSupply math (most reliable)
-    let pct = 0;
-    const balRaw = (h?.balance ?? h?.balance_raw ?? h?.token_balance ?? null);
-
-    if(balRaw != null && meta?.totalSupply != null){
-      pct = pctFromRaw(balRaw, meta.totalSupply);
-    }else{
-      pct = normalizePct(h?.percentage ?? h?.pct ?? 0);
-    }
-
-    const sev = pct >= 10 ? "bad" : pct >= 4 ? "warn" : "ok";
-    const pctText = (pct > 0 && pct < 0.01) ? "<0.01%" : `${pct.toFixed(2)}%`;
-
-    return {
-      addr: a,
-      pct,
-      sev,
-      label: `#${idx+1} ${shortAddr(a)}`,
-      sub: pctText,
-      t: `Holder #${idx+1}`,
-      d: `${shortAddr(a)} • ${pctText}`,
-      infoHtml: explain(`Holder #${idx+1}`, [
-        `Wallet: ${a}`,
-        `Share (computed): ${pctText}`,
-        "Method: balance / totalSupply (best-effort).",
-        "Tip: Identify LP/treasury/team/burn wallets."
-      ])
-    };
-  });
-
-  top10Pct = holderItems.reduce((a,x)=>a+(x.pct||0),0);
-}
-
-
-      // score + checks/todos
-      const scored = scoreEvmLite({ owner, proxy, paused, liquidityUsd, lpStatus, top10Pct });
-      const todos = todoEvmLite({ owner, proxy, paused, liquidityUsd, lpStatus, top10Pct });
-
-      setVerdict(scored.score, scored.critical);
-      setText("summary",
-        `EVM scan: ${proxy?.isProxy ? "proxy" : "no proxy"} • ${paused===true ? "paused" : paused===false ? "pausable" : "no pause signal"} • ${Number.isFinite(top10Pct) ? `Top10≈${top10Pct.toFixed(2)}%` : "holders unknown"}`
-      );
-
-      renderList(qs("checksList"), scored.checks, "Checks");
-      renderList(qs("todoList"), todos, "Launch Readiness");
-
-      // token standard details
-      const decimals = (meta?.decimals ?? null);
-      const supplyBn = meta?.totalSupply ?? null;
-      const supplyText = (supplyBn !== null && decimals !== null)
-        ? (() => {
-            // safe-ish formatting: show raw + approx ui
-            let ui = null;
-            try{
-              const denom = 10n ** BigInt(decimals);
-              ui = Number(supplyBn / denom);
-            }catch{}
-            return ui !== null ? `${fmtInt(ui)} (approx)` : `${supplyBn.toString()} (raw)`;
-          })()
-        : "—";
-
-      renderList(qs("extList"), [
-        { t:"Decimals", sev: (decimals===null ? "warn" : "ok"), d: (decimals===null ? "—" : String(decimals)), why:"ERC-20 decimals()" },
-        { t:"Total Supply", sev: (supplyBn===null ? "warn" : "ok"), d: supplyText, why:"totalSupply() best-effort" },
-        { t:"Proxy Implementation", sev: proxy?.implementation ? "warn" : "ok", d: proxy?.implementation || "—", why:"EIP-1967 implementation slot" },
-        { t:"Proxy Admin", sev: proxy?.admin ? "warn" : "ok", d: proxy?.admin || "—", why:"EIP-1967 admin slot" }
-      ], "Token Standard");
-
-      // metadata list
-      renderList(qs("metaList"), [
-        { t:"Name", sev: meta?.name ? "ok" : "warn", d: meta?.name || "—" },
-        { t:"Symbol", sev: meta?.symbol ? "ok" : "warn", d: meta?.symbol || "—" }
-      ], "Metadata");
-
-      // holders + viz + cluster
-if(holderItems.length){
-  renderHoldersWithExplorer(holderItems, chainObj());
-  buildBubblesFromHolders(holderItems);
-  renderClusterLite(holderItems);
-
-  // ✅ HOOK GRAPH (EVM) – HIER rein
-  try{
-    const wallets = holderItems.map(x => x.addr).filter(Boolean);
-    const g = await buildEvmEdgesFromTransfers(chainId, addr, wallets);
-    VIZ.edges = g.edges || [];
-    setGraphAvailability(VIZ.edges.length > 0);
-    drawViz();
-  }catch{
-    VIZ.edges = [];
-    setGraphAvailability(false);
-    drawViz();
-  }
-
-}else{
-  renderHoldersEmpty();
-  buildBubblesFromHolders([]);
-  renderClusterLite([]);
-  VIZ.edges = [];
-  setGraphAvailability(false);
-  drawViz();
-}
-
-      // key signals (pro column)
-      renderKeySignals(
-        keySignalsEvm({
-          owner,
-          proxy,
-          paused,
-          liquidityUsd,
-          lpStatus
-        })
-      );
-
-      LAST_SCAN = { chain: chainIdStr, addr, meta, score: scored.score, when: Date.now() };
-      return LAST_SCAN;
-    }
-
-    async function runScan(){
-      if(SCANNING) return;
-      const chain = chainObj();
-      const raw = normalizeInputAddr(qs("mint")?.value || "");
-      if(!raw){
-        setStatus("Paste an address first.");
-        return;
-      }
-
-      SCANNING = true;
-      setScanButtons(true);
-      hideToast();
-      setStatus("Running scan…");
-
-      try{
-        // reset export button until success
-        const exBtn = qs("btnExport");
-        if(exBtn){ exBtn.disabled = true; }
-
-        resizeCanvas();
-
-        if(chain.kind === "solana"){
-          await scanSol(raw);
-        }else{
-          await scanEvm(chain.id, raw);
-        }
-
-        setStatus("Scan complete.");
-        // enable export (placeholder report)
-        if(exBtn){ exBtn.disabled = false; }
-      }catch(e){
-        const msg = String(e?.message || e || "Scan failed.");
-        setStatus("Error: " + msg);
-        showToast("Scan failed: " + msg);
-      }finally{
-        SCANNING = false;
-        setScanButtons(false);
-      }
+      setVizStamps();
+      return {
+        tokenMeta: meta,
+        checks, metaList, extList, keySignals,
+        holders,
+        edges: [],
+        clusters: []
+      };
     }
 
     /* =========================================================
-       PART 10 — EXPORT (simple HTML report) + WIRING/BOOT
+       SCAN: EVM (ETH/BNB/Base)
        ========================================================= */
+    function evmChainIdFromActive(){
+      if(APP.ACTIVE_CHAIN_ID === "eth") return 1;
+      if(APP.ACTIVE_CHAIN_ID === "bnb") return 56;
+      if(APP.ACTIVE_CHAIN_ID === "base") return 8453;
+      return 1;
+    }
 
-    function exportReport(){
-  if(!LAST_SCAN){
-    showToast("No scan data to export yet.");
-    return;
-  }
+    async function scanEvm(tokenAddr, signal){
+      const chainId = evmChainIdFromActive();
+      const checks = [];
+      const metaList = [];
+      const extList = [];
+      const keySignals = [];
 
-  const chain = LAST_SCAN.chain;
-  const addr  = LAST_SCAN.addr;
-  const score = LAST_SCAN.score;
-  const whenLocal = new Intl.DateTimeFormat("de-DE", {
-    timeZone: "Europe/Berlin",
-    year:"numeric", month:"2-digit", day:"2-digit",
-    hour:"2-digit", minute:"2-digit", second:"2-digit"
-  }).format(new Date(LAST_SCAN.when));
+      // contract code?
+      const code = await getCode(chainId, tokenAddr, signal).catch(()=> "0x");
+      if(!code || code === "0x"){
+        checks.push({ sev:"bad", weight:26, t:"Not a contract", d:"Address has no contract bytecode.", fix:"Verify contract address." });
+        applyTokenHeaderWithEvmLogo({name:"—",symbol:"",image:""}, tokenAddr, chainId);
+        renderList(qs("checksList"), checks.map(c=>({sev:c.sev,t:c.t,d:c.d,fix:c.fix})), "Checks");
+        renderList(qs("todoList"), buildTodoFromChecks(checks), "Launch readiness");
+        renderKeySignals(keySignals);
+        setVizStamps();
+        return { tokenMeta:{name:"—",symbol:"",image:""}, checks, metaList, extList, keySignals, holders:[], edges:[], clusters:[] };
+      }
 
-  const name = (qs("tokenName")?.textContent || "Token").trim();
-  const sym  = (qs("tokenSymbol")?.textContent || "").trim();
-  const summary = (qs("summary")?.textContent || "—").trim();
-  const mintShort = (qs("mintShort")?.textContent || "").trim();
+      const proxy = await detectProxy(chainId, tokenAddr, signal);
+      if(proxy.isProxy){
+        checks.push({ sev:"warn", weight:14, t:"Proxy detected (EIP-1967)", d:`Implementation: ${shortAddr(proxy.implementation||"")}`, fix:"Verify implementation contract + admin privileges." });
+        extList.push({ sev:"warn", t:"Proxy", d:`Implementation: ${proxy.implementation || "—"} • Admin: ${proxy.admin || "—"}` });
+      }else{
+        extList.push({ sev:"ok", t:"Proxy", d:"No EIP-1967 proxy signals detected." });
+      }
 
-  // Try to embed logo if loaded
-  const logoEl = qs("tokenLogo");
-  const logoSrc = (logoEl && logoEl.style.display !== "none" && logoEl.src) ? logoEl.src : "";
+      const meta = await getErc20Meta(chainId, tokenAddr, signal);
+      applyTokenHeaderWithEvmLogo(meta, tokenAddr, chainId);
 
-  // Pull rendered HTML blocks (static report)
-  const keySignalsHtml = qs("keySignals")?.innerHTML || "<div class='signalCard'><div class='signalK'>—</div></div>";
-  const checksHtml = qs("checksList")?.innerHTML || "";
-  const todoHtml = qs("todoList")?.innerHTML || "";
-  const extHtml = qs("extList")?.innerHTML || "";
-  const metaHtml = qs("metaList")?.innerHTML || "";
-  const holdersHtml = qs("holdersList")?.innerHTML || "";
+      metaList.push({ sev: meta.name ? "ok":"warn", t:"Name", d: meta.name || "—", fix:"ERC-20 name() should be readable." });
+      metaList.push({ sev: meta.symbol ? "ok":"warn", t:"Symbol", d: meta.symbol || "—", fix:"ERC-20 symbol() should be readable." });
+      metaList.push({ sev: Number.isFinite(meta.decimals) ? "ok":"warn", t:"Decimals", d: Number.isFinite(meta.decimals)?String(meta.decimals):"—" });
 
-  const html = `
-<!doctype html>
+      let totalSupplyUi = "—";
+      if(meta.totalSupply != null && Number.isFinite(meta.decimals)){
+        const denom = 10n ** BigInt(meta.decimals);
+        const whole = meta.totalSupply / denom;
+        totalSupplyUi = whole.toString();
+      }
+      keySignals.push({ k:"Total supply", v: totalSupplyUi, mini:`Decimals: ${Number.isFinite(meta.decimals)?meta.decimals:"—"}`, src:"onchain", sev:"ok" });
+
+      const owner = await getOwner(chainId, tokenAddr, signal);
+      if(owner){
+        checks.push({ sev:"warn", weight:10, t:"Owner() present", d:`Owner: ${shortAddr(owner)}`, fix:"If renounced, owner should be 0x0. If not, verify trust." });
+        extList.push({ sev:"warn", t:"Owner", d: owner });
+      }else{
+        checks.push({ sev:"ok", weight:6, t:"Owner()", d:"No owner() method detected or unreadable." });
+      }
+
+      const paused = await getPaused(chainId, tokenAddr, signal);
+      if(paused === true){
+        checks.push({ sev:"bad", weight:18, t:"Contract is paused", d:"Transfers may be blocked.", fix:"Verify pause control and whether it’s intended." });
+      }else if(paused === false){
+        checks.push({ sev:"ok", weight:6, t:"Paused()", d:"Not paused (best-effort)." });
+      }else{
+        checks.push({ sev:"warn", weight:8, t:"Paused()", d:"Unknown (method not found or unreadable).", fix:"Verify if contract has pause features." });
+      }
+
+      // DEX Screener best pair
+      const ds = await fetchDexscreenerToken(tokenAddr, signal);
+      if(ds?.best){
+        const liq = Number(ds.best?.liquidity?.usd || 0);
+        const fdv = Number(ds.best?.fdv || 0);
+        const price = Number(ds.best?.priceUsd || 0);
+        keySignals.push({ k:"Liquidity (best pair)", v:`$${formatUsd(liq)}`, mini:`FDV: $${formatUsd(fdv)} • Price: $${price?price.toPrecision(4):"—"}`, src:"api", sev: liq > 50000 ? "ok" : "warn" });
+        if(liq < 5000) checks.push({ sev:"warn", weight:10, t:"Low liquidity", d:`Best pair liquidity ~$${formatUsd(liq)}`, fix:"Low LP increases volatility and rug risk." });
+        else checks.push({ sev:"ok", weight:6, t:"Liquidity", d:`Best pair liquidity ~$${formatUsd(liq)}` });
+      }else{
+        checks.push({ sev:"warn", weight:8, t:"DEX data unavailable", d:"No Dexscreener pair found (best-effort).", fix:"Token may be new or not tracked." });
+      }
+
+      // Holders + Transfers (GoldRush)
+      const holdersRaw = await goldrushHolders(chainId, tokenAddr, signal);
+      let holders = [];
+      if(holdersRaw.length){
+        // GoldRush token_holders items have address + balance + etc
+        // We'll approximate pct if totalSupply is known.
+        const totalRaw = meta.totalSupply;
+        const totalStr = (totalRaw != null) ? totalRaw.toString() : "";
+        holders = holdersRaw.slice(0, 10).map((h, i) => {
+          const addr = String(h?.address || "");
+          const bal = String(h?.balance || h?.balance_24h || "0");
+          const pct = totalStr ? pctFromRaw(bal, totalStr) : normalizePct(h?.percentage || 0);
+          return {
+            addr,
+            label: `Holder #${i+1}`,
+            pct,
+            sub: `Balance: ${String(h?.balance || "—").slice(0,18)}…`,
+            sev: (pct >= 15) ? "warn" : "ok"
+          };
+        }).filter(x=>x.addr);
+
+        renderHoldersList(holders);
+        buildBubblesFromHolders(holders);
+
+        const top1 = holders[0]?.pct || 0;
+        const top5 = holders.slice(0,5).reduce((s,h)=>s+(h.pct||0),0);
+        if(top1 >= 25) checks.push({ sev:"bad", weight:22, t:"High whale concentration", d:`Top holder ~${top1.toFixed(2)}%`, fix:"Review holder labels, LP/treasury exclusions." });
+        else if(top1 >= 15) checks.push({ sev:"warn", weight:12, t:"Concentration watch", d:`Top holder ~${top1.toFixed(2)}%`, fix:"Review top holders and distribution." });
+        else checks.push({ sev:"ok", weight:6, t:"Top holder concentration", d:`Top holder ~${top1.toFixed(2)}%` });
+
+        if(top5 >= 60) checks.push({ sev:"warn", weight:12, t:"Top 5 concentration", d:`Top 5 ~${top5.toFixed(2)}%`, fix:"Review distribution and lockups." });
+        else checks.push({ sev:"ok", weight:6, t:"Top 5 concentration", d:`Top 5 ~${top5.toFixed(2)}%` });
+      }else{
+        renderHoldersList([]);
+        buildBubblesFromHolders([]);
+        checks.push({ sev:"warn", weight:10, t:"Holder data unavailable", d:"Enable GoldRush key for EVM holders/transfers.", fix:"Add GoldRush key in API Keys." });
+      }
+
+      // Transfers → edges → graph mode
+      const transfers = await goldrushTransfers(chainId, tokenAddr, 200, signal);
+      const topSet = new Set(holders.map(h=>String(h.addr||"").toLowerCase()));
+      const edges = transfers.length ? computeEdgesFromTransfers_EVM(transfers, topSet) : [];
+      VIZ.edges = edges;
+
+      setGraphAvailability(edges.length > 0);
+      if(edges.length > 0){
+        // clusters from edges
+        const clusters = buildClustersFromEdges();
+        renderClusters(clusters);
+        setText("vizSub","Shows holder bubbles + linked wallet edges (best-effort). Graph is enabled.");
+        setText("clusterSub","Linked wallets & transfer relationships (best-effort).");
+      }else{
+        renderClusters([]);
+        setText("vizSub","Shows holder bubbles (best-effort). Graph needs transfer edges (GoldRush).");
+      }
+
+      drawViz();
+      setVizStamps();
+
+      renderList(qs("checksList"), checks.map(c=>({sev:c.sev,t:c.t,d:c.d,fix:c.fix})), "Checks");
+      renderList(qs("todoList"), buildTodoFromChecks(checks), "Launch readiness");
+      renderList(qs("extList"), extList, "Token standard details");
+      renderList(qs("metaList"), metaList, "Token metadata");
+      renderKeySignals(keySignals);
+
+      return { tokenMeta: meta, checks, metaList, extList, keySignals, holders, edges, clusters: buildClustersFromEdges() };
+    }
+
+    /* =========================================================
+       EXPORT REPORT (single HTML download with snapshot)
+       ========================================================= */
+    async function blobToDataURL(blob){
+      return await new Promise((resolve) => {
+        const fr = new FileReader();
+        fr.onload = () => resolve(String(fr.result || ""));
+        fr.onerror = () => resolve("");
+        fr.readAsDataURL(blob);
+      });
+    }
+
+    async function preloadBrandLogo(){
+      if(APP.BRAND_LOGO_DATAURL) return APP.BRAND_LOGO_DATAURL;
+      const imgEl = qs("brandLogo");
+      const src = imgEl?.getAttribute("src") || "/assets/logo.png";
+      try{
+        const r = await fetch(src, { cache:"force-cache" });
+        const b = await r.blob();
+        const d = await blobToDataURL(b);
+        APP.BRAND_LOGO_DATAURL = d;
+        return d;
+      }catch{
+        APP.BRAND_LOGO_DATAURL = "";
+        return "";
+      }
+    }
+
+    function canvasToDataURL(){
+      const c = qs("vizCanvas");
+      if(!c) return "";
+      try{ return c.toDataURL("image/png"); }catch{ return ""; }
+    }
+
+    function downloadText(filename, text){
+      const blob = new Blob([text], { type:"text/html;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(()=> URL.revokeObjectURL(url), 2000);
+    }
+
+    async function exportReport(){
+      if(!APP.LAST_SCAN){
+        showToast("Nothing to export yet. Run a scan first.");
+        return;
+      }
+      const c = chainObj();
+      const brandLogo = await preloadBrandLogo();
+      const tokenImg = (qs("tokenLogo")?.style.display !== "none") ? (qs("tokenLogo")?.src || "") : "";
+      const vizImg = canvasToDataURL();
+
+      const addr = APP.LAST_SCAN.addr || "";
+      const title = `${c.name} Guardian Report — ${addr ? shortAddr(addr) : ""}`;
+      const when = new Date().toLocaleString("de-DE",{timeZone:"Europe/Berlin"});
+
+      // lightweight report html (same vibe)
+      const html = `<!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#070711">
-<title>$SOS Guardian Report • ${esc(chain)} • ${esc(addr)}</title>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+<title>${esc(title)}</title>
 <style>
-  :root{
-    --bg:#070711;
-    --panel: rgba(255,255,255,.06);
-    --stroke: rgba(255,255,255,.12);
-    --text: rgba(255,255,255,.92);
-    --muted: rgba(255,255,255,.70);
-    --g:#14F195; --c:#00D1FF; --p:#9945FF;
-    --radius: 22px;
-    --shadow: 0 10px 30px rgba(0,0,0,.35);
-    --good: rgba(20,241,149,.18);
-    --warn: rgba(255,220,130,.14);
-    --bad:  rgba(255,120,150,.16);
-    --src-onchain: rgba(20,241,149,.16);
-    --src-indexer: rgba(0,209,255,.14);
-    --src-api: rgba(153,69,255,.14);
-    --src-heur: rgba(255,220,130,.12);
-  }
-  *{box-sizing:border-box}
-  body{
-    margin:0;
-    color:var(--text);
-    font: 15.5px/1.55 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
-    background: var(--bg);
-  }
-  body::before{
-    content:"";
-    position:fixed; inset:0; z-index:-1; pointer-events:none;
-    background:
-      radial-gradient(1200px 700px at 10% 5%, rgba(153,69,255,.22), transparent 60%),
-      radial-gradient(1000px 650px at 90% 10%, rgba(20,241,149,.18), transparent 55%),
-      radial-gradient(900px 600px at 70% 85%, rgba(0,209,255,.14), transparent 55%),
-      var(--bg);
-  }
-  .wrap{max-width:1100px; margin:0 auto; padding:22px 18px 40px;}
-  .card{
-    background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.05));
-    border: 1px solid rgba(255,255,255,.10);
-    border-radius: var(--radius);
-    box-shadow: var(--shadow);
-    overflow:hidden;
-    margin-bottom:16px;
-  }
+  :root{ --bg:#070711; --text:rgba(255,255,255,.92); --muted:rgba(255,255,255,.70); --panel:rgba(255,255,255,.06); --stroke:rgba(255,255,255,.12);
+    --g:#14F195; --c:#00D1FF; --p:#9945FF; --radius:22px; --shadow:0 12px 32px rgba(0,0,0,.45); }
+  *{box-sizing:border-box} body{margin:0;font:15px/1.55 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial;background:var(--bg);color:var(--text);}
+  .wrap{max-width:980px;margin:0 auto;padding:18px;}
+  .card{background:linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.05));border:1px solid var(--stroke);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;}
   .inner{padding:18px}
-  .top{
-    display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;
-    border-bottom:1px solid rgba(255,255,255,.10);
-    background: rgba(255,255,255,.03);
-    padding:14px 18px;
-  }
-  .brand{display:flex; align-items:center; gap:12px;}
-  .brand img{width:40px;height:40px;object-fit:contain;filter: drop-shadow(0 10px 25px rgba(0,0,0,.45));}
-  .bt{display:flex; flex-direction:column; line-height:1.05}
-  .bt .t{font-weight:1000; letter-spacing:-.2px; font-size:16px}
-  .bt .s{font-weight:850; color:var(--muted); font-size:12.5px}
-  .stamp{
-    font-weight:1000; font-size:12px; letter-spacing:.45px; text-transform:uppercase;
-    color: rgba(255,255,255,.76);
-    border: 1px solid rgba(255,255,255,.14);
-    background: rgba(255,255,255,.06);
-    border-radius: 999px;
-    padding:7px 10px;
-  }
-  .h1{
-    margin:0;
-    font-weight:1000;
-    letter-spacing:-.7px;
-    line-height:1.05;
-    font-size: 34px;
-  }
-  .gradText{
-    background: linear-gradient(90deg, var(--g), var(--c), var(--p));
-    -webkit-background-clip:text;
-    background-clip:text;
-    color:transparent;
-  }
-  .row{display:grid; grid-template-columns: 1fr 1fr; gap:14px;}
-  @media(max-width:900px){.row{grid-template-columns:1fr}}
-  .mono{font-family: ui-monospace, Menlo, Consolas, monospace; font-weight:900; color: rgba(255,255,255,.86); overflow-wrap:anywhere;}
-  .mini{color: rgba(255,255,255,.70); font-weight:850; font-size:12.5px; overflow-wrap:anywhere;}
-  .tokenHead{display:flex; gap:12px; align-items:center; flex-wrap:wrap;}
-  .tokenLogoWrap{
-    width:44px;height:44px;border-radius:12px;overflow:hidden;
-    border:1px solid rgba(255,255,255,.10);
-    background: rgba(0,0,0,.18);
-    display:flex; align-items:center; justify-content:center;
-  }
-  .tokenLogoWrap img{width:100%;height:100%;object-fit:cover;display:block}
-  /* reused list styles */
-  .list{margin:10px 0 0; padding:0; list-style:none; display:grid; gap:10px;}
-  .li{
-    border:1px solid rgba(255,255,255,.10);
-    background: rgba(0,0,0,.14);
-    border-radius: 16px;
-    padding:12px 12px;
-    display:flex; gap:10px; align-items:flex-start; justify-content:space-between;
-  }
-  .li .t{font-weight:1000; font-size:13px;}
-  .li .d{margin-top:4px;color: rgba(255,255,255,.70);font-weight:750;font-size:12.5px;line-height:1.35;}
-  .pill{padding:6px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.12);background: rgba(255,255,255,.06);font-weight:1000;font-size:12px;white-space:nowrap;}
-  .pill.ok{border:0; background: linear-gradient(90deg,var(--g),var(--c),var(--p)); color:#061012}
-  .pill.warn{border-color: rgba(255,220,130,.35); background: rgba(255,220,130,.08); color: rgba(255,240,210,.92)}
-  .pill.bad{border-color: rgba(255,120,150,.35); background: rgba(255,120,150,.10); color: rgba(255,190,205,.95)}
-  .panelTitle{font-weight:1000; letter-spacing:.35px; text-transform:uppercase; font-size:12px; color: rgba(255,255,255,.72);}
-  /* key signals cards */
-  .signalCard{border:1px solid rgba(255,255,255,.10); background: rgba(255,255,255,.04); border-radius:16px; padding:12px;}
-  .signalTop{display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;}
-  .signalK{font-weight:1000; letter-spacing:.45px; text-transform:uppercase; font-size:12px; color: rgba(255,255,255,.72);}
-  .signalV{margin-top:8px; font-weight:1000; font-size:18px;}
-  .signalMini{margin-top:6px; font-weight:850; font-size:12px; color: rgba(255,255,255,.62);}
-  .badge{display:inline-flex; align-items:center; justify-content:center; padding:7px 11px; border-radius:999px; border:1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.06); font-weight:1000; font-size:12px;}
-  .badge.good{border:0; background: linear-gradient(90deg,var(--g),var(--c),var(--p)); color:#061012}
-  .badge.warn{border-color: rgba(255,220,130,.35); background: rgba(255,220,130,.08); color: rgba(255,240,210,.92)}
-  .badge.bad{border-color: rgba(255,120,150,.35); background: rgba(255,120,150,.10); color: rgba(255,190,205,.95)}
-  .badge.src{border:1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.05); color: rgba(255,255,255,.84)}
-  .badge.src.onchain{border-color: rgba(20,241,149,.26); background: var(--src-onchain);}
-  .badge.src.indexer{border-color: rgba(0,209,255,.26); background: var(--src-indexer);}
-  .badge.src.api{border-color: rgba(153,69,255,.26); background: var(--src-api);}
-  .badge.src.heur{border-color: rgba(255,220,130,.26); background: var(--src-heur);}
-  /* hide interactive buttons in exported report */
-  .infoBtn,.explorerBtn{display:none!important;}
+  .top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+  .brand{display:flex;gap:12px;align-items:center}
+  .brand img{width:44px;height:44px;object-fit:contain}
+  .h1{margin:10px 0 0;font-weight:1000;letter-spacing:-.6px;font-size:28px}
+  .grad{background:linear-gradient(90deg,var(--g),var(--c),var(--p));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .muted{color:var(--muted);font-weight:850}
+  .grid{display:grid;grid-template-columns:1fr;gap:12px;margin-top:14px}
+  .box{border:1px solid var(--stroke);background:rgba(0,0,0,.18);border-radius:16px;padding:12px}
+  .k{font-weight:1000;text-transform:uppercase;letter-spacing:.35px;font-size:12px;color:rgba(255,255,255,.72)}
+  .v{margin-top:6px;font-weight:1000;font-size:16px}
+  .imgRow{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:10px}
+  .token{width:44px;height:44px;border-radius:12px;overflow:hidden;border:1px solid var(--stroke);background:rgba(0,0,0,.18)}
+  .token img{width:100%;height:100%;object-fit:cover}
+  .viz{margin-top:10px;border-radius:16px;overflow:hidden;border:1px solid var(--stroke);background:rgba(0,0,0,.18)}
+  .viz img{width:100%;display:block}
+  ul{margin:10px 0 0;padding:0;list-style:none;display:grid;gap:10px}
+  li{border:1px solid var(--stroke);background:rgba(0,0,0,.14);border-radius:16px;padding:12px}
+  .pill{display:inline-block;padding:6px 10px;border-radius:999px;font-weight:1000;font-size:12px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06)}
 </style>
 </head>
 <body>
   <div class="wrap">
     <div class="card">
-      <div class="top">
-        <div class="brand">
-          <img src="/assets/logo.png" alt="$SOS" onerror="this.style.display='none'">
-          <div class="bt">
-            <div class="t">$SOS</div>
-            <div class="s">Guardian Report • Export</div>
-          </div>
-        </div>
-        <div style="display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end;">
-          <span class="stamp">${esc(String(chain).toUpperCase())}</span>
-          <span class="stamp">${esc(whenLocal)}</span>
-          <span class="badge good">SCORE ${esc(String(score))}/100</span>
-        </div>
-      </div>
       <div class="inner">
-        <div class="tokenHead">
-          <div class="tokenLogoWrap">
-            ${logoSrc ? `<img src="${esc(logoSrc)}" alt="${esc(name)}" onerror="this.style.display='none'">` : `<div style="opacity:.6;font-weight:1000">—</div>`}
+        <div class="top">
+          <div class="brand">
+            ${brandLogo ? `<img src="${brandLogo}" alt="Brand"/>` : ``}
+            <div>
+              <div class="muted">${esc(c.name)} • ${esc(c.stamp || "MAINNET")}</div>
+              <div class="h1"><span class="grad">Guardian</span> Scan Report</div>
+              <div class="muted">${esc(when)}</div>
+            </div>
           </div>
-          <div>
-            <div class="h1"><span class="gradText">${esc(name)}</span></div>
-            <div class="mini">${esc(sym)} • <span class="mono">${esc(mintShort || addr)}</span></div>
+          <div class="muted">${esc(addr)}</div>
+        </div>
+
+        <div class="imgRow">
+          ${tokenImg ? `<div class="token"><img src="${esc(tokenImg)}" alt="Token"/></div>` : ``}
+          <div class="box" style="flex:1 1 260px">
+            <div class="k">Verdict</div>
+            <div class="v">${esc(qs("verdictTitle")?.textContent || "—")} • ${esc(qs("scoreBadge")?.textContent || "—")}</div>
           </div>
         </div>
-        <div style="margin-top:12px" class="mini">${esc(summary)}</div>
+
+        ${vizImg ? `<div class="viz"><img src="${vizImg}" alt="Viz snapshot"/></div>` : ``}
+
+        <div class="grid">
+          <div class="box">
+            <div class="k">Summary</div>
+            <div class="v">${esc(qs("summary")?.textContent || "—")}</div>
+          </div>
+
+          <div class="box">
+            <div class="k">Key Signals</div>
+            ${qs("keySignals")?.innerText ? `<div class="muted" style="margin-top:6px; white-space:pre-wrap">${esc(qs("keySignals").innerText)}</div>` : `<div class="muted">—</div>`}
+          </div>
+
+          <div class="box">
+            <div class="k">Checks</div>
+            <div class="muted" style="margin-top:6px; white-space:pre-wrap">${esc(qs("checksList")?.innerText || "—")}</div>
+          </div>
+
+          <div class="box">
+            <div class="k">Launch Readiness</div>
+            <div class="muted" style="margin-top:6px; white-space:pre-wrap">${esc(qs("todoList")?.innerText || "—")}</div>
+          </div>
+
+          <div class="box">
+            <div class="k">Top Holders</div>
+            <div class="muted" style="margin-top:6px; white-space:pre-wrap">${esc(qs("holdersList")?.innerText || "—")}</div>
+          </div>
+        </div>
+
       </div>
-    </div>
-
-    <div class="row">
-      <div class="card"><div class="inner">
-        <div class="panelTitle">Key Signals</div>
-        <div style="display:grid; gap:10px; margin-top:10px;">${keySignalsHtml}</div>
-      </div></div>
-
-      <div class="card"><div class="inner">
-        <div class="panelTitle">Top Holders</div>
-        <ul class="list">${holdersHtml || ""}</ul>
-      </div></div>
-    </div>
-
-    <div class="row">
-      <div class="card"><div class="inner">
-        <div class="panelTitle">Guardian Checks</div>
-        <ul class="list">${checksHtml || ""}</ul>
-      </div></div>
-
-      <div class="card"><div class="inner">
-        <div class="panelTitle">Launch Readiness</div>
-        <ul class="list">${todoHtml || ""}</ul>
-      </div></div>
-    </div>
-
-    <div class="row">
-      <div class="card"><div class="inner">
-        <div class="panelTitle">Token Standard Details</div>
-        <ul class="list">${extHtml || ""}</ul>
-      </div></div>
-
-      <div class="card"><div class="inner">
-        <div class="panelTitle">Token Metadata</div>
-        <ul class="list">${metaHtml || ""}</ul>
-      </div></div>
-    </div>
-
-    <div style="text-align:center; opacity:.55; font-weight:850; font-size:12px; margin-top:12px;">
-      © ${new Date().getFullYear()} $SOS • Guardian Check
     </div>
   </div>
 </body>
-</html>
-`.trim();
+</html>`;
 
-  const blob = new Blob([html], { type:"text/html;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
+      const filename = `guardian-report-${APP.ACTIVE_CHAIN_ID}-${addr ? addr.slice(0,8) : "scan"}.html`;
+      downloadText(filename, html);
+      showToast("Report downloaded.");
+    }
 
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `guardian-report_${chain}_${addr.slice(0,8)}.html`;
-  document.body.appendChild(a);
-    a.click();
-  a.remove();
+    /* =========================================================
+       RUN SCAN (dispatcher)
+       ========================================================= */
+    function abortScan(){
+      try{ APP.ABORT?.abort?.(); }catch{}
+      APP.ABORT = null;
+      APP.SCANNING = false;
+      setScanButtons(false);
+    }
 
-  setTimeout(()=>URL.revokeObjectURL(url), 2500);
-}
+    async function runScan(){
+      const mintEl = qs("mint");
+      const raw = (mintEl?.value || "").trim();
+      const c = chainObj();
 
-    // wiring
-on("btnScan", "click", runScan);
-on("btnScanInline", "click", runScan);
-on("btnExport", "click", exportReport);
+      // validate
+      if(c.kind === "solana"){
+        if(!looksBase58(raw)){
+          setStatus("Invalid Solana mint (base58).");
+          showToast("Invalid Solana mint address.");
+          return;
+        }
+      }else{
+        if(!looksEvmAddress(raw)){
+          setStatus("Invalid EVM address (must be 0x + 40 hex).");
+          showToast("Invalid EVM contract address.");
+          return;
+        }
+      }
 
-on("modalClose", "click", closeModal);
-on("modalWrap", "click", (e)=>{ if(e.target === qs("modalWrap")) closeModal(); });
-on("toastClose", "click", hideToast);
+      abortScan(); // cancel any in-flight
+      APP.ABORT = new AbortController();
+      APP.SCANNING = true;
+      setScanButtons(true);
+      setStatus("Scanning…");
+      setText("scanHint", `${c.stamp || "MAINNET"} • scanning…`);
+      setText("vizStamp","—");
+      setText("vizLegend","—");
 
-on("vizModeBubbles","click", ()=> setVizMode("bubbles"));
-on("vizModeGraph","click", ()=> setVizMode("graph"));
-on("btnVizReset","click", resetViz);
+      // clear caches per scan (avoid stale)
+      APP.CACHE = new Map();
+      APP.INFO_MAP = new Map();
 
-window.addEventListener("resize", ()=> resizeCanvas());
+      try{
+        let result;
+        if(c.kind === "solana"){
+          result = await scanSolana(raw, APP.ABORT.signal);
+        }else{
+          result = await scanEvm(raw, APP.ABORT.signal);
+        }
 
-// boot
-(function boot(){
-  startLiveStampTime();
-  setText("y", String(new Date().getFullYear()));
+        // score + verdict
+        const scored = scoreFromChecks(result.checks || []);
+        setVerdict(scored.score, scored.critical);
+        setSummaryLine(`Best-effort scan completed on ${c.name}. Always verify manually before trading or deploying.`);
 
-  const url = new URL(location.href);
-  const c = url.searchParams.get("chain");
-  if(c && CHAINS.some(x=>x.id===c)) ACTIVE_CHAIN_ID = c;
+        // metrics cards
+        const metrics = [
+          { label:"Chain", value:c.name, badge:c.stamp || "MAINNET", mini:"Active network" },
+          { label:"Address", value:shortAddr(raw), badge:"Copy", mini: raw },
+          { label:"Visualization", value:`${(VIZ.nodes?.length||0)} nodes`, badge:`${(VIZ.edges?.length||0)} edges`, mini:"Bubbles show top holders. Graph shows transfer edges (if available).", barPct: clamp((VIZ.nodes?.length||0)*10, 0, 100) },
+          { label:"Risk Score", value:`${scored.score}/100`, badge: (scored.score>=85?"APPROVED":scored.score>=70?"WATCH":"RISK"), mini:"Score derived from on-chain + best-effort signals.", barPct: scored.score }
+        ];
+        renderMetrics(metrics);
 
-  renderChainButtons();
-  setActiveChain(ACTIVE_CHAIN_ID, false);
+        // mint short
+        setText("mintShort", raw);
+        APP.LAST_SCAN = { chain: APP.ACTIVE_CHAIN_ID, addr: raw, result };
+        const exBtn = qs("btnExport");
+        if(exBtn) exBtn.disabled = false;
 
-  wireVizInteractions();
-  resizeCanvas();
-})();
+        setStatus("Done.");
+        setText("scanHint", `${c.stamp || "MAINNET"} • scan finished`);
+        setVizStamps();
+        showToast("Scan completed.");
+      }catch(e){
+        if(String(e?.name||"") === "AbortError"){
+          setStatus("Scan canceled.");
+        }else{
+          setStatus("Error: " + (e?.message || e));
+          showToast("Scan error. Check keys/RPC.");
+        }
+      }finally{
+        APP.SCANNING = false;
+        setScanButtons(false);
+      }
+    }
+
+    /* =========================================================
+       UI WIRING + INIT
+       ========================================================= */
+    function init(){
+      startLiveStampTime();
+      setText("y", String(new Date().getFullYear()));
+
+      // chain from URL
+      try{
+        const url = new URL(location.href);
+        const q = (url.searchParams.get("chain") || "").trim().toLowerCase();
+        if(CHAINS.some(x=>x.id===q)) APP.ACTIVE_CHAIN_ID = q;
+      }catch{}
+
+      renderChainButtons();
+      setActiveChain(APP.ACTIVE_CHAIN_ID, false);
+
+      on("toastClose","click", hideToast);
+      on("modalClose","click", closeModal);
+      on("modalWrap","click", (e)=>{ if(e.target === qs("modalWrap")) closeModal(); });
+
+      on("btnKeys","click", openKeysModal);
+      on("btnScan","click", runScan);
+      on("btnScanInline","click", runScan);
+      on("btnExport","click", exportReport);
+
+      on("btnPaste","click", async ()=>{
+        try{
+          const t = await navigator.clipboard.readText();
+          if(t){ qs("mint").value = t.trim(); showToast("Pasted from clipboard."); }
+        }catch{
+          showToast("Clipboard blocked. Paste manually.");
+        }
+      });
+
+      on("btnClear","click", ()=>{
+        qs("mint").value = "";
+        resetUiForNewChain();
+        showToast("Cleared.");
+      });
+
+      // enter key triggers scan
+      const mint = qs("mint");
+      if(mint){
+        mint.addEventListener("keydown", (e)=>{
+          if(e.key === "Enter"){
+            e.preventDefault();
+            runScan();
+          }
+        });
+      }
+
+      // Escape closes modal
+      document.addEventListener("keydown", (e)=>{
+        if(e.key === "Escape"){
+          closeModal();
+          hideToast();
+        }
+      });
+
+      // initial header
+      applyTokenHeader({name:"—",symbol:"",image:""}, "");
+      setText("summary","Run a scan to generate a full Guardian report.");
+      setVizStamps();
+    }
+
+    init();
   </script>
 </body>
 </html>
 
+    
