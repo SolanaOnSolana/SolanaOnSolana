@@ -3706,40 +3706,42 @@ if(holderItems.length){
   a.href = url;
   a.download = `guardian-report_${chain}_${addr.slice(0,8)}.html`;
   document.body.appendChild(a);
-  a.click();
+    a.click();
   a.remove();
 
+  setTimeout(()=>URL.revokeObjectURL(url), 2500);
+}
+
     // wiring
-    on("btnScan", "click", runScan);
-    on("btnScanInline", "click", runScan);
-    on("btnExport", "click", exportReport);
+on("btnScan", "click", runScan);
+on("btnScanInline", "click", runScan);
+on("btnExport", "click", exportReport);
 
-    on("modalClose", "click", closeModal);
-    on("modalWrap", "click", (e)=>{ if(e.target === qs("modalWrap")) closeModal(); });
-    on("toastClose", "click", hideToast);
+on("modalClose", "click", closeModal);
+on("modalWrap", "click", (e)=>{ if(e.target === qs("modalWrap")) closeModal(); });
+on("toastClose", "click", hideToast);
 
-    on("vizModeBubbles","click", ()=> setVizMode("bubbles"));
-    on("vizModeGraph","click", ()=> setVizMode("graph"));
-    on("btnVizReset","click", resetViz);
+on("vizModeBubbles","click", ()=> setVizMode("bubbles"));
+on("vizModeGraph","click", ()=> setVizMode("graph"));
+on("btnVizReset","click", resetViz);
 
-    window.addEventListener("resize", ()=> resizeCanvas());
+window.addEventListener("resize", ()=> resizeCanvas());
 
-    // boot
-    (function boot(){
-      startLiveStampTime();
-      setText("y", String(new Date().getFullYear()));
+// boot
+(function boot(){
+  startLiveStampTime();
+  setText("y", String(new Date().getFullYear()));
 
-      // chain from URL
-      const url = new URL(location.href);
-      const c = url.searchParams.get("chain");
-      if(c && CHAINS.some(x=>x.id===c)) ACTIVE_CHAIN_ID = c;
+  const url = new URL(location.href);
+  const c = url.searchParams.get("chain");
+  if(c && CHAINS.some(x=>x.id===c)) ACTIVE_CHAIN_ID = c;
 
-      renderChainButtons();
-      setActiveChain(ACTIVE_CHAIN_ID, false);
+  renderChainButtons();
+  setActiveChain(ACTIVE_CHAIN_ID, false);
 
-      wireVizInteractions();
-      resizeCanvas();
-    })();
+  wireVizInteractions();
+  resizeCanvas();
+})();
   </script>
 </body>
 </html>
