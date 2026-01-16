@@ -1615,6 +1615,9 @@
 async function getTx(sig){
   return await solRpc("getTransaction", [sig, { encoding:"jsonParsed", maxSupportedTransactionVersion: 0 }]);
 }
+async function getTx(sig){
+  return await solRpc("getTransaction", [sig, { encoding:"jsonParsed", maxSupportedTransactionVersion: 0 }]);
+}
     /* ===== Dexscreener token endpoint (works across chains; address can be Sol mint or EVM token) ===== */
     async function fetchDexscreenerToken(addr){
       try{
@@ -1713,6 +1716,28 @@ async function getTx(sig){
       if(n === null || n === undefined || Number.isNaN(n)) return "—";
       return `${Number(n).toFixed(2)}%`;
     }
+    // ===== NEW: stable holder % from raw balance / raw totalSupply (EVM) =====
+function pctFromRaw(balanceRaw, totalSupplyRaw){
+  try{
+    const bal = BigInt(balanceRaw);
+    const sup = BigInt(totalSupplyRaw);
+    if(sup <= 0n) return 0;
+    // keep 4 decimals of precision in percent
+    const scaled = (bal * 1000000n) / sup; // percent * 10000
+    return Number(scaled) / 10000; // -> percent with 4 decimals
+  }catch{
+    return 0;
+  }
+}
+
+// If API gives "percentage", normalize it (some APIs return 0..1 fraction)
+function normalizePct(p){
+  const x = Number(p);
+  if(!Number.isFinite(x) || x < 0) return 0;
+  if(x > 0 && x <= 1) return x * 100;     // fraction -> percent
+  if(x > 1000) return x / 100;            // safety: basis points -> percent (rare)
+  return x;                               // already percent
+}
 
     /* ===== Solana scoring (kept, clean) ===== */
     function scoreSol(sig){
@@ -3274,26 +3299,38 @@ async function buildEvmEdgesFromTransfers(chainId, tokenAddr, wallets){
         const holders = await goldrushHolders(chainId, addr);
         const items = Array.isArray(holders) ? holders.slice(0, 10) : [];
         holderItems = items.map((h, idx) => {
-          const a = String(h?.address || "");
-          const pct = Number(h?.percentage ?? h?.pct ?? 0);
-          const sev = pct >= 10 ? "bad" : pct >= 4 ? "warn" : "ok";
-          return {
-            addr: a,
-            pct,
-            sev,
-            label: `#${idx+1} ${shortAddr(a)}`,
-            sub: `${pct.toFixed(2)}%`,
-            t: `Holder #${idx+1}`,
-            d: `${shortAddr(a)} • ${pct.toFixed(2)}%`,
-            infoHtml: explain(`Holder #${idx+1}`, [
-              `Wallet: ${a}`,
-              `Share (indexer): ${pct.toFixed(2)}%`,
-              "Tip: Identify LP/treasury/team/burn wallets."
-            ])
-          };
-        });
-        top10Pct = holderItems.slice(0,10).reduce((a,x)=>a+(x.pct||0),0);
-      }
+  const a = String(h?.address || "");
+
+  // Prefer balance/totalSupply math (most reliable)
+  let pct = 0;
+
+  const balRaw = (h?.balance ?? h?.balance_raw ?? h?.token_balance ?? null);
+  if(balRaw != null && meta?.totalSupply != null){
+    pct = pctFromRaw(balRaw, meta.totalSupply);
+  }else{
+    // fallback: API-provided percentage (normalize scaling)
+    pct = normalizePct(h?.percentage ?? h?.pct ?? 0);
+  }
+
+  const sev = pct >= 10 ? "bad" : pct >= 4 ? "warn" : "ok";
+  const pctText = (pct > 0 && pct < 0.01) ? "<0.01%" : `${pct.toFixed(2)}%`;
+
+  return {
+    addr: a,
+    pct,
+    sev,
+    label: `#${idx+1} ${shortAddr(a)}`,
+    sub: pctText,
+    t: `Holder #${idx+1}`,
+    d: `${shortAddr(a)} • ${pctText}`,
+    infoHtml: explain(`Holder #${idx+1}`, [
+      `Wallet: ${a}`,
+      `Share (computed): ${pctText}`,
+      "Method: balance / totalSupply (best-effort).",
+      "Tip: Identify LP/treasury/team/burn wallets."
+    ])
+  };
+});
 
       // score + checks/todos
       const scored = scoreEvmLite({ owner, proxy, paused, liquidityUsd, lpStatus, top10Pct });
@@ -3423,10 +3460,254 @@ if(holderItems.length){
        ========================================================= */
 
     function exportReport(){
-      if(!LAST_SCAN){
-        showToast("No scan data to export yet.");
-        return;
-      }
+  if(!LAST_SCAN){
+    showToast("No scan data to export yet.");
+    return;
+  }
+
+  const chain = LAST_SCAN.chain;
+  const addr  = LAST_SCAN.addr;
+  const score = LAST_SCAN.score;
+  const whenLocal = new Intl.DateTimeFormat("de-DE", {
+    timeZone: "Europe/Berlin",
+    year:"numeric", month:"2-digit", day:"2-digit",
+    hour:"2-digit", minute:"2-digit", second:"2-digit"
+  }).format(new Date(LAST_SCAN.when));
+
+  const name = (qs("tokenName")?.textContent || "Token").trim();
+  const sym  = (qs("tokenSymbol")?.textContent || "").trim();
+  const summary = (qs("summary")?.textContent || "—").trim();
+  const mintShort = (qs("mintShort")?.textContent || "").trim();
+
+  // Try to embed logo if loaded
+  const logoEl = qs("tokenLogo");
+  const logoSrc = (logoEl && logoEl.style.display !== "none" && logoEl.src) ? logoEl.src : "";
+
+  // Pull rendered HTML blocks (static report)
+  const keySignalsHtml = qs("keySignals")?.innerHTML || "<div class='signalCard'><div class='signalK'>—</div></div>";
+  const checksHtml = qs("checksList")?.innerHTML || "";
+  const todoHtml = qs("todoList")?.innerHTML || "";
+  const extHtml = qs("extList")?.innerHTML || "";
+  const metaHtml = qs("metaList")?.innerHTML || "";
+  const holdersHtml = qs("holdersList")?.innerHTML || "";
+
+  const html = `
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#070711">
+<title>$SOS Guardian Report • ${esc(chain)} • ${esc(addr)}</title>
+<style>
+  :root{
+    --bg:#070711;
+    --panel: rgba(255,255,255,.06);
+    --stroke: rgba(255,255,255,.12);
+    --text: rgba(255,255,255,.92);
+    --muted: rgba(255,255,255,.70);
+    --g:#14F195; --c:#00D1FF; --p:#9945FF;
+    --radius: 22px;
+    --shadow: 0 10px 30px rgba(0,0,0,.35);
+    --good: rgba(20,241,149,.18);
+    --warn: rgba(255,220,130,.14);
+    --bad:  rgba(255,120,150,.16);
+    --src-onchain: rgba(20,241,149,.16);
+    --src-indexer: rgba(0,209,255,.14);
+    --src-api: rgba(153,69,255,.14);
+    --src-heur: rgba(255,220,130,.12);
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;
+    color:var(--text);
+    font: 15.5px/1.55 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+    background: var(--bg);
+  }
+  body::before{
+    content:"";
+    position:fixed; inset:0; z-index:-1; pointer-events:none;
+    background:
+      radial-gradient(1200px 700px at 10% 5%, rgba(153,69,255,.22), transparent 60%),
+      radial-gradient(1000px 650px at 90% 10%, rgba(20,241,149,.18), transparent 55%),
+      radial-gradient(900px 600px at 70% 85%, rgba(0,209,255,.14), transparent 55%),
+      var(--bg);
+  }
+  .wrap{max-width:1100px; margin:0 auto; padding:22px 18px 40px;}
+  .card{
+    background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.05));
+    border: 1px solid rgba(255,255,255,.10);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    overflow:hidden;
+    margin-bottom:16px;
+  }
+  .inner{padding:18px}
+  .top{
+    display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;
+    border-bottom:1px solid rgba(255,255,255,.10);
+    background: rgba(255,255,255,.03);
+    padding:14px 18px;
+  }
+  .brand{display:flex; align-items:center; gap:12px;}
+  .brand img{width:40px;height:40px;object-fit:contain;filter: drop-shadow(0 10px 25px rgba(0,0,0,.45));}
+  .bt{display:flex; flex-direction:column; line-height:1.05}
+  .bt .t{font-weight:1000; letter-spacing:-.2px; font-size:16px}
+  .bt .s{font-weight:850; color:var(--muted); font-size:12.5px}
+  .stamp{
+    font-weight:1000; font-size:12px; letter-spacing:.45px; text-transform:uppercase;
+    color: rgba(255,255,255,.76);
+    border: 1px solid rgba(255,255,255,.14);
+    background: rgba(255,255,255,.06);
+    border-radius: 999px;
+    padding:7px 10px;
+  }
+  .h1{
+    margin:0;
+    font-weight:1000;
+    letter-spacing:-.7px;
+    line-height:1.05;
+    font-size: 34px;
+  }
+  .gradText{
+    background: linear-gradient(90deg, var(--g), var(--c), var(--p));
+    -webkit-background-clip:text;
+    background-clip:text;
+    color:transparent;
+  }
+  .row{display:grid; grid-template-columns: 1fr 1fr; gap:14px;}
+  @media(max-width:900px){.row{grid-template-columns:1fr}}
+  .mono{font-family: ui-monospace, Menlo, Consolas, monospace; font-weight:900; color: rgba(255,255,255,.86); overflow-wrap:anywhere;}
+  .mini{color: rgba(255,255,255,.70); font-weight:850; font-size:12.5px; overflow-wrap:anywhere;}
+  .tokenHead{display:flex; gap:12px; align-items:center; flex-wrap:wrap;}
+  .tokenLogoWrap{
+    width:44px;height:44px;border-radius:12px;overflow:hidden;
+    border:1px solid rgba(255,255,255,.10);
+    background: rgba(0,0,0,.18);
+    display:flex; align-items:center; justify-content:center;
+  }
+  .tokenLogoWrap img{width:100%;height:100%;object-fit:cover;display:block}
+  /* reused list styles */
+  .list{margin:10px 0 0; padding:0; list-style:none; display:grid; gap:10px;}
+  .li{
+    border:1px solid rgba(255,255,255,.10);
+    background: rgba(0,0,0,.14);
+    border-radius: 16px;
+    padding:12px 12px;
+    display:flex; gap:10px; align-items:flex-start; justify-content:space-between;
+  }
+  .li .t{font-weight:1000; font-size:13px;}
+  .li .d{margin-top:4px;color: rgba(255,255,255,.70);font-weight:750;font-size:12.5px;line-height:1.35;}
+  .pill{padding:6px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.12);background: rgba(255,255,255,.06);font-weight:1000;font-size:12px;white-space:nowrap;}
+  .pill.ok{border:0; background: linear-gradient(90deg,var(--g),var(--c),var(--p)); color:#061012}
+  .pill.warn{border-color: rgba(255,220,130,.35); background: rgba(255,220,130,.08); color: rgba(255,240,210,.92)}
+  .pill.bad{border-color: rgba(255,120,150,.35); background: rgba(255,120,150,.10); color: rgba(255,190,205,.95)}
+  .panelTitle{font-weight:1000; letter-spacing:.35px; text-transform:uppercase; font-size:12px; color: rgba(255,255,255,.72);}
+  /* key signals cards */
+  .signalCard{border:1px solid rgba(255,255,255,.10); background: rgba(255,255,255,.04); border-radius:16px; padding:12px;}
+  .signalTop{display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;}
+  .signalK{font-weight:1000; letter-spacing:.45px; text-transform:uppercase; font-size:12px; color: rgba(255,255,255,.72);}
+  .signalV{margin-top:8px; font-weight:1000; font-size:18px;}
+  .signalMini{margin-top:6px; font-weight:850; font-size:12px; color: rgba(255,255,255,.62);}
+  .badge{display:inline-flex; align-items:center; justify-content:center; padding:7px 11px; border-radius:999px; border:1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.06); font-weight:1000; font-size:12px;}
+  .badge.good{border:0; background: linear-gradient(90deg,var(--g),var(--c),var(--p)); color:#061012}
+  .badge.warn{border-color: rgba(255,220,130,.35); background: rgba(255,220,130,.08); color: rgba(255,240,210,.92)}
+  .badge.bad{border-color: rgba(255,120,150,.35); background: rgba(255,120,150,.10); color: rgba(255,190,205,.95)}
+  .badge.src{border:1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.05); color: rgba(255,255,255,.84)}
+  .badge.src.onchain{border-color: rgba(20,241,149,.26); background: var(--src-onchain);}
+  .badge.src.indexer{border-color: rgba(0,209,255,.26); background: var(--src-indexer);}
+  .badge.src.api{border-color: rgba(153,69,255,.26); background: var(--src-api);}
+  .badge.src.heur{border-color: rgba(255,220,130,.26); background: var(--src-heur);}
+  /* hide interactive buttons in exported report */
+  .infoBtn,.explorerBtn{display:none!important;}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <div class="top">
+        <div class="brand">
+          <img src="/assets/logo.png" alt="$SOS" onerror="this.style.display='none'">
+          <div class="bt">
+            <div class="t">$SOS</div>
+            <div class="s">Guardian Report • Export</div>
+          </div>
+        </div>
+        <div style="display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end;">
+          <span class="stamp">${esc(String(chain).toUpperCase())}</span>
+          <span class="stamp">${esc(whenLocal)}</span>
+          <span class="badge good">SCORE ${esc(String(score))}/100</span>
+        </div>
+      </div>
+      <div class="inner">
+        <div class="tokenHead">
+          <div class="tokenLogoWrap">
+            ${logoSrc ? `<img src="${esc(logoSrc)}" alt="${esc(name)}" onerror="this.style.display='none'">` : `<div style="opacity:.6;font-weight:1000">—</div>`}
+          </div>
+          <div>
+            <div class="h1"><span class="gradText">${esc(name)}</span></div>
+            <div class="mini">${esc(sym)} • <span class="mono">${esc(mintShort || addr)}</span></div>
+          </div>
+        </div>
+        <div style="margin-top:12px" class="mini">${esc(summary)}</div>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="card"><div class="inner">
+        <div class="panelTitle">Key Signals</div>
+        <div style="display:grid; gap:10px; margin-top:10px;">${keySignalsHtml}</div>
+      </div></div>
+
+      <div class="card"><div class="inner">
+        <div class="panelTitle">Top Holders</div>
+        <ul class="list">${holdersHtml || ""}</ul>
+      </div></div>
+    </div>
+
+    <div class="row">
+      <div class="card"><div class="inner">
+        <div class="panelTitle">Guardian Checks</div>
+        <ul class="list">${checksHtml || ""}</ul>
+      </div></div>
+
+      <div class="card"><div class="inner">
+        <div class="panelTitle">Launch Readiness</div>
+        <ul class="list">${todoHtml || ""}</ul>
+      </div></div>
+    </div>
+
+    <div class="row">
+      <div class="card"><div class="inner">
+        <div class="panelTitle">Token Standard Details</div>
+        <ul class="list">${extHtml || ""}</ul>
+      </div></div>
+
+      <div class="card"><div class="inner">
+        <div class="panelTitle">Token Metadata</div>
+        <ul class="list">${metaHtml || ""}</ul>
+      </div></div>
+    </div>
+
+    <div style="text-align:center; opacity:.55; font-weight:850; font-size:12px; margin-top:12px;">
+      © ${new Date().getFullYear()} $SOS • Guardian Check
+    </div>
+  </div>
+</body>
+</html>
+`.trim();
+
+  const blob = new Blob([html], { type:"text/html;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `guardian-report_${chain}_${addr.slice(0,8)}.html`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 2500);
+}
 
       const chain = LAST_SCAN.chain;
       const addr  = LAST_SCAN.addr;
