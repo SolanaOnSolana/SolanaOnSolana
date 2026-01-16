@@ -884,16 +884,31 @@
     el.classList.remove("good","warn","bad");
     if(mode) el.classList.add(mode);
   }
-  function updateStampTime(){
-    const el = qs("stampTime");
-    if(!el) return;
-    el.textContent = new Date().toISOString().replace("T"," ").slice(0,19) + " UTC";
-  }
-    let STAMP_TIMER = null;
-    function startLiveStampTime(){
-  // alten Timer stoppen (falls init nochmal läuft)
-  if(STAMP_TIMER) clearInterval(STAMP_TIMER);
+let STAMP_TIMER = null;
 
+function updateStampTime(){
+  const el = qs("stampTime");
+  if(!el) return;
+
+  const now = new Date();
+  const live = new Intl.DateTimeFormat("de-DE", {
+    timeZone: "Europe/Berlin",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit"
+  }).format(now);
+
+  el.textContent = live;
+}
+
+function startLiveStampTime(){
+  if(STAMP_TIMER) clearInterval(STAMP_TIMER);
+  updateStampTime();
+  STAMP_TIMER = setInterval(updateStampTime, 1000);
+}
   // sofort Uhr setzen
   updateStampTime();
 
