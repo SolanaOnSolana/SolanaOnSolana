@@ -2957,164 +2957,170 @@ async function buildEvmEdgesFromTransfers(chainId, tokenAddr, wallets){
     }
 
     async function scanSol(mint){
-      // basic validation
-      if(!looksBase58(mint)) throw new Error("Invalid Solana mint (base58).");
+  // basic validation
+  if(!looksBase58(mint)) throw new Error("Invalid Solana mint (base58).");
 
-      setText("mintShort", shortAddr(mint));
-      setText("scanHint", "SOLANA MAINNET");
-      setText("vizStamp", "SOL");
-      setText("clusterStamp", "SOL");
-      setText("vizLegend", "Green=OK • Yellow=Watch • Red=Risk");
+  setText("mintShort", shortAddr(mint));
+  setText("scanHint", "SOLANA MAINNET");
+  setText("vizStamp", "SOL");
+  setText("clusterStamp", "SOL");
+  setText("vizLegend", "Green=OK • Yellow=Watch • Red=Risk");
 
-      // on-chain mint parse
-      const parsed = await getMintParsed(mint);
-      if(!parsed || !parsed.info) throw new Error("Mint account not found / not parseable.");
+  // on-chain mint parse
+  const parsed = await getMintParsed(mint);
+  if(!parsed || !parsed.info) throw new Error("Mint account not found / not parseable.");
 
-      const ownerProgram = parsed.owner;
-      const info = parsed.info;
+  const ownerProgram = parsed.owner;
+  const info = parsed.info;
 
-      const mintAuth = info.mintAuthority ?? null;
-      const freezeAuth = info.freezeAuthority ?? null;
+  const mintAuth = info.mintAuthority ?? null;
+  const freezeAuth = info.freezeAuthority ?? null;
 
-      const mintAuthActive = !!mintAuth;
-      const freezeActive = !!freezeAuth;
+  const mintAuthActive = !!mintAuth;
+  const freezeActive = !!freezeAuth;
 
-      const programType =
-        ownerProgram === CFG.TOKEN_2022_PROGRAM ? "TOKEN_2022" :
-        ownerProgram === CFG.TOKEN_PROGRAM ? "SPL_TOKEN" : "UNKNOWN";
+  const programType =
+    ownerProgram === CFG.TOKEN_2022_PROGRAM ? "TOKEN_2022" :
+    ownerProgram === CFG.TOKEN_PROGRAM ? "SPL_TOKEN" : "UNKNOWN";
 
-      // supply + decimals
-      const supply = await getTokenSupply(mint);
-      const decimals = Number(supply?.decimals ?? info.decimals ?? 0);
-      const uiAmount = Number(supply?.uiAmount ?? 0);
+  // supply + decimals
+  const supply = await getTokenSupply(mint);
+  const decimals = Number(supply?.decimals ?? info.decimals ?? 0);
+  const uiAmount = Number(supply?.uiAmount ?? 0);
+  const totalUi = Number.isFinite(uiAmount) ? uiAmount : 0;
 
-            // largest accounts
-      const largest = await getLargest(mint);
-      const top = Array.isArray(largest) ? largest.slice(0, 10) : [];
+  // largest accounts
+  const largest = await getLargest(mint);
+  const top = Array.isArray(largest) ? largest.slice(0, 10) : [];
 
-      // compute pct based on largest sum / total supply (use uiAmount)
-      const totalUi = Number.isFinite(uiAmount) ? uiAmount : 0;
+  // resolve token accounts -> owner wallets (important!)
+  const tokenAccounts = top.map(x => x?.address).filter(Boolean);
+  const owners = await getTokenAccountOwners(tokenAccounts);
 
-      // resolve token accounts -> owner wallets (important!)
-      const tokenAccounts = top.map(x => x?.address).filter(Boolean);
-      const owners = await getTokenAccountOwners(tokenAccounts);
+  const holderItems = top.map((x, idx) => {
+    const tokenAcc = x?.address || "";
+    const ownerWallet = owners[idx] || tokenAcc; // fallback
+    const amtUi = Number(x?.uiAmount ?? 0);
+    const pct = (totalUi > 0) ? (amtUi / totalUi * 100) : 0;
 
-      const holderItems = top.map((x, idx) => {
-        const tokenAcc = x?.address || "";
-        const ownerWallet = owners[idx] || tokenAcc; // fallback
+    const sev = pct >= 10 ? "bad" : pct >= 4 ? "warn" : "ok";
+
+    return {
+      addr: ownerWallet,          // <- Wallet (nicht TokenAccount)
+      tokenAccount: tokenAcc,     // <- optional fürs Info
+      pct,
+      sev,
+      label: `#${idx+1} ${shortAddr(ownerWallet)}`,
+      sub: `${pct.toFixed(2)}%`,
+      t: `Holder #${idx+1}`,
+      d: `${shortAddr(ownerWallet)} • ${pct.toFixed(2)}%`,
+      infoHtml: explain(`Holder #${idx+1}`, [
+        `Owner wallet: ${ownerWallet}`,
+        `Token account: ${tokenAcc}`,
+        `Share of supply: ${pct.toFixed(2)}%`,
+        "Tip: check if this is LP/treasury/team/burn."
+      ])
+    };
+  });
+
+  const top20 = Array.isArray(largest)
+    ? largest.slice(0, 20).reduce((a,x)=>{
         const amtUi = Number(x?.uiAmount ?? 0);
-        const pct = (totalUi > 0) ? (amtUi / totalUi * 100) : 0;
+        return a + ((totalUi > 0) ? (amtUi/totalUi*100) : 0);
+      }, 0)
+    : 0;
 
-        const sev = pct >= 10 ? "bad" : pct >= 4 ? "warn" : "ok";
+  // metadata via Helius getAsset (best-effort)
+  const asset = await getAsset(mint);
+  const meta = pickTokenMetaFromAsset(asset) || { name:"Token", symbol:"", image:"", uri:"", description:"" };
+  applyTokenHeader(meta, mint);
 
-        return {
-          addr: ownerWallet,
-          tokenAccount: tokenAcc,
-          pct,
-          sev,
-          label: `#${idx+1} ${shortAddr(ownerWallet)}`,
-          sub: `${pct.toFixed(2)}%`,
-          t: `Holder #${idx+1}`,
-          d: `${shortAddr(ownerWallet)} • ${pct.toFixed(2)}%`,
-          infoHtml: explain(`Holder #${idx+1}`, [
-            `Owner wallet: ${ownerWallet}`,
-            `Token account: ${tokenAcc}`,
-            `Share of supply: ${pct.toFixed(2)}%`,
-            "Tip: check if this is LP/treasury/team/burn."
-          ])
-        };
-      });
-      // compute pct based on largest sum / total supply
-      const totalUi = Number.isFinite(uiAmount) ? uiAmount : 0;
+  // Dexscreener liquidity
+  let liquidityUsd = NaN;
+  try{
+    const ds = await fetchDexscreenerToken(mint);
+    liquidityUsd = Number(ds?.best?.liquidity?.usd || NaN);
+  }catch{}
 
-      const holderItems = top.map((x, idx) => {
-        const addr = x?.address || "";
-        const amtUi = Number(x?.uiAmount ?? 0);
-        const pct = (totalUi > 0) ? (amtUi / totalUi * 100) : 0;
+  // signals object
+  const sig = {
+    mintAuthActive,
+    freezeActive,
+    programType,
+    top20,
+    meta
+  };
 
-    
+  // score + checks + todos
+  const scored = scoreSol(sig);
+  const todos = todoSol(sig);
 
-      const top20 = Array.isArray(largest)
-        ? largest.slice(0, 20).reduce((a,x)=>{
-            const amtUi = Number(x?.uiAmount ?? 0);
-            return a + ((totalUi>0) ? (amtUi/totalUi*100) : 0);
-          }, 0)
-        : 0;
+  setVerdict(scored.score, scored.critical);
+  setText("summary",
+    `Solana scan: ${mintAuthActive ? "mint active" : "mint renounced"} • ${freezeActive ? "freeze active" : "freeze removed"} • Top20≈${top20.toFixed(2)}%`
+  );
 
-      // metadata via Helius getAsset (best-effort)
-      const asset = await getAsset(mint);
-      const meta = pickTokenMetaFromAsset(asset) || { name:"Token", symbol:"", image:"", uri:"", description:"" };
-      applyTokenHeader(meta, mint);
+  renderList(qs("checksList"), scored.checks, "Checks");
+  renderList(qs("todoList"), todos, "Launch Readiness");
 
-      // Dexscreener liquidity
-      let liquidityUsd = NaN;
-      try{
-        const ds = await fetchDexscreenerToken(mint);
-        liquidityUsd = Number(ds?.best?.liquidity?.usd || NaN);
-      }catch{}
+  // token standard details
+  renderList(qs("extList"), [
+    { t:"Token Program", sev: programType==="SPL_TOKEN" ? "ok" : "warn", d: ownerProgram, why:"Mint owner program." },
+    { t:"Decimals", sev:"ok", d: String(decimals), why:"Mint decimals / supply decimals." },
+    { t:"Total Supply (UI)", sev:"ok", d: fmtInt(totalUi), why:"getTokenSupply uiAmount." },
+  ], "Token Standard");
 
-      // signals object
-      const sig = {
-        mintAuthActive,
-        freezeActive,
-        programType,
-        top20,
-        meta
-      };
+  // metadata list
+  renderList(qs("metaList"), [
+    { t:"Name", sev: meta?.name ? "ok" : "warn", d: meta?.name || "—" },
+    { t:"Symbol", sev: meta?.symbol ? "ok" : "warn", d: meta?.symbol || "—" },
+    { t:"Description", sev: meta?.description ? "ok" : "warn", d: meta?.description || "—" },
+    { t:"URI", sev: meta?.uri ? "ok" : "warn", d: meta?.uri || "—" },
+  ], "Metadata");
 
-      // score + checks + todos
-      const scored = scoreSol(sig);
-      const todos = todoSol(sig);
+    // holders + viz + cluster
+  if(holderItems.length){
+    renderHoldersWithExplorer(holderItems, chainObj());
+    buildBubblesFromHolders(holderItems);
+    renderClusterLite(holderItems);
 
-      setVerdict(scored.score, scored.critical);
-      setText("summary",
-        `Solana scan: ${mintAuthActive ? "mint active" : "mint renounced"} • ${freezeActive ? "freeze active" : "freeze removed"} • Top20≈${top20.toFixed(2)}%`
-      );
-
-      renderList(qs("checksList"), scored.checks, "Checks");
-      renderList(qs("todoList"), todos, "Launch Readiness");
-
-      // token standard details
-      renderList(qs("extList"), [
-        { t:"Token Program", sev: programType==="SPL_TOKEN" ? "ok" : "warn", d: ownerProgram, why:"Mint owner program." },
-        { t:"Decimals", sev:"ok", d: String(decimals), why:"Mint decimals / supply decimals." },
-        { t:"Total Supply (UI)", sev:"ok", d: fmtInt(totalUi), why:"getTokenSupply uiAmount." },
-      ], "Token Standard");
-
-      // metadata list
-      renderList(qs("metaList"), [
-        { t:"Name", sev: meta?.name ? "ok" : "warn", d: meta?.name || "—" },
-        { t:"Symbol", sev: meta?.symbol ? "ok" : "warn", d: meta?.symbol || "—" },
-        { t:"Description", sev: meta?.description ? "ok" : "warn", d: meta?.description || "—" },
-        { t:"URI", sev: meta?.uri ? "ok" : "warn", d: meta?.uri || "—" },
-      ], "Metadata");
-
-      // holders panel + viz + cluster
-      if(holderItems.length){
-        renderHoldersWithExplorer(holderItems, chainObj());
-        buildBubblesFromHolders(holderItems);
-        renderClusterLite(holderItems);
-      }else{
-        renderHoldersEmpty();
-        buildBubblesFromHolders([]);
-        renderClusterLite([]);
-      }
-
-      // key signals (pro column)
-      renderKeySignals(
-        keySignalsSol({
-          mintAuthActive,
-          freezeActive,
-          programType,
-          liquidityUsd,
-          top20
-        })
-      );
-
-      LAST_SCAN = { chain:"sol", addr: mint, meta, score: scored.score, when: Date.now() };
-      return LAST_SCAN;
+    // ✅ HOOK GRAPH (Solana)
+    try{
+      const wallets = holderItems.map(x => x.addr).filter(Boolean);
+      const g = await buildSolEdgesFromRecent(wallets);
+      VIZ.edges = g.edges || [];
+      setGraphAvailability(VIZ.edges.length > 0);
+      drawViz();
+    }catch{
+      VIZ.edges = [];
+      setGraphAvailability(false);
+      drawViz();
     }
 
+  }else{
+    renderHoldersEmpty();
+    buildBubblesFromHolders([]);
+    renderClusterLite([]);
+    VIZ.edges = [];
+    setGraphAvailability(false);
+    drawViz();
+  }
+
+  // key signals (pro column)
+  renderKeySignals(
+    keySignalsSol({
+      mintAuthActive,
+      freezeActive,
+      programType,
+      liquidityUsd,
+      top20
+    })
+  );
+
+  LAST_SCAN = { chain:"sol", addr: mint, meta, score: scored.score, when: Date.now() };
+  return LAST_SCAN;
+}
+    
     function scoreEvmLite({ owner, proxy, paused, liquidityUsd, lpStatus, top10Pct }){
       let score = 100;
       const checks = [];
@@ -3339,6 +3345,18 @@ async function buildEvmEdgesFromTransfers(chainId, tokenAddr, wallets){
         buildBubblesFromHolders([]);
         renderClusterLite([]);
       }
+      // ✅ HOOK GRAPH (EVM)
+try{
+  const wallets = holderItems.map(x => x.addr).filter(Boolean);
+  const g = await buildEvmEdgesFromTransfers(chainId, addr, wallets);
+  VIZ.edges = g.edges || [];
+  setGraphAvailability(VIZ.edges.length > 0);
+  drawViz();
+}catch{
+  VIZ.edges = [];
+  setGraphAvailability(false);
+  drawViz();
+}
 
       // key signals (pro column)
       renderKeySignals(
