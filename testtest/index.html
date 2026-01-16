@@ -3184,13 +3184,6 @@ if(!freezeAuth){
       }
       keySignals.push({ k:"Total supply", v: totalSupplyUi, mini:`Decimals: ${Number.isFinite(meta.decimals)?meta.decimals:"—"}`, src:"onchain", sev:"ok" });
 
-      const owner = await getOwner(chainId, tokenAddr, signal);
-      if(owner){
-        checks.push({ sev:"warn", weight:10, t:"Owner() present", d:`Owner: ${shortAddr(owner)}`, fix:"If renounced, owner should be 0x0. If not, verify trust." });
-        extList.push({ sev:"warn", t:"Owner", d: owner });
-      }else{
-        checks.push({ sev:"ok", weight:6, t:"Owner()", d:"No owner() method detected or unreadable." });
-      }
 
       const paused = await getPaused(chainId, tokenAddr, signal);
       if(paused === true){
@@ -3327,7 +3320,7 @@ if(owner){
     async function preloadBrandLogo(){
       if(APP.BRAND_LOGO_DATAURL) return APP.BRAND_LOGO_DATAURL;
       const imgEl = qs("brandLogo");
-      const src = imgEl?.getAttribute("src") || "/assets/logo.png";
+      const src = imgEl?.getAttribute("src") || "assets/logo.png";
       try{
         const r = await fetch(src, { cache:"force-cache" });
         const b = await r.blob();
