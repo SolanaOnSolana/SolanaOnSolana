@@ -3366,20 +3366,36 @@ if(ds?.best?.info?.imageUrl){
     }
 
     async function preloadBrandLogo(){
-      if(APP.BRAND_LOGO_DATAURL) return APP.BRAND_LOGO_DATAURL;
-      const imgEl = qs("brandLogo");
-      const src = imgEl?.getAttribute("src") || "assets/logo.png";
-      try{
-        const r = await fetch(src, { cache:"force-cache" });
-        const b = await r.blob();
-        const d = await blobToDataURL(b);
-        APP.BRAND_LOGO_DATAURL = d;
-        return d;
-      }catch{
-        APP.BRAND_LOGO_DATAURL = "";
-        return "";
-      }
+  if(APP.BRAND_LOGO_DATAURL) return APP.BRAND_LOGO_DATAURL;
+
+  const imgEl = qs("brandLogo");
+  const src = imgEl?.getAttribute("src") || "assets/logo.png";
+
+  // 1) Prefer drawing the already-loaded DOM image (most reliable)
+  try{
+    if(imgEl && imgEl.complete && imgEl.naturalWidth > 0){
+      const c = document.createElement("canvas");
+      c.width = imgEl.naturalWidth;
+      c.height = imgEl.naturalHeight;
+      const ctx = c.getContext("2d");
+      ctx.drawImage(imgEl, 0, 0);
+      APP.BRAND_LOGO_DATAURL = c.toDataURL("image/png");
+      return APP.BRAND_LOGO_DATAURL;
     }
+  }catch{}
+
+  // 2) Fallback to fetch -> blob -> dataURL
+  try{
+    const r = await fetch(src, { cache:"force-cache" });
+    const b = await r.blob();
+    const d = await blobToDataURL(b);
+    APP.BRAND_LOGO_DATAURL = d;
+    return d;
+  }catch{
+    APP.BRAND_LOGO_DATAURL = "";
+    return "";
+  }
+}
 
     function canvasToDataURL(){
       const c = qs("vizCanvas");
@@ -3406,6 +3422,9 @@ if(ds?.best?.info?.imageUrl){
       }
       const c = chainObj();
       const brandLogo = await preloadBrandLogo();
+      const tokenNameTxt = (qs("tokenName")?.textContent || "—").trim();
+const tokenSymTxt  = (qs("tokenSymbol")?.textContent || "—").trim();
+const tokenIdentSvg = qs("tokenIdenticon") ? qs("tokenIdenticon").outerHTML : "";
       let tokenImg = "";
 const tokenSrc = (qs("tokenLogo")?.style.display !== "none") ? (qs("tokenLogo")?.src || "") : "";
 
@@ -3451,6 +3470,7 @@ if(tokenSrc){
   .imgRow{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:10px}
   .token{width:44px;height:44px;border-radius:12px;overflow:hidden;border:1px solid var(--stroke);background:rgba(0,0,0,.18)}
   .token img{width:100%;height:100%;object-fit:cover}
+  .token svg{width:100%;height:100%;display:block}
   .viz{margin-top:10px;border-radius:16px;overflow:hidden;border:1px solid var(--stroke);background:rgba(0,0,0,.18)}
   .viz img{width:100%;display:block}
   ul{margin:10px 0 0;padding:0;list-style:none;display:grid;gap:10px}
@@ -3458,7 +3478,20 @@ if(tokenSrc){
   .pill{display:inline-block;padding:6px 10px;border-radius:999px;font-weight:1000;font-size:12px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06)}
 </style>
 </head>
-<body onload="window.scrollTo(0,0)">
+<body>
+<script>
+  try { history.scrollRestoration = "manual"; } catch(e){}
+  function forceTop(){
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+    window.scrollTo(0,0);
+  }
+  window.addEventListener("pageshow", forceTop);
+  forceTop();
+  requestAnimationFrame(forceTop);
+  setTimeout(forceTop, 50);
+  setTimeout(forceTop, 200);
+</script>
   <div class="wrap">
     <div class="card">
       <div class="inner">
@@ -3475,12 +3508,25 @@ if(tokenSrc){
         </div>
 
         <div class="imgRow">
-          ${tokenImg ? `<div class="token"><img src="${esc(tokenImg)}" alt="Token"/></div>` : ``}
-          <div class="box" style="flex:1 1 260px">
-            <div class="k">Verdict</div>
-            <div class="v">${esc(qs("verdictTitle")?.textContent || "—")} • ${esc(qs("scoreBadge")?.textContent || "—")}</div>
-          </div>
-        </div>
+  <div class="token">
+    ${
+      tokenImg
+        ? `<img src="${esc(tokenImg)}" alt="Token"/>`
+        : (tokenIdentSvg || "")
+    }
+  </div>
+
+  <div style="min-width:0">
+    <div style="font-weight:1000; font-size:16px; line-height:1.15">${esc(tokenNameTxt)}</div>
+    <div class="muted" style="margin-top:2px">${esc(tokenSymTxt)}</div>
+  </div>
+
+  <div class="box" style="flex:1 1 260px">
+    <div class="k">Verdict</div>
+    <div class="v">${esc(qs("verdictTitle")?.textContent || "—")} • ${esc(qs("scoreBadge")?.textContent || "—")}</div>
+  </div>
+</div>
+
 
         ${vizImg ? `<div class="viz"><img src="${vizImg}" alt="Viz snapshot"/></div>` : ``}
 
@@ -3517,7 +3563,8 @@ if(tokenSrc){
 </body>
 </html>`;
 
-      const filename = `guardian-report-${APP.ACTIVE_CHAIN_ID}-${addr ? addr.slice(0,8) : "scan"}.html`;
+      const ts = new Date().toISOString().replaceAll(":","-").replaceAll(".","-");
+      const filename = `guardian-report-${APP.ACTIVE_CHAIN_ID}-${addr ? addr.slice(0,8) : "scan"}-${ts}.html`;
       downloadText(filename, html);
       showToast("Report downloaded.");
     }
