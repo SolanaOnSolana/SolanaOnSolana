@@ -87,6 +87,13 @@
     .bt{display:flex; flex-direction:column; line-height:1.05}
     .bt .t{font-weight:1000; letter-spacing:-.2px; font-size:16px}
     .bt .s{font-weight:850; color:var(--muted); font-size:12.5px}
+    .tokenBadge{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:999px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);margin-top:8px}
+    .tokenImgWrap{position:relative;width:34px;height:34px;flex:0 0 auto}
+    .tokenImg{width:34px;height:34px;border-radius:12px;object-fit:cover;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.10);display:block}
+    .tokenFallback{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-weight:1000;letter-spacing:.04em;color:rgba(255,255,255,.92);background:rgba(255,255,255,.08)}
+    .tokenTxt{display:flex;flex-direction:column;line-height:1.1}
+    .tokenSym{font-weight:1000;letter-spacing:.02em;font-size:12.5px}
+    .tokenNm{font-size:12px;color:rgba(255,255,255,.70);max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .actions{
       display:flex;
       gap:10px;
@@ -275,6 +282,9 @@
     .badge.good{border:0; background: linear-gradient(90deg,var(--g),var(--c),var(--p)); color:#061012}
     .badge.warn{border-color: rgba(255,220,130,.35); background: rgba(255,220,130,.08); color: rgba(255,240,210,.92)}
     .badge.bad{border-color: rgba(255,120,150,.35); background: rgba(255,120,150,.10); color: rgba(255,190,205,.95)}
+    .badge.good::before{content:"✓";margin-right:6px;font-weight:1100}
+    .badge.warn::before{content:"✕";margin-right:6px;font-weight:1100}
+    .badge.bad::before{content:"✕";margin-right:6px;font-weight:1100}
     .resultTop{
       display:flex;
       align-items:flex-start;
@@ -432,6 +442,9 @@
     .pill.ok{border:0; background: linear-gradient(90deg,var(--g),var(--c),var(--p)); color:#061012}
     .pill.warn{border-color: rgba(255,220,130,.35); background: rgba(255,220,130,.08); color: rgba(255,240,210,.92)}
     .pill.bad{border-color: rgba(255,120,150,.35); background: rgba(255,120,150,.10); color: rgba(255,190,205,.95)}
+    .pill.ok::before{content:"✓";margin-right:6px;font-weight:1100}
+    .pill.warn::before{content:"✕";margin-right:6px;font-weight:1100}
+    .pill.bad::before{content:"✕";margin-right:6px;font-weight:1100}
     .infoBtn{
       width:26px;
       height:26px;
@@ -633,13 +646,16 @@
           <img src="/assets/logo.png" alt="$SOS" onerror="this.style.display='none'">
           <div class="bt">
             <div class="t">$SOS</div>
-      <div class=\"tokenBadge\">
-        ${tokenImage ? `<img class=\"tokenImg\" src=\"${escAttr(tokenImage)}\" alt=\"token\"/>` : `<div class=\"tokenImg\" style=\"display:flex;align-items:center;justify-content:center;font-weight:800;\">${escAttr((tokenSymbol||'?').slice(0,2).toUpperCase())}</div>`}
-        <div class=\"tokenTxt\">
-          <div class=\"tokenSym\">${escAttr(tokenSymbol || 'TOKEN')}</div>
-          <div class=\"tokenNm\">${escAttr(tokenName || 'Scanned asset')}</div>
-        </div>
-      </div>
+            <div id="topTokenBadge" class="tokenBadge" style="display:none">
+              <div class="tokenImgWrap">
+                <img class="tokenImg" id="topTokenImg" alt="token" />
+                <div class="tokenImg tokenFallback" id="topTokenFallback" aria-hidden="true">??</div>
+              </div>
+              <div class="tokenTxt">
+                <div class="tokenSym" id="topTokenSym">TOKEN</div>
+                <div class="tokenNm" id="topTokenNm">Scanned asset</div>
+              </div>
+            </div>
             <div class="s">Contract Scanner • Token Risk</div>
           </div>
         </div>
@@ -1176,6 +1192,36 @@ function startLiveStampTime(){
         img.alt = "";
       }
     }
+
+    // Topbar token badge (logo + symbol)
+    const top = qs('topTokenBadge');
+    if(top){
+      const topImg = qs('topTokenImg');
+      const topFb  = qs('topTokenFallback');
+      const topSym = qs('topTokenSym');
+      const topNm  = qs('topTokenNm');
+
+      const nm = name;
+      const sy = (sym || '').trim();
+      const initials = (sy || nm || '??').replace(/[^a-zA-Z0-9]/g,'').slice(0,2).toUpperCase() || '??';
+
+      if(topSym) topSym.textContent = sy ? ('$' + sy) : 'TOKEN';
+      if(topNm)  topNm.textContent  = nm || 'Scanned asset';
+
+      if(meta?.image && topImg && topFb){
+        topImg.src = meta.image;
+        topImg.style.display = 'block';
+        topFb.style.display = 'none';
+        topImg.onerror = () => { topImg.style.display='none'; topFb.style.display='flex'; topFb.textContent = initials; };
+      }else if(topFb){
+        if(topImg) topImg.style.display = 'none';
+        topFb.style.display = 'flex';
+        topFb.textContent = initials;
+      }
+
+      top.style.display = 'flex';
+    }
+
   }
 
   function pillLabel(sev){ return sev==="ok" ? "PASS" : sev==="bad" ? "FAIL" : "WATCH"; }
@@ -1317,7 +1363,7 @@ function startLiveStampTime(){
     const stamp = qs('bubbleStamp');
     if(legend) legend.innerHTML = '';
     if(hint) hint.textContent = 'Run a scan to generate a bubble map (Solana best-effort).';
-    if(stamp) stamp.textContent = activeChain.id === 'sol' ? 'SOLANA • TOP HOLDERS + FLOWS' : (activeChain.name + ' • LIMITED');
+    if(stamp) stamp.textContent = (model?.kind==='evm') ? (activeChain.name + ' • TOP HOLDERS + TRANSFERS') : 'SOLANA • TOP HOLDERS + FLOWS';
     if(!c) return;
     const ctx = c.getContext('2d');
     ctx.clearRect(0,0,c.width,c.height);
@@ -1338,7 +1384,7 @@ function startLiveStampTime(){
     const stamp = qs('bubbleStamp');
     if(!c) return;
 
-    if(stamp) stamp.textContent = activeChain.id === 'sol' ? 'SOLANA • TOP HOLDERS + FLOWS' : (activeChain.name + ' • LIMITED');
+    if(stamp) stamp.textContent = (model?.kind==='evm') ? (activeChain.name + ' • TOP HOLDERS + TRANSFERS') : 'SOLANA • TOP HOLDERS + FLOWS';
 
     const ctx = c.getContext('2d');
     const W = c.width, H = c.height;
@@ -1388,6 +1434,11 @@ function startLiveStampTime(){
     let dragging = null;
     let dragOffX = 0, dragOffY = 0;
 
+    // view (pan/zoom) in device pixels
+    let view = { ox: 0, oy: 0, s: 1 };
+    let panning = false;
+    let panStart = {x:0,y:0,ox:0,oy:0};
+
     function hitTest(mx, my){
       for(let i=nodes.length-1;i>=0;i--){
         const n = nodes[i];
@@ -1401,36 +1452,66 @@ function startLiveStampTime(){
       const rect = c.getBoundingClientRect();
       const mx = (evt.clientX - rect.left) * (c.width/rect.width);
       const my = (evt.clientY - rect.top) * (c.height/rect.height);
-      return {mx,my};
+      const wx = (mx - view.ox) / view.s;
+      const wy = (my - view.oy) / view.s;
+      return {mx,my,wx,wy};
     }
 
     c.onpointerdown = (evt)=>{
-      const {mx,my} = getMouse(evt);
-      const n = hitTest(mx,my);
+      const {mx,my,wx,wy} = getMouse(evt);
+      const n = hitTest(wx,wy);
       if(n){
         dragging = n;
-        dragOffX = mx - n.x;
-        dragOffY = my - n.y;
+        dragOffX = wx - n.x;
+        dragOffY = wy - n.y;
+        c.setPointerCapture(evt.pointerId);
+      }else{
+        panning = true;
+        panStart = {x: mx, y: my, ox: view.ox, oy: view.oy};
         c.setPointerCapture(evt.pointerId);
       }
     };
     c.onpointermove = (evt)=>{
+      if(panning){
+        const {mx,my} = getMouse(evt);
+        view.ox = panStart.ox + (mx - panStart.x);
+        view.oy = panStart.oy + (my - panStart.y);
+        return;
+      }
       if(!dragging) return;
-      const {mx,my} = getMouse(evt);
-      dragging.x = mx - dragOffX;
-      dragging.y = my - dragOffY;
+      const {mx,my,wx,wy} = getMouse(evt);
+      dragging.x = wx - dragOffX;
+      dragging.y = wy - dragOffY;
       dragging.vx = 0;
       dragging.vy = 0;
     };
     c.onpointerup = (evt)=>{
       if(dragging){
         dragging = null;
-        try{ c.releasePointerCapture(evt.pointerId);}catch{};
       }
+      if(panning){
+        panning = false;
+      }
+      try{ c.releasePointerCapture(evt.pointerId);}catch{};
     };
+    c.onwheel = (evt)=>{
+      evt.preventDefault();
+      const rect = c.getBoundingClientRect();
+      const mx = (evt.clientX - rect.left) * (c.width/rect.width);
+      const my = (evt.clientY - rect.top) * (c.height/rect.height);
+      const zoom = evt.deltaY < 0 ? 1.08 : 0.92;
+      const ns = Math.max(0.55, Math.min(2.2, view.s * zoom));
+      // keep cursor position stable
+      const wx = (mx - view.ox) / view.s;
+      const wy = (my - view.oy) / view.s;
+      view.s = ns;
+      view.ox = mx - wx * view.s;
+      view.oy = my - wy * view.s;
+    };
+
     c.onclick = (evt)=>{
-      const {mx,my} = getMouse(evt);
-      const n = hitTest(mx,my);
+      const {mx,my,wx,wy} = getMouse(evt);
+      const n = hitTest(wx,wy);
       if(n && n.addr){
         window.open(explorerUrlFor(activeChain, n.addr), '_blank', 'noreferrer');
       }
@@ -1438,6 +1519,8 @@ function startLiveStampTime(){
 
     function tick(){
       ctx.clearRect(0,0,c.width,c.height);
+      ctx.save();
+      ctx.setTransform(view.s, 0, 0, view.s, view.ox, view.oy);
 
       // forces: repulsion
       for(let i=0;i<nodes.length;i++){
@@ -1501,12 +1584,17 @@ function startLiveStampTime(){
 
       // nodes draw
       for(const n of nodes){
+        // glow
         ctx.beginPath();
-        ctx.fillStyle = n.color || 'rgba(20,241,149,.85)';
+        ctx.fillStyle = n.color || 'rgba(90,140,255,.62)';
+        ctx.shadowColor = n.color || 'rgba(90,140,255,.85)';
+        ctx.shadowBlur = Math.min(28, 10 + n.r*0.8);
         ctx.arc(n.x, n.y, n.r, 0, Math.PI*2);
         ctx.fill();
-        ctx.lineWidth = 1;
-        ctx.strokeStyle = 'rgba(0,0,0,.35)';
+        ctx.shadowBlur = 0;
+        // rim
+        ctx.lineWidth = 1.25;
+        ctx.strokeStyle = 'rgba(255,255,255,.18)';
         ctx.stroke();
 
         // label
@@ -1519,6 +1607,7 @@ function startLiveStampTime(){
         }
       }
 
+      ctx.restore();
       requestAnimationFrame(tick);
     }
 
@@ -1865,7 +1954,7 @@ renderHoldersEmpty();
   function renderHoldersWallets(holders){
     if(!Array.isArray(holders) || !holders.length){
       renderHoldersEmpty();
-      return;
+      return [];
     }
     const top = holders.slice(0, 10).map((h,i) => ({
       t: `#${i+1} ${shortAddr(h.wallet)}`,
@@ -1930,19 +2019,17 @@ renderHoldersEmpty();
     const cut = edges.slice(0, 80).map(e => ({a:e.a, b:e.b, w:e.w}));
 
     return {
-      nodes,
+      kind:'sol',
+      nodes: nodes.map(n => ({...n, addr: n.id})),
       edges: cut,
-      hint: "Size = holder % (top wallets). Links = recent mint balance changes (limited sample)."
+      bundles: (flow && Array.isArray(flow.bundles)) ? flow.bundles : [],
+      hint: 'Size = holder % (top wallets). Links = recent on-chain transfers (limited sample).'
     };
   }
 
   function renderClustersFromModel(model){
     const el = qs('clusterList');
     if(!el){ return; }
-    if(activeChain.id !== 'sol'){
-      renderList(el, [{t:"Clusters", sev:"warn", d:"Clusters are available for Solana only (best-effort).", why:"EVM clustering needs an indexer / graph."}], "Clusters");
-      return;
-    }
 
     const uf = buildUnionFind();
     const nodes = (model?.nodes || []);
@@ -1977,10 +2064,6 @@ renderHoldersEmpty();
   function renderBundles(bundles){
     const el = qs('bundleList');
     if(!el) return;
-    if(activeChain.id !== 'sol'){
-      renderList(el, [{t:"Bundles", sev:"warn", d:"Bundle detection is available for Solana only (best-effort).", why:"EVM bundle heuristics require mempool/indexers."}], "Bundles");
-      return;
-    }
 
     const list = Array.isArray(bundles) ? bundles : [];
     if(!list.length){
@@ -2451,6 +2534,7 @@ function renderExtSol(programType, extReadable, extList){
     });
 
     renderHoldersWithExplorer(items, activeChain);
+    return holders;
   }
     /* ===================== EVM RPC + ERC-20 ===================== */
 async function evmRpc(chainId, method, params){
@@ -2705,9 +2789,11 @@ async function evmRpc(chainId, method, params){
     return "eth-mainnet";
   }
 
-  async function goldrushHolders(chainId, addr){
+  async function goldrushHolders(chainId, addr, limit=80){
     if(!CFG.GOLDRUSH_API_KEY) return [];
-    const url = `https://api.covalenthq.com/v1/${goldrushChain(chainId)}/tokens/${addr}/token_holders/?page-size=10&key=${encodeURIComponent(CFG.GOLDRUSH_API_KEY)}`;
+    const chain = goldrushChain(chainId);
+    const pageSize = Math.min(100, Math.max(10, Number(limit)||80));
+    const url = `https://api.covalenthq.com/v1/${chain}/tokens/${addr}/token_holders/?page-size=${pageSize}&key=${encodeURIComponent(CFG.GOLDRUSH_API_KEY)}`;
     try{
       const r = await fetch(url);
       if(!r.ok) return [];
@@ -2716,6 +2802,123 @@ async function evmRpc(chainId, method, params){
     }catch{
       return [];
     }
+  }
+
+  async function goldrushTransfersV2(chainId, addr, limit=600){
+    if(!CFG.GOLDRUSH_API_KEY) return [];
+    const chain = goldrushChain(chainId);
+    const want = Math.max(100, Math.min(1200, Number(limit)||600));
+    const pageSize = 200;
+    const maxPages = 6;
+    const out = [];
+    for(let page=0; page<maxPages && out.length<want; page++){
+      const url = `https://api.covalenthq.com/v1/${chain}/tokens/${addr}/token_transfers_v2/?page-size=${pageSize}&page-number=${page}&key=${encodeURIComponent(CFG.GOLDRUSH_API_KEY)}`;
+      try{
+        const r = await fetch(url);
+        if(!r.ok) break;
+        const j = await r.json();
+        const items = Array.isArray(j?.data?.items) ? j.data.items : [];
+        if(!items.length) break;
+        out.push(...items);
+      }catch{
+        break;
+      }
+    }
+    return out.slice(0, want);
+  }
+
+  function buildBubbleModelEvm(holdersRaw, transfersRaw){
+    const holders = Array.isArray(holdersRaw) ? holdersRaw : [];
+    const transfers = Array.isArray(transfersRaw) ? transfersRaw : [];
+
+    const top = holders.slice(0,80).map(h => ({
+      addr: String(h?.address||'').toLowerCase(),
+      pct:  Number(h?.percentage ?? h?.pct ?? h?.share ?? NaN)
+    })).filter(h => h.addr.startsWith('0x'));
+
+    const nodes = [];
+    const nodeMap = new Map();
+    const addNode = (addr, pct=null, isHolder=false)=>{
+      const a = String(addr||'').toLowerCase();
+      if(!a.startsWith('0x')) return null;
+      if(nodeMap.has(a)) return nodeMap.get(a);
+      const p = (Number.isFinite(pct) ? pct : 0);
+      const r = isHolder ? (10 + Math.sqrt(Math.max(0,p))*6.8) : 8;
+      const n = { id:a, addr:a, label: shortAddr(a), pct:(Number.isFinite(pct)? pct:null), r: Math.max(8, Math.min(46, r)), kind: isHolder?'holder':'wallet' };
+      nodes.push(n);
+      nodeMap.set(a,n);
+      return n;
+    };
+
+    for(const h of top){ addNode(h.addr, h.pct, true); }
+
+    const allow = new Set(nodes.map(n=>n.id));
+
+    // collect degrees + raw edge weights
+    const deg = new Map();
+    const edgesTmp = new Map();
+    for(const t of transfers){
+      const fa = String(t?.from_address || '').toLowerCase();
+      const ta = String(t?.to_address || '').toLowerCase();
+      if(!fa.startsWith('0x') || !ta.startsWith('0x')) continue;
+      deg.set(fa, (deg.get(fa)||0)+1);
+      deg.set(ta, (deg.get(ta)||0)+1);
+      const a = fa < ta ? fa : ta;
+      const b = fa < ta ? ta : fa;
+      const k = a + '|' + b;
+      edgesTmp.set(k, (edgesTmp.get(k)||0) + 1);
+    }
+
+    // add a few "connector" wallets (Dex/router/exchange hot wallets etc.)
+    const extras = Array.from(deg.entries())
+      .filter(([a,c]) => c>=3 && !allow.has(a))
+      .sort((x,y)=> (y[1]-x[1]))
+      .slice(0, 18)
+      .map(([a])=>a);
+
+    for(const a of extras){ addNode(a, null, false); }
+
+    const allow2 = new Set(nodes.map(n=>n.id));
+    const edges = [];
+    for(const [k,w] of edgesTmp.entries()){
+      const parts = k.split('|');
+      const a = parts[0];
+      const b = parts[1];
+      if(!allow2.has(a) || !allow2.has(b)) continue;
+      edges.push({a,b,w});
+    }
+    edges.sort((x,y)=>(y.w||0)-(x.w||0));
+    const cut = edges.slice(0, 140);
+
+    // Bundles (same tx: one sender -> many recipients)
+    const txMap = new Map();
+    for(const t of transfers){
+      const tx = String(t?.tx_hash || '').toLowerCase();
+      if(!tx) continue;
+      const fa = String(t?.from_address || '').toLowerCase();
+      const ta = String(t?.to_address || '').toLowerCase();
+      if(!fa.startsWith('0x') || !ta.startsWith('0x')) continue;
+      let row = txMap.get(tx);
+      if(!row){ row = {sender:fa, tos:new Set(), count:0}; txMap.set(tx,row); }
+      // only count if same sender
+      if(row.sender !== fa) continue;
+      row.tos.add(ta);
+      row.count += 1;
+    }
+
+    const bundles = Array.from(txMap.entries())
+      .map(([tx,row]) => ({ signature: tx, sender: row.sender, recipients: row.tos.size, total: row.count }))
+      .filter(b => b.recipients >= 4)
+      .sort((a,b)=> b.recipients - a.recipients)
+      .slice(0, 10);
+
+    return {
+      kind:'evm',
+      nodes,
+      edges: cut,
+      bundles,
+      hint: 'Size = holder % (indexer). Links = recent token transfers (sampled). Drag to explore.'
+    };
   }
 
   function scoreEvm(sig){
@@ -3246,7 +3449,7 @@ async function evmRpc(chainId, method, params){
 
     if(!holders || !holders.length){
       renderHoldersEmpty();
-      return;
+      return [];
     }
 
     const items = holders.slice(0,10).map((h, i) => {
@@ -3280,6 +3483,7 @@ async function evmRpc(chainId, method, params){
     });
 
     renderHoldersWithExplorer(items, activeChain);
+    return holders;
   }
 
   /* ===================== MAIN SCAN FLOW (same, just calls updated display) ===================== */
@@ -3538,19 +3742,29 @@ async function evmRpc(chainId, method, params){
 
         renderMetaEvm(metaMerged, metaOnChain);
 
-        renderBubbleEmpty();
-        renderList(qs("clusterList"), [{t:"Clusters", sev:"warn", d:"Clusters are available for Solana only (best-effort).", why:"EVM clustering needs an indexer / graph."}], "Clusters");
-        renderList(qs("bundleList"), [{t:"Bundles", sev:"warn", d:"Bundle detection is available for Solana only (best-effort).", why:"EVM bundle heuristics require mempool/indexers."}], "Bundles");
+        
 
+        // PRO: bubble map / clusters / bundles on EVM (best-effort via indexer)
         setStatus("Fetching top holders (indexer)…");
-        await renderHoldersEvm(chainId, addr, metaOnChain);
+        const holdersRaw = await renderHoldersEvm(chainId, addr, metaOnChain);
 
-        // PRO panels: bubble/clusters limited on EVM without full flow index
-        setText('bubbleStamp', activeChain.name + ' • LIMITED');
-        setText('bubbleHint', 'Bubble map / clusters are available on Solana (via recent transfer parsing). On EVM, deep clustering requires a full indexer.');
-        renderBubbleEmpty();
-        renderList(qs('clusterList'), [{t:'Limited on EVM', sev:'warn', d:'Cluster detection needs indexed token transfers on EVM.', why:'RPC alone cannot cheaply enumerate flows.'}], 'Clusters');
-        renderList(qs('bundleList'), [{t:'Limited on EVM', sev:'warn', d:'Bundle detection needs indexed token transfers on EVM.', why:'RPC alone cannot cheaply enumerate flows.'}], 'Bundles');
+        setStatus("Fetching recent transfers (indexer)…");
+        const transfers = await goldrushTransfersV2(chainId, addr, 700);
+
+        if(holdersRaw && holdersRaw.length && transfers && transfers.length){
+          const model = buildBubbleModelEvm(holdersRaw, transfers);
+          setText('bubbleStamp', activeChain.name + ' • TOP HOLDERS + FLOWS');
+          setText('bubbleHint', model.hint || 'Bubble map generated.');
+          drawBubbleMap(model);
+          renderClustersFromModel(model);
+          renderBundles(model.bundles || []);
+        }else{
+          setText('bubbleStamp', activeChain.name + ' • LIMITED');
+          setText('bubbleHint', CFG.GOLDRUSH_API_KEY ? 'Indexer returned no transfer graph for this token (or rate-limited).' : 'EVM bubble map needs an indexer API key.' );
+          renderBubbleEmpty();
+          renderList(qs('clusterList'), [{t:'No cluster data', sev:'warn', d:'No graph could be built from recent transfers.', why:'Try again or a different token.'}], 'Clusters');
+          renderList(qs('bundleList'), [{t:'No bundle data', sev:'warn', d:'No same-tx distributions detected in the sample.', why:'Limited sample.'}], 'Bundles');
+        }
 
 
         LAST_SCAN = {
@@ -3630,6 +3844,7 @@ async function evmRpc(chainId, method, params){
     const tokenName = (scan?.token?.name || '').trim();
     const tokenSymbol = (scan?.token?.symbol || '').trim();
     const tokenImage = (scan?.token?.image || '').trim();
+    const tokenInit = (tokenSymbol || tokenName || '??').replace(/[^a-zA-Z0-9]/g,'').slice(0,2).toUpperCase() || '??';
 
     const metricsHtml = (Array.isArray(scan.metrics) ? scan.metrics : []).map(m => `
       <div class="metric">
@@ -3764,6 +3979,13 @@ async function evmRpc(chainId, method, params){
     .bt{display:flex; flex-direction:column; line-height:1.05}
     .bt .t{font-weight:1000; letter-spacing:-.2px; font-size:16px}
     .bt .s{font-weight:850; color:var(--muted); font-size:12.5px}
+    .tokenBadge{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:999px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);margin-top:8px}
+    .tokenImgWrap{position:relative;width:34px;height:34px;flex:0 0 auto}
+    .tokenImg{width:34px;height:34px;border-radius:12px;object-fit:cover;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.10);display:block}
+    .tokenFallback{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-weight:1000;letter-spacing:.04em;color:rgba(255,255,255,.92);background:rgba(255,255,255,.08)}
+    .tokenTxt{display:flex;flex-direction:column;line-height:1.1}
+    .tokenSym{font-weight:1000;letter-spacing:.02em;font-size:12.5px}
+    .tokenNm{font-size:12px;color:rgba(255,255,255,.70);max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .stamp{
       font-weight:1000;
       font-size:12px;
@@ -3825,6 +4047,9 @@ async function evmRpc(chainId, method, params){
     .badge.good{border:0; background: linear-gradient(90deg, var(--g), var(--c), var(--p)); color:#061012}
     .badge.warn{border-color: rgba(255,220,130,.35); background: rgba(255,220,130,.08); color: rgba(255,240,210,.92)}
     .badge.bad{border-color: rgba(255,120,150,.35); background: rgba(255,120,150,.10); color: rgba(255,190,205,.95)}
+    .badge.good::before{content:"✓";margin-right:6px;font-weight:1100}
+    .badge.warn::before{content:"✕";margin-right:6px;font-weight:1100}
+    .badge.bad::before{content:"✕";margin-right:6px;font-weight:1100}
     .sectionTitle{
       display:flex;
       align-items:center;
@@ -3892,6 +4117,9 @@ async function evmRpc(chainId, method, params){
     .pill.ok{border:0; background: linear-gradient(90deg, var(--g), var(--c), var(--p)); color:#061012}
     .pill.warn{border-color: rgba(255,220,130,.35); background: rgba(255,220,130,.08); color: rgba(255,240,210,.92)}
     .pill.bad{border-color: rgba(255,120,150,.35); background: rgba(255,120,150,.10); color: rgba(255,190,205,.95)}
+    .pill.ok::before{content:"✓";margin-right:6px;font-weight:1100}
+    .pill.warn::before{content:"✕";margin-right:6px;font-weight:1100}
+    .pill.bad::before{content:"✕";margin-right:6px;font-weight:1100}
     .footer{
       margin-top:14px;
       text-align:center;
@@ -3952,6 +4180,19 @@ async function evmRpc(chainId, method, params){
         <div class="sub">
           Address: <span class="mono">${escAttr(scan.address)}</span>
         </div>
+
+        ${(tokenName || tokenSymbol || tokenImage) ? `
+        <div class="tokenBadge" style="margin-top:10px; display:flex">
+          <div class="tokenImgWrap">
+            ${tokenImage ? `<img class="tokenImg" src="${escAttr(tokenImage)}" alt="${escAttr(tokenName || tokenSymbol || 'Token')}" onerror="this.style.display='none'">` : ''}
+            ${!tokenImage ? `<div class="tokenImg tokenFallback">${escAttr(tokenInit)}</div>` : ''}
+          </div>
+          <div class="tokenTxt">
+            <div class="tokenSym">${escAttr(tokenSymbol ? ('$'+tokenSymbol) : 'TOKEN')}</div>
+            <div class="tokenNm">${escAttr(tokenName || 'Scanned asset')}</div>
+          </div>
+        </div>
+        ` : ''}
 
         <div style="margin-top:12px; display:flex; gap:10px; flex-wrap:wrap;">
           <span class="badge ${verdictMode === "good" ? "good" : (verdictMode === "bad" ? "bad" : "warn")}">${escAttr(verdictLabel)}</span>
