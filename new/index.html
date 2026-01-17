@@ -678,7 +678,7 @@
     <section class="card hero">
       <div class="inner">
         <div class="classified">
-          <div class="stamp">GUARDIAN SYSTEM • MAINNET • VERIFIED</div>
+          <div class="stamp">GUARDIAN SYSTEM • MAINNET • BEST-EFFORT VERIFIED</div>
           <div class="stamp" id="stampTime">—</div>
         </div>
 
@@ -753,7 +753,7 @@
         <div class="panel" style="margin-top:16px;">
           <div class="classified">
             <div class="stamp">CONTRACT FLAGS</div>
-            <div class="stamp">VERIFIED</div>
+            <div class="stamp">BEST-EFFORT</div>
           </div>
           <ul class="list" id="extList" style="margin-top:10px;"></ul>
         </div>
@@ -762,7 +762,7 @@
         <div class="panel" style="margin-top:16px;">
           <div class="classified">
             <div class="stamp">TOKEN METADATA</div>
-            <div class="stamp">RPC</div>
+            <div class="stamp">RPC / BEST-EFFORT</div>
           </div>
           <ul class="list" id="metaList" style="margin-top:10px;"></ul>
         </div>
@@ -1457,7 +1457,7 @@ function pillLabel(sev){ return (sev==="ok" ? (pillIcon(sev)+' PASS') : (pillIco
     const hint = qs('bubbleHint');
     const stamp = qs('bubbleStamp');
     if(legend) legend.innerHTML = '';
-    if(hint) hint.textContent = 'Run a scan to generate a bubble map.';
+    if(hint) hint.textContent = 'Run a scan to generate a bubble map (' + (activeChain.kind==='evm' ? 'EVM best-effort via GoldRush.' : 'Solana best-effort.') + ')';
     if(stamp) stamp.textContent = (activeChain.kind==='evm') ? (activeChain.name + ' • TOP HOLDERS + TRANSFERS') : 'SOLANA • TOP HOLDERS + FLOWS';
     if(!c) return;
     const ctx = c.getContext('2d');
@@ -1822,9 +1822,9 @@ function pillLabel(sev){ return (sev==="ok" ? (pillIcon(sev)+' PASS') : (pillIco
 
     
 
-    renderList(qs("clusterList"), [{t:"No cluster data", sev:"warn", d:"Clusters appear after scan.", why:"Run a scan."}], "Clusters");
+    renderList(qs("clusterList"), [{t:"No cluster data", sev:"warn", d:"Clusters appear after scan (Solana best-effort).", why:"Run a scan."}], "Clusters");
 
-    renderList(qs("bundleList"), [{t:"No bundle data", sev:"warn", d:"Bundles appear after scan.", why:"Run a scan."}], "Bundles");
+    renderList(qs("bundleList"), [{t:"No bundle data", sev:"warn", d:"Bundles appear after scan (Solana best-effort).", why:"Run a scan."}], "Bundles");
 
     renderBubbleEmpty();
 renderHoldersEmpty();
@@ -2233,24 +2233,17 @@ renderHoldersEmpty();
       return;
     }
 
-    const items = list.slice(0, 8).map((b,i) => {
-      const rec = Array.isArray(b.to) ? b.to : [];
-      const recPreview = rec.slice(0, 8).map(shortAddr).join(', ');
-      const txHref = explorerTx(activeChain, b.signature);
-      return {
-        t: `Bundle #${i+1} • ${b.recipients} wallets`,
-        sev: b.recipients >= 8 ? 'bad' : (b.recipients >= 5 ? 'warn' : 'warn'),
-        d: `${b.recipients} wallets • sender ${shortAddr(b.sender)}`,
-        right: txHref ? {label:'Tx', href:txHref} : null,
-        why: '',
-        infoHtml: explain('Bundle details', [
-          `Sender: ${b.sender}`,
-          `Tx: ${b.signature}`,
-          rec.length ? `Recipients (${b.recipients}): ${rec.join(', ')}` : `Recipients (${b.recipients}): ${recPreview || '—'}`,
-          'Note: This is a sample-based heuristic. Always verify on-chain.'
-        ])
-      };
-    });
+    const items = list.slice(0, 8).map((b,i) => ({
+      t: `Bundle #${i+1} • ${b.recipients} recipients`,
+      sev: b.recipients >= 8 ? 'bad' : (b.recipients >= 5 ? 'warn' : 'warn'),
+      d: `Sender: ${shortAddr(b.sender)} • Tx: ${shortAddr(b.signature)} • Est. total: ${fmtInt(b.total)}`,
+      why: 'Heuristic: one sender distributing to many recipients in one tx.',
+      infoHtml: explain('Bundle heuristic', [
+        'We flag transactions where 1 sender distributes the token to many wallets in a single tx.',
+        'This can indicate wallet farming / staged distribution.',
+        'Always verify on-chain in explorer.'
+      ])
+    }));
 
     renderList(el, items, 'Bundles');
   }
@@ -2531,8 +2524,8 @@ function pickTokenMetaFromAsset(asset){
       const link = dex.url ? `Open pair on DexScreener: ${dex.url}` : 'Pair link unavailable.';
       items.push({t:'DEX Pair', sev:'ok', d:`${(dex.dexId||'DEX').toUpperCase()} • ${dex.pairAddress ? shortAddr(dex.pairAddress) : '—'}`, why: link});
       if(dex.liquidityUsd != null) items.push({t:'Liquidity', sev: dex.liquidityUsd >= 10000 ? 'ok' : 'warn', d: money(dex.liquidityUsd), why:'Higher liquidity usually reduces slippage/manipulation.'});
-      if(dex && (dex.marketCap != null || dex.fdv != null)) items.push({t:'Market Cap / FDV', sev:'ok', d: dex.marketCap!=null ? money(dex.marketCap) : money(dex.fdv), why:''});
-      if(dex.priceUsd != null) items.push({t:'Price', sev:'ok', d: priceUsdFmt(dex.priceUsd), why:''});
+      if(dex && (dex.marketCap != null || dex.fdv != null)) items.push({t:'Market Cap / FDV', sev:'ok', d: dex.marketCap!=null ? money(dex.marketCap) : money(dex.fdv), why:'From DexScreener.'});
+      if(dex.priceUsd != null) items.push({t:'Price', sev:'ok', d: priceUsdFmt(dex.priceUsd), why:'From DexScreener.'});
       if(dex.volume24h != null) items.push({t:'Volume 24h', sev: dex.volume24h >= 5000 ? 'ok' : 'warn', d: money(dex.volume24h), why:'Low volume can mean thin markets.'});
     }
     renderList(qs('todoList'), items, 'Market / DEX');
@@ -3284,7 +3277,7 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
       checks.push({
         t:"Total supply",
         sev:"ok",
-        d:"",
+        d:"Supply readable on-chain.",
         why:"totalSupply() responded.",
         infoHtml: explain("Total supply", [
           "Meaning: Basis for holder %.",
@@ -3535,8 +3528,8 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
     items.push({
       t:"Name / Symbol",
       sev:(metaMerged?.name && metaMerged?.symbol) ? "ok" : "warn",
-      d:`${metaMerged?.name || "—"}${metaMerged?.symbol ? (" ($"+metaMerged.symbol+")") : ""}`,
-      why: (metaMerged?.name && metaMerged?.symbol) ? "Name & symbol found." : "Missing/unreadable.",
+      d:`${metaMerged?.name || "—"} • ${metaMerged?.symbol ? ("$"+metaMerged.symbol) : "—"}`,
+      why: (metaMerged?.name && metaMerged?.symbol) ? "name/symbol readable (or via API)." : "Missing/unreadable.",
       infoHtml: explain("Name / Symbol", [
         "Meaning: Token identity.",
         (metaMerged?.name && metaMerged?.symbol) ? "Why PASS: present." : "Why WATCH: missing/unreadable."
@@ -3558,11 +3551,11 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
     items.push({
       t:"Total Supply",
       sev:supplyReadable ? "ok" : "warn",
-      d:supplyReadable ? formatSupplyNice(metaOnChain.totalSupply, metaOnChain.decimals, dex.decimals).text : "—",
+      d:supplyReadable ? "Readable on-chain" : "Not readable",
       why: supplyReadable ? "totalSupply() ok." : "totalSupply() missing.",
       infoHtml: explain("Total Supply", [
         "Meaning: Basis for holder %.",
-        supplyReadable ? "Why PASS: available." : "Why WATCH: not readable."
+        supplyReadable ? "Why PASS: readable on-chain." : "Why WATCH: not readable."
       ])
     });
 
@@ -3570,7 +3563,7 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
       items.push({
         t:"Logo / Image",
         sev:"ok",
-        d:"",
+        d:"Logo via metadata provider (API key).",
         why:"Logo is off-chain (normal for EVM).",
         infoHtml: explain("Token Logo (EVM)", [
           "EVM tokens typically do not store logos on-chain.",
@@ -3581,10 +3574,10 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
       items.push({
         t:"Logo / Image",
         sev:"warn",
-        d: "—",
-        why: "No logo found.",
-        infoHtml: explain("Token Logo", [
-          "No logo was found for this token."
+        d: CFG.EVM_METADATA_KEY ? "No logo returned by metadata API." : "EVM logos need an API key integration (optional).",
+        why: CFG.EVM_METADATA_KEY ? "Provider returned none." : "No provider enabled.",
+        infoHtml: explain("Token Logo (EVM)", [
+          CFG.EVM_METADATA_KEY ? "Provider returned no logo." : "Optional: set EVM_METADATA_KEY (Moralis) to fetch logos."
         ])
       });
     }
@@ -3772,10 +3765,10 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
       const pctStr = (h.percentage === null || h.percentage === undefined) ? '—' : (Number(h.percentage).toFixed(2) + '%');
       return {
         t:`#${i+1} ${shortAddr(addr)}`,
-        d:`${pctStr}``,
+        d:`${balFmt} tokens • ${pctStr}`,
         addr,
         infoHtml: explain('Top holders (EVM)', [
-          'Source: Indexer.',
+          'Source: GoldRush indexer (best-effort).',
           'Why it matters: whale concentration can impact price.',
           'Tip: verify in explorer holders tab.'
         ])
@@ -3805,18 +3798,15 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
       .sort((a,b) => (b[1] > a[1] ? 1 : (b[1] < a[1] ? -1 : 0)))
       .slice(0,10);
 
-    const items = top.map(([addr, v], i) => {
-    let pctStr = '—';
-    if(typeof supplyBI === 'bigint' && supplyBI > 0n && typeof v === 'bigint'){
-      const pct = Number((v * 10000n) / supplyBI) / 100;
-      if(Number.isFinite(pct)) pctStr = pct.toFixed(2) + '%';
-    }
-    return {
+    const items = top.map(([addr, v], i) => ({
       t:`#${i+1} ${shortAddr(addr)}`,
-      d:`${pctStr}`,
-      right:{ label: (activeChain && activeChain.explorerName) ? activeChain.explorerName : 'Explorer', href: explorerAddr(activeChain, addr) }
-    };
-  });
+      d:`Net inflow (sample): ${formatUnits(v, decimals)} tokens`,
+      addr,
+      infoHtml: explain('Fallback top wallets (sample)', [
+        'This is NOT a holder snapshot.',
+        'We approximate using a recent on-chain transfer sample when no indexer holder list is available.'
+      ])
+    }));
 
     renderHoldersWithExplorer(items, activeChain);
     return [];
@@ -3912,14 +3902,14 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
         const freezeRevoked = !freezeAuth;
 
         const metricRows = [
-          { label:"Guardian Score", value:`${score}/100`, badge: verdict.label, barPct: score, mini:"",
-          { label:"Mint Authority", value: mintRevoked ? "REVOKED" : "ACTIVE", badge: mintRevoked ? "PASS" : "FAIL", mini:"",
-          { label:"Freeze Authority", value: freezeRevoked ? "REVOKED" : "ACTIVE", badge: freezeRevoked ? "PASS" : "WATCH", mini:"",
-          { label:"Liquidity", value: dex?.liquidityUsd ? money(dex.liquidityUsd) : "—", badge: dex?.dexId ? dex.dexId.toUpperCase() : "DEX", mini:"",
-          { label:"Market Cap", value: (dex?.marketCap ? money(dex.marketCap) : (dex?.fdv ? money(dex.fdv) : "—")), badge: dex?.marketCap ? "MCAP" : (dex?.fdv ? "FDV" : "—"), mini:"",
-          { label:"Price", value: dex?.priceUsd ? priceUsdFmt(dex.priceUsd) : "—", badge: "USD", mini:"",
-          { label:"Total Supply", value: Number.isFinite(uiSupply) ? fmtInt(uiSupply) : "—", badge:"Supply", mini:"",
-          { label:"Top20 Concentration", value: Number.isFinite(top20) ? fmtPct(top20) : "—", badge:"Holders", mini:"", barPct: Number.isFinite(top20) ? clamp(top20,0,100) : undefined }
+          { label:"Guardian Score", value:`${score}/100`, badge: verdict.label, barPct: score, mini:"Composite risk score (heuristic)." },
+          { label:"Mint Authority", value: mintRevoked ? "REVOKED" : "ACTIVE", badge: mintRevoked ? "PASS" : "FAIL", mini: mintRevoked ? "No mint authority (cannot mint more)." : "Mint authority exists (supply can increase)." },
+          { label:"Freeze Authority", value: freezeRevoked ? "REVOKED" : "ACTIVE", badge: freezeRevoked ? "PASS" : "WATCH", mini: freezeRevoked ? "No freeze authority." : "Freeze authority exists (can freeze accounts)." },
+          { label:"Liquidity", value: dex?.liquidityUsd ? money(dex.liquidityUsd) : "—", badge: dex?.dexId ? dex.dexId.toUpperCase() : "DEX", mini: dex?.url ? "From DexScreener (best pair)." : "—" },
+          { label:"Market Cap", value: (dex?.marketCap ? money(dex.marketCap) : (dex?.fdv ? money(dex.fdv) : "—")), badge: dex?.marketCap ? "MCAP" : (dex?.fdv ? "FDV" : "—"), mini: "From DexScreener." },
+          { label:"Price", value: dex?.priceUsd ? priceUsdFmt(dex.priceUsd) : "—", badge: "USD", mini: dex?.volume24h ? `Vol24h ${money(dex.volume24h)}` : "—" },
+          { label:"Total Supply", value: Number.isFinite(uiSupply) ? fmtInt(uiSupply) : "—", badge:"Supply", mini:"From getTokenSupply." },
+          { label:"Top20 Concentration", value: Number.isFinite(top20) ? fmtPct(top20) : "—", badge:"Holders", mini:"Approx via largest accounts.", barPct: Number.isFinite(top20) ? clamp(top20,0,100) : undefined }
         ];
         renderMetrics(metricRows);
 
@@ -4043,14 +4033,14 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
         const supplyText = supplyNice.text;
 
         const metricRows = [
-          { label:"Guardian Score", value:`${score}/100`, badge: verdict.label, barPct: score, mini:"",
-          { label:"Ownership Renounced", value: (ownerEff ? (isBurnAddr(ownerEff)?"YES":"NO") : "NOT DETECTED"), badge: ownerEff ? (isBurnAddr(ownerEff)?"PASS":"WATCH") : "WATCH", mini:"",
-          { label:"Liquidity", value: dex?.liquidityUsd != null ? money(dex.liquidityUsd) : "—", badge: dex?.dexId ? dex.dexId.toUpperCase() : "DEX", mini:"",
-          { label:"Market Cap", value: (dex?.marketCap != null ? money(dex.marketCap) : (dex?.fdv != null ? money(dex.fdv) : "—")), badge: dex?.marketCap != null ? "MCAP" : (dex?.fdv != null ? "FDV" : "—"), mini:"",
-          { label:"Price", value: dex?.priceUsd != null ? priceUsdFmt(dex.priceUsd) : "—", badge: "USD", mini:"",
-          { label:"LP Burned", value: lpBurn?.pct != null ? `${lpBurn.pct.toFixed(2)}%` : "UNKNOWN", badge: lpBurn?.pct != null ? (lpBurn.pct>=90?"PASS":"WATCH") : "UNKNOWN", mini:"",
-          { label:"Proxy", value: proxy?.isProxy ? "Upgradeable" : "No signal", badge: proxy?.isProxy ? "WATCH" : "PASS", mini:"",
-          { label:"Total Supply", value: supplyText || "—", badge: supplyReadable ? "On-chain" : "Unknown", mini:""
+          { label:"Guardian Score", value:`${score}/100`, badge: verdict.label, barPct: score, mini:"Composite risk score (heuristic)." },
+          { label:"Ownership Renounced", value: (ownerEff ? (isBurnAddr(ownerEff)?"YES":"NO") : "NOT DETECTED"), badge: ownerEff ? (isBurnAddr(ownerEff)?"PASS":"WATCH") : "WATCH", mini:`Best-effort via ${ownerSource}.` },
+          { label:"Liquidity", value: dex?.liquidityUsd != null ? money(dex.liquidityUsd) : "—", badge: dex?.dexId ? dex.dexId.toUpperCase() : "DEX", mini: dex?.url ? "From DexScreener (best pair)." : "—" },
+          { label:"Market Cap", value: (dex?.marketCap != null ? money(dex.marketCap) : (dex?.fdv != null ? money(dex.fdv) : "—")), badge: dex?.marketCap != null ? "MCAP" : (dex?.fdv != null ? "FDV" : "—"), mini:"From DexScreener." },
+          { label:"Price", value: dex?.priceUsd != null ? priceUsdFmt(dex.priceUsd) : "—", badge: "USD", mini: dex?.volume24h != null ? `Vol24h ${money(dex.volume24h)}` : "—" },
+          { label:"LP Burned", value: lpBurn?.pct != null ? `${lpBurn.pct.toFixed(2)}%` : "UNKNOWN", badge: lpBurn?.pct != null ? (lpBurn.pct>=90?"PASS":"WATCH") : "UNKNOWN", mini: lpBurn?.note || "Best-effort V2 LP burn check." },
+          { label:"Proxy", value: proxy?.isProxy ? "Upgradeable" : "No signal", badge: proxy?.isProxy ? "WATCH" : "PASS", mini:"EIP-1967 slots check." },
+          { label:"Total Supply", value: supplyText || "—", badge: supplyReadable ? "On-chain" : "Unknown", mini: supplyReadable ? `totalSupply() • decimals=${supplyNice.usedDecimals ?? '—'}${supplyNice.approx ? ' (assumed)' : ''}` : 'From totalSupply().' }
         ];
         renderMetrics(metricRows);
 
@@ -4067,7 +4057,7 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
         const renounced = ownerEff ? isBurnAddr(ownerEff) : null;
 
         flags.push({t:"Owner / Admin", sev: ownerEff ? (isBurnAddr(ownerEff)?"ok":"warn") : "warn", d: ownerEff ? (isBurnAddr(ownerEff)?"Renounced":shortAddr(ownerEff)) : "NOT DETECTED", why: `Source: ${ownerSource}.`});
-        flags.push({t:"Ownership Renounced", sev: renounced===true ? "ok" : (renounced===false?"warn":"warn"), d: renounced===null?"NOT DETECTED":(renounced?"YES":"NO"), why:``});
+        flags.push({t:"Ownership Renounced", sev: renounced===true ? "ok" : (renounced===false?"warn":"warn"), d: renounced===null?"NOT DETECTED":(renounced?"YES":"NO"), why:`Best-effort via ${ownerSource}.`});
 
         // Upgradeability / proxy
         flags.push({t:"Proxy / Upgradeable", sev: proxy?.isProxy ? "warn" : "ok", d: proxy?.isProxy ? "YES" : "NO", why:"EIP-1967 slots check."});
@@ -4088,7 +4078,7 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
         }
 
         if(lpBurn && lpBurn.pct !== null){
-          flags.push({t:"LP Burned", sev: lpBurn.pct>=90?"ok":"warn", d:`${lpBurn.pct.toFixed(2)}%`, why: (lpBurn.note || 'Only counts LP tokens in dead/0x0. Lockers/V3 not included.')});
+          flags.push({t:"LP Burned (best-effort)", sev: lpBurn.pct>=90?"ok":"warn", d:`${lpBurn.pct.toFixed(2)}%`, why: (lpBurn.note || 'Only counts LP tokens in dead/0x0. Lockers/V3 not included.')});
         }
 
         renderContractFlags(flags);
@@ -4567,7 +4557,7 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
           <div class="panel">
             <div class="sectionTitle">
               <div class="l">Key Metrics</div>
-              <div class="l">On-Chain</div>
+              <div class="l">On-Chain / Best-Effort</div>
             </div>
             <div class="metricGrid">
               ${metricsHtml || `<div class="metric"><div class="k"><span>Metrics</span><span class="chip">—</span></div><div class="v">—</div><div class="mini">No metrics available.</div></div>`}
@@ -4600,7 +4590,7 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
               <div class="l">$SOS Guardian System</div>
             </div>
             <div style="color: rgba(255,255,255,.74); font-weight:850; font-size:12.5px; line-height:1.45;">
-              <div style="margin:6px 0;">• </div>
+              <div style="margin:6px 0;">• This report is heuristic and best-effort. Always verify liquidity, official links, and contract code.</div>
               <div style="margin:6px 0;">• PASS/WATCH/FAIL applies per-check only. It is not a guarantee of safety.</div>
               <div style="margin:6px 0;">• Tip: Use your browser “Print” → “Save as PDF” for a clean PDF export.</div>
             </div>
@@ -4612,80 +4602,6 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
       </div>
     </div>
   </div>
-
-<script>
-/* ===== HOTFIX LAYER V17 =====
-   Purpose: restore full functionality without redesign
-*/
-(function(){
-  // Safe getters
-  const $ = (id)=>document.getElementById(id);
-
-  // Ensure addrInput alias
-  if(!$("addrInput") && $("mint")){
-    $("mint").id = "addrInput";
-  }
-
-  // Restore runScan if broken/missing
-  window.runScan = window.runScan || async function(){
-    try{
-      if(window.SCANNING) return;
-      window.SCANNING = true;
-      const input = $("addrInput");
-      if(!input || !input.value.trim()){
-        if(window.setStatus) setStatus("Paste a token address first.");
-        window.SCANNING = false;
-        return;
-      }
-      if(window.startLiveStampTime) startLiveStampTime();
-      if(window.setStatus) setStatus("Scanning…");
-
-      // Minimal safe pipeline to avoid crashes
-      if(window.renderBubbleEmpty) renderBubbleEmpty();
-      if(window.renderHoldersEmpty) renderHoldersEmpty();
-
-      // Try original scanner if exists
-      if(typeof window._runScanInternal === "function"){
-        await window._runScanInternal();
-      }
-
-      if(window.setStatus) setStatus("Scan completed.");
-    }catch(e){
-      console.error("HOTFIX runScan error:", e);
-      if(window.setStatus) setStatus("Scan failed (hotfix recovered).");
-    }finally{
-      window.SCANNING = false;
-    }
-  };
-
-  // Fix Bubblemaps modal opener
-  if(typeof window.openBubblemapsModal !== "function"){
-    window.openBubblemapsModal = function(){
-      try{
-        const addr = $("addrInput")?.value?.trim();
-        if(!addr) return alert("Paste token address first");
-        const chain = (window.activeChain && window.activeChain.id) || "eth";
-        const slug = chain==="sol"?"sol":chain==="bnb"?"bsc":chain==="base"?"base":"eth";
-        const url = `https://app.bubblemaps.io/${slug}/token/${addr}`;
-        window.open(url,"_blank");
-      }catch(e){
-        console.error(e);
-      }
-    }
-  }
-
-  // Bind buttons defensively
-  document.addEventListener("DOMContentLoaded", ()=>{
-    const scanBtns = document.querySelectorAll("#btnScan,#btnScanInline");
-    scanBtns.forEach(b=>{
-      b.onclick = ()=>window.runScan();
-    });
-    const extBtn = $("bubbleOpenExternal");
-    if(extBtn) extBtn.onclick = ()=>window.openBubblemapsModal();
-  });
-})();
-</script>
-
 </body>
 </html>`;
   }
@@ -4743,7 +4659,7 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
     L.push("");
     L.push("Notes");
     L.push("----------------------------------------");
-    L.push("- ");
+    L.push("- This report is heuristic and best-effort. Always verify liquidity, official links, and contract code.");
     L.push("- PASS/WATCH/FAIL applies per-check only. It is not a guarantee of safety.");
     return L.join("\n");
   }
@@ -4865,154 +4781,5 @@ init();
 
   </script>
 
-
-<script>
-/* ===== HOTFIX LAYER V17 =====
-   Purpose: restore full functionality without redesign
-*/
-(function(){
-  // Safe getters
-  const $ = (id)=>document.getElementById(id);
-
-  // Ensure addrInput alias
-  if(!$("addrInput") && $("mint")){
-    $("mint").id = "addrInput";
-  }
-
-  // Restore runScan if broken/missing
-  window.runScan = window.runScan || async function(){
-    try{
-      if(window.SCANNING) return;
-      window.SCANNING = true;
-      const input = $("addrInput");
-      if(!input || !input.value.trim()){
-        if(window.setStatus) setStatus("Paste a token address first.");
-        window.SCANNING = false;
-        return;
-      }
-      if(window.startLiveStampTime) startLiveStampTime();
-      if(window.setStatus) setStatus("Scanning…");
-
-      // Minimal safe pipeline to avoid crashes
-      if(window.renderBubbleEmpty) renderBubbleEmpty();
-      if(window.renderHoldersEmpty) renderHoldersEmpty();
-
-      // Try original scanner if exists
-      if(typeof window._runScanInternal === "function"){
-        await window._runScanInternal();
-      }
-
-      if(window.setStatus) setStatus("Scan completed.");
-    }catch(e){
-      console.error("HOTFIX runScan error:", e);
-      if(window.setStatus) setStatus("Scan failed (hotfix recovered).");
-    }finally{
-      window.SCANNING = false;
-    }
-  };
-
-  // Fix Bubblemaps modal opener
-  if(typeof window.openBubblemapsModal !== "function"){
-    window.openBubblemapsModal = function(){
-      try{
-        const addr = $("addrInput")?.value?.trim();
-        if(!addr) return alert("Paste token address first");
-        const chain = (window.activeChain && window.activeChain.id) || "eth";
-        const slug = chain==="sol"?"sol":chain==="bnb"?"bsc":chain==="base"?"base":"eth";
-        const url = `https://app.bubblemaps.io/${slug}/token/${addr}`;
-        window.open(url,"_blank");
-      }catch(e){
-        console.error(e);
-      }
-    }
-  }
-
-  // Bind buttons defensively
-  document.addEventListener("DOMContentLoaded", ()=>{
-    const scanBtns = document.querySelectorAll("#btnScan,#btnScanInline");
-    scanBtns.forEach(b=>{
-      b.onclick = ()=>window.runScan();
-    });
-    const extBtn = $("bubbleOpenExternal");
-    if(extBtn) extBtn.onclick = ()=>window.openBubblemapsModal();
-  });
-})();
-</script>
-
 </body>
 </html>
-
-
-
-<!-- ===== FIXED v18 PATCH (NON-DESTRUCTIVE) ===== -->
-<script>
-/*
-  FIXED v18 PATCH
-  Purpose:
-  - Ensure chain buttons render
-  - Ensure activeChain is set
-  - Ensure runScan is callable
-  - Initialize UI on DOMContentLoaded
-  NOTE: This patch does NOT remove or overwrite existing logic.
-*/
-
-(function(){
-  function safe(fn){ try{ fn(); }catch(e){ console.error('FIXED v18 patch error:', e); } }
-
-  function renderChains(){
-    if(!window.CFG || !Array.isArray(CFG.CHAINS)) return;
-    const row = document.getElementById('chainRow');
-    if(!row) return;
-    row.innerHTML = '';
-    CFG.CHAINS.forEach((c,i)=>{
-      const b = document.createElement('button');
-      b.className = 'chainBtn';
-      b.innerHTML = `<span class="chainIcon">${(window.ICONS && ICONS[c.id])||''}</span>${c.name}`;
-      b.onclick = ()=>selectChain(c.id);
-      row.appendChild(b);
-      c._btn = b;
-    });
-  }
-
-  window.selectChain = window.selectChain || function(id){
-    const list = (window.CFG && CFG.CHAINS) || [];
-    list.forEach(c=>{
-      if(c._btn) c._btn.classList.toggle('active', c.id===id);
-      if(c.id===id){
-        window.activeChain = c;
-        const inp = document.getElementById('mint');
-        if(inp) inp.placeholder = c.placeholder || '';
-        const lbl = document.getElementById('addrLabel');
-        if(lbl) lbl.textContent = c.addrLabel || 'Token Address';
-        const hint = document.getElementById('chainHint');
-        if(hint) hint.textContent = c.stamp || '';
-      }
-    });
-  };
-
-  window.runScan = window.runScan || function(){
-    const inp = document.getElementById('mint');
-    const addr = inp ? inp.value.trim() : '';
-    if(!addr){
-      const st = document.getElementById('status');
-      if(st) st.textContent = 'Paste an address first.';
-      return;
-    }
-    const st = document.getElementById('status');
-    if(st) st.textContent = 'Scan initialized (FIXED v18 patch).';
-  };
-
-  document.addEventListener('DOMContentLoaded', function(){
-    safe(renderChains);
-    safe(()=>{
-      if(window.CFG && CFG.CHAINS && CFG.CHAINS.length){
-        selectChain(CFG.CHAINS[0].id);
-      }
-    });
-    if(typeof startLiveStampTime === 'function'){
-      safe(startLiveStampTime);
-    }
-  });
-})();
-</script>
-<!-- ===== END FIXED v18 PATCH ===== -->
