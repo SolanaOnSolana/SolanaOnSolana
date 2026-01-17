@@ -662,7 +662,7 @@
 
         <div class="actions">
           <a class="btn" href="https://solanax1.com/" rel="noreferrer">← Back to Main</a>
-          <button class="btn grad" id="btnScan" type="button">Run Guardian Check</button>
+          <button class="btn grad" id="btnScan" type="button" onclick="runScan()">Run Guardian Check</button>
           <button class="btn grad" id="btnExport" type="button" disabled>Download Scan Report</button>
         </div>
       </div>
@@ -695,7 +695,7 @@
 
             <label for="mint" style="margin-top:14px;" id="addrLabel">Token Address</label>
             <input id="mint" placeholder="Paste token address..." autocomplete="off" spellcheck="false" inputmode="text" />
-            <button class="btn grad" id="btnScanInline" type="button" style="width:100%; margin-top:12px;">Run Guardian Check</button>
+            <button class="btn grad" id="btnScanInline" type="button" onclick="runScan()" style="width:100%; margin-top:12px;">Run Guardian Check</button>
             <div class="statusLine" id="status"></div>
           </div>
 
@@ -963,7 +963,7 @@
     try{
       const r = await fetch(url, {signal: ctrl.signal});
       clearTimeout(t);
-      if(!r.ok) throw new Err||(`HTTP ${r.status}`);
+      if(!r.ok) throw new Error(`HTTP ${r.status}`);
       return await r.json();
     }finally{
       clearTimeout(t);
@@ -4395,6 +4395,34 @@ async function evmRpc(chainId, method, params){
   startLiveStampTime();
   wireGlobalClick();
 }
+
+  // Safety: expose runScan globally for inline onclick fallback
+  window.runScan = runScan;
+
+  // Safety: surface JS errors to the UI once
+  (function(){
+    let shown = false;
+    window.addEventListener('error', (e)=>{
+      if(shown) return;
+      shown = true;
+      try{
+        const msg = (e && e.message) ? e.message : 'Unknown script error';
+        setStatus('Script error: ' + msg);
+        showToast('Script error: ' + msg);
+      }catch(_){}
+    });
+    window.addEventListener('unhandledrejection', (e)=>{
+      if(shown) return;
+      shown = true;
+      try{
+        const msg = (e && e.reason && (e.reason.message||e.reason)) ? (e.reason.message||e.reason) : 'Unhandled promise rejection';
+        setStatus('Script error: ' + msg);
+        showToast('Script error: ' + msg);
+      }catch(_){}
+    });
+  })();
+
+
 
 init();
 
