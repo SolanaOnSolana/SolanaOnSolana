@@ -787,7 +787,7 @@
               <div class="miniNote" id="bubbleHint">—</div>
               <div class="bubbleLegend" id="bubbleLegend"></div>
               <div class="bubbleActions" id="bubbleActions">
-                <button class="btn ghost" id="bubbleOpenExternal" type="button">Open Bubblemap (Bubblemaps)</button>
+                <button class="btn ghost" id="bubbleOpenExternal" type="button" onclick="openBubblemapsModal()">Open BubbleMap (DexScreener style)</button>
               </div>
             </div>
             <canvas id="bubbleCanvas" width="1100" height="420"></canvas>
@@ -979,7 +979,7 @@
   }
 
   async function fetchDexScreener(tokenAddr){
-    // Works for Solana mints && EVM token contracts
+    // Works for Solana mints and EVM token contracts
     const url = `https://api.dexscreener.com/latest/dex/tokens/${tokenAddr}`;
     const j = await fetchJsonWithTimeout(url, 9000);
     const pairs = Array.isArray(j?.pairs) ? j.pairs : [];
@@ -1065,19 +1065,22 @@
     return data;
   }
 
-
   async function pickV2PairAddress(chainId, pairs){
-    // Try to find a UniswapV2-style pair among DexScreener pairs (best-effort).
+    // Find a UniswapV2-style pair among DexScreener pairs (best-effort).
+    // IMPORTANT: Uniswap V3 pools also have token0/token1, so we additionally require getReserves().
     if(!Array.isArray(pairs) || !pairs.length) return null;
     const token0Sel = "0x0dfe1681";
     const token1Sel = "0xd21220a7";
-    // pairs are already sorted by liquidity in fetchDexScreener()
-    const maxTry = Math.min(10, pairs.length);
+    const reservesSel = "0x0902f1ac"; // getReserves()
+
+    const maxTry = Math.min(14, pairs.length);
     for(let i=0;i<maxTry;i++){
       const p = pairs[i] || {};
-      const addr = String(p.pairAddress || p.address || "");
-      if(!addr.toLowerCase().startsWith("0x")) continue;
+      const addr = String(p.pairAddress || p.address || '').trim();
+      if(!addr.toLowerCase().startsWith('0x') || addr.length !== 42) continue;
       try{
+        const rsv = await ethCall(chainId, addr, reservesSel).catch(()=>null);
+        if(!rsv) continue;
         const t0 = await ethCall(chainId, addr, token0Sel).catch(()=>null);
         const t1 = await ethCall(chainId, addr, token1Sel).catch(()=>null);
         if(t0 && t1) return addr;
@@ -1094,6 +1097,9 @@
     // Quick V2 probe
     const token0Sel = "0x0dfe1681";
     const token1Sel = "0xd21220a7";
+    const reservesSel = "0x0902f1ac"; // getReserves()
+    const rsv = await ethCall(chainId, pairAddr, reservesSel).catch(()=>null);
+    if(!rsv) return {pct:null, note:"Not V2 pool (no reserves)"};
     const t0 = await ethCall(chainId, pairAddr, token0Sel).catch(()=>null);
     const t1 = await ethCall(chainId, pairAddr, token1Sel).catch(()=>null);
     if(!t0 || !t1) return {pct:null, note:"Not V2 pool"};
@@ -1181,6 +1187,8 @@ function startLiveStampTime(){
       w.setAttribute("aria-hidden","true");
     }
 
+  }
+
   function bubblemapsUrl(chain, address){
     const a = String(address||'').trim();
     if(!a) return '';
@@ -1205,7 +1213,7 @@ function startLiveStampTime(){
       </div>`;
     openModal(title, body);
   }
-  }
+
   function showToast(title){
     const t = qs("toast");
     if(!t) return;
@@ -1501,6 +1509,26 @@ function pillLabel(sev){ return (sev==="ok" ? (pillIcon(sev)+' PASS') : (pillIco
         `<span class='legendPill'>Click = explorer</span>`
       ];
       legend.innerHTML = pills.join('');
+
+      // Add a compact top-wallet list (click opens explorer)
+      const ex = explorerBase(activeChain);
+      const topList = nodes.slice().sort((a,b)=>{
+        const ap = (Number.isFinite(a.pct)?a.pct:0);
+        const bp = (Number.isFinite(b.pct)?b.pct:0);
+        if(bp!==ap) return bp-ap;
+        return (b.r||0)-(a.r||0);
+      }).slice(0, 8);
+
+      if(topList.length){
+        const rows = topList.map(n => {
+          const a = n.addr || n.id || '';
+          const pct = (Number.isFinite(n.pct) && n.pct>0) ? (n.pct>=10 ? n.pct.toFixed(1) : n.pct.toFixed(2))+'%' : '—';
+          const label = (n.label && String(n.label).trim()) ? String(n.label).trim() : (a ? shortAddr(a) : 'Wallet');
+          const href = a ? (ex.base + a) : '#';
+          return `<a class="explorerBtn" style="width:100%; display:flex; justify-content:space-between; gap:10px;" href="${esc(href)}" target="_blank" rel="noreferrer"><span>${esc(label)}</span><span class="muted">${esc(pct)}</span></a>`;
+        }).join('');
+        legend.innerHTML += `<div style="margin-top:10px; display:flex; flex-direction:column; gap:8px; width:100%">${rows}</div>`;
+      }
     }
 
     if(hint){
@@ -1609,7 +1637,13 @@ function pillLabel(sev){ return (sev==="ok" ? (pillIcon(sev)+' PASS') : (pillIco
       ctx.save();
       ctx.setTransform(view.s, 0, 0, view.s, view.ox, view.oy);
 
-      // forces: repulsion
+      // visible world bounds (so nodes don't get clamped to the *screen* when panning/zooming)
+      const worldW = c.width / view.s;
+      const worldH = c.height / view.s;
+      const worldX0 = (-view.ox) / view.s;
+      const worldY0 = (-view.oy) / view.s;
+
+      // forces: repulsion (stable)
       for(let i=0;i<nodes.length;i++){
         const a = nodes[i];
         for(let j=i+1;j<nodes.length;j++){
@@ -1617,7 +1651,7 @@ function pillLabel(sev){ return (sev==="ok" ? (pillIcon(sev)+' PASS') : (pillIco
           const dx = a.x - b.x;
           const dy = a.y - b.y;
           const dist2 = dx*dx + dy*dy + 0.01;
-          const f = 1800 / dist2;
+          const f = 650 / dist2;
           const fx = dx * f;
           const fy = dy * f;
           if(a !== dragging){ a.vx += fx; a.vy += fy; }
@@ -1633,8 +1667,8 @@ function pillLabel(sev){ return (sev==="ok" ? (pillIcon(sev)+' PASS') : (pillIco
         const dx = b.x - a.x;
         const dy = b.y - a.y;
         const dist = Math.sqrt(dx*dx + dy*dy) || 1;
-        const target = 120;
-        const k = (dist - target) * 0.0008 * (e.w || 1);
+        const target = 130;
+        const k = (dist - target) * 0.0020 * (e.w || 1);
         const fx = dx * k;
         const fy = dy * k;
         if(a !== dragging){ a.vx += fx; a.vy += fy; }
@@ -1644,14 +1678,14 @@ function pillLabel(sev){ return (sev==="ok" ? (pillIcon(sev)+' PASS') : (pillIco
       // integrate + bounds
       for(const n of nodes){
         if(n !== dragging){
-          n.vx *= 0.86;
-          n.vy *= 0.86;
+          n.vx *= 0.82;
+          n.vy *= 0.82;
           n.x += n.vx;
           n.y += n.vy;
         }
         const pad = n.r + 10;
-        n.x = Math.max(pad, Math.min(c.width - pad, n.x));
-        n.y = Math.max(pad, Math.min(c.height - pad, n.y));
+        n.x = Math.max(worldX0 + pad, Math.min(worldX0 + worldW - pad, n.x));
+        n.y = Math.max(worldY0 + pad, Math.min(worldY0 + worldH - pad, n.y));
       }
 
       // edges draw
@@ -1685,39 +1719,51 @@ function pillLabel(sev){ return (sev==="ok" ? (pillIcon(sev)+' PASS') : (pillIco
         ctx.stroke();
       }
 
-      // overlay labels: show short address + % (if available)
+      // overlay labels (DexScreener-ish): show % inside bubble + wallet under
       const labelNodes = nodes.slice().sort((a,b)=>{
-        const ap = (a.pct||0), bp=(b.pct||0);
+        const ap = (Number.isFinite(a.pct)?a.pct:0);
+        const bp = (Number.isFinite(b.pct)?b.pct:0);
         if(bp!==ap) return bp-ap;
         return (b.r||0)-(a.r||0);
-      }).slice(0, 14);
+      }).slice(0, 18);
 
       ctx.save();
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.shadowColor = 'rgba(0,0,0,.65)';
-      ctx.shadowBlur = 8;
-      ctx.strokeStyle = 'rgba(0,0,0,.85)';
-      ctx.fillStyle = 'rgba(255,255,255,.92)';
+      ctx.shadowColor = 'rgba(0,0,0,.70)';
+      ctx.shadowBlur = 10;
+      ctx.strokeStyle = 'rgba(0,0,0,.90)';
 
       for(const n of labelNodes){
         if(!n) continue;
         const addr = n.addr || n.id || '';
-        const base = (n.label && String(n.label).trim()) ? String(n.label).trim() : (addr ? shortAddr(addr) : '');
-        if(!base) continue;
-        const pct = (Number.isFinite(n.pct) && n.pct>0) ? `${n.pct.toFixed(2)}%` : '';
-        const y = n.y - n.r - 10;
-        // line 1
-        ctx.font = '12px ui-monospace, Menlo, Consolas, monospace';
-        ctx.lineWidth = 4;
-        ctx.strokeText(base, n.x, y);
-        ctx.fillText(base, n.x, y);
-        // line 2
-        if(pct){
-          ctx.font = '11px ui-sans-serif, system-ui, -apple-system';
+        const name = (n.label && String(n.label).trim()) ? String(n.label).trim() : (addr ? shortAddr(addr) : '');
+        if(!name) continue;
+
+        const pct = (Number.isFinite(n.pct) && n.pct > 0) ? n.pct : null;
+        const pctTxt = pct === null ? '' : (pct >= 10 ? pct.toFixed(1) : pct.toFixed(2)) + '%';
+
+        // Font sizes scale with bubble radius
+        const fsPct  = Math.max(11, Math.min(18, (n.r||12) * 0.62));
+        const fsAddr = Math.max(10, Math.min(14, (n.r||12) * 0.46));
+
+        if(pctTxt){
+          ctx.font = fsPct + 'px ui-sans-serif, system-ui, -apple-system';
           ctx.lineWidth = 4;
-          ctx.strokeText(pct, n.x, y+14);
-          ctx.fillText(pct, n.x, y+14);
+          ctx.fillStyle = 'rgba(255,255,255,.95)';
+          ctx.strokeText(pctTxt, n.x, n.y - fsAddr*0.25);
+          ctx.fillText(pctTxt, n.x, n.y - fsAddr*0.25);
+
+          ctx.font = fsAddr + 'px ui-monospace, Menlo, Consolas, monospace';
+          ctx.fillStyle = 'rgba(255,255,255,.88)';
+          ctx.strokeText(name, n.x, n.y + fsPct*0.55);
+          ctx.fillText(name, n.x, n.y + fsPct*0.55);
+        }else{
+          ctx.font = fsAddr + 'px ui-monospace, Menlo, Consolas, monospace';
+          ctx.lineWidth = 4;
+          ctx.fillStyle = 'rgba(255,255,255,.92)';
+          ctx.strokeText(name, n.x, n.y);
+          ctx.fillText(name, n.x, n.y);
         }
       }
 
@@ -2491,7 +2537,7 @@ function pickTokenMetaFromAsset(asset){
     // flags: array of {t, sev, d, why}
     const items = Array.isArray(flags) ? flags : [];
     if(!items.length){
-      items.push({t:'No flags', sev:'ok', d:'No major risk flags detected by the current checks.', why:'Still verify official links && liquidity.'});
+      items.push({t:'No flags', sev:'ok', d:'No major risk flags detected by the current checks.', why:'Still verify official links and liquidity.'});
     }
     renderList(qs('extList'), items, 'Contract Flags');
   }
@@ -2962,32 +3008,46 @@ function intToHex(n){ return "0x" + Math.max(0, Number(n)||0).toString(16); }
 // Fetches a *sample* of ERC20 Transfer logs from recent blocks (no indexer needed).
 // Returned objects mimic GoldRush items (from_address/to_address/value/tx_hash/block_height/block_signed_at).
 async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
+  // CORS-safe, RPC-only fallback used when no indexer is available.
+  // This is a *sample*, not a full history.
   try{
     const latestHex = await evmRpc(chainId, "eth_blockNumber", []);
     const latest = hexToInt(latestHex);
-    let from = Math.max(0, latest - 18000); // ~3-7h depending on chain
-    let step = 2000;
+
+    const minFrom = Math.max(0, latest - (CFG?.EVM?.TRANSFER_SAMPLE_BLOCKS || 60000));
     const topic0 = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"; // Transfer(address,address,uint256)
+
     const out = [];
-    // Walk backwards to get the most recent activity first
-    for(let to=latest; to>from && out.length<maxEvents; to-=step){
-      const fb = Math.max(from, to-step+1);
+    let to = latest;
+    let window = Math.max(200, (CFG?.EVM?.TRANSFER_SAMPLE_STEP || 2500));
+    let guard = 0;
+
+    while(to > minFrom && out.length < maxEvents && guard++ < 120){
+      const fb = Math.max(minFrom, to - window + 1);
       const params = [{
         address: tokenAddr,
         fromBlock: intToHex(fb),
         toBlock: intToHex(to),
         topics: [topic0]
       }];
+
       let logs = [];
       try{
         logs = await evmRpc(chainId, "eth_getLogs", params);
         if(!Array.isArray(logs)) logs = [];
+
+        // If we hit a provider that returns huge batches, reduce window to avoid timeouts.
+        if(logs.length > 9000){
+          window = Math.max(200, Math.floor(window/2));
+          continue;
+        }
       }catch(err){
-        // If provider complains about too many results, shrink the window
-        step = Math.max(200, Math.floor(step/2));
+        // Too many results / gateway timeouts -> shrink the window and retry same range.
+        window = Math.max(200, Math.floor(window/2));
         continue;
       }
-      // Take newest logs first
+
+      // Take newest logs first (most recent activity).
       logs.reverse();
       for(const lg of logs){
         if(out.length>=maxEvents) break;
@@ -3006,6 +3066,14 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
           block_height: hexToInt(lg?.blockNumber),
           block_signed_at: null
         });
+      }
+
+      // Move the window backward and slowly increase window again for speed.
+      to = fb - 1;
+      if(window < (CFG?.EVM?.TRANSFER_SAMPLE_STEP || 2500)) window = Math.min((CFG?.EVM?.TRANSFER_SAMPLE_STEP || 2500), Math.floor(window * 1.25));
+      if(out.length < 30 && window > 400){
+        // If token is super busy, keep window smaller to avoid RPC limits.
+        window = Math.max(400, Math.floor(window * 0.9));
       }
     }
     return out;
@@ -3105,7 +3173,7 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
       nodes,
       edges: cut,
       bundles,
-      hint: (top.length ? 'Size = holder % (indexer). Links = recent token transfers (sampled). Drag to explore.' : 'Size = activity (no holder list). Links = recent token transfers (sampled). Drag to explore.')
+      hint: (top.length ? 'Size = holder % (indexer). Links = recent token transfers (sampled). Drag to explore.' : 'Size = activity (no holder list). Links = recent token transfers (sampled). For a professional view, click “Open BubbleMap”.')
     };
   }
 
@@ -3175,7 +3243,7 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
         d:"decimals() not readable or unusual.",
         why:"decimals() missing/reverted/out-of-range.",
         infoHtml: explain("Decimals", [
-          "Meaning: Needed for UI && supply math.",
+          "Meaning: Needed for UI and supply math.",
           "Why WATCH: decimals() not available or weird."
         ])
       });
@@ -3201,7 +3269,7 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
         d:"totalSupply() not readable.",
         why:"totalSupply() reverted/unavailable.",
         infoHtml: explain("Total supply", [
-          "Meaning: Supply is needed for holder % && tokenomics.",
+          "Meaning: Supply is needed for holder % and tokenomics.",
           "Why WATCH: totalSupply() not available."
         ])
       });
@@ -3241,7 +3309,7 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
           why:"owner() is not 0x0.",
           infoHtml: explain("Owner / Admin", [
             "Meaning: Admin control is possible (depends on contract).",
-            "Why WATCH: owner exists && may have privileges.",
+            "Why WATCH: owner exists and may have privileges.",
             "Tip: check multisig / timelock / renounce status."
           ])
         });
@@ -3309,11 +3377,11 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
         t:"Transfer controls (Pause)",
         sev:"warn",
         d:"Pause function exists (not active right now).",
-        why:"paused() exists && returned false.",
+        why:"paused() exists and returned false.",
         infoHtml: explain("Transfer controls (Pause)", [
           "Meaning: A pause mechanism exists.",
           "Why WATCH: admin may pause later.",
-          "Tip: review admin/owner && docs."
+          "Tip: review admin/owner and docs."
         ])
       });
     }else{
@@ -3445,7 +3513,7 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
           why:"PASS signals were condensed to keep UI clean.",
           infoHtml: explain("Standard signals", [
             "To keep the UI clean, PASS-only 'no signal' items are condensed.",
-            "All checks still run && affect scoring/report."
+            "All checks still run and affect scoring/report."
           ])
         });
       }
@@ -3655,42 +3723,64 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
   const supplyBI = metaOnChain?.totalSupply ?? null;
   const decimals = metaOnChain?.decimals ?? 18;
 
-  // 1) Prefer GoldRush holders if available
-  const holders = await goldrushHolders(chainId, tokenAddr);
+  // 1) Prefer GoldRush holders if available (best-effort)
+  const raw = await goldrushHolders(chainId, tokenAddr);
 
-  if(holders && holders.length){
-    const items = holders.slice(0,10).map((h, i) => {
-      const addr = (h?.address || "").trim();
+  const pickAddr = (h) => (h?.address || h?.wallet_address || h?.holder_address || h?.owner_address || h?.wallet || h?.holder || '').trim();
+  const pickBal  = (h) => (h?.balance ?? h?.token_balance ?? h?.token_balance_wei ?? h?.balance_wei ?? h?.balance_raw ?? h?.token_balance_raw ?? h?.value ?? h?.balance_quote ?? null);
 
-      const balRaw = h?.balance ?? h?.balance_quote ?? h?.token_balance ?? null;
+  const holders = [];
+  if(Array.isArray(raw) && raw.length){
+    for(const h of raw){
+      const addr = String(pickAddr(h) || '').toLowerCase();
+      if(!addr.startsWith('0x') || addr.length !== 42) continue;
+
+      const balRaw = pickBal(h);
       const balBI = safeBigIntFromStr(balRaw);
 
       let pct = null;
-      if(supplyBI !== null && supplyBI > 0n && balBI !== null){
-        const p = Number((balBI * 10000n) / supplyBI) / 100;
+      if(supplyBI !== null && supplyBI !== undefined && supplyBI > 0n && balBI !== null){
+        // keep 2 decimals, avoid float overflow
+        const p = Number((balBI * 1000000n) / supplyBI) / 10000;
         pct = Number.isFinite(p) ? p : null;
       }else{
-        const p2 = Number(h?.percentage ?? h?.pct ?? h?.share ?? NaN);
+        const p2 = Number(h?.percentage ?? h?.pct ?? h?.share ?? h?.holding ?? NaN);
         pct = Number.isFinite(p2) ? p2 : null;
       }
 
-      const balFmt = (balBI !== null) ? formatUnits(balBI, decimals) : (typeof balRaw === "string" ? balRaw : "—");
-      const pctStr = (pct === null) ? "—" : pct.toFixed(2) + "%";
+      holders.push({
+        address: addr,
+        balance: (balBI !== null) ? balBI.toString() : (balRaw !== null && balRaw !== undefined ? String(balRaw) : null),
+        percentage: pct
+      });
+    }
 
+    // Sort by percentage if present (fallback stable)
+    holders.sort((a,b) => (Number(b.percentage ?? -1) - Number(a.percentage ?? -1)));
+
+    const items = holders.slice(0,10).map((h,i) => {
+      const addr = h.address;
+      const balBI2 = safeBigIntFromStr(h.balance);
+      const balFmt = (balBI2 !== null) ? formatUnits(balBI2, decimals) : (h.balance ? String(h.balance) : '—');
+      const pctStr = (h.percentage === null || h.percentage === undefined) ? '—' : (Number(h.percentage).toFixed(2) + '%');
       return {
         t:`#${i+1} ${shortAddr(addr)}`,
         d:`${balFmt} tokens • ${pctStr}`,
         addr,
-        infoHtml: explain("Top holders via GoldRush indexer (best-effort).")
+        infoHtml: explain('Top holders (EVM)', [
+          'Source: GoldRush indexer (best-effort).',
+          'Why it matters: whale concentration can impact price.',
+          'Tip: verify in explorer holders tab.'
+        ])
       };
     });
 
-    renderHoldersList(items);
+    renderHoldersWithExplorer(items, activeChain);
     return holders;
   }
 
   // 2) Fallback: derive "top wallets" from a recent transfer sample (NOT true balances)
-  const transfers = await evmTokenTransfersSample(chainId, tokenAddr, 900);
+  const transfers = await evmTokenTransfersSample(chainId, tokenAddr, 2000);
   if(transfers && transfers.length){
     // net flow approximation: inflow - outflow in the sample window
     const net = new Map();
@@ -3699,32 +3789,33 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
       const ta = String(t?.to_address||"").toLowerCase();
       const vBI = safeBigIntFromStr(t?.value);
       if(vBI === null) continue;
-      if(fa.startsWith("0x")){
-        net.set(fa, (net.get(fa)||0n) - vBI);
-      }
-      if(ta.startsWith("0x")){
-        net.set(ta, (net.get(ta)||0n) + vBI);
-      }
+      if(fa.startsWith('0x')) net.set(fa, (net.get(fa)||0n) - vBI);
+      if(ta.startsWith('0x')) net.set(ta, (net.get(ta)||0n) + vBI);
     }
+
     const top = [...net.entries()]
-      .filter(([a, v]) => a.startsWith("0x") && v>0n)
-      .sort((a,b)=> (b[1]>a[1]?1:(b[1]<a[1]?-1:0)))
+      .filter(([a,v]) => a.startsWith('0x') && v > 0n)
+      .sort((a,b) => (b[1] > a[1] ? 1 : (b[1] < a[1] ? -1 : 0)))
       .slice(0,10);
 
     const items = top.map(([addr, v], i) => ({
       t:`#${i+1} ${shortAddr(addr)}`,
       d:`Net inflow (sample): ${formatUnits(v, decimals)} tokens`,
       addr,
-      infoHtml: explain("Fallback list based on *recent transfers sample* (not a true holder snapshot).")
+      infoHtml: explain('Fallback top wallets (sample)', [
+        'This is NOT a holder snapshot.',
+        'We approximate using a recent on-chain transfer sample when no indexer holder list is available.'
+      ])
     }));
 
-    renderHoldersList(items);
+    renderHoldersWithExplorer(items, activeChain);
     return [];
   }
 
   renderHoldersEmpty();
   return [];
 }
+
 
 
   /* ===================== MAIN SCAN FLOW (same, just calls updated display) ===================== */
@@ -3827,7 +3918,7 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
         setText(
           "summary",
           critical ? "Critical risk detected (mint/freeze authority)."
-                   : (score>=80 ? "Looks strong — still verify liquidity && official links."
+                   : (score>=80 ? "Looks strong — still verify liquidity and official links."
                                : "Mixed signals — verify admin controls && holders.")
         );
 
@@ -3911,8 +4002,8 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
           }
           if(pairForBurn){
             lpBurn = await lpBurnedPercentV2(chainId, pairForBurn);
-            if(lpBurn && lpBurn.pct === null && lpBurn.note === "Not V2 pool"){
-              lpBurn.note = "V3 pool / no LP token";
+            if(lpBurn && lpBurn.pct === null && typeof lpBurn.note==='string' && lpBurn.note.toLowerCase().includes('not v2')){
+              lpBurn.note = 'V3 pool / no LP token (or non-V2 pool)';
             }
           }
         }
@@ -3943,7 +4034,7 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
 
         const metricRows = [
           { label:"Guardian Score", value:`${score}/100`, badge: verdict.label, barPct: score, mini:"Composite risk score (heuristic)." },
-          { label:"Ownership Renounced", value: (ownerEff ? (isBurnAddr(ownerEff)?"YES":"NO") : "UNKNOWN"), badge: ownerEff ? (isBurnAddr(ownerEff)?"PASS":"WATCH") : "UNKNOWN", mini:`Best-effort via ${ownerSource}.` },
+          { label:"Ownership Renounced", value: (ownerEff ? (isBurnAddr(ownerEff)?"YES":"NO") : "NOT DETECTED"), badge: ownerEff ? (isBurnAddr(ownerEff)?"PASS":"WATCH") : "WATCH", mini:`Best-effort via ${ownerSource}.` },
           { label:"Liquidity", value: dex?.liquidityUsd != null ? money(dex.liquidityUsd) : "—", badge: dex?.dexId ? dex.dexId.toUpperCase() : "DEX", mini: dex?.url ? "From DexScreener (best pair)." : "—" },
           { label:"Market Cap", value: (dex?.marketCap != null ? money(dex.marketCap) : (dex?.fdv != null ? money(dex.fdv) : "—")), badge: dex?.marketCap != null ? "MCAP" : (dex?.fdv != null ? "FDV" : "—"), mini:"From DexScreener." },
           { label:"Price", value: dex?.priceUsd != null ? priceUsdFmt(dex.priceUsd) : "—", badge: "USD", mini: dex?.volume24h != null ? `Vol24h ${money(dex.volume24h)}` : "—" },
@@ -3956,7 +4047,7 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
         setText(
           "summary",
           critical ? "Critical risk detected (paused or contract missing)."
-                   : (score>=80 ? "Looks strong — still verify liquidity && official links."
+                   : (score>=80 ? "Looks strong — still verify liquidity and official links."
                                : "Mixed signals — verify admin/upgradeability/holders.")
         );
 
@@ -3965,8 +4056,8 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
         const flags = [];
         const renounced = ownerEff ? isBurnAddr(ownerEff) : null;
 
-        flags.push({t:"Owner / Admin", sev: ownerEff ? (isBurnAddr(ownerEff)?"ok":"warn") : "warn", d: ownerEff ? (isBurnAddr(ownerEff)?"Renounced":shortAddr(ownerEff)) : "UNKNOWN", why: `Source: ${ownerSource}.`});
-        flags.push({t:"Ownership Renounced", sev: renounced===true ? "ok" : (renounced===false?"warn":"warn"), d: renounced===null?"UNKNOWN":(renounced?"YES":"NO"), why:`Best-effort via ${ownerSource}.`});
+        flags.push({t:"Owner / Admin", sev: ownerEff ? (isBurnAddr(ownerEff)?"ok":"warn") : "warn", d: ownerEff ? (isBurnAddr(ownerEff)?"Renounced":shortAddr(ownerEff)) : "NOT DETECTED", why: `Source: ${ownerSource}.`});
+        flags.push({t:"Ownership Renounced", sev: renounced===true ? "ok" : (renounced===false?"warn":"warn"), d: renounced===null?"NOT DETECTED":(renounced?"YES":"NO"), why:`Best-effort via ${ownerSource}.`});
 
         // Upgradeability / proxy
         flags.push({t:"Proxy / Upgradeable", sev: proxy?.isProxy ? "warn" : "ok", d: proxy?.isProxy ? "YES" : "NO", why:"EIP-1967 slots check."});
@@ -4499,7 +4590,7 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
               <div class="l">$SOS Guardian System</div>
             </div>
             <div style="color: rgba(255,255,255,.74); font-weight:850; font-size:12.5px; line-height:1.45;">
-              <div style="margin:6px 0;">• This report is heuristic && best-effort. Always verify liquidity, official links, && contract code.</div>
+              <div style="margin:6px 0;">• This report is heuristic and best-effort. Always verify liquidity, official links, and contract code.</div>
               <div style="margin:6px 0;">• PASS/WATCH/FAIL applies per-check only. It is not a guarantee of safety.</div>
               <div style="margin:6px 0;">• Tip: Use your browser “Print” → “Save as PDF” for a clean PDF export.</div>
             </div>
@@ -4568,7 +4659,7 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
     L.push("");
     L.push("Notes");
     L.push("----------------------------------------");
-    L.push("- This report is heuristic && best-effort. Always verify liquidity, official links, && contract code.");
+    L.push("- This report is heuristic and best-effort. Always verify liquidity, official links, and contract code.");
     L.push("- PASS/WATCH/FAIL applies per-check only. It is not a guarantee of safety.");
     return L.join("\n");
   }
