@@ -1,0 +1,3184 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#070711" />
+  <title>$SOS — Guardian Check (Multi-Chain)</title>
+  <meta name="description" content="Guardian Approved — token risk score + launch readiness checklist (on-chain verifiable)." />
+
+  <style>
+    :root{
+      --bg:#070711;
+      --panel: rgba(255,255,255,.06);
+      --stroke: rgba(255,255,255,.12);
+      --text: rgba(255,255,255,.92);
+      --muted: rgba(255,255,255,.70);
+      --g:#14F195;
+      --c:#00D1FF;
+      --p:#9945FF;
+      --radius: 22px;
+      --shadow: 0 10px 30px rgba(0,0,0,.35);
+      --max: 1180px;
+
+      /* brand-ish extras (for icons + report) */
+      --sol-g1:#14F195;
+      --sol-g2:#00D1FF;
+      --sol-g3:#9945FF;
+
+      --bnb-yellow:#F0B90B;
+      --base-blue:#0052FF;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      color:var(--text);
+      font: 15.5px/1.55 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      background: var(--bg);
+      position:relative;
+      overflow-x:hidden;
+    }
+    body::before{
+      content:"";
+      position:fixed;
+      inset:0;
+      z-index:-1;
+      pointer-events:none;
+      background:
+        radial-gradient(1200px 700px at 10% 5%, rgba(153,69,255,.22), transparent 60%),
+        radial-gradient(1000px 650px at 90% 10%, rgba(20,241,149,.18), transparent 55%),
+        radial-gradient(900px 600px at 70% 85%, rgba(0,209,255,.14), transparent 55%),
+        var(--bg);
+      transform: translateZ(0);
+    }
+    a{color:inherit; text-decoration:none}
+    .wrap{max-width:var(--max); margin:0 auto; padding:0 18px; width:100%;}
+    main{padding:22px 0 42px}
+    .topbar{
+      position:sticky;
+      top:0;
+      z-index:20;
+      backdrop-filter: blur(14px);
+      background: rgba(7,7,17,.62);
+      border-bottom: 1px solid rgba(255,255,255,.08);
+    }
+    .row{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      padding:12px 0;
+      flex-wrap:wrap;
+    }
+    .brand{
+      display:flex;
+      align-items:center;
+      gap:12px;
+      min-width: 260px;
+      user-select:none;
+    }
+    .brand img{
+      width:40px;
+      height:40px;
+      object-fit:contain;
+      filter: drop-shadow(0 10px 25px rgba(0,0,0,.45));
+    }
+    .bt{display:flex; flex-direction:column; line-height:1.05}
+    .bt .t{font-weight:1000; letter-spacing:-.2px; font-size:16px}
+    .bt .s{font-weight:850; color:var(--muted); font-size:12.5px}
+    .actions{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      flex-wrap:wrap;
+      justify-content:flex-end;
+      width:100%;
+    }
+    @media (min-width: 980px){
+      .actions{width:auto}
+    }
+    .btn{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      padding:9px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      color: rgba(255,255,255,.88);
+      font-weight:950;
+      font-size:13px;
+      transition: .15s ease;
+      user-select:none;
+      cursor:pointer;
+      -webkit-tap-highlight-color: transparent;
+      white-space:nowrap;
+    }
+    .btn:hover{background: rgba(255,255,255,.10); transform: translateY(-1px)}
+    .btn.grad{
+      border:0;
+      background: linear-gradient(90deg, var(--g), var(--c), var(--p));
+      color:#061012;
+      box-shadow: 0 10px 24px rgba(0,0,0,.25);
+    }
+    .btn[disabled]{opacity:.55; pointer-events:none}
+    .card{
+      background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.05));
+      border: 1px solid rgba(255,255,255,.10);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+    }
+    .inner{padding:22px}
+    .hero{
+      position:relative;
+      overflow:hidden;
+      isolation:isolate;
+    }
+    .hero::before{
+      content:"";
+      position:absolute;
+      inset:-70px -40px;
+      background:
+        radial-gradient(900px 520px at 18% 28%, rgba(20,241,149,.16), transparent 60%),
+        radial-gradient(900px 520px at 82% 20%, rgba(0,209,255,.12), transparent 60%),
+        radial-gradient(900px 520px at 70% 86%, rgba(153,69,255,.14), transparent 60%);
+      z-index:0;
+      pointer-events:none;
+    }
+    .hero > *{position:relative; z-index:1}
+    .h1{
+      margin:0;
+      font-weight:1000;
+      letter-spacing:-1px;
+      line-height:1.05;
+      font-size: clamp(36px, 4.6vw, 62px);
+    }
+    .gradText{
+      background: linear-gradient(90deg, var(--g), var(--c), var(--p));
+      -webkit-background-clip:text;
+      background-clip:text;
+      color:transparent;
+    }
+    .sub{
+      margin-top:10px;
+      color: rgba(255,255,255,.76);
+      font-weight:850;
+      max-width: 940px;
+    }
+    .classified{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+    .stamp{
+      font-weight:1000;
+      font-size:12px;
+      letter-spacing: .45px;
+      text-transform:uppercase;
+      color: rgba(255,255,255,.76);
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      border-radius: 999px;
+      padding:7px 10px;
+    }
+    .layout{
+      margin-top:16px;
+      display:grid;
+      grid-template-columns: 1.05fr .95fr;
+      gap:16px;
+      align-items:start;
+    }
+    @media (max-width: 980px){
+      .layout{grid-template-columns:1fr}
+    }
+
+    @media (max-width: 980px){
+      .wrap{ padding: 0 14px; }
+      .inner{ padding: 16px; }
+      .panel{ padding: 14px; }
+      .brand{ min-width: 0; width: 100%; }
+      .actions{ width: 100%; justify-content: flex-start; }
+      .actions .btn{ width: 100%; justify-content: center; padding: 12px 14px; font-size: 14px; }
+      .resultTop{ flex-direction: column; align-items: stretch; }
+      .resultTop > div:last-child{ width: 100%; justify-content: flex-start; }
+      .resultTop .badge{ width: fit-content; }
+      .tokenHead{ flex-wrap: nowrap; }
+      .tokenName{ font-size: 18px; }
+      .tokenSymbol{ font-size: 13px; }
+      .metricV{ flex-direction: column; align-items: flex-start; gap: 6px; font-size: 22px; }
+      .metricK{ flex-wrap: wrap; gap: 8px; }
+      .metricK .badge{ margin-left: auto; }
+      .li{ flex-direction: column; align-items: flex-start; gap: 10px; }
+      .pillRow{ width:100%; justify-content:flex-start; flex-wrap:wrap; }
+      .copyBox{ flex-direction: column; align-items: flex-start; gap: 10px; }
+      .modal{ width:100%; }
+      .toast{ left:14px; right:14px; transform:none; width:auto; }
+    }
+
+    .panel{
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.18);
+      border-radius: 18px;
+      padding:16px;
+      overflow:hidden;
+    }
+    label{
+      display:block;
+      font-weight:950;
+      font-size:12.5px;
+      letter-spacing:.35px;
+      color: rgba(255,255,255,.82);
+      margin-bottom:8px;
+    }
+    input{
+      width:100%;
+      padding:14px 14px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.22);
+      color: rgba(255,255,255,.92);
+      outline:none;
+      font-weight:900;
+      letter-spacing:.2px;
+      font-size:16px;
+      max-width:100%;
+    }
+    input:focus{
+      border-color: rgba(0,209,255,.45);
+      box-shadow: 0 0 0 3px rgba(0,209,255,.12);
+    }
+    .statusLine{
+      margin-top:12px;
+      color: rgba(255,255,255,.72);
+      font-weight:900;
+      min-height: 18px;
+      font-size:13px;
+      overflow-wrap:anywhere;
+      word-break:break-word;
+    }
+    .badge{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      padding:7px 11px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      font-weight:1000;
+      font-size:12px;
+      white-space:nowrap;
+    }
+    .badge.good{border:0; background: linear-gradient(90deg,var(--g),var(--c),var(--p)); color:#061012}
+    .badge.warn{border-color: rgba(255,220,130,.35); background: rgba(255,220,130,.08); color: rgba(255,240,210,.92)}
+    .badge.bad{border-color: rgba(255,120,150,.35); background: rgba(255,120,150,.10); color: rgba(255,190,205,.95)}
+    .resultTop{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:12px;
+      flex-wrap:wrap;
+    }
+    .resultTitle{
+      margin:0;
+      font-weight:1000;
+      font-size:22px;
+      letter-spacing:-.4px;
+    }
+    .mono{
+      font-family: ui-monospace, Menlo, Consolas, monospace;
+      font-weight:900;
+      color: rgba(255,255,255,.86);
+      margin-top:6px;
+      overflow-wrap:anywhere;
+      word-break:break-word;
+    }
+    .tokenHead{
+      display:flex;
+      gap:12px;
+      align-items:center;
+      flex-wrap:wrap;
+      margin-bottom:10px;
+      min-width:0;
+    }
+    .tokenLogoWrap{
+      width:44px;
+      height:44px;
+      border-radius:12px;
+      overflow:hidden;
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.18);
+      display:none;
+      flex:0 0 auto;
+    }
+    .tokenLogoWrap img{ width:100%; height:100%; object-fit:cover; display:block; }
+    .tokenName{
+      font-weight:1000;
+      font-size:16px;
+      letter-spacing:-.2px;
+      line-height:1.15;
+      overflow-wrap:anywhere;
+      word-break:break-word;
+    }
+    .tokenSymbol{
+      margin-top:2px;
+      color: rgba(255,255,255,.70);
+      font-weight:900;
+      font-size:12.5px;
+    }
+    .metricStack{margin-top:12px; display:grid; gap:10px;}
+    .metric{
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.04);
+      border-radius: 16px;
+      padding:12px 12px;
+    }
+    .metricK{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      color: rgba(255,255,255,.70);
+      font-weight:1000;
+      font-size:12px;
+      letter-spacing:.45px;
+      text-transform:uppercase;
+    }
+    .metricV{
+      margin-top:8px;
+      font-weight:1000;
+      font-size:20px;
+      display:flex;
+      align-items:baseline;
+      justify-content:space-between;
+      gap:12px;
+      flex-wrap:wrap;
+    }
+    .metricMini{
+      margin-top:6px;
+      font-weight:850;
+      font-size:12px;
+      color: rgba(255,255,255,.62);
+      overflow-wrap:anywhere;
+      word-break:break-word;
+    }
+    .bar{
+      margin-top:10px;
+      height:12px;
+      border-radius:999px;
+      background: rgba(255,255,255,.08);
+      border: 1px solid rgba(255,255,255,.10);
+      overflow:hidden;
+    }
+    .bar > div{
+      height:100%;
+      width:0%;
+      background: linear-gradient(90deg, var(--g), var(--c), var(--p));
+      border-radius:999px;
+      transition: width .25s ease;
+    }
+    .list{
+      margin:10px 0 0;
+      padding:0;
+      list-style:none;
+      display:grid;
+      gap:10px;
+    }
+    .li{
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.14);
+      border-radius: 16px;
+      padding:12px 12px;
+      display:flex;
+      gap:10px;
+      align-items:flex-start;
+      justify-content:space-between;
+      min-width:0;
+    }
+    .li .left{min-width:0;}
+    .li .t{font-weight:1000; font-size:13px; letter-spacing:.2px;}
+    .li .d{
+      margin-top:4px;
+      color: rgba(255,255,255,.70);
+      font-weight:750;
+      font-size:12.5px;
+      line-height:1.35;
+      overflow-wrap:anywhere;
+      word-break:break-word;
+    }
+
+    .pillRow{
+      display:flex;
+      gap:8px;
+      align-items:center;
+      flex:0 0 auto;
+      justify-content:flex-end;
+    }
+    .pill{
+      padding:6px 10px;
+      border-radius: 999px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.06);
+      font-weight:1000;
+      font-size:12px;
+      white-space:nowrap;
+      user-select:none;
+      -webkit-tap-highlight-color: transparent;
+      cursor:pointer;
+    }
+    .pill.ok{border:0; background: linear-gradient(90deg,var(--g),var(--c),var(--p)); color:#061012}
+    .pill.warn{border-color: rgba(255,220,130,.35); background: rgba(255,220,130,.08); color: rgba(255,240,210,.92)}
+    .pill.bad{border-color: rgba(255,120,150,.35); background: rgba(255,120,150,.10); color: rgba(255,190,205,.95)}
+    .infoBtn{
+      width:26px;
+      height:26px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.18);
+      background: rgba(255,255,255,.06);
+      color: rgba(255,255,255,.86);
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      cursor:pointer;
+      user-select:none;
+      font-weight:1000;
+      font-size:13px;
+      line-height:1;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .infoBtn:hover{ background: rgba(255,255,255,.10); transform: translateY(-1px); }
+    .infoBtn:active{ transform: translateY(0px); }
+    .infoBtn span{ transform: translateY(-0.5px); }
+
+    .explorerBtn{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      padding:6px 10px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      font-weight:1000;
+      font-size:12px;
+      white-space:nowrap;
+      cursor:pointer;
+      user-select:none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .explorerBtn:hover{ background: rgba(255,255,255,.10); transform: translateY(-1px); }
+
+    footer{
+      padding: 18px 0 34px;
+      color: rgba(255,255,255,.45);
+      font-weight:650;
+      text-align:center;
+      font-size:12px;
+    }
+
+    .modalWrap{
+      position:fixed;
+      inset:0;
+      background: rgba(0,0,0,.55);
+      backdrop-filter: blur(10px);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      padding:18px;
+      z-index:100;
+    }
+    .modal{
+      width:min(920px, 100%);
+      border-radius: 20px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(7,7,17,.92);
+      box-shadow: 0 16px 50px rgba(0,0,0,.5);
+      overflow:hidden;
+    }
+    .modalHead{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      padding:14px 16px;
+      border-bottom: 1px solid rgba(255,255,255,.10);
+    }
+    .modalTitle{ font-weight:1000; letter-spacing:-.3px; }
+    .modalBody{
+      padding:14px 16px 16px;
+      color: rgba(255,255,255,.84);
+      font-weight:850;
+      line-height:1.5;
+      overflow-wrap:anywhere;
+      word-break:break-word;
+    }
+
+    .chainRow{
+      margin-top:10px;
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+    .chainBtn{
+      display:inline-flex;
+      align-items:center;
+      gap:10px;
+      padding:10px 12px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      cursor:pointer;
+      user-select:none;
+      font-weight:1000;
+      font-size:13px;
+      color: rgba(255,255,255,.88);
+      -webkit-tap-highlight-color: transparent;
+    }
+    .chainBtn:hover{ background: rgba(255,255,255,.10); }
+    .chainBtn.active{
+      border:0;
+      background: linear-gradient(90deg, var(--g), var(--c), var(--p));
+      color:#061012;
+      box-shadow: 0 10px 24px rgba(0,0,0,.25);
+    }
+    .chainIcon{
+      width:18px;
+      height:18px;
+      border-radius:6px;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      overflow:hidden;
+      background: rgba(0,0,0,.25);
+      border:1px solid rgba(255,255,255,.10);
+      flex:0 0 auto;
+    }
+    .chainIcon svg{ width:18px; height:18px; display:block; }
+    .chainMiniHint{
+      margin-top:10px;
+      font-size:12.5px;
+      color: rgba(255,255,255,.62);
+      font-weight:850;
+      line-height:1.35;
+    }
+
+    .toast{
+      position:fixed;
+      top: max(16px, env(safe-area-inset-top));
+      left:50%;
+      transform:translateX(-50%);
+      width:min(920px, calc(100% - 28px));
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(7,7,17,.90);
+      box-shadow: 0 16px 50px rgba(0,0,0,.45);
+      padding:14px 14px;
+      display:none;
+      z-index:120;
+      backdrop-filter: blur(12px);
+    }
+    .toastRow{display:flex; align-items:center; justify-content:space-between; gap:12px;}
+    .toastTitle{font-weight:1000; font-size:18px; letter-spacing:-.3px;}
+    .toastClose{
+      padding:9px 12px;
+      border-radius:999px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      color: rgba(255,255,255,.88);
+      font-weight:950;
+      cursor:pointer;
+    }
+    .toastClose:hover{background: rgba(255,255,255,.10);}
+
+    @media (prefers-reduced-motion: reduce){
+      .btn:hover{transform:none}
+      .bar > div{transition:none}
+      .infoBtn:hover{transform:none}
+      .explorerBtn:hover{transform:none}
+    }
+  </style>
+</head>
+
+<body>
+  <!-- Toast -->
+  <div class="toast" id="toast">
+    <div class="toastRow">
+      <div class="toastTitle" id="toastTitle">—</div>
+      <button class="toastClose" id="toastClose" type="button">Close</button>
+    </div>
+  </div>
+
+  <div class="topbar">
+    <div class="wrap">
+      <div class="row">
+        <div class="brand">
+          <img src="/assets/logo.png" alt="$SOS" onerror="this.style.display='none'">
+          <div class="bt">
+            <div class="t">$SOS</div>
+            <div class="s">Contract Scanner • Token Risk</div>
+          </div>
+        </div>
+
+        <div class="actions">
+          <a class="btn" href="https://solanax1.com/" rel="noreferrer">← Back to Main</a>
+          <button class="btn grad" id="btnScan" type="button">Run Guardian Check</button>
+          <button class="btn grad" id="btnExport" type="button" disabled>Download Scan Report</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <main class="wrap">
+    <section class="card hero">
+      <div class="inner">
+        <div class="classified">
+          <div class="stamp">GUARDIAN SYSTEM • MAINNET • ON-CHAIN VERIFIED</div>
+          <div class="stamp" id="stampTime">—</div>
+        </div>
+
+        <h1 class="h1" style="margin-top:12px;">
+          <span class="gradText">Guardian Contract</span> Scanner
+        </h1>
+
+        <div class="sub">
+          Multi-chain scan: Solana + ETH + BNB + Base.
+          <br/>
+        </div>
+
+        <div class="layout">
+          <!-- INPUT -->
+          <div class="panel">
+            <label>Choose Chain</label>
+            <div class="chainRow" id="chainRow"></div>
+            <div class="chainMiniHint" id="chainHint">—</div>
+
+            <label for="mint" style="margin-top:14px;" id="addrLabel">Token Address</label>
+            <input id="mint" placeholder="Paste token address..." autocomplete="off" spellcheck="false" inputmode="text" />
+            <button class="btn grad" id="btnScanInline" type="button" style="width:100%; margin-top:12px;">Run Guardian Check</button>
+            <div class="statusLine" id="status"></div>
+          </div>
+
+          <!-- RESULTS -->
+          <div class="panel" id="resultsPanel">
+            <div class="resultTop">
+              <div style="min-width:0">
+                <div class="tokenHead">
+                  <div class="tokenLogoWrap" id="tokenLogoWrap"><img id="tokenLogo" alt=""></div>
+                  <div style="min-width:0">
+                    <div class="tokenName" id="tokenName">—</div>
+                    <div class="tokenSymbol" id="tokenSymbol">—</div>
+                  </div>
+                </div>
+
+                <h3 class="resultTitle" id="verdictTitle">—</h3>
+                <div class="mono" id="mintShort">—</div>
+              </div>
+
+              <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                <span class="badge" id="verdictBadge">—</span>
+                <span class="badge good" id="scoreBadge">—</span>
+              </div>
+            </div>
+
+            <div class="metricStack" id="metrics"></div>
+            <div class="statusLine" id="summary">—</div>
+          </div>
+        </div>
+
+        <!-- Checks -->
+        <div class="panel" style="margin-top:16px;">
+          <div class="classified">
+            <div class="stamp">GUARDIAN CHECKS</div>
+            <div class="stamp" id="scanHint">—</div>
+          </div>
+          <ul class="list" id="checksList" style="margin-top:10px;"></ul>
+        </div>
+
+        <!-- Launch readiness -->
+        <div class="panel" style="margin-top:16px;">
+          <div class="classified">
+            <div class="stamp">LAUNCH READINESS</div>
+            <div class="stamp">ACTION LIST</div>
+          </div>
+          <ul class="list" id="todoList" style="margin-top:10px;"></ul>
+        </div>
+
+        <!-- Token standard details -->
+        <div class="panel" style="margin-top:16px;">
+          <div class="classified">
+            <div class="stamp">TOKEN STANDARD DETAILS</div>
+            <div class="stamp">ON-CHAIN</div>
+          </div>
+          <ul class="list" id="extList" style="margin-top:10px;"></ul>
+        </div>
+
+        <!-- Metadata -->
+        <div class="panel" style="margin-top:16px;">
+          <div class="classified">
+            <div class="stamp">TOKEN METADATA</div>
+            <div class="stamp">RPC / ON-CHAIN</div>
+          </div>
+          <ul class="list" id="metaList" style="margin-top:10px;"></ul>
+        </div>
+
+        <!-- Top holders -->
+        <div class="panel" style="margin-top:16px;">
+          <div class="classified">
+            <div class="stamp">TOP HOLDERS (PREVIEW)</div>
+            <div class="stamp" id="holdersStamp">MAINNET</div>
+          </div>
+          <ul class="list" id="holdersList" style="margin-top:10px;"></ul>
+        </div>
+      </div>
+    </section>
+
+    <footer>© <span id="y"></span> $SOS • Guardian Check</footer>
+  </main>
+
+  <!-- Modal -->
+  <div class="modalWrap" id="modalWrap" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="modal">
+      <div class="modalHead">
+        <div class="modalTitle" id="modalTitle">Guardian Details</div>
+        <button class="btn" id="modalClose" type="button">Close</button>
+      </div>
+      <div class="modalBody" id="modalBody"></div>
+    </div>
+  </div>
+
+  <script>
+  /* =========================================================
+     GUARDIAN CHECK v2.4 — CLEAN SINGLE-FILE (UPDATED)
+     Fixes included in this update (your requests):
+     ✅ Chain logos now "original-looking" (Solana/BNB/Base improved SVG)
+     ✅ EVM "No signal" spam will be hidden/cleaned (implemented in later parts)
+     ✅ Export report will be a branded HTML report (implemented in later parts)
+     ========================================================= */
+
+  /* ===================== CONFIG ===================== */
+  const CFG = {
+    HELIUS_KEY: "b566a086-57d4-4433-8661-faed9ad07ba0",
+
+    // Optional: Moralis for EVM logos/metadata:
+    EVM_METADATA_KEY: "",
+
+    // Optional: Covalent GoldRush (holders for EVM)
+    GOLDRUSH_API_KEY: "cqt_rQVTMTXwYkPJBrwf7ff6JWmdkywR",
+
+    TOKEN_PROGRAM: "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+    TOKEN_2022_PROGRAM: "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
+
+    CHAINS: [
+      { id:"sol",  name:"Solana",   kind:"solana", stamp:"MAINNET",    addrLabel:"Token Mint Address",      placeholder:"Paste token mint (Solana)..." },
+      { id:"eth",  name:"Ethereum", kind:"evm",    chainId:1,  stamp:"ETH MAINNET",  addrLabel:"Token Contract Address", placeholder:"Paste ERC-20 contract (0x...)" },
+      { id:"bnb",  name:"BNB",      kind:"evm",    chainId:56, stamp:"BNB MAINNET",  addrLabel:"Token Contract Address", placeholder:"Paste BEP-20 contract (0x...)" },
+      { id:"base", name:"Base",     kind:"evm",    chainId:8453, stamp:"BASE MAINNET", addrLabel:"Token Contract Address", placeholder:"Paste Base token contract (0x...)" }
+    ],
+
+
+
+    EVM_RPCS: {
+      1:    ["https://ethereum.publicnode.com", "https://rpc.ankr.com/eth",  "https://eth.llamarpc.com", "https://cloudflare-eth.com"],
+      56:   ["https://bsc.publicnode.com",      "https://rpc.ankr.com/bsc",  "https://bsc-dataseed.binance.org"],
+      8453: ["https://base.publicnode.com",     "https://rpc.ankr.com/base", "https://mainnet.base.org"]
+    },
+
+    /* NEW (v2.4): Clean UI toggles (no features removed — just display rules) */
+   UI: {
+  SHOW_PASS_DETAILS_EVM: false,
+  SHOW_NO_SIGNAL_METRICS: false,
+
+  // ✅ Logo für Export-Report (funktioniert auch lokal)
+  REPORT_LOGO_URL: "https://solanax1.com/assets/logo.png"
+},
+    
+
+    /* NEW (v2.4): export options */
+    EXPORT: {
+      // "html" looks like your website (branded) — requested.
+      // "txt" keeps old text export available as fallback (still in code).
+      DEFAULT_FORMAT: "html"
+    }
+  };
+
+  /* ===================== ICONS (UPDATED: more original-looking) ===================== */
+  const ICONS = {
+    /* Solana: proper 3-bar look with gradient */
+    sol: `
+      <svg viewBox="0 0 64 64" aria-hidden="true">
+        <defs>
+          <linearGradient id="solg" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="${getComputedStyle(document.documentElement).getPropertyValue('--sol-g1').trim() || '#14F195'}"/>
+            <stop offset="0.5" stop-color="${getComputedStyle(document.documentElement).getPropertyValue('--sol-g2').trim() || '#00D1FF'}"/>
+            <stop offset="1" stop-color="${getComputedStyle(document.documentElement).getPropertyValue('--sol-g3').trim() || '#9945FF'}"/>
+          </linearGradient>
+        </defs>
+        <path d="M14 18c1.6-1.8 3.5-2.7 5.7-2.7h33.6c3.3 0 5 4 2.8 6.5l-6.1 6.8c-1.6 1.8-3.5 2.7-5.7 2.7H10.7c-3.3 0-5-4-2.8-6.5L14 18Z" fill="url(#solg)"/>
+        <path d="M14 38.9c1.6-1.8 3.5-2.7 5.7-2.7h33.6c3.3 0 5 4 2.8 6.5l-6.1 6.8c-1.6 1.8-3.5 2.7-5.7 2.7H10.7c-3.3 0-5-4-2.8-6.5L14 38.9Z" fill="url(#solg)" opacity=".7"/>
+        <path d="M50 28.5c-1.6 1.8-3.5 2.7-5.7 2.7H10.7c-3.3 0-5-4-2.8-6.5L14 17.9c1.6-1.8 3.5-2.7 5.7-2.7h33.6c3.3 0 5 4 2.8 6.5L50 28.5Z" fill="url(#solg)" opacity=".9"/>
+      </svg>
+    `,
+
+    /* Ethereum: clean diamond */
+    eth: `
+      <svg viewBox="0 0 64 64" aria-hidden="true">
+        <path d="M32 6l16 26-16 9-16-9L32 6Z" fill="currentColor" opacity=".95"/>
+        <path d="M32 58l16-22-16 9-16-9 16 22Z" fill="currentColor" opacity=".75"/>
+      </svg>
+    `,
+
+    /* BNB: official-like geometric mark in yellow */
+    bnb: `
+      <svg viewBox="0 0 64 64" aria-hidden="true">
+        <path fill="${getComputedStyle(document.documentElement).getPropertyValue('--bnb-yellow').trim() || '#F0B90B'}"
+          d="M32 6l8.6 8.6L32 23.2l-8.6-8.6L32 6Zm15.4 15.4L56 30l-8.6 8.6-8.6-8.6L47.4 21.4ZM16.6 21.4 25.2 30l-8.6 8.6L8 30l8.6-8.6ZM32 32.8l8.6 8.6L32 50l-8.6-8.6L32 32.8Zm0-6.9 5.1 5.1L32 36.2 26.9 31 32 25.9Z"/>
+      </svg>
+    `,
+
+    /* Base: blue circle with white "b" (clean) */
+    base: `
+      <svg viewBox="0 0 64 64" aria-hidden="true">
+        <circle cx="32" cy="32" r="26" fill="${getComputedStyle(document.documentElement).getPropertyValue('--base-blue').trim() || '#0052FF'}"/>
+        <path d="M27.5 22h8.1c6.2 0 11.2 5 11.2 11.1S41.8 44.2 35.6 44.2h-8.1V22Zm5.3 5.1v12h2.4c3.3 0 6-2.7 6-6s-2.7-6-6-6h-2.4Z"
+              fill="#fff"/>
+      </svg>
+    `
+  };
+
+  /* ===================== SAFE DOM HELPERS ===================== */
+  const qs = (id) => document.getElementById(id);
+  const setText = (id, v) => { const el = qs(id); if (el) el.textContent = (v ?? ""); };
+  const setHTML = (id, v) => { const el = qs(id); if (el) el.innerHTML = (v ?? ""); };
+  const on = (id, ev, fn) => { const el = qs(id); if (el) el.addEventListener(ev, fn); };
+
+  const esc = (x) => String(x ?? "")
+    .replaceAll("&","&amp;")
+    .replaceAll("<","&lt;")
+    .replaceAll(">","&gt;")
+    .replaceAll('"',"&quot;");
+
+  /* ===================== GLOBAL STATE ===================== */
+  let activeChain = CFG.CHAINS[0];
+  let LAST_SCAN = null;
+  let SCANNING = false;
+
+  /* ===================== UTIL ===================== */
+  function clamp(n, min, max){ return Math.max(min, Math.min(max, n)); }
+  function shortAddr(a){ return a ? (a.slice(0,4) + "…" + a.slice(-4)) : "—"; }
+  function fmtInt(n){
+    if (n === null || n === undefined || Number.isNaN(n)) return "—";
+    try { return new Intl.NumberFormat("en-US").format(Math.round(Number(n))); }
+    catch { return String(n); }
+  }
+  function fmtPct(n){
+    if (n === null || n === undefined || Number.isNaN(n)) return "—";
+    return `${Number(n).toFixed(2)}%`;
+  }
+  function setStatus(msg){ setText("status", msg || ""); }
+  function setBadge(el, txt, mode){
+    if(!el) return;
+    el.textContent = txt ?? "";
+    el.classList.remove("good","warn","bad");
+    if(mode) el.classList.add(mode);
+  }
+let STAMP_TIMER = null;
+
+function updateStampTime(){
+  const el = qs("stampTime");
+  if(!el) return;
+
+  const now = new Date();
+  const live = new Intl.DateTimeFormat("de-DE", {
+    timeZone: "Europe/Berlin",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit"
+  }).format(now);
+
+  el.textContent = live;
+}
+
+function startLiveStampTime(){
+  if(STAMP_TIMER) clearInterval(STAMP_TIMER);
+  updateStampTime();
+  STAMP_TIMER = setInterval(updateStampTime, 1000);
+}
+
+  /* ===================== VALIDATION ===================== */
+  function looksBase58(s){
+    return typeof s === "string" && s.length >= 32 && s.length <= 52 && /^[1-9A-HJ-NP-Za-km-z]+$/.test(s);
+  }
+  function looksEvmAddress(s){
+    return typeof s === "string" && /^0x[0-9a-fA-F]{40}$/.test(s.trim());
+  }
+
+  /* ===================== MODAL + TOAST ===================== */
+  function openModal(title, bodyHtml){
+    setText("modalTitle", title || "Guardian Details");
+    setHTML("modalBody", bodyHtml || "");
+    const w = qs("modalWrap");
+    if(w){
+      w.style.display = "flex";
+      w.setAttribute("aria-hidden","false");
+    }
+  }
+  function closeModal(){
+    const w = qs("modalWrap");
+    if(w){
+      w.style.display = "none";
+      w.setAttribute("aria-hidden","true");
+    }
+  }
+  function showToast(title){
+    const t = qs("toast");
+    if(!t) return;
+    setText("toastTitle", title || "");
+    t.style.display = "block";
+  }
+  function hideToast(){
+    const t = qs("toast");
+    if(!t) return;
+    t.style.display = "none";
+  }
+
+  /* ===================== EXPLANATION BUILDER ===================== */
+  function explain(title, bullets){
+    const body = (bullets||[]).map(b => `<div style="margin:6px 0">${esc(b)}</div>`).join("");
+    return `
+      <div style="font-weight:1000; font-size:18px; margin-bottom:10px">${esc(title)}</div>
+      <div style="color:rgba(255,255,255,.72); font-weight:850; line-height:1.55">
+        ${body}
+      </div>
+    `;
+  }
+
+  function explainStatus(sev, why){
+    const head = sev==="ok" ? "PASS" : sev==="bad" ? "FAIL" : "WATCH";
+    const base = sev==="ok" ? [
+      "What this means: No clear red flag detected for this specific item.",
+      "Important: This does NOT guarantee safety — it only means this one check looks clean."
+    ] : sev==="bad" ? [
+      "What this means: A strong risk signal was detected for this item.",
+      "Important: This can block selling/transfers, change supply, or enable admin abuse."
+    ] : [
+      "What this means: Unclear or potentially abusable feature detected.",
+      "Important: Understand it before buying — verify with the team/docs."
+    ];
+    const extra = why ? ["Why it matters here: " + why] : [];
+    return explain(head, [...base, ...extra]);
+  }
+
+  /* ===================== DATA-HTML BUG FIX ===================== */
+  const INFO_MAP = new Map();
+  function newInfoId(){ return "i_" + Math.random().toString(36).slice(2) + Date.now().toString(36); }
+  function registerInfo(html){
+    const id = newInfoId();
+    INFO_MAP.set(id, html);
+    return id;
+  }
+  function getInfo(id){ return INFO_MAP.get(id) || ""; }
+
+  /* ===================== UI RENDER ===================== */
+  function applyTokenHeader(meta, addr){
+    const nameEl = qs("tokenName");
+    const symEl  = qs("tokenSymbol");
+    const wrap   = qs("tokenLogoWrap");
+    const img    = qs("tokenLogo");
+
+    const name = (meta?.name || "Token").trim() || "Token";
+    const sym  = (meta?.symbol || "").trim();
+
+    if(nameEl) nameEl.textContent = name;
+    if(symEl)  symEl.textContent  = sym ? `$${sym}` : `Addr: ${shortAddr(addr)}`;
+
+    if(wrap && img){
+      if(meta?.image){
+        img.src = meta.image;
+        img.alt = name;
+        wrap.style.display = "block";
+        img.onerror = () => { wrap.style.display = "none"; };
+      }else{
+        wrap.style.display = "none";
+        img.removeAttribute("src");
+        img.alt = "";
+      }
+    }
+  }
+
+  function pillLabel(sev){ return sev==="ok" ? "PASS" : sev==="bad" ? "FAIL" : "WATCH"; }
+  function pillClass(sev){ return sev==="ok" ? "pill ok" : sev==="bad" ? "pill bad" : "pill warn"; }
+
+  function renderList(listEl, items, defaultTitle){
+    if(!listEl) return;
+    listEl.innerHTML = "";
+    for(const it of items){
+      const sev = it.sev || "warn";
+      const title = it.t || defaultTitle || "Details";
+      const desc = it.d || "—";
+      const infoTitle = it.infoTitle || title;
+
+      const html = (it.infoHtml && String(it.infoHtml).trim())
+        ? String(it.infoHtml)
+        : explainStatus(sev, it.why || "");
+
+      const infoId = registerInfo(html);
+
+      const li = document.createElement("li");
+      li.className = "li";
+      li.innerHTML = `
+        <div class="left">
+          <div class="t">${esc(title)}</div>
+          <div class="d">${esc(desc)}</div>
+        </div>
+        <div class="pillRow">
+          <span class="${pillClass(sev)}" role="button" tabindex="0"
+                data-open="1" data-title="${esc(infoTitle)}" data-info="${esc(infoId)}">${pillLabel(sev)}</span>
+          <button class="infoBtn" type="button" aria-label="Info"
+                  data-open="1" data-title="${esc(infoTitle)}" data-info="${esc(infoId)}"><span>i</span></button>
+        </div>
+      `;
+      listEl.appendChild(li);
+    }
+  }
+
+  function renderMetrics(rows){
+    const wrap = qs("metrics");
+    if(!wrap) return;
+    wrap.innerHTML = "";
+
+    /* NEW (v2.4): optionally hide "no signal" cards to avoid spam */
+    const filtered = (rows || []).filter(r => {
+      if(CFG.UI.SHOW_NO_SIGNAL_METRICS) return true;
+      const v = String(r?.value ?? "").toLowerCase();
+      const b = String(r?.badge ?? "").toLowerCase();
+      if(v.includes("no signal")) return false;
+      if(v.includes("not found")) return false;
+      if(v.includes("unknown") && b.includes("pass")) return false;
+      return true;
+    });
+
+    for(const r of filtered){
+      const d = document.createElement("div");
+      d.className = "metric";
+      const bar = (typeof r.barPct === "number")
+        ? `<div class="bar"><div style="width:${clamp(r.barPct,0,100)}%"></div></div>`
+        : "";
+      d.innerHTML = `
+        <div class="metricK">
+          <span>${esc(r.label || "—")}</span>
+          <span class="badge" style="opacity:.9">${esc(r.badge || r.value || "—")}</span>
+        </div>
+        <div class="metricV">${esc(r.value || "—")}</div>
+        <div class="metricMini">${esc(r.mini || "")}</div>
+        ${bar}
+      `;
+      wrap.appendChild(d);
+    }
+  }
+
+  function explorerBase(chain){
+    if(chain.id === "sol")  return {name:"Solscan",   base:"https://solscan.io/account/"};
+    if(chain.id === "eth")  return {name:"Etherscan", base:"https://etherscan.io/address/"};
+    if(chain.id === "bnb")  return {name:"BscScan",   base:"https://bscscan.com/address/"};
+    if(chain.id === "base") return {name:"BaseScan",  base:"https://basescan.org/address/"};
+    return {name:"Explorer", base:"#"};
+  }
+
+  function renderHoldersEmpty(){
+    const el = qs("holdersList");
+    if(!el) return;
+
+    renderList(el, [{
+      t:"No holder data",
+      sev:"warn",
+      d: activeChain.kind === "solana"
+        ? "Top holders appear after scan."
+        : (CFG.GOLDRUSH_API_KEY ? "Holders appear if the indexer returns data." : "Holders need an indexer (GoldRush)."),
+      infoHtml: explain("Top holders", [
+        "Meaning: Distribution shows whale risk.",
+        "Solana: via RPC largest accounts.",
+        "EVM: needs an indexer (e.g., GoldRush) — RPC alone cannot list holders."
+      ])
+    }], "Top Holders");
+  }
+
+  function renderHoldersWithExplorer(items, chain){
+    const el = qs("holdersList");
+    if(!el) return;
+    el.innerHTML = "";
+    const ex = explorerBase(chain);
+
+    for(const it of items){
+      const title = it.t;
+      const desc  = it.d;
+      const addr  = it.addr;
+
+      const infoId = registerInfo(it.infoHtml || explain("Top holder", [
+        "Meaning: Share of supply.",
+        "Why it matters: High % = dump risk.",
+        "Tip: Check if LP/Burn/Team/Treasury."
+      ]));
+
+      const li = document.createElement("li");
+      li.className = "li";
+      li.innerHTML = `
+        <div class="left">
+          <div class="t">${esc(title)}</div>
+          <div class="d">${esc(desc)}</div>
+        </div>
+        <div class="pillRow">
+          <a class="explorerBtn" href="${esc(ex.base + addr)}" target="_blank" rel="noreferrer">${esc(ex.name)}</a>
+          <button class="infoBtn" type="button" aria-label="Info"
+                  data-open="1" data-title="${esc(title)}" data-info="${esc(infoId)}"><span>i</span></button>
+        </div>
+      `;
+      el.appendChild(li);
+    }
+  }
+
+  function clearUI(){
+    setText("mintShort","—");
+    setText("verdictTitle","—");
+    setBadge(qs("verdictBadge"),"—");
+    setText("scoreBadge","—");
+    setText("summary","—");
+    setText("scanHint","—");
+    setText("tokenName","—");
+    setText("tokenSymbol","—");
+
+    const lw = qs("tokenLogoWrap");
+    if(lw) lw.style.display = "none";
+
+    renderMetrics([]);
+
+    renderList(qs("checksList"), [{
+      t:"No scan yet",
+      sev:"warn",
+      d:"Paste an address and run the Guardian Check.",
+      why:"No data available yet."
+    }], "Guardian Check Details");
+
+    renderList(qs("todoList"), [{
+      t:"Waiting for scan",
+      sev:"warn",
+      d:"We generate the action list from on-chain signals after a scan.",
+      why:"Run a scan to generate the checklist."
+    }], "Launch Readiness");
+
+    renderList(qs("extList"), [{
+      t:"No scan yet",
+      sev:"warn",
+      d:"Standard details appear after scan.",
+      why:"Run a scan to display standard/extensions."
+    }], "Token Standard");
+
+    renderList(qs("metaList"), [{
+      t:"No scan yet",
+      sev:"warn",
+      d:"Name / symbol / logo appear after scan.",
+      why:"Run a scan to fetch metadata."
+    }], "Token Metadata");
+
+    renderHoldersEmpty();
+
+    LAST_SCAN = null;
+    const ex = qs("btnExport");
+    if(ex){
+      ex.disabled = true;
+      ex.textContent = "Download Scan Report";
+    }
+  }
+
+  /* ===================== CHAIN UI ===================== */
+  function renderChainButtons(){
+    const row = qs("chainRow");
+    if(!row) return;
+
+    row.innerHTML = "";
+    for(const c of CFG.CHAINS){
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "chainBtn" + (c.id === activeChain.id ? " active" : "");
+      b.innerHTML = `
+        <span class="chainIcon">${ICONS[c.id] || ""}</span>
+        <span>${esc(c.name)}</span>
+      `;
+      b.addEventListener("click", () => setActiveChain(c.id, true));
+      row.appendChild(b);
+    }
+  }
+
+  function setActiveChain(chainId, pushUrl){
+    const found = CFG.CHAINS.find(x => x.id === chainId) || CFG.CHAINS[0];
+    activeChain = found;
+
+    renderChainButtons();
+
+    setText("holdersStamp", activeChain.stamp || "MAINNET");
+    setText("addrLabel", activeChain.addrLabel || "Token Address");
+
+    const mint = qs("mint");
+    if(mint) mint.placeholder = activeChain.placeholder || "Paste token address...";
+
+    const hint = "";
+
+    setText("chainHint", hint);
+    setStatus("");
+    clearUI();
+
+    if(pushUrl){
+      const url = new URL(location.href);
+      url.searchParams.set("chain", activeChain.id);
+      history.replaceState({}, "", url.toString());
+    }
+  }
+
+  /* ===================== VERDICT / SCORING ===================== */
+  function verdictFrom(score, critical){
+    if(critical) return {label:"FLAGGED", mode:"bad",  title:"FLAGGED • High Risk"};
+    if(score >= 80) return {label:"APPROVED", mode:"good", title:"APPROVED • Guardian Grade"};
+    if(score >= 50) return {label:"OBSERVED", mode:"warn", title:"OBSERVED • Mixed Signals"};
+    return {label:"FLAGGED", mode:"bad", title:"FLAGGED • High Risk"};
+  }
+
+  /* =========================================================
+     PART 2/3
+     - Solana RPC logic (unchanged behavior)
+     - EVM logic (unchanged behavior)
+     - FIX: "Proxy / Upgradeability: No proxy signal found." + "Pause function not found."
+            will NOT be shown as standalone spam rows in the EVM "Token standard details"
+            when CFG.UI.SHOW_PASS_DETAILS_EVM === false.
+       (Nothing removed: checks still run, score still uses results, report still includes.)
+     ========================================================= */
+
+  /* ===================== SOLANA RPC (Helius) ===================== */
+  function HELIUS_RPC(){
+    return `https://mainnet.helius-rpc.com/?api-key=${encodeURIComponent(CFG.HELIUS_KEY)}`;
+  }
+
+  async function solRpc(method, params){
+    if(!CFG.HELIUS_KEY) throw new Error("Helius key missing.");
+    const res = await fetch(HELIUS_RPC(), {
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify({ jsonrpc:"2.0", id:1, method, params })
+    });
+
+    if(!res.ok){
+      const t = await res.text().catch(()=> "");
+      throw new Error(`Solana RPC HTTP ${res.status}: ${t.slice(0,220)}`);
+    }
+    const j = await res.json();
+    if(j?.error) throw new Error(j.error.message || "Solana RPC error");
+    return j.result;
+  }
+
+  async function getMintParsed(mint){
+    const r = await solRpc("getAccountInfo", [mint, { encoding:"jsonParsed", commitment:"confirmed" }]);
+    const v = r?.value;
+    if(!v) return null;
+    const owner = v.owner;
+    const parsed = (v.data && typeof v.data === "object") ? v.data.parsed : null;
+    const info = parsed?.info || null;
+    return { owner, info, rawParsed: parsed };
+  }
+  async function getTokenSupply(mint){
+    const r = await solRpc("getTokenSupply", [mint]);
+    return r?.value || null;
+  }
+  async function getLargest(mint){
+    const r = await solRpc("getTokenLargestAccounts", [mint]);
+    return r?.value || [];
+  }
+  async function getAsset(mint){
+    try { return await solRpc("getAsset", [mint]); }
+    catch { return null; }
+  }
+
+  function pickTokenMetaFromAsset(asset){
+    if(!asset) return null;
+    const md = asset?.content?.metadata || {};
+    const name = (md?.name || asset?.metadata?.name || "").trim();
+    const symbol = (md?.symbol || asset?.metadata?.symbol || "").trim();
+
+    let image = "";
+    const linksImg = asset?.content?.links?.image;
+    if(typeof linksImg === "string") image = linksImg;
+    if(!image && Array.isArray(asset?.content?.files)){
+      const f = asset.content.files.find(x => (x?.mime || "").includes("image") && x?.uri);
+      if(f?.uri) image = f.uri;
+    }
+
+    const uri = (asset?.content?.json_uri || asset?.content?.links?.external_url || "").trim();
+    const description = (md?.description || asset?.content?.metadata?.description || "").trim();
+    const authorities = Array.isArray(asset?.authorities) ? asset.authorities : [];
+    return { name, symbol, image, uri, description, authorities };
+  }
+
+  function parseExtensionsFromParsed(rawParsed){
+    try{
+      const info = rawParsed?.info || null;
+      if(!info) return null;
+      const ex = info.extensions || info.extensionTypes || info.mintExtensions;
+      if(Array.isArray(ex) && ex.length){
+        return ex.map(x => ({ name: (typeof x === "string") ? x : (x?.type || x?.name || "Extension") }));
+      }
+      if(ex && typeof ex === "object"){
+        return Object.keys(ex).map(k => ({ name:k }));
+      }
+      return null;
+    }catch{
+      return null;
+    }
+  }
+
+  function humanizeExtensionName(n){
+    const s = String(n||"").toLowerCase();
+    if(s.includes("transferfee") || s.includes("transfer_fee")) return "Transfer Fee (fees on transfers)";
+    if(s.includes("permanentdelegate") || s.includes("permanent_delegate")) return "Permanent Delegate (delegate control)";
+    if(s.includes("nontransferable") || s.includes("non_transferable")) return "Non-Transferable (cannot be transferred)";
+    if(s.includes("interestbearing") || s.includes("interest_bearing")) return "Interest-Bearing (yield mechanics)";
+    if(s.includes("confidential")) return "Confidential Transfers (privacy mode)";
+    if(s.includes("metadata")) return "Metadata Extension";
+    return n;
+  }
+
+  function scoreSol(sig){
+    let score = 100;
+    const checks = [];
+
+    if(sig.freezeActive){
+      score -= 35;
+      checks.push({
+        t:"Freeze Authority",
+        sev:"bad",
+        d:"Freeze authority is active — wallets can be frozen.",
+        why:"Freeze authority is set (not removed).",
+        infoHtml: explain("Freeze Authority", [
+          "Meaning: Admin can freeze token accounts.",
+          "Why it matters: Buyers may be unable to sell/transfer.",
+          "PASS would be: Freeze authority = null (removed/renounced)."
+        ])
+      });
+    }else{
+      checks.push({
+        t:"Freeze Authority",
+        sev:"ok",
+        d:"Freeze authority removed (good).",
+        why:"Freeze authority is not set.",
+        infoHtml: explain("Freeze Authority", [
+          "Meaning: Admin cannot freeze accounts.",
+          "Why PASS: Freeze authority is null / not present."
+        ])
+      });
+    }
+
+    if(sig.mintAuthActive){
+      score -= 30;
+      checks.push({
+        t:"Mint Authority",
+        sev:"bad",
+        d:"Mint authority is active — supply can be increased.",
+        why:"Mint authority is set (not renounced).",
+        infoHtml: explain("Mint Authority", [
+          "Meaning: Admin can mint new tokens.",
+          "Why it matters: Supply inflation can destroy price.",
+          "PASS would be: Mint authority = null (renounced)."
+        ])
+      });
+    }else{
+      checks.push({
+        t:"Mint Authority",
+        sev:"ok",
+        d:"Mint authority renounced (good).",
+        why:"Mint authority is not set.",
+        infoHtml: explain("Mint Authority", [
+          "Meaning: Supply cannot be increased by admin minting.",
+          "Why PASS: Mint authority is null / not present."
+        ])
+      });
+    }
+
+    const t20 = Number(sig.top20 || 0);
+    if(t20 >= 75){
+      score -= 28;
+      checks.push({
+        t:"Holder concentration (Top20)",
+        sev:"bad",
+        d:`Top20 hold ~${t20.toFixed(2)}% (very high).`,
+        why:"Extreme concentration.",
+        infoHtml: explain("Top20 Distribution", [
+          `Top20 share: ~${t20.toFixed(2)}%`,
+          "Why it matters: Few wallets can dump.",
+          "FAIL here: extremely high whale concentration."
+        ])
+      });
+    }else if(t20 >= 55){
+      score -= 18;
+      checks.push({
+        t:"Holder concentration (Top20)",
+        sev:"warn",
+        d:`Top20 hold ~${t20.toFixed(2)}% (high).`,
+        why:"High concentration.",
+        infoHtml: explain("Top20 Distribution", [
+          `Top20 share: ~${t20.toFixed(2)}%`,
+          "Why it matters: Elevated dump risk.",
+          "WATCH: inspect wallets (LP/Burn/Team)."
+        ])
+      });
+    }else if(t20 >= 35){
+      score -= 8;
+      checks.push({
+        t:"Holder concentration (Top20)",
+        sev:"warn",
+        d:`Top20 hold ~${t20.toFixed(2)}% (moderate).`,
+        why:"Moderate concentration.",
+        infoHtml: explain("Top20 Distribution", [
+          `Top20 share: ~${t20.toFixed(2)}%`,
+          "WATCH: whale risk is still possible."
+        ])
+      });
+    }else{
+      checks.push({
+        t:"Holder concentration (Top20)",
+        sev:"ok",
+        d:`Top20 hold ~${t20.toFixed(2)}% (better).`,
+        why:"Lower concentration.",
+        infoHtml: explain("Top20 Distribution", [
+          `Top20 share: ~${t20.toFixed(2)}%`,
+          "Why PASS: distribution looks healthier."
+        ])
+      });
+    }
+
+    if(sig.programType === "TOKEN_2022"){
+      score -= sig.extReadable ? 6 : 10;
+      checks.push({
+        t:"Token Standard",
+        sev:"warn",
+        d: sig.extReadable ? "Token-2022 detected (extensions possible)." : "Token-2022 detected (extensions not visible).",
+        why:"Token-2022 can include extra rules.",
+        infoHtml: explain("Token-2022", [
+          "Meaning: SPL token program with optional extensions.",
+          "Why it matters: Extensions can add fees/restrictions.",
+          "WATCH: review Token Standard Details (extensions)."
+        ])
+      });
+    }else if(sig.programType === "SPL_TOKEN"){
+      checks.push({
+        t:"Token Standard",
+        sev:"ok",
+        d:"Standard SPL Token program.",
+        why:"Mint owned by standard Token Program.",
+        infoHtml: explain("SPL Token", [
+          "Meaning: Standard Solana Token Program.",
+          "Why PASS: no Token-2022 extension rules."
+        ])
+      });
+    }else{
+      score -= 10;
+      checks.push({
+        t:"Token Standard",
+        sev:"warn",
+        d:"Unknown token program (caution).",
+        why:"Mint owner is not Tokenkeg / Token-2022.",
+        infoHtml: explain("Unknown Token Program", [
+          "Meaning: Mint is not under standard programs.",
+          "Why it matters: Custom programs can hide rules.",
+          "WATCH: verify very carefully."
+        ])
+      });
+    }
+
+    if(sig.meta && (sig.meta.name || sig.meta.symbol)){
+      checks.push({
+        t:"Metadata",
+        sev:"ok",
+        d:"Name/symbol found.",
+        why:"Metadata was fetched successfully.",
+        infoHtml: explain("Metadata", [
+          "Meaning: Identity (name/symbol/logo) is easier to verify.",
+          "Why PASS: metadata could be loaded."
+        ])
+      });
+    }else{
+      score -= 4;
+      checks.push({
+        t:"Metadata",
+        sev:"warn",
+        d:"Metadata missing/unreadable.",
+        why:"No name/symbol returned via metadata endpoint.",
+        infoHtml: explain("Metadata", [
+          "Meaning: Without metadata it's easier to fake/impersonate.",
+          "WATCH: always cross-check official links."
+        ])
+      });
+    }
+
+    score = clamp(Math.round(score), 0, 100);
+    const critical = !!(sig.freezeActive || sig.mintAuthActive);
+    return { score, checks, critical };
+  }
+
+  function todoSol(sig){
+    const t = [];
+
+    t.push(sig.freezeActive
+      ? {t:"Remove Freeze Authority", sev:"bad", d:"Freeze can block buyers.", why:"Freeze is active — remove it."}
+      : {t:"Freeze Authority", sev:"ok", d:"Already removed.", why:"Freeze is not active."}
+    );
+
+    t.push(sig.mintAuthActive
+      ? {t:"Renounce Mint Authority", sev:"bad", d:"Mint can inflate supply.", why:"Mint is active — renounce it."}
+      : {t:"Mint Authority", sev:"ok", d:"Already renounced.", why:"Mint is not active."}
+    );
+
+    const t20 = Number(sig.top20 || 0);
+    if(t20 >= 55) t.push({t:"Reduce whale concentration", sev:"warn", d:`Top20 ~${t20.toFixed(2)}%.`, why:"High concentration — inspect wallets."});
+    else if(t20 >= 35) t.push({t:"Monitor distribution", sev:"warn", d:`Top20 ~${t20.toFixed(2)}%.`, why:"Moderate concentration — monitor."});
+    else t.push({t:"Distribution", sev:"ok", d:`Top20 ~${t20.toFixed(2)}% (better).`, why:"Healthier distribution."});
+
+    if(sig.programType === "TOKEN_2022"){
+      t.push({t:"Review Token-2022 extensions", sev:"warn", d:"Extensions can change rules.", why:"Token-2022 detected."});
+    }else if(sig.programType === "UNKNOWN"){
+      t.push({t:"Verify mint program", sev:"warn", d:"Unknown program = extra caution.", why:"Not standard."});
+    }else{
+      t.push({t:"Token standard", sev:"ok", d:"Standard SPL Token.", why:"Common standard."});
+    }
+
+    if(!(sig.meta && (sig.meta.name || sig.meta.symbol))){
+      t.push({t:"Publish/verify metadata", sev:"warn", d:"Without metadata, fakes are easier.", why:"Metadata missing."});
+    }else{
+      t.push({t:"Metadata", sev:"ok", d:"Name/symbol present.", why:"OK."});
+    }
+
+    return t.map(x => ({
+      ...x,
+      infoHtml: explain(x.t, [
+        x.d,
+        "Why it matters: reduces scam/abuse risk.",
+        "Status: " + pillLabel(x.sev)
+      ])
+    }));
+  }
+
+  function renderExtSol(programType, extReadable, extList){
+    const el = qs("extList");
+    if(!el) return;
+
+    if(programType !== "TOKEN_2022"){
+      renderList(el, [{
+        t:"Token standard details",
+        sev: programType==="SPL_TOKEN" ? "ok" : "warn",
+        d: programType==="SPL_TOKEN" ? "Standard SPL Token. Token-2022 extensions not applicable." : "Unknown program. Treat with caution.",
+        infoHtml: explain("Token standard details", [
+          "Token-2022 extensions only show when Token-2022 is detected.",
+          "If 'Unknown': verify extremely carefully."
+        ])
+      }], "Token standard details");
+      return;
+    }
+
+    if(!extReadable){
+      renderList(el, [{
+        t:"Token-2022 extensions",
+        sev:"warn",
+        d:"Extensions could not be read.",
+        infoHtml: explain("Token-2022 extensions", [
+          "Token-2022 may include additional rules.",
+          "If extensions are not visible: WATCH until verified externally."
+        ])
+      }], "Token-2022 extensions");
+      return;
+    }
+
+    const items = (extList || []).map(x => {
+      const nameHuman = humanizeExtensionName(x.name);
+      const lname = String(x.name||"").toLowerCase();
+      let sev = "warn";
+      if(lname.includes("nontransferable")) sev = "bad";
+      return {
+        t: nameHuman,
+        sev,
+        d: `Extension detected: ${nameHuman}.`,
+        infoHtml: explain(nameHuman, [
+          "Meaning: Extra rule in the Token-2022 standard.",
+          sev==="bad" ? "Risk: can prevent transfers." : "WATCH: only safe if you fully understand it."
+        ])
+      };
+    });
+
+    renderList(el,
+      items.length ? items : [{
+        t:"No extensions listed",
+        sev:"ok",
+        d:"No Token-2022 extensions detected.",
+        infoHtml: explain("Extensions", ["No additional rules detected."])
+      }],
+      "Token-2022 Extension Details"
+    );
+  }
+
+  function renderMetaSol(meta){
+    const el = qs("metaList");
+    if(!el) return;
+
+    if(!meta){
+      renderList(el, [{
+        t:"Metadata not available",
+        sev:"warn",
+        d:"Could not fetch metadata via getAsset.",
+        infoHtml: explain("Token metadata", [
+          "Meaning: Name/symbol/logo help spot fake tokens.",
+          "Why WATCH: metadata could not be loaded."
+        ])
+      }], "Token Metadata");
+      return;
+    }
+
+    const items = [];
+    items.push({
+      t:"Name / Symbol",
+      sev:(meta.name || meta.symbol) ? "ok" : "warn",
+      d:`${meta.name || "—"} • ${meta.symbol ? "$"+meta.symbol : "—"}`,
+      infoHtml: explain("Name / Symbol", [
+        "Meaning: Basic identity of the token.",
+        (meta.name || meta.symbol) ? "Why PASS: values present." : "Why WATCH: missing/unreadable."
+      ])
+    });
+
+    items.push({
+      t:"Metadata Link",
+      sev: meta.uri ? "ok" : "warn",
+      d: meta.uri ? "Metadata link found." : "No metadata link found.",
+      infoHtml: explain("Metadata Link", [
+        "Meaning: Off-chain JSON (logo/description).",
+        meta.uri ? "Why PASS: link exists." : "Why WATCH: no link found."
+      ])
+    });
+
+    items.push({
+      t:"Image / Logo",
+      sev: meta.image ? "ok" : "warn",
+      d: meta.image ? "Logo found." : "No logo found.",
+      infoHtml: explain("Logo", [
+        "Meaning: Helps verify the real token.",
+        meta.image ? "Why PASS: logo found." : "Why WATCH: no logo found."
+      ])
+    });
+
+    if(meta.description){
+      items.push({
+        t:"Description",
+        sev:"ok",
+        d: meta.description.slice(0,120) + (meta.description.length>120 ? "…" : ""),
+        infoHtml: explain("Description", [meta.description])
+      });
+    }
+
+    if(Array.isArray(meta.authorities) && meta.authorities.length){
+      items.push({
+        t:"Metadata authorities",
+        sev:"warn",
+        d:"Metadata authorities exist (review).",
+        infoHtml: explain("Metadata authorities", [
+          "Meaning: Someone may be able to change name/logo later.",
+          "WATCH: only OK if authority is removed or clearly governed."
+        ])
+      });
+    }
+
+    renderList(el, items, "Token Metadata");
+  }
+
+  function renderHoldersSol(mint, uiSupply, largest){
+    if(!uiSupply || !largest || !largest.length){
+      renderHoldersEmpty();
+      return;
+    }
+
+    const top = largest.slice(0,10);
+    const items = top.map((x,i) => {
+      const addr = x?.address || "";
+      const amt = Number(x?.uiAmount || 0);
+      const pct = uiSupply > 0 ? (amt / uiSupply) * 100 : 0;
+
+      return {
+        t:`#${i+1} ${shortAddr(addr)}`,
+        d:`${fmtInt(amt)} tokens • ${pct.toFixed(2)}%`,
+        addr,
+        infoHtml: explain("Top holder", [
+          `Wallet holds ~${pct.toFixed(2)}% of supply.`,
+          "Why it matters: high % = dump risk.",
+          "Tip: check if LP/Burn/Team/Treasury."
+        ])
+      };
+    });
+
+    renderHoldersWithExplorer(items, activeChain);
+  }
+
+  /* ===================== EVM RPC + ERC-20 ===================== */
+  async function evmRpc(chainId, method, params){
+    const urls = CFG.EVM_RPCS[chainId] || [];
+    if(!urls.length) throw new Error("No RPC configured for this chain.");
+
+    const errors = [];
+    for(const url of urls){
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 12000);
+      try{
+        const res = await fetch(url, {
+          method:"POST",
+          headers:{ "Content-Type":"application/json" },
+          body: JSON.stringify({ jsonrpc:"2.0", id:1, method, params }),
+          signal: ctrl.signal
+        });
+        clearTimeout(timer);
+
+        if(!res.ok){
+          const t = await res.text().catch(()=> "");
+          errors.push(`HTTP ${res.status} ${t.slice(0,160)}`);
+          continue;
+        }
+        const j = await res.json();
+        if(j?.error){
+          errors.push(String(j.error?.message || "RPC error").slice(0,160));
+          continue;
+        }
+        return j.result;
+      }catch(e){
+        clearTimeout(timer);
+        errors.push(String(e?.message || e).slice(0,160));
+      }
+    }
+
+    throw new Error(`All RPCs failed. ${errors.slice(-3).join(" • ")}`);
+  }
+
+  async function ethCall(chainId, to, data){
+    return await evmRpc(chainId, "eth_call", [{to, data}, "latest"]);
+  }
+  async function getCode(chainId, addr){
+    return await evmRpc(chainId, "eth_getCode", [addr, "latest"]);
+  }
+  async function getStorageAt(chainId, addr, slot){
+    return await evmRpc(chainId, "eth_getStorageAt", [addr, slot, "latest"]);
+  }
+
+  const SEL = {
+    name: "0x06fdde03",
+    symbol: "0x95d89b41",
+    decimals: "0x313ce567",
+    totalSupply: "0x18160ddd",
+    owner: "0x8da5cb5b",
+    paused: "0x5c975abb"
+  };
+
+  function strip0x(h){ return (h||"").startsWith("0x") ? h.slice(2) : (h||""); }
+
+  function decodeUint256(hex){
+    const h = strip0x(hex);
+    if(!h) return null;
+    const padded = h.padStart(64,"0").slice(-64);
+    try { return BigInt("0x"+padded); }
+    catch { return null; }
+  }
+
+  function decodeAddressFrom32(hex){
+    const h = strip0x(hex);
+    if(!h) return null;
+    const padded = h.padStart(64,"0").slice(-40);
+    return "0x" + padded;
+  }
+
+  function bytes32ToAscii(hex){
+    const h = strip0x(hex);
+    if(h.length !== 64) return "";
+    try{
+      const bytes = new Uint8Array(h.match(/.{1,2}/g).map(b => parseInt(b,16)));
+      let s = new TextDecoder().decode(bytes).replace(/\0/g,"").trim();
+      if(!s) return "";
+      if(/^[\x20-\x7E]+$/.test(s)) return s;
+      return "";
+    }catch{
+      return "";
+    }
+  }
+
+  function decodeString(hex){
+    const data = strip0x(hex);
+    if(!data) return "";
+
+    // bytes32 style
+    if(data.length === 64){
+      const b = bytes32ToAscii("0x"+data);
+      if(b) return b;
+    }
+
+    // ABI string style
+    if(data.length < 128) return "";
+    const lenHex = data.slice(64,128);
+    let len = 0;
+    try { len = Number(BigInt("0x"+lenHex)); }
+    catch { return ""; }
+    if(!Number.isFinite(len) || len <= 0) return "";
+
+    const strData = data.slice(128, 128 + len*2);
+    if(!strData) return "";
+
+    try{
+      const bytes = new Uint8Array(strData.match(/.{1,2}/g).map(b => parseInt(b,16)));
+      return new TextDecoder().decode(bytes).replace(/\0/g,"").trim();
+    }catch{
+      return "";
+    }
+  }
+
+  async function getErc20Meta(chainId, addr){
+    const out = { name:"", symbol:"", decimals:null, totalSupply:null };
+    try { out.name = decodeString(await ethCall(chainId, addr, SEL.name)); } catch {}
+    try { out.symbol = decodeString(await ethCall(chainId, addr, SEL.symbol)); } catch {}
+    try {
+      const v = decodeUint256(await ethCall(chainId, addr, SEL.decimals));
+      out.decimals = (v === null) ? null : Number(v);
+      if(!Number.isFinite(out.decimals)) out.decimals = null;
+    } catch {}
+    try { out.totalSupply = decodeUint256(await ethCall(chainId, addr, SEL.totalSupply)); } catch {}
+    return out;
+  }
+
+  async function getOwner(chainId, addr){
+    try{
+      const r = await ethCall(chainId, addr, SEL.owner);
+      return decodeAddressFrom32(r || "0x");
+    }catch{
+      return null;
+    }
+  }
+
+  // paused() check:
+  // - TRUE => currently paused (fail)
+  // - FALSE => pause function exists (watch)
+  // - null => pause function not found/unreadable (pass for this item)
+  async function getPaused(chainId, addr){
+    try{
+      const r = await ethCall(chainId, addr, SEL.paused);
+      const v = decodeUint256(r || "0x");
+      if(v === null) return null;
+      return v !== 0n;
+    }catch{
+      return null;
+    }
+  }
+
+  /* Proxy detection (EIP-1967) */
+  const SLOT_IMPL  = "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc";
+  const SLOT_ADMIN = "0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103";
+
+  async function detectProxy(chainId, addr){
+    try{
+      const [implRaw, adminRaw] = await Promise.all([
+        getStorageAt(chainId, addr, SLOT_IMPL),
+        getStorageAt(chainId, addr, SLOT_ADMIN)
+      ]);
+      const impl  = decodeAddressFrom32(implRaw  || "0x");
+      const admin = decodeAddressFrom32(adminRaw || "0x");
+      const zero = "0x0000000000000000000000000000000000000000";
+      const implNonZero  = impl  && impl.toLowerCase()  !== zero;
+      const adminNonZero = admin && admin.toLowerCase() !== zero;
+      return { isProxy: implNonZero || adminNonZero, implementation: implNonZero ? impl : null, admin: adminNonZero ? admin : null };
+    }catch{
+      return {isProxy:false, implementation:null, admin:null};
+    }
+  }
+
+  /* Optional Moralis metadata */
+  function moralisChainParam(chainId){
+    if(chainId === 1) return "eth";
+    if(chainId === 56) return "bsc";
+    if(chainId === 8453) return "base";
+    return "eth";
+  }
+
+  async function getEvmMetaViaApi(chainId, addr){
+    if(!CFG.EVM_METADATA_KEY) return null;
+    const chain = moralisChainParam(chainId);
+    const url = `https://deep-index.moralis.io/api/v2.2/erc20/metadata?chain=${encodeURIComponent(chain)}&addresses=${encodeURIComponent(addr)}`;
+
+    try{
+      const res = await fetch(url, {
+        method:"GET",
+        headers:{
+          "accept":"application/json",
+          "x-api-key": CFG.EVM_METADATA_KEY
+        }
+      });
+      if(!res.ok) return null;
+
+      const data = await res.json();
+      const item = Array.isArray(data) ? data[0] : null;
+      if(!item) return null;
+
+      return {
+        name: (item.name || "").trim(),
+        symbol: (item.symbol || "").trim(),
+        image: (item.logo || item.thumbnail || "").trim(),
+        decimals: Number.isFinite(Number(item.decimals)) ? Number(item.decimals) : null
+      };
+    }catch{
+      return null;
+    }
+  }
+
+  /* Optional GoldRush holders */
+  function goldrushChain(chainId){
+    if(chainId === 1) return "eth-mainnet";
+    if(chainId === 56) return "bsc-mainnet";
+    if(chainId === 8453) return "base-mainnet";
+    return "eth-mainnet";
+  }
+
+  async function goldrushHolders(chainId, addr){
+    if(!CFG.GOLDRUSH_API_KEY) return [];
+    const url = `https://api.covalenthq.com/v1/${goldrushChain(chainId)}/tokens/${addr}/token_holders/?page-size=10&key=${encodeURIComponent(CFG.GOLDRUSH_API_KEY)}`;
+    try{
+      const r = await fetch(url);
+      if(!r.ok) return [];
+      const j = await r.json();
+      return Array.isArray(j?.data?.items) ? j.data.items : [];
+    }catch{
+      return [];
+    }
+  }
+
+  function scoreEvm(sig){
+    let score = 100;
+    const checks = [];
+
+    if(!sig.hasCode){
+      checks.push({
+        t:"Contract found",
+        sev:"bad",
+        d:"No bytecode at this address.",
+        why:"Address is not a contract (or wrong chain).",
+        infoHtml: explain("Contract found", [
+          "Meaning: The address must contain contract bytecode.",
+          "Why FAIL: Address has no code."
+        ])
+      });
+      return { score:0, checks, critical:true };
+    }
+
+    checks.push({
+      t:"Contract found",
+      sev:"ok",
+      d:"Bytecode exists (contract).",
+      why:"eth_getCode != 0x",
+      infoHtml: explain("Contract found", [
+        "Meaning: Address is a smart contract.",
+        "Why PASS: Bytecode is present."
+      ])
+    });
+
+    const hasName = !!sig.metaOnChain?.name;
+    const hasSymbol = !!sig.metaOnChain?.symbol;
+
+    if(!hasName || !hasSymbol){
+      score -= 10;
+      checks.push({
+        t:"ERC-20 metadata",
+        sev:"warn",
+        d:"Name or symbol not cleanly readable.",
+        why:"name()/symbol() reverted or non-standard ABI.",
+        infoHtml: explain("ERC-20 metadata", [
+          "Meaning: name()/symbol() help identify the token.",
+          "Why WATCH: calls did not return clean values."
+        ])
+      });
+    }else{
+      checks.push({
+        t:"ERC-20 metadata",
+        sev:"ok",
+        d:"Name & symbol readable.",
+        why:"name()/symbol() responded.",
+        infoHtml: explain("ERC-20 metadata", [
+          "Meaning: Standard calls work.",
+          "Why PASS: name()/symbol() succeeded."
+        ])
+      });
+    }
+
+    const decOk = Number.isFinite(sig.metaOnChain?.decimals) && sig.metaOnChain.decimals >= 0 && sig.metaOnChain.decimals <= 36;
+    if(!decOk){
+      score -= 12;
+      checks.push({
+        t:"Decimals",
+        sev:"warn",
+        d:"decimals() not readable or unusual.",
+        why:"decimals() missing/reverted/out-of-range.",
+        infoHtml: explain("Decimals", [
+          "Meaning: Needed for UI and supply math.",
+          "Why WATCH: decimals() not available or weird."
+        ])
+      });
+    }else{
+      checks.push({
+        t:"Decimals",
+        sev:"ok",
+        d:`Decimals: ${sig.metaOnChain.decimals}`,
+        why:"decimals() responded.",
+        infoHtml: explain("Decimals", [
+          "Meaning: Standard ERC-20 property.",
+          "Why PASS: decimals() succeeded."
+        ])
+      });
+    }
+
+    const supplyReadable = sig.metaOnChain?.totalSupply !== null && sig.metaOnChain?.totalSupply !== undefined;
+    if(!supplyReadable){
+      score -= 10;
+      checks.push({
+        t:"Total supply",
+        sev:"warn",
+        d:"totalSupply() not readable.",
+        why:"totalSupply() reverted/unavailable.",
+        infoHtml: explain("Total supply", [
+          "Meaning: Supply is needed for holder % and tokenomics.",
+          "Why WATCH: totalSupply() not available."
+        ])
+      });
+    }else{
+      checks.push({
+        t:"Total supply",
+        sev:"ok",
+        d:"Supply readable on-chain.",
+        why:"totalSupply() responded.",
+        infoHtml: explain("Total supply", [
+          "Meaning: Basis for holder %.",
+          "Why PASS: totalSupply() succeeded."
+        ])
+      });
+    }
+
+    // Owner check
+    const zero = "0x0000000000000000000000000000000000000000";
+    if(sig.owner){
+      if(sig.owner.toLowerCase() === zero){
+        checks.push({
+          t:"Owner / Admin",
+          sev:"ok",
+          d:"Owner is renounced (0x0).",
+          why:"owner() == zero address.",
+          infoHtml: explain("Owner / Admin", [
+            "Meaning: Owner often has special rights (fees/blacklist/etc).",
+            "Why PASS: owner is 0x0 (renounced)."
+          ])
+        });
+      }else{
+        score -= 22;
+        checks.push({
+          t:"Owner / Admin",
+          sev:"warn",
+          d:`Owner active: ${shortAddr(sig.owner)}`,
+          why:"owner() is not 0x0.",
+          infoHtml: explain("Owner / Admin", [
+            "Meaning: Admin control is possible (depends on contract).",
+            "Why WATCH: owner exists and may have privileges.",
+            "Tip: check multisig / timelock / renounce status."
+          ])
+        });
+      }
+    }else{
+      score -= 6;
+      checks.push({
+        t:"Owner / Admin",
+        sev:"warn",
+        d:"owner() not found / unreadable.",
+        why:"owner() missing or reverted.",
+        infoHtml: explain("Owner / Admin", [
+          "Meaning: Some tokens do not implement owner() in the standard way.",
+          "Why WATCH: admin control may exist via other patterns."
+        ])
+      });
+    }
+
+    // Proxy check
+    if(sig.proxy?.isProxy){
+      score -= 18;
+      checks.push({
+        t:"Proxy / Upgradeability",
+        sev:"warn",
+        d:"Upgradeable proxy detected.",
+        why:"EIP-1967 slots are non-zero.",
+        infoHtml: explain("Proxy / Upgradeability", [
+          "Meaning: Contract logic can be changed after deployment.",
+          "Why WATCH: upgrades may be possible.",
+          `Implementation: ${sig.proxy.implementation ? sig.proxy.implementation : "unknown"}`,
+          `Admin: ${sig.proxy.admin ? sig.proxy.admin : "unknown"}`
+        ])
+      });
+    }else{
+      checks.push({
+        t:"Proxy / Upgradeability",
+        sev:"ok",
+        d:"No proxy signal found.",
+        why:"EIP-1967 slots empty (best-effort).",
+        infoHtml: explain("Proxy / Upgradeability", [
+          "Meaning: Proxy = upgradeable logic.",
+          "Why PASS: no EIP-1967 signal found.",
+          "Note: best-effort — other proxy patterns exist."
+        ])
+      });
+    }
+
+    // Pause control check
+    if(sig.paused === true){
+      score -= 25;
+      checks.push({
+        t:"Transfer controls (Pause)",
+        sev:"bad",
+        d:"paused() = TRUE — transfers may be blocked.",
+        why:"paused() returned true.",
+        infoHtml: explain("Transfer controls (Pause)", [
+          "Meaning: Pausable can stop transfers.",
+          "Why FAIL: paused() is TRUE => likely currently blocked.",
+          "Tip: caution — buyers may be unable to transfer/sell."
+        ])
+      });
+    }else if(sig.paused === false){
+      score -= 6;
+      checks.push({
+        t:"Transfer controls (Pause)",
+        sev:"warn",
+        d:"Pause function exists (not active right now).",
+        why:"paused() exists and returned false.",
+        infoHtml: explain("Transfer controls (Pause)", [
+          "Meaning: A pause mechanism exists.",
+          "Why WATCH: admin may pause later.",
+          "Tip: review admin/owner and docs."
+        ])
+      });
+    }else{
+      checks.push({
+        t:"Transfer controls (Pause)",
+        sev:"ok",
+        d:"No pause function found.",
+        why:"paused() not present or unreadable.",
+        infoHtml: explain("Transfer controls (Pause)", [
+          "Meaning: No standard pausable signal detected.",
+          "Why PASS: paused() not found (best-effort)."
+        ])
+      });
+    }
+
+    score = clamp(Math.round(score), 0, 100);
+    const critical = !!(sig.paused === true || !sig.hasCode);
+    return { score, checks, critical };
+  }
+
+  function todoEvm(sig){
+    const t = [];
+    if(!sig.hasCode){
+      t.push({ t:"Fix address / chain", sev:"bad", d:"No contract bytecode found.", why:"Wrong address or wrong chain." });
+    }else{
+      const zero = "0x0000000000000000000000000000000000000000";
+
+      if(sig.owner && sig.owner.toLowerCase() !== zero){
+        t.push({ t:"Secure admin", sev:"warn", d:"Owner is active. Review privileges/timelock/multisig.", why:"Admin can often change parameters." });
+      }else if(sig.owner && sig.owner.toLowerCase() === zero){
+        t.push({ t:"Owner", sev:"ok", d:"Owner appears renounced.", why:"0x0." });
+      }else{
+        t.push({ t:"Admin review", sev:"warn", d:"Owner not visible — check alternative admin controls.", why:"owner() missing." });
+      }
+
+      if(sig.proxy?.isProxy){
+        t.push({ t:"Upgradeability review", sev:"warn", d:"Proxy detected — logic can be upgraded.", why:"Upgradeable." });
+      }else{
+        t.push({ t:"Upgradeability", sev:"ok", d:"No proxy signal.", why:"EIP-1967 empty." });
+      }
+
+      if(sig.paused === true){
+        t.push({ t:"Unpause transfers", sev:"bad", d:"Token appears paused.", why:"paused()==true." });
+      }else if(sig.paused === false){
+        t.push({ t:"Disclose pause rules", sev:"warn", d:"Pause function exists.", why:"Admin can pause." });
+      }else{
+        t.push({ t:"Transfer controls", sev:"ok", d:"No pause function found.", why:"paused() not detectable." });
+      }
+
+      t.push({ t:"Holders distribution", sev:"warn", d:"Top holders are a key risk factor.", why:"Review whale risk." });
+    }
+
+    return t.map(x => ({
+      ...x,
+      infoHtml: explain(x.t, [
+        x.d,
+        "Why it matters: reduces rug/manipulation risk.",
+        "Status: " + pillLabel(x.sev)
+      ])
+    }));
+  }
+
+  /* ===================== EVM STANDARD DETAILS (FIXED DISPLAY) ===================== */
+  function renderStandardEvm(sig){
+    // We still compute everything.
+    // But we hide pure PASS "no signal" rows to avoid the spam you showed in screenshots,
+    // unless CFG.UI.SHOW_PASS_DETAILS_EVM === true.
+
+    const rows = [
+      {
+        t:"Token standard",
+        sev:"ok",
+        d:"ERC-20 (on-chain calls).",
+        why:"name/symbol/decimals/totalSupply calls.",
+        infoHtml: explain("ERC-20 standard", [
+          "Meaning: Standard interface (name/symbol/decimals/totalSupply).",
+          "Why it matters: Non-standard tokens can break tooling."
+        ])
+      },
+      {
+        t:"Proxy / upgradeability",
+        sev: sig.proxy?.isProxy ? "warn" : "ok",
+        d: sig.proxy?.isProxy ? "Upgradeable proxy detected." : "No proxy signal found.",
+        why: sig.proxy?.isProxy ? "EIP-1967 non-zero." : "EIP-1967 empty.",
+        infoHtml: explain("Proxy / upgradeability", [
+          sig.proxy?.isProxy
+            ? "WATCH: upgrades possible."
+            : "PASS: no upgrade signal found (best-effort).",
+          "Note: Some proxies are not EIP-1967 — always verify source code."
+        ])
+      },
+      {
+        t:"Transfer controls (Pause)",
+        sev: sig.paused===true ? "bad" : (sig.paused===false ? "warn" : "ok"),
+        d: sig.paused===true ? "Currently paused." : (sig.paused===false ? "Pause function exists." : "No pause function found."),
+        why: sig.paused===true ? "paused()==true." : (sig.paused===false ? "paused()==false." : "no paused()."),
+        infoHtml: explain("Pause", [
+          sig.paused===true
+            ? "FAIL: transfers likely blocked."
+            : (sig.paused===false ? "WATCH: pausable." : "PASS: no pausable signal.")
+        ])
+      }
+    ];
+
+    let out = rows;
+
+    if(!CFG.UI.SHOW_PASS_DETAILS_EVM){
+      // hide the rows that are only "PASS + No signal" (your screenshots 3/4)
+      out = rows.filter(r => {
+        // Always keep token standard row
+        if(r.t === "Token standard") return true;
+
+        const d = String(r.d || "").toLowerCase();
+        const passNoSignal = (r.sev === "ok") && (
+          d.includes("no proxy signal") ||
+          d.includes("no pause function") ||
+          d.includes("not found")
+        );
+
+        return !passNoSignal;
+      });
+
+      // If both were hidden, still keep ONE short combined row so the section isn't empty.
+      if(out.length === 1){
+        out.push({
+          t:"Standard signals",
+          sev:"ok",
+          d:"No proxy / pause red flags detected (best-effort).",
+          why:"PASS signals were condensed to keep UI clean.",
+          infoHtml: explain("Standard signals", [
+            "To keep the UI clean, PASS-only 'no signal' items are condensed.",
+            "All checks still run and affect scoring/report."
+          ])
+        });
+      }
+    }
+
+    renderList(qs("extList"), out, "Token Standard Details");
+  }
+
+  function renderMetaEvm(metaMerged, metaOnChain){
+    const items = [];
+
+    items.push({
+      t:"Name / Symbol",
+      sev:(metaMerged?.name && metaMerged?.symbol) ? "ok" : "warn",
+      d:`${metaMerged?.name || "—"} • ${metaMerged?.symbol ? ("$"+metaMerged.symbol) : "—"}`,
+      why: (metaMerged?.name && metaMerged?.symbol) ? "name/symbol readable (or via API)." : "Missing/unreadable.",
+      infoHtml: explain("Name / Symbol", [
+        "Meaning: Token identity.",
+        (metaMerged?.name && metaMerged?.symbol) ? "Why PASS: present." : "Why WATCH: missing/unreadable."
+      ])
+    });
+
+    items.push({
+      t:"Decimals",
+      sev:Number.isFinite(metaOnChain?.decimals) ? "ok" : "warn",
+      d:Number.isFinite(metaOnChain?.decimals) ? String(metaOnChain.decimals) : "Not readable",
+      why: Number.isFinite(metaOnChain?.decimals) ? "decimals() ok." : "decimals() missing.",
+      infoHtml: explain("Decimals", [
+        "Meaning: UI/supply calculation.",
+        Number.isFinite(metaOnChain?.decimals) ? "Why PASS: present." : "Why WATCH: not readable."
+      ])
+    });
+
+    const supplyReadable = metaOnChain?.totalSupply!==null && metaOnChain?.totalSupply!==undefined;
+    items.push({
+      t:"Total Supply",
+      sev:supplyReadable ? "ok" : "warn",
+      d:supplyReadable ? "Readable on-chain" : "Not readable",
+      why: supplyReadable ? "totalSupply() ok." : "totalSupply() missing.",
+      infoHtml: explain("Total Supply", [
+        "Meaning: Basis for holder %.",
+        supplyReadable ? "Why PASS: readable on-chain." : "Why WATCH: not readable."
+      ])
+    });
+
+    if(metaMerged?.image){
+      items.push({
+        t:"Logo / Image",
+        sev:"ok",
+        d:"Logo via metadata provider (API key).",
+        why:"Logo is off-chain (normal for EVM).",
+        infoHtml: explain("Token Logo (EVM)", [
+          "EVM tokens typically do not store logos on-chain.",
+          "UIs use tokenlists/explorers/metadata providers."
+        ])
+      });
+    }else{
+      items.push({
+        t:"Logo / Image",
+        sev:"warn",
+        d: CFG.EVM_METADATA_KEY ? "No logo returned by metadata API." : "EVM logos need an API key integration (optional).",
+        why: CFG.EVM_METADATA_KEY ? "Provider returned none." : "No provider enabled.",
+        infoHtml: explain("Token Logo (EVM)", [
+          CFG.EVM_METADATA_KEY ? "Provider returned no logo." : "Optional: set EVM_METADATA_KEY (Moralis) to fetch logos."
+        ])
+      });
+    }
+
+    renderList(qs("metaList"), items, "Token Metadata");
+  }
+
+  /* ===================== EVM HOLDERS (GoldRush -> compute %) ===================== */
+  function formatUnits(bigint, decimals){
+    if(bigint === null || bigint === undefined) return null;
+    const d = Number.isFinite(decimals) ? decimals : 18;
+    const neg = bigint < 0n;
+    let x = neg ? -bigint : bigint;
+
+    const base = 10n ** BigInt(d);
+    const whole = x / base;
+    const frac  = x % base;
+
+    const fracStr = frac.toString().padStart(d,"0").slice(0,6).replace(/0+$/,"");
+    return (neg ? "-" : "") + whole.toString() + (fracStr ? ("." + fracStr) : "");
+  }
+
+  function safeBigIntFromStr(s){
+    try{
+      if(s === null || s === undefined) return null;
+      if(typeof s === "string"){
+        if(s.trim() === "") return null;
+        if(s.includes(".")) return BigInt(s.split(".")[0]);
+        return BigInt(s);
+      }
+      if(typeof s === "number"){
+        if(!Number.isFinite(s)) return null;
+        return BigInt(Math.trunc(s));
+      }
+      return BigInt(s);
+    }catch{
+      return null;
+    }
+  }
+
+  async function renderHoldersEvm(chainId, tokenAddr, metaOnChain){
+    const supplyBI = metaOnChain?.totalSupply ?? null;
+    const decimals = metaOnChain?.decimals ?? 18;
+    const holders = await goldrushHolders(chainId, tokenAddr);
+
+    if(!holders || !holders.length){
+      renderHoldersEmpty();
+      return;
+    }
+
+    const items = holders.slice(0,10).map((h, i) => {
+      const addr = (h?.address || "").trim();
+
+      const balRaw = h?.balance ?? h?.balance_quote ?? h?.token_balance ?? null;
+      const balBI = safeBigIntFromStr(balRaw);
+
+      let pct = null;
+      if(supplyBI && balBI !== null && supplyBI > 0n){
+        const p = Number((balBI * 10000n) / supplyBI) / 100;
+        pct = Number.isFinite(p) ? p : null;
+      }else{
+        const p2 = Number(h?.percentage ?? h?.pct ?? h?.share ?? NaN);
+        pct = Number.isFinite(p2) ? p2 : null;
+      }
+
+      const balFmt = (balBI !== null) ? formatUnits(balBI, decimals) : (typeof balRaw === "string" ? balRaw : "—");
+      const pctStr = (pct === null) ? "—" : pct.toFixed(2) + "%";
+
+      return {
+        t:`#${i+1} ${shortAddr(addr)}`,
+        d:`${balFmt} tokens • ${pctStr}`,
+        addr,
+        infoHtml: explain("Top holder", [
+          `Share: ${pctStr}`,
+          "Why it matters: high % = whale/dump risk.",
+          "Note: % computed from totalSupply when available."
+        ])
+      };
+    });
+
+    renderHoldersWithExplorer(items, activeChain);
+  }
+
+  /* ===================== MAIN SCAN FLOW (same, just calls updated display) ===================== */
+  async function runScan(){
+    if(SCANNING) return;
+    SCANNING = true;
+
+    hideToast();
+    updateStampTime();
+
+    const addr = (qs("mint")?.value || "").trim();
+    setStatus("");
+    clearUI();
+
+    setText("mintShort", addr ? shortAddr(addr) : "—");
+
+    try{
+      if(activeChain.kind === "solana"){
+        if(!looksBase58(addr)) throw new Error("Invalid Solana mint. (Base58, 32–52 chars)");
+        setStatus("Connecting to Solana RPC…");
+
+        const mintParsed = await getMintParsed(addr);
+        if(!mintParsed || !mintParsed.info) throw new Error("Mint not found or not parsable.");
+
+        const ownerProg = mintParsed.owner || "";
+        const programType =
+          ownerProg === CFG.TOKEN_2022_PROGRAM ? "TOKEN_2022"
+          : ownerProg === CFG.TOKEN_PROGRAM ? "SPL_TOKEN"
+          : "UNKNOWN";
+
+        setStatus("Fetching supply…");
+        const supply = await getTokenSupply(addr);
+        const uiSupply = Number(supply?.uiAmount ?? NaN);
+
+        setStatus("Fetching largest holders…");
+        const largest = await getLargest(addr);
+
+        setStatus("Fetching metadata (getAsset)…");
+        const asset = await getAsset(addr);
+        const meta = pickTokenMetaFromAsset(asset);
+
+        const mintAuth = mintParsed.info?.mintAuthority ?? null;
+        const freezeAuth = mintParsed.info?.freezeAuthority ?? null;
+
+        const extListRaw = parseExtensionsFromParsed(mintParsed.rawParsed);
+        const extReadable = Array.isArray(extListRaw);
+
+        let top20 = 0;
+        if(Number.isFinite(uiSupply) && uiSupply > 0 && Array.isArray(largest)){
+          top20 = largest.slice(0,20).reduce((acc, x) => acc + (Number(x?.uiAmount || 0) / uiSupply * 100), 0);
+        }
+
+        const sig = {
+          programType,
+          extReadable,
+          extensions: extListRaw || [],
+          mintAuthActive: !!mintAuth,
+          freezeActive: !!freezeAuth,
+          mintAuthority: mintAuth,
+          freezeAuthority: freezeAuth,
+          uiSupply: Number.isFinite(uiSupply) ? uiSupply : null,
+          top20,
+          meta
+        };
+
+        applyTokenHeader(meta, addr);
+
+        const {score, checks, critical} = scoreSol(sig);
+        const verdict = verdictFrom(score, critical);
+
+        setText("verdictTitle", verdict.title);
+        setBadge(qs("verdictBadge"), verdict.label, verdict.mode);
+        setText("scoreBadge", `${score}/100`);
+        setText("scanHint", programType === "TOKEN_2022" ? "Token-2022 • Review extensions" : "Standard checks");
+
+        const metricRows = [
+          { label:"Guardian Score", value:`${score}/100`, badge: verdict.label, barPct: score, mini:"Composite risk score (heuristic)." },
+          { label:"Token Standard", value: programType==="TOKEN_2022" ? "Token-2022" : (programType==="SPL_TOKEN" ? "SPL Token" : "Unknown"), badge:"On-chain", mini:"Mint owner program." },
+          { label:"Total Supply", value: Number.isFinite(uiSupply) ? fmtInt(uiSupply) : "—", badge:"Supply", mini:"From getTokenSupply." },
+          { label:"Top20 Concentration", value: Number.isFinite(top20) ? fmtPct(top20) : "—", badge:"Holders", mini:"Approx via largest accounts.", barPct: Number.isFinite(top20) ? clamp(top20,0,100) : undefined }
+        ];
+        renderMetrics(metricRows);
+
+        setText(
+          "summary",
+          critical ? "Critical risk detected (mint/freeze authority)."
+                   : (score>=80 ? "Looks strong — still verify liquidity and official links."
+                               : "Mixed signals — verify admin controls and holders.")
+        );
+
+        renderList(qs("checksList"), checks, "Guardian Checks");
+        const todos = todoSol(sig);
+        renderList(qs("todoList"), todos, "Launch Readiness");
+        renderExtSol(programType, extReadable, sig.extensions);
+        renderMetaSol(meta);
+        renderHoldersSol(addr, uiSupply, largest);
+
+        LAST_SCAN = {
+          time: Date.now(),
+          chain: activeChain,
+          address: addr,
+          score,
+          verdict,
+          checks,
+          todos,
+          metrics: metricRows
+        };
+
+        enableExport(); /* defined in Part 3 (export system) */
+        setStatus("Scan complete.");
+      }else{
+        if(!looksEvmAddress(addr)) throw new Error("Invalid EVM address. Must be 0x + 40 hex chars.");
+        const chainId = activeChain.chainId;
+
+        setStatus("Connecting to EVM RPC…");
+        const code = await getCode(chainId, addr);
+        const hasCode = !!(code && code !== "0x" && code !== "0x0");
+
+        setStatus("Reading ERC-20 on-chain metadata…");
+        const metaOnChain = await getErc20Meta(chainId, addr);
+
+        setStatus("Fetching optional metadata provider…");
+        const metaApi = await getEvmMetaViaApi(chainId, addr);
+
+        const metaMerged = {
+          name: (metaOnChain?.name || metaApi?.name || "").trim(),
+          symbol: (metaOnChain?.symbol || metaApi?.symbol || "").trim(),
+          image: (metaApi?.image || "").trim()
+        };
+
+        applyTokenHeader(metaMerged, addr);
+
+        setStatus("Checking owner/proxy/controls…");
+        const [owner, proxy, paused] = await Promise.all([
+          getOwner(chainId, addr),
+          detectProxy(chainId, addr),
+          getPaused(chainId, addr)
+        ]);
+
+        const sig = { hasCode, metaOnChain, metaMerged, owner, proxy, paused };
+        const {score, checks, critical} = scoreEvm(sig);
+        const verdict = verdictFrom(score, critical);
+
+        setText("verdictTitle", verdict.title);
+        setBadge(qs("verdictBadge"), verdict.label, verdict.mode);
+        setText("scoreBadge", `${score}/100`);
+        setText("scanHint", `${activeChain.stamp} • ERC-20 checks`);
+
+        const supplyReadable = metaOnChain?.totalSupply !== null && metaOnChain?.totalSupply !== undefined;
+        const supplyText = supplyReadable ? formatUnits(metaOnChain.totalSupply, metaOnChain.decimals ?? 18) : "—";
+
+        const metricRows = [
+          { label:"Guardian Score", value:`${score}/100`, badge: verdict.label, barPct: score, mini:"Composite risk score (heuristic)." },
+          { label:"Owner", value: owner ? shortAddr(owner) : "—", badge: owner ? "Admin" : "Unknown", mini:"Best-effort owner() call." },
+          { label:"Proxy", value: proxy?.isProxy ? "Upgradeable" : "No signal", badge: proxy?.isProxy ? "WATCH" : "PASS", mini:"EIP-1967 slots check." },
+          { label:"Total Supply", value: supplyText || "—", badge: supplyReadable ? "On-chain" : "Unknown", mini:"From totalSupply()." }
+        ];
+        renderMetrics(metricRows);
+
+        setText(
+          "summary",
+          critical ? "Critical risk detected (paused or contract missing)."
+                   : (score>=80 ? "Looks strong — still verify liquidity and official links."
+                               : "Mixed signals — verify admin/upgradeability/holders.")
+        );
+
+        renderList(qs("checksList"), checks, "Guardian Checks");
+        const todos = todoEvm(sig);
+        renderList(qs("todoList"), todos, "Launch Readiness");
+
+        // FIXED DISPLAY HERE:
+        renderStandardEvm(sig);
+
+        renderMetaEvm(metaMerged, metaOnChain);
+
+        setStatus("Fetching top holders (indexer)…");
+        await renderHoldersEvm(chainId, addr, metaOnChain);
+
+        LAST_SCAN = {
+          time: Date.now(),
+          chain: activeChain,
+          address: addr,
+          score,
+          verdict,
+          checks,
+          todos,
+          metrics: metricRows
+        };
+
+        enableExport(); /* defined in Part 3 (export system) */
+        setStatus("Scan complete.");
+      }
+    }catch(err){
+      const msg = String(err?.message || err);
+      setStatus("Error: " + msg);
+      showToast("Connection error: " + msg);
+      renderHoldersEmpty();
+    }finally{
+      SCANNING = false;
+    }
+  }
+
+  /* ===================== BRANDED REPORT EXPORT (HTML, CLEAN) ===================== */
+  function fileSafe(s){
+    return String(s || "").replace(/[^a-zA-Z0-9_\-]/g, "").slice(0, 40) || "scan";
+  }
+
+  function chainNiceName(chain){
+    return chain?.stamp ? `${chain.name} • ${chain.stamp}` : `${chain?.name || "Chain"} (${chain?.id || "-"})`;
+  }
+
+  function sevLabel(sev){
+    return sev === "ok" ? "PASS" : (sev === "bad" ? "FAIL" : "WATCH");
+  }
+
+  function sevColor(sev){
+    // used only inside exported HTML report
+    if(sev === "ok")  return "linear-gradient(90deg, #14F195, #00D1FF, #9945FF)";
+    if(sev === "bad") return "rgba(255,120,150,.18)";
+    return "rgba(255,220,130,.14)";
+  }
+
+  function sevBorder(sev){
+    if(sev === "ok")  return "rgba(255,255,255,.10)";
+    if(sev === "bad") return "rgba(255,120,150,.35)";
+    return "rgba(255,220,130,.35)";
+  }
+
+  function escAttr(x){
+    return String(x ?? "")
+      .replaceAll("&","&amp;")
+      .replaceAll("<","&lt;")
+      .replaceAll(">","&gt;")
+      .replaceAll('"',"&quot;");
+  }
+
+  function buildBrandedReportHtml(scan){
+    const dt = new Date(scan.time);
+    const utc = dt.toISOString().replace("T"," ").replace("Z","");
+    const chainLine = chainNiceName(scan.chain);
+
+    // resolve logo (same path as your site; user can adjust)
+    // If your logo is hosted elsewhere, set CFG.UI.REPORT_LOGO_URL to an absolute URL in Part 1.
+    const logoUrl = (CFG?.UI?.REPORT_LOGO_URL && String(CFG.UI.REPORT_LOGO_URL).trim())
+      ? String(CFG.UI.REPORT_LOGO_URL).trim()
+      : "/assets/logo.png";
+
+    const metricsHtml = (Array.isArray(scan.metrics) ? scan.metrics : []).map(m => `
+      <div class="metric">
+        <div class="k">
+          <span>${escAttr(m.label || "Metric")}</span>
+          <span class="chip">${escAttr(m.badge || m.value || "—")}</span>
+        </div>
+        <div class="v">${escAttr(m.value || "—")}</div>
+        <div class="mini">${escAttr(m.mini || "")}</div>
+      </div>
+    `).join("");
+
+    const checksHtml = (Array.isArray(scan.checks) ? scan.checks : []).map(c => `
+      <div class="rowCard" style="border-color:${sevBorder(c.sev)}">
+        <div class="left">
+          <div class="t">${escAttr(c.t || "Check")}</div>
+          <div class="d">${escAttr(c.d || "—")}</div>
+        </div>
+        <div class="right">
+          <div class="pill ${c.sev === "ok" ? "ok" : (c.sev === "bad" ? "bad" : "warn")}">
+            ${sevLabel(c.sev)}
+          </div>
+        </div>
+      </div>
+    `).join("");
+
+    const todosHtml = (Array.isArray(scan.todos) ? scan.todos : []).map(t => `
+      <div class="rowCard" style="border-color:${sevBorder(t.sev)}">
+        <div class="left">
+          <div class="t">${escAttr(t.t || "Action")}</div>
+          <div class="d">${escAttr(t.d || "—")}</div>
+        </div>
+        <div class="right">
+          <div class="pill ${t.sev === "ok" ? "ok" : (t.sev === "bad" ? "bad" : "warn")}">
+            ${sevLabel(t.sev)}
+          </div>
+        </div>
+      </div>
+    `).join("");
+
+    const verdictMode = scan?.verdict?.mode || "good";
+    const verdictText = scan?.verdict?.title || "Guardian Report";
+    const verdictLabel = scan?.verdict?.label || "APPROVED";
+
+    const summaryLine = (qs("summary")?.textContent || "").trim() || "";
+
+    return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+  <meta name="theme-color" content="#070711"/>
+  <title>$SOS Guardian Scan Report</title>
+  <style>
+    :root{
+      --bg:#070711;
+      --panel: rgba(255,255,255,.06);
+      --stroke: rgba(255,255,255,.12);
+      --text: rgba(255,255,255,.92);
+      --muted: rgba(255,255,255,.70);
+      --g:#14F195;
+      --c:#00D1FF;
+      --p:#9945FF;
+      --radius: 22px;
+      --shadow: 0 10px 30px rgba(0,0,0,.35);
+      --max: 980px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      color:var(--text);
+      font: 15.5px/1.55 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      background: var(--bg);
+      overflow-x:hidden;
+    }
+    body::before{
+      content:"";
+      position:fixed;
+      inset:0;
+      z-index:-1;
+      pointer-events:none;
+      background:
+        radial-gradient(1200px 700px at 10% 5%, rgba(153,69,255,.22), transparent 60%),
+        radial-gradient(1000px 650px at 90% 10%, rgba(20,241,149,.18), transparent 55%),
+        radial-gradient(900px 600px at 70% 85%, rgba(0,209,255,.14), transparent 55%),
+        var(--bg);
+    }
+    .wrap{max-width:var(--max); margin:0 auto; padding:22px 16px 40px;}
+    .card{
+      background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.05));
+      border: 1px solid rgba(255,255,255,.10);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+    }
+    .inner{padding:18px}
+    .top{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:14px;
+      flex-wrap:wrap;
+    }
+    .brand{
+      display:flex;
+      align-items:center;
+      gap:12px;
+      min-width: 240px;
+    }
+    .brand img{width:44px;height:44px;object-fit:contain;filter: drop-shadow(0 10px 25px rgba(0,0,0,.45));}
+    .bt{display:flex; flex-direction:column; line-height:1.05}
+    .bt .t{font-weight:1000; letter-spacing:-.2px; font-size:16px}
+    .bt .s{font-weight:850; color:var(--muted); font-size:12.5px}
+    .stamp{
+      font-weight:1000;
+      font-size:12px;
+      letter-spacing: .45px;
+      text-transform:uppercase;
+      color: rgba(255,255,255,.76);
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      border-radius: 999px;
+      padding:7px 10px;
+      white-space:nowrap;
+    }
+    .h1{
+      margin:12px 0 0;
+      font-weight:1000;
+      letter-spacing:-1px;
+      line-height:1.05;
+      font-size: 36px;
+    }
+    .gradText{
+      background: linear-gradient(90deg, var(--g), var(--c), var(--p));
+      -webkit-background-clip:text;
+      background-clip:text;
+      color:transparent;
+    }
+    .sub{margin-top:8px; color: rgba(255,255,255,.76); font-weight:850}
+    .grid{
+      margin-top:14px;
+      display:grid;
+      grid-template-columns: 1fr;
+      gap:12px;
+    }
+    .panel{
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.18);
+      border-radius: 18px;
+      padding:14px;
+    }
+    .krow{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:12px;
+      flex-wrap:wrap;
+    }
+    .mono{font-family: ui-monospace, Menlo, Consolas, monospace; font-weight:900; color: rgba(255,255,255,.86); overflow-wrap:anywhere;}
+    .badge{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      padding:7px 11px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      font-weight:1000;
+      font-size:12px;
+      white-space:nowrap;
+    }
+    .badge.good{border:0; background: linear-gradient(90deg, var(--g), var(--c), var(--p)); color:#061012}
+    .badge.warn{border-color: rgba(255,220,130,.35); background: rgba(255,220,130,.08); color: rgba(255,240,210,.92)}
+    .badge.bad{border-color: rgba(255,120,150,.35); background: rgba(255,120,150,.10); color: rgba(255,190,205,.95)}
+    .sectionTitle{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-bottom:10px;
+    }
+    .sectionTitle .l{font-weight:1000; letter-spacing:.35px; font-size:12px; text-transform:uppercase; color: rgba(255,255,255,.72);}
+    .metricGrid{
+      display:grid;
+      grid-template-columns: repeat(2, minmax(0,1fr));
+      gap:10px;
+    }
+    @media (max-width:720px){ .metricGrid{grid-template-columns:1fr;} }
+    .metric{
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.04);
+      border-radius: 16px;
+      padding:12px 12px;
+    }
+    .metric .k{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      color: rgba(255,255,255,.70);
+      font-weight:1000;
+      font-size:12px;
+      letter-spacing:.45px;
+      text-transform:uppercase;
+    }
+    .metric .v{margin-top:8px; font-weight:1000; font-size:20px;}
+    .metric .mini{margin-top:6px; font-weight:850; font-size:12px; color: rgba(255,255,255,.62);}
+    .chip{
+      padding:6px 10px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      font-weight:1000;
+      font-size:12px;
+    }
+    .rowCard{
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.14);
+      border-radius: 16px;
+      padding:12px 12px;
+      display:flex;
+      gap:10px;
+      align-items:flex-start;
+      justify-content:space-between;
+    }
+    .rowCard .t{font-weight:1000; font-size:13px; letter-spacing:.2px;}
+    .rowCard .d{margin-top:4px; color: rgba(255,255,255,.70); font-weight:750; font-size:12.5px; line-height:1.35;}
+    .pill{
+      padding:6px 10px;
+      border-radius: 999px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.06);
+      font-weight:1000;
+      font-size:12px;
+      white-space:nowrap;
+      user-select:none;
+    }
+    .pill.ok{border:0; background: linear-gradient(90deg, var(--g), var(--c), var(--p)); color:#061012}
+    .pill.warn{border-color: rgba(255,220,130,.35); background: rgba(255,220,130,.08); color: rgba(255,240,210,.92)}
+    .pill.bad{border-color: rgba(255,120,150,.35); background: rgba(255,120,150,.10); color: rgba(255,190,205,.95)}
+    .footer{
+      margin-top:14px;
+      text-align:center;
+      color: rgba(255,255,255,.45);
+      font-weight:650;
+      font-size:12px;
+    }
+    .printHint{
+      margin-top:10px;
+      color: rgba(255,255,255,.60);
+      font-weight:850;
+      font-size:12px;
+      text-align:center;
+    }
+    @media print{
+      body::before{display:none}
+      .printHint{display:none}
+      .wrap{padding:0}
+      .card{box-shadow:none}
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <div class="inner">
+        <div class="top">
+          <div class="brand">
+            <img src="${escAttr(logoUrl)}" alt="$SOS" onerror="this.style.display='none'">
+            <div class="bt">
+              <div class="t">$SOS</div>
+              <div class="s">Guardian Scan Report</div>
+            </div>
+          </div>
+          <div style="display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end;">
+            <div class="stamp">${escAttr(chainLine)}</div>
+            <div class="stamp">${escAttr(utc)} UTC</div>
+          </div>
+        </div>
+
+        <div class="h1">
+          <span class="gradText">${escAttr(verdictText)}</span>
+        </div>
+
+        <div class="sub">
+          Address: <span class="mono">${escAttr(scan.address)}</span>
+        </div>
+
+        <div style="margin-top:12px; display:flex; gap:10px; flex-wrap:wrap;">
+          <span class="badge ${verdictMode === "good" ? "good" : (verdictMode === "bad" ? "bad" : "warn")}">${escAttr(verdictLabel)}</span>
+          <span class="badge good">${escAttr(scan.score)}/100</span>
+        </div>
+
+        ${summaryLine ? `<div class="sub" style="margin-top:10px;">${escAttr(summaryLine)}</div>` : ""}
+
+        <div class="grid">
+          <div class="panel">
+            <div class="sectionTitle">
+              <div class="l">Key Metrics</div>
+              <div class="l">On-Chain / Best-Effort</div>
+            </div>
+            <div class="metricGrid">
+              ${metricsHtml || `<div class="metric"><div class="k"><span>Metrics</span><span class="chip">—</span></div><div class="v">—</div><div class="mini">No metrics available.</div></div>`}
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="sectionTitle">
+              <div class="l">Checks</div>
+              <div class="l">PASS / WATCH / FAIL</div>
+            </div>
+            <div style="display:grid; gap:10px;">
+              ${checksHtml || `<div class="rowCard"><div><div class="t">No checks</div><div class="d">No check data available.</div></div><div class="pill warn">WATCH</div></div>`}
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="sectionTitle">
+              <div class="l">Launch Readiness</div>
+              <div class="l">Action List</div>
+            </div>
+            <div style="display:grid; gap:10px;">
+              ${todosHtml || `<div class="rowCard"><div><div class="t">No checklist</div><div class="d">No action list available.</div></div><div class="pill warn">WATCH</div></div>`}
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="sectionTitle">
+              <div class="l">Notes</div>
+              <div class="l">$SOS Guardian System</div>
+            </div>
+            <div style="color: rgba(255,255,255,.74); font-weight:850; font-size:12.5px; line-height:1.45;">
+              <div style="margin:6px 0;">• This report is heuristic and best-effort. Always verify liquidity, official links, and contract code.</div>
+              <div style="margin:6px 0;">• PASS/WATCH/FAIL applies per-check only. It is not a guarantee of safety.</div>
+              <div style="margin:6px 0;">• Tip: Use your browser “Print” → “Save as PDF” for a clean PDF export.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="printHint">Tip: Press Ctrl+P / Cmd+P → Save as PDF (keeps this design).</div>
+        <div class="footer">© ${new Date().getFullYear()} $SOS • Guardian Scan</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>`;
+  }
+
+  function downloadHtml(filename, html){
+    const blob = new Blob([html], { type:"text/html;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  // Keep TXT export too (not removed) — but now we prefer HTML.
+  function buildReportText(scan){
+    const L = [];
+    const dt = new Date(scan.time);
+
+    L.push("$SOS Guardian Scan Report");
+    L.push("========================================");
+    L.push(`Time (UTC): ${dt.toISOString().replace("T"," ").replace("Z","")}`);
+    L.push(`Chain: ${scan.chain.name} (${scan.chain.id})`);
+    L.push(`Address: ${scan.address}`);
+    L.push(`Verdict: ${scan.verdict.title}`);
+    L.push(`Score: ${scan.score}/100`);
+    L.push("");
+
+    if(scan.metrics && Array.isArray(scan.metrics) && scan.metrics.length){
+      L.push("Key Metrics");
+      L.push("----------------------------------------");
+      for(const m of scan.metrics){
+        const label = m?.label || "Metric";
+        const value = m?.value ?? "—";
+        L.push(`- ${label}: ${value}`);
+      }
+      L.push("");
+    }
+
+    L.push("Checks");
+    L.push("----------------------------------------");
+    for(const c of scan.checks){
+      L.push(`- [${pillLabel(c.sev)}] ${c.t}: ${c.d}`);
+    }
+    L.push("");
+
+    L.push("Launch Readiness");
+    L.push("----------------------------------------");
+    for(const t of scan.todos){
+      L.push(`- [${pillLabel(t.sev)}] ${t.t}: ${t.d}`);
+    }
+
+    L.push("");
+    L.push("Notes");
+    L.push("----------------------------------------");
+    L.push("- This report is heuristic and best-effort. Always verify liquidity, official links, and contract code.");
+    L.push("- PASS/WATCH/FAIL applies per-check only. It is not a guarantee of safety.");
+    return L.join("\n");
+  }
+
+  function downloadText(filename, text){
+    const blob = new Blob([text], {type:"text/plain;charset=utf-8"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  function enableExport(){
+    const b = qs("btnExport");
+    if(!b) return;
+    b.disabled = false;
+    b.textContent = "Download Scan Report";
+  }
+
+  /* ===================== EVENTS (modal + buttons) ===================== */
+  function wireGlobalClick(){
+    document.addEventListener("click", (e) => {
+      const t = e.target;
+      const openEl = t?.closest?.("[data-open='1']");
+      if(openEl){
+        const title = openEl.getAttribute("data-title") || "Details";
+        const infoId = openEl.getAttribute("data-info") || "";
+        const html = getInfo(infoId);
+        if(html) openModal(title, html);
+        return;
+      }
+    });
+
+    document.addEventListener("keydown", (e) => {
+      if(e.key !== "Enter" && e.key !== " ") return;
+      const a = document.activeElement;
+      if(a && a.matches && a.matches("[data-open='1']")){
+        e.preventDefault();
+        const title = a.getAttribute("data-title") || "Details";
+        const infoId = a.getAttribute("data-info") || "";
+        const html = getInfo(infoId);
+        if(html) openModal(title, html);
+      }
+    });
+  }
+
+  function init(){
+  setText("y", String(new Date().getFullYear()));
+
+  on("modalClose", "click", closeModal);
+  on("toastClose", "click", hideToast);
+
+  on("modalWrap", "click", (e) => {
+    if(e.target === qs("modalWrap")) closeModal();
+  });
+
+  on("btnScan", "click", runScan);
+  on("btnScanInline", "click", runScan);
+
+  on("mint", "keydown", (e) => {
+    if(e.key === "Enter") runScan();
+  });
+
+  on("btnExport", "click", () => {
+    if(!LAST_SCAN) return;
+
+    const safeAddr = fileSafe((LAST_SCAN.address || "").replace(/^0x/i,"").slice(0, 16));
+    const htmlName = `guardian_scan_${LAST_SCAN.chain.id}_${safeAddr}.html`;
+    const html = buildBrandedReportHtml(LAST_SCAN);
+    downloadHtml(htmlName, html);
+  });
+
+  const url = new URL(location.href);
+  const chainParam = url.searchParams.get("chain");
+  if(chainParam && CFG.CHAINS.some(c => c.id === chainParam)){
+    activeChain = CFG.CHAINS.find(c => c.id === chainParam);
+  }
+
+  setActiveChain(activeChain.id, false);
+  startLiveStampTime();
+  wireGlobalClick();
+}
+
+init();
+
+
+  </script>
+
+</body>
+</html>
