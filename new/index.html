@@ -994,8 +994,8 @@
       info: p?.info || null,
       rawPair: p
     };
-    return out;
-  }
+    out.pairsAll = pairs;
+    return out;  }
 
   function money(n){
     if(n === null || n === undefined || Number.isNaN(n)) return '—';
@@ -1030,6 +1030,26 @@
   function encodeAddrParam(addr){
     const a = normalizeAddr(addr).replace(/^0x/,'');
     return a.padStart(64,'0');
+  }
+
+  async function pickV2PairAddress(chainId, pairs){
+    // Try to find a UniswapV2-style pair among DexScreener pairs (best-effort).
+    if(!Array.isArray(pairs) || !pairs.length) return null;
+    const token0Sel = "0x0dfe1681";
+    const token1Sel = "0xd21220a7";
+    // pairs are already sorted by liquidity in fetchDexScreener()
+    const maxTry = Math.min(10, pairs.length);
+    for(let i=0;i<maxTry;i++){
+      const p = pairs[i] || {};
+      const addr = String(p.pairAddress || p.address || "");
+      if(!addr.toLowerCase().startsWith("0x")) continue;
+      try{
+        const t0 = await ethCall(chainId, addr, token0Sel).catch(()=>null);
+        const t1 = await ethCall(chainId, addr, token1Sel).catch(()=>null);
+        if(t0 && t1) return addr;
+      }catch{}
+    }
+    return null;
   }
 
   async function lpBurnedPercentV2(chainId, pairAddr){
@@ -1350,6 +1370,16 @@ function pillLabel(sev){ return (sev==="ok" ? (pillIcon(sev)+' PASS') : (pillIco
         </div>
       `;
       el.appendChild(li);
+    }
+  }
+
+  function renderHoldersList(items){
+    // Backward-compat helper (some paths still call renderHoldersList).
+    // Renders a holder list with explorer links.
+    try{
+      return renderHoldersWithExplorer(Array.isArray(items)?items:[], activeChain);
+    }catch(e){
+      return renderHoldersEmpty();
     }
   }
 
@@ -3784,8 +3814,19 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
 
         // best-effort LP burn check (V2-style Uniswap pairs)
         let lpBurn = {pct:null, note:"No LP data."};
-        if(dex && dex.pairAddress){
-          lpBurn = await lpBurnedPercentV2(chainId, dex.pairAddress);
+        if(dex){
+          let pairForBurn = dex.pairAddress || null;
+          // If best pair is UniswapV3 (no LP token), try to find an alternative V2-style pair among pairs list.
+          if(dex.pairsAll && dex.pairsAll.length){
+            const v2 = await pickV2PairAddress(chainId, dex.pairsAll).catch(()=>null);
+            if(v2) pairForBurn = v2;
+          }
+          if(pairForBurn){
+            lpBurn = await lpBurnedPercentV2(chainId, pairForBurn);
+            if(lpBurn && lpBurn.pct === null && lpBurn.note === "Not V2 pool"){
+              lpBurn.note = "V3 pool / no LP token";
+            }
+          }
         }
 
         setStatus("Checking owner/proxy/controls…");
