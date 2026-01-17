@@ -2,3775 +2,1746 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#070711" />
-  <title>$SOS — Guardian Check (Multi-Chain) • Next Level</title>
-  <meta name="description" content="Guardian Approved — token risk score + launch readiness + cluster & bubble map (best-effort, on-chain verifiable when possible)." />
+
+  <title>$SOS — Solana on Solana</title>
+  <meta name="description" content="$SOS — Solana on Solana. Meet the Guardian of the chain." />
+
+  <meta property="og:title" content="$SOS — Solana on Solana" />
+  <meta property="og:description" content="Meet the Guardian of the chain." />
+  <meta property="og:type" content="website" />
+  <meta property="og:image" content="assets/logo.png" />
 
   <style>
     :root{
       --bg:#070711;
       --panel: rgba(255,255,255,.06);
+      --panel2: rgba(255,255,255,.085);
       --stroke: rgba(255,255,255,.12);
+
       --text: rgba(255,255,255,.92);
-      --muted: rgba(255,255,255,.70);
+      --muted: rgba(255,255,255,.72);
+
       --g:#14F195;
       --c:#00D1FF;
       --p:#9945FF;
+
       --radius: 22px;
-      --shadow: 0 10px 30px rgba(0,0,0,.35);
-      --max: 1180px;
+      --shadow2: 0 14px 44px rgba(0,0,0,.45);
+      --shadowSoft: 0 10px 28px rgba(0,0,0,.28);
+      --max: 1120px;
 
-      /* brand-ish extras */
-      --sol-g1:#14F195;
-      --sol-g2:#00D1FF;
-      --sol-g3:#9945FF;
-      --bnb-yellow:#F0B90B;
-      --base-blue:#0052FF;
-
-      /* new */
-      --good: rgba(20,241,149,.18);
-      --warn: rgba(255,220,130,.14);
-      --bad:  rgba(255,120,150,.16);
-      --gridGap: 16px;
+      --ring: 0 0 0 6px rgba(20,241,149,.08);
     }
+
     *{box-sizing:border-box}
     html,body{height:100%}
+    html{scroll-behavior:smooth}
+
     body{
       margin:0;
       color:var(--text);
-      font: 15.5px/1.55 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      font: 16px/1.6 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
       background: var(--bg);
-      position:relative;
       overflow-x:hidden;
+      position: relative;
     }
+
     body::before{
       content:"";
-      position:fixed;
-      inset:0;
-      z-index:-1;
-      pointer-events:none;
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      pointer-events: none;
       background:
-        radial-gradient(1200px 700px at 10% 5%, rgba(153,69,255,.22), transparent 60%),
-        radial-gradient(1000px 650px at 90% 10%, rgba(20,241,149,.18), transparent 55%),
-        radial-gradient(900px 600px at 70% 85%, rgba(0,209,255,.14), transparent 55%),
+        radial-gradient(1200px 760px at 10% 5%, rgba(153,69,255,.24), transparent 60%),
+        radial-gradient(1000px 720px at 90% 10%, rgba(20,241,149,.18), transparent 58%),
+        radial-gradient(900px 640px at 72% 92%, rgba(0,209,255,.14), transparent 58%),
+        radial-gradient(900px 640px at 0% 95%, rgba(0,209,255,.06), transparent 60%),
         var(--bg);
       transform: translateZ(0);
     }
+
     a{color:inherit; text-decoration:none}
-    .wrap{max-width:var(--max); margin:0 auto; padding:0 18px; width:100%;}
-    main{padding:22px 0 42px}
-    .topbar{
-      position:sticky;
-      top:0;
-      z-index:20;
-      backdrop-filter: blur(14px);
-      background: rgba(7,7,17,.62);
-      border-bottom: 1px solid rgba(255,255,255,.08);
-    }
-    .row{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:12px;
-      padding:12px 0;
-      flex-wrap:wrap;
-    }
-    .brand{
-      display:flex;
-      align-items:center;
-      gap:12px;
-      min-width: 260px;
-      user-select:none;
-    }
-    .brand img{
-      width:40px;
-      height:40px;
-      object-fit:contain;
-      filter: drop-shadow(0 10px 25px rgba(0,0,0,.45));
-    }
-    .bt{display:flex; flex-direction:column; line-height:1.05}
-    .bt .t{font-weight:1000; letter-spacing:-.2px; font-size:16px}
-    .bt .s{font-weight:850; color:var(--muted); font-size:12.5px}
+    .wrap{max-width:var(--max); margin:0 auto; padding:0 18px}
 
-    .actions{
-      display:flex;
-      gap:10px;
-      align-items:center;
-      flex-wrap:wrap;
-      justify-content:flex-end;
-      width:100%;
-    }
-    @media (min-width: 980px){
-      .actions{width:auto}
+    /* ===== ACCESSIBILITY ===== */
+    :focus-visible{
+      outline:none;
+      box-shadow: var(--ring);
+      border-radius: 14px;
     }
 
+    /* ===== BASE UI ===== */
     .btn{
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
+      display:inline-flex; align-items:center; justify-content:center;
       padding:9px 12px;
       border-radius: 999px;
       border: 1px solid rgba(255,255,255,.14);
       background: rgba(255,255,255,.06);
-      color: rgba(255,255,255,.88);
-      font-weight:950;
+      color: rgba(255,255,255,.90);
+      font-weight:900;
       font-size:13px;
-      transition: .15s ease;
+      transition: transform .15s ease, background .15s ease, box-shadow .15s ease, border-color .15s ease;
+      white-space: nowrap;
       user-select:none;
-      cursor:pointer;
       -webkit-tap-highlight-color: transparent;
-      white-space:nowrap;
     }
     .btn:hover{background: rgba(255,255,255,.10); transform: translateY(-1px)}
+    .btn:active{transform: translateY(0px) scale(.99)}
+    .btn.primary,
     .btn.grad{
-      border:0;
+      border: 0;
       background: linear-gradient(90deg, var(--g), var(--c), var(--p));
-      color:#061012;
-      box-shadow: 0 10px 24px rgba(0,0,0,.25);
+      color: #061012;
+      box-shadow: 0 14px 28px rgba(0,0,0,.28);
     }
-    .btn[disabled]{opacity:.55; pointer-events:none}
+    .btn.ghost{ background: rgba(255,255,255,.06); }
+    .btn.icon{
+      width:44px;
+      padding:9px 0;
+      letter-spacing:2px;
+      font-weight:1000;
+    }
 
     .card{
-      background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.05));
-      border: 1px solid rgba(255,255,255,.10);
+      background: linear-gradient(180deg, rgba(255,255,255,.075), rgba(255,255,255,.045));
+      border: 1px solid rgba(255,255,255,.11);
       border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      overflow:hidden;
+      box-shadow: var(--shadow2);
+      position: relative;
     }
-    .inner{padding:22px}
+    .cardInner{padding:28px}
 
-    .hero{
-      position:relative;
-      overflow:hidden;
-      isolation:isolate;
+    section{padding:34px 0}
+
+    .gradText{
+      background: linear-gradient(90deg, var(--g), var(--c), var(--p));
+      -webkit-background-clip:text; background-clip:text; color:transparent;
     }
-    .hero::before{
+
+    /* ===== HEADER (CLEAN, NO CHAOS) ===== */
+    .header{
+      position:sticky; top:0; z-index:40;
+      backdrop-filter: blur(14px);
+      background: rgba(7,7,17,.68);
+      border-bottom: 1px solid rgba(255,255,255,.08);
+    }
+
+    .headerRow{
+      display:grid;
+      grid-template-columns: auto 1fr auto;
+      align-items:center;
+      gap:12px;
+      padding:12px 0;
+    }
+
+    .brand{
+      display:flex; align-items:center; gap:12px;
+      min-width: 210px;
+      white-space: nowrap;
+    }
+    .brand img{
+      width:40px; height:40px; object-fit:contain;
+      filter: drop-shadow(0 10px 25px rgba(0,0,0,.45));
+    }
+    .brandText{display:flex; flex-direction:column; line-height:1.05}
+    .brandText .ticker{font-weight:1000; letter-spacing:.2px; font-size:18px}
+    .brandText .name{font-weight:750; color:var(--muted); font-size:14px}
+
+    .nav{
+      display:flex; align-items:center; justify-content:center;
+      gap:10px;
+      min-width: 0;
+      overflow:hidden;
+    }
+
+    .headerActions{
+      display:flex;
+      align-items:center;
+      justify-content:flex-end;
+      gap:10px;
+      min-width: 240px;
+      white-space: nowrap;
+    }
+
+    /* Desktop menu (⋯) */
+    .menu{ position:relative; display:inline-flex; }
+    .menuPop{
+      position:absolute;
+      top: calc(100% + 10px);
+      right: 0;
+      min-width: 240px;
+      padding: 8px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(10,10,22,.92);
+      backdrop-filter: blur(16px);
+      box-shadow: 0 18px 60px rgba(0,0,0,.55);
+      display:none;
+      z-index: 60;
+    }
+    .menuPop.open{ display:block; }
+
+    .menuItem{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      padding:10px 12px;
+      border-radius: 12px;
+      font-weight: 950;
+      color: rgba(255,255,255,.88);
+      background: transparent;
+      transition: .12s ease;
+    }
+    .menuItem:hover{
+      background: rgba(255,255,255,.08);
+      transform: translateY(-1px);
+    }
+    .menuBadge{
+      font-size:11px;
+      font-weight:950;
+      padding:6px 9px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.06);
+      color: rgba(255,255,255,.70);
+    }
+
+    /* Mobile drawer */
+    .mToggle{ display:none; }
+    .mOverlay{
+      position:fixed;
+      inset:0;
+      background: rgba(0,0,0,.55);
+      backdrop-filter: blur(6px);
+      opacity:0;
+      pointer-events:none;
+      transition: .18s ease;
+      z-index: 80;
+    }
+    .mOverlay.open{
+      opacity:1;
+      pointer-events:auto;
+    }
+    .mDrawer{
+      position:fixed;
+      top:0; right:0;
+      height:100dvh;
+      width: min(92vw, 380px);
+      transform: translateX(110%);
+      transition: .22s ease;
+      z-index: 90;
+      padding: 14px 14px 18px;
+      background: rgba(10,10,22,.92);
+      border-left: 1px solid rgba(255,255,255,.10);
+      box-shadow: -20px 0 80px rgba(0,0,0,.55);
+      backdrop-filter: blur(16px);
+      overflow:auto;
+    }
+    .mDrawer.open{ transform: translateX(0); }
+
+    .mTop{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      padding: 6px 4px 12px;
+      border-bottom: 1px solid rgba(255,255,255,.10);
+      margin-bottom: 12px;
+    }
+    .mTitle{
+      font-weight:1000;
+      letter-spacing:-.2px;
+    }
+    .mGroup{
+      margin-top:12px;
+    }
+    .mLabel{
+      font-size:12px;
+      font-weight:950;
+      letter-spacing:.55px;
+      text-transform:uppercase;
+      color: rgba(255,255,255,.62);
+      margin: 10px 6px 8px;
+    }
+    .mList{
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+    }
+    .mList .btn{
+      width:100%;
+      justify-content:flex-start;
+      padding: 11px 14px;
+      border-radius: 16px;
+    }
+
+    /* ===== HERO ===== */
+    .hero{padding-top:22px}
+    .heroCard{
+      padding:42px 26px;
+      text-align:center;
+      position: relative;
+      overflow: hidden;
+      isolation: isolate;
+    }
+    .heroCard::before{
       content:"";
       position:absolute;
-      inset:-70px -40px;
+      inset:-90px -40px;
+      background: url("assets/logo.png") no-repeat 50% 35%;
+      background-size: min(880px, 120%);
+      opacity: .075;
+      filter: saturate(1.1) blur(.2px);
+      transform: translateZ(0);
+      z-index: 0;
+      pointer-events:none;
+    }
+    .heroCard::after{
+      content:"";
+      position:absolute;
+      inset:0;
       background:
-        radial-gradient(900px 520px at 18% 28%, rgba(20,241,149,.16), transparent 60%),
-        radial-gradient(900px 520px at 82% 20%, rgba(0,209,255,.12), transparent 60%),
-        radial-gradient(900px 520px at 70% 86%, rgba(153,69,255,.14), transparent 60%);
+        radial-gradient(900px 520px at 18% 28%, rgba(20,241,149,.10), transparent 62%),
+        radial-gradient(900px 520px at 82% 20%, rgba(0,209,255,.09), transparent 62%),
+        radial-gradient(900px 520px at 70% 86%, rgba(153,69,255,.09), transparent 62%);
+      opacity:.9;
       z-index:0;
       pointer-events:none;
     }
-    .hero > *{position:relative; z-index:1}
+    .heroCard > *{position: relative; z-index: 1}
 
-    .h1{
-      margin:0;
-      font-weight:1000;
-      letter-spacing:-1px;
-      line-height:1.05;
-      font-size: clamp(34px, 4.6vw, 62px);
+    .heroTitle{
+      margin: 8px 0 0;
+      font-weight: 1100;
+      letter-spacing: -1.4px;
+      line-height: 1.02;
+      font-size: clamp(56px, 7.2vw, 92px);
     }
-    .gradText{
-      background: linear-gradient(90deg, var(--g), var(--c), var(--p));
-      -webkit-background-clip:text;
-      background-clip:text;
-      color:transparent;
+    .heroSubName{
+      margin: 10px 0 0;
+      font-weight: 950;
+      font-size: clamp(18px, 2.2vw, 26px);
+      color: rgba(255,255,255,.90);
     }
-    .sub{
-      margin-top:10px;
-      color: rgba(255,255,255,.76);
-      font-weight:850;
-      max-width: 940px;
+    .heroSlogan{
+      margin: 10px 0 0;
+      font-weight: 800;
+      font-size: 16px;
+      color: rgba(255,255,255,.78);
     }
-    .classified{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:10px;
-      flex-wrap:wrap;
+    .heroDesc{
+      margin: 14px auto 0;
+      max-width: 860px;
+      color: rgba(255,255,255,.74);
+      font-weight: 650;
     }
-    .stamp{
-      font-weight:1000;
-      font-size:12px;
-      letter-spacing: .45px;
-      text-transform:uppercase;
-      color: rgba(255,255,255,.76);
-      border: 1px solid rgba(255,255,255,.14);
-      background: rgba(255,255,255,.06);
-      border-radius: 999px;
-      padding:7px 10px;
+    .heroActions{
+      margin-top: 18px;
+      display:flex; gap:12px; justify-content:center; flex-wrap:wrap;
+    }
+    .heroContract{
+      margin: 18px auto 0;
+      max-width: 860px;
     }
 
-    .layout{
-      margin-top:16px;
+    /* ===== WHAT IS ===== */
+    .twoCol{
       display:grid;
-      grid-template-columns: 1.05fr .95fr;
-      gap:var(--gridGap);
+      grid-template-columns: 1.35fr .65fr;
+      gap:18px;
       align-items:start;
     }
-    @media (max-width: 980px){
-      .layout{grid-template-columns:1fr}
+    .h2{
+      margin:0 0 12px;
+      font-size: 34px;
+      line-height:1.18;
+      font-weight: 1000;
+      letter-spacing:-.7px;
     }
+    .bodyText{color: rgba(255,255,255,.74); font-weight: 650;}
+    .bodyText p{margin: 0 0 14px}
+    .bodyText p:last-child{margin:0}
 
-    /* NEW: analysis grid under the hero layout */
-    .analysisGrid{
-      margin-top: var(--gridGap);
-      display:grid;
-      grid-template-columns: 1.1fr .9fr;
-      gap: var(--gridGap);
-      align-items:start;
-    }
-    @media (max-width: 980px){
-      .analysisGrid{grid-template-columns:1fr}
-    }
-
-    .panel{
-      border:1px solid rgba(255,255,255,.10);
+    /* ===== THE LORE BOX ===== */
+    .loreBox{
+      border: 1px solid rgba(255,255,255,.10);
       background: rgba(0,0,0,.18);
       border-radius: 18px;
-      padding:16px;
+      box-shadow: var(--shadowSoft);
+      padding: 16px;
       overflow:hidden;
+      position: relative;
+    }
+    .loreBox::after{
+      content:"";
+      position:absolute; inset:0;
+      background:
+        radial-gradient(900px 520px at 20% 20%, rgba(20,241,149,.08), transparent 62%),
+        radial-gradient(900px 520px at 80% 18%, rgba(0,209,255,.07), transparent 62%),
+        radial-gradient(900px 520px at 70% 88%, rgba(153,69,255,.07), transparent 62%);
+      opacity:.9;
+      pointer-events:none;
+    }
+    .loreInner{ position:relative; z-index:1; }
+
+    .loreTitle{
+      margin: 2px 0 10px;
+      font-weight: 1100;
+      letter-spacing: -.6px;
+      line-height: 1.15;
+      font-size: 20px;
     }
 
-    /* NEW: mini header row in panels */
-    .panelHead{
+    .loreMedia{
+      margin-top: 12px;
       display:flex;
-      align-items:flex-start;
-      justify-content:space-between;
-      gap:10px;
-      flex-wrap:wrap;
-      margin-bottom:10px;
+      justify-content:center;
     }
-    .panelTitle{
-      font-weight:1000;
-      letter-spacing:.35px;
-      text-transform:uppercase;
-      font-size:12px;
-      color: rgba(255,255,255,.72);
-      display:flex;
-      gap:10px;
-      align-items:center;
-      flex-wrap:wrap;
-    }
-    .panelSub{
-      color: rgba(255,255,255,.62);
-      font-weight:850;
-      font-size:12.5px;
-      line-height:1.35;
-      margin-top:6px;
-    }
-
-    label{
-      display:block;
-      font-weight:950;
-      font-size:12.5px;
-      letter-spacing:.35px;
-      color: rgba(255,255,255,.82);
-      margin-bottom:8px;
-    }
-    input{
+    .loreMedia img{
       width:100%;
-      padding:14px 14px;
-      border-radius: 16px;
-      border: 1px solid rgba(255,255,255,.14);
-      background: rgba(0,0,0,.22);
-      color: rgba(255,255,255,.92);
-      outline:none;
-      font-weight:900;
-      letter-spacing:.2px;
-      font-size:16px;
-      max-width:100%;
-    }
-    input:focus{
-      border-color: rgba(0,209,255,.45);
-      box-shadow: 0 0 0 3px rgba(0,209,255,.12);
+      max-width: 320px;
+      height:auto;
+      object-fit:contain;
+      filter: drop-shadow(0 18px 44px rgba(0,0,0,.60));
     }
 
-    .statusLine{
-      margin-top:12px;
-      color: rgba(255,255,255,.72);
-      font-weight:900;
-      min-height: 18px;
-      font-size:13px;
-      overflow-wrap:anywhere;
-      word-break:break-word;
+    /* ✅ PROOFS BUTTONS */
+    .proofsRow{
+      margin-top: 12px;
+      display:flex;
+      gap:12px;
+      flex-wrap:wrap;
+      align-items:center;
     }
-
-    .badge{
+    .proofBtn{
+      position: relative;
+      padding: 10px 14px;
+      font-weight: 1000;
+      letter-spacing: .2px;
+    }
+    .proofBtn::before{
+      content:"";
+      position:absolute;
+      inset:-1px;
+      border-radius: 999px;
+      background: radial-gradient(120px 60px at 30% 30%, rgba(255,255,255,.20), transparent 60%);
+      pointer-events:none;
+      opacity:.55;
+    }
+    .pokeDot{
+      width:10px; height:10px;
+      border-radius:999px;
+      background: rgba(255,255,255,.88);
+      box-shadow: 0 0 0 3px rgba(0,0,0,.18), 0 0 0 6px rgba(255,255,255,.10);
+      flex: 0 0 auto;
+    }
+    .proofLabel{
       display:inline-flex;
       align-items:center;
-      justify-content:center;
-      padding:7px 11px;
-      border-radius: 999px;
-      border: 1px solid rgba(255,255,255,.14);
-      background: rgba(255,255,255,.06);
-      font-weight:1000;
-      font-size:12px;
-      white-space:nowrap;
-    }
-    .badge.good{border:0; background: linear-gradient(90deg,var(--g),var(--c),var(--p)); color:#061012}
-    .badge.warn{border-color: rgba(255,220,130,.35); background: rgba(255,220,130,.08); color: rgba(255,240,210,.92)}
-    .badge.bad{border-color: rgba(255,120,150,.35); background: rgba(255,120,150,.10); color: rgba(255,190,205,.95)}
-
-    .resultTop{
-      display:flex;
-      align-items:flex-start;
-      justify-content:space-between;
-      gap:12px;
-      flex-wrap:wrap;
-    }
-    .resultTitle{
-      margin:0;
-      font-weight:1000;
-      font-size:22px;
-      letter-spacing:-.4px;
-    }
-    .mono{
-      font-family: ui-monospace, Menlo, Consolas, monospace;
-      font-weight:900;
-      color: rgba(255,255,255,.86);
-      margin-top:6px;
-      overflow-wrap:anywhere;
-      word-break:break-word;
-    }
-
-    .tokenHead{
-      display:flex;
-      gap:12px;
-      align-items:center;
-      flex-wrap:wrap;
-      margin-bottom:10px;
-      min-width:0;
-    }
-    .tokenLogoWrap{
-      width:44px;
-      height:44px;
-      border-radius:12px;
-      overflow:hidden;
-      border:1px solid rgba(255,255,255,.10);
-      background: rgba(0,0,0,.18);
-      display:flex; /* show by default now (will be hidden if no image) */
-      flex:0 0 auto;
-      position:relative;
-      align-items:center;
-      justify-content:center;
-    }
-    .tokenLogoWrap img{
-      width:100%;
-      height:100%;
-      object-fit:cover;
-      display:block;
-    }
-    /* NEW: fallback identicon inside logo wrap */
-    .identicon{
-      width:100%;
-      height:100%;
-      display:block;
-    }
-
-    .tokenName{
-      font-weight:1000;
-      font-size:16px;
-      letter-spacing:-.2px;
-      line-height:1.15;
-      overflow-wrap:anywhere;
-      word-break:break-word;
-    }
-    .tokenSymbol{
-      margin-top:2px;
-      color: rgba(255,255,255,.70);
-      font-weight:900;
-      font-size:12.5px;
-    }
-
-    .metricStack{margin-top:12px; display:grid; gap:10px;}
-    .metric{
-      border:1px solid rgba(255,255,255,.10);
-      background: rgba(255,255,255,.04);
-      border-radius: 16px;
-      padding:12px 12px;
-    }
-    .metricK{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
       gap:10px;
-      color: rgba(255,255,255,.70);
-      font-weight:1000;
+      padding:8px 10px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      color: rgba(255,255,255,.82);
+      font-weight: 950;
       font-size:12px;
       letter-spacing:.45px;
       text-transform:uppercase;
     }
-    .metricV{
-      margin-top:8px;
-      font-weight:1000;
-      font-size:20px;
-      display:flex;
-      align-items:baseline;
-      justify-content:space-between;
-      gap:12px;
-      flex-wrap:wrap;
-    }
-    .metricMini{
-      margin-top:6px;
-      font-weight:850;
-      font-size:12px;
-      color: rgba(255,255,255,.62);
-      overflow-wrap:anywhere;
-      word-break:break-word;
-    }
 
-    .bar{
-      margin-top:10px;
-      height:12px;
-      border-radius:999px;
-      background: rgba(255,255,255,.08);
-      border: 1px solid rgba(255,255,255,.10);
-      overflow:hidden;
-    }
-    .bar > div{
-      height:100%;
-      width:0%;
-      background: linear-gradient(90deg, var(--g), var(--c), var(--p));
-      border-radius:999px;
-      transition: width .25s ease;
-    }
-
-    .list{
-      margin:10px 0 0;
-      padding:0;
-      list-style:none;
+    /* ===== TOKENOMICS ===== */
+    .grid3{
       display:grid;
-      gap:10px;
+      grid-template-columns: repeat(3, 1fr);
+      gap:14px;
     }
-    .li{
-      border:1px solid rgba(255,255,255,.10);
-      background: rgba(0,0,0,.14);
-      border-radius: 16px;
-      padding:12px 12px;
-      display:flex;
-      gap:10px;
-      align-items:flex-start;
-      justify-content:space-between;
-      min-width:0;
-    }
-    .li .left{min-width:0;}
-    .li .t{font-weight:1000; font-size:13px; letter-spacing:.2px;}
-    .li .d{
-      margin-top:4px;
-      color: rgba(255,255,255,.70);
-      font-weight:750;
-      font-size:12.5px;
-      line-height:1.35;
-      overflow-wrap:anywhere;
-      word-break:break-word;
-    }
-
-    .pillRow{
-      display:flex;
-      gap:8px;
-      align-items:center;
-      flex:0 0 auto;
-      justify-content:flex-end;
-      flex-wrap:wrap;
-    }
-    .pill{
-      padding:6px 10px;
-      border-radius: 999px;
-      border:1px solid rgba(255,255,255,.12);
-      background: rgba(255,255,255,.06);
-      font-weight:1000;
-      font-size:12px;
-      white-space:nowrap;
-      user-select:none;
-      -webkit-tap-highlight-color: transparent;
-      cursor:pointer;
-    }
-    .pill.ok{border:0; background: linear-gradient(90deg,var(--g),var(--c),var(--p)); color:#061012}
-    .pill.warn{border-color: rgba(255,220,130,.35); background: rgba(255,220,130,.08); color: rgba(255,240,210,.92)}
-    .pill.bad{border-color: rgba(255,120,150,.35); background: rgba(255,120,150,.10); color: rgba(255,190,205,.95)}
-    .infoBtn{
-      width:26px;
-      height:26px;
-      border-radius:999px;
-      border:1px solid rgba(255,255,255,.18);
-      background: rgba(255,255,255,.06);
-      color: rgba(255,255,255,.86);
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      cursor:pointer;
-      user-select:none;
-      font-weight:1000;
-      font-size:13px;
-      line-height:1;
-      -webkit-tap-highlight-color: transparent;
-    }
-    .infoBtn:hover{ background: rgba(255,255,255,.10); transform: translateY(-1px); }
-    .infoBtn:active{ transform: translateY(0px); }
-    .infoBtn span{ transform: translateY(-0.5px); }
-
-    .explorerBtn{
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      padding:6px 10px;
-      border-radius:999px;
-      border:1px solid rgba(255,255,255,.14);
-      background: rgba(255,255,255,.06);
-      font-weight:1000;
-      font-size:12px;
-      white-space:nowrap;
-      cursor:pointer;
-      user-select:none;
-      -webkit-tap-highlight-color: transparent;
-    }
-    .explorerBtn:hover{ background: rgba(255,255,255,.10); transform: translateY(-1px); }
-
-    /* ===== NEW: Bubble Map / Graph Canvas ===== */
-    .vizWrap{
-      border:1px solid rgba(255,255,255,.10);
-      background: rgba(0,0,0,.16);
-      border-radius: 18px;
-      overflow:hidden;
-      position:relative;
-    }
-    .vizTop{
-      display:flex;
-      align-items:flex-start;
-      justify-content:space-between;
-      gap:10px;
-      flex-wrap:wrap;
-      padding:12px 12px 10px;
-      border-bottom: 1px solid rgba(255,255,255,.10);
-      background: rgba(255,255,255,.03);
-    }
-    .vizTitle{
-      font-weight:1000;
-      letter-spacing:.35px;
-      text-transform:uppercase;
-      font-size:12px;
-      color: rgba(255,255,255,.72);
-      display:flex;
-      align-items:center;
-      gap:10px;
-      flex-wrap:wrap;
-    }
-    .vizHint{
-      color: rgba(255,255,255,.62);
-      font-weight:850;
-      font-size:12.5px;
-      line-height:1.35;
-      margin-top:6px;
-      max-width: 560px;
-    }
-    .vizControls{
-      display:flex;
-      gap:8px;
-      flex-wrap:wrap;
-      align-items:center;
-      justify-content:flex-end;
-    }
-    .seg{
-      display:inline-flex;
-      border:1px solid rgba(255,255,255,.12);
-      background: rgba(255,255,255,.04);
-      border-radius: 999px;
-      overflow:hidden;
-    }
-    .seg button{
-      border:0;
-      background:transparent;
-      color: rgba(255,255,255,.82);
-      font-weight:1000;
-      font-size:12px;
-      padding:8px 10px;
-      cursor:pointer;
-    }
-    .seg button.active{
-      background: rgba(255,255,255,.10);
-      color: rgba(255,255,255,.92);
-    }
-    .vizStage{
-      height: 420px;
-      position:relative;
-      display:block;
-      background:
-        radial-gradient(900px 520px at 30% 30%, rgba(20,241,149,.08), transparent 60%),
-        radial-gradient(900px 520px at 70% 20%, rgba(0,209,255,.06), transparent 60%),
-        radial-gradient(900px 520px at 60% 85%, rgba(153,69,255,.06), transparent 60%),
-        rgba(0,0,0,.10);
-    }
-    @media (max-width: 980px){
-      .vizStage{ height: 360px; }
-    }
-    canvas.vizCanvas{
-      width:100%;
-      height:100%;
-      display:block;
-    }
-    .vizOverlay{
-      position:absolute;
-      inset:0;
-      pointer-events:none;
-      display:flex;
-      align-items:center;
-      justify-content:center;
+    .stat{
       padding:16px;
-      text-align:center;
-      color: rgba(255,255,255,.68);
-      font-weight:900;
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.18);
+      box-shadow: var(--shadowSoft);
     }
+    .stat .k{color: rgba(255,255,255,.70); font-weight:900; font-size:12px; letter-spacing:.55px; text-transform:uppercase}
+    .stat .v{margin-top:8px; font-weight:1000; font-size:20px}
+    .stat .v .grad{background: linear-gradient(90deg, var(--g), var(--c), var(--p)); -webkit-background-clip:text; background-clip:text; color:transparent;}
 
-    /* ===== NEW: cluster summary cards ===== */
-    .clusterGrid{
-      display:grid;
-      grid-template-columns: 1fr;
-      gap:10px;
-    }
-    .clusterCard{
-      border:1px solid rgba(255,255,255,.10);
-      background: rgba(0,0,0,.14);
-      border-radius: 16px;
-      padding:12px 12px;
+    /* ===== COPY BOX (shared) ===== */
+    .copyBox{
       display:flex;
-      align-items:flex-start;
+      align-items:center;
       justify-content:space-between;
       gap:12px;
-    }
-    .clusterLeft{min-width:0}
-    .clusterT{
-      font-weight:1000;
-      font-size:13px;
-      letter-spacing:.2px;
-      display:flex;
-      align-items:center;
-      gap:8px;
-      flex-wrap:wrap;
-    }
-    .dot{
-      width:10px;height:10px;border-radius:999px;
-      background: rgba(255,255,255,.22);
-      border:1px solid rgba(255,255,255,.12);
-      flex:0 0 auto;
-    }
-    .dot.good{ background: rgba(20,241,149,.50); }
-    .dot.warn{ background: rgba(255,220,130,.55); }
-    .dot.bad{  background: rgba(255,120,150,.55); }
-
-    .clusterD{
-      margin-top:5px;
-      color: rgba(255,255,255,.70);
-      font-weight:750;
-      font-size:12.5px;
-      line-height:1.35;
-      overflow-wrap:anywhere;
-      word-break:break-word;
-    }
-    .clusterRight{
-      display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:flex-end;
-      flex:0 0 auto;
-    }
-
-    /* chain selection */
-    .chainRow{ margin-top:10px; display:flex; gap:10px; flex-wrap:wrap; }
-    .chainBtn{
-      display:inline-flex;
-      align-items:center;
-      gap:10px;
-      padding:10px 12px;
-      border-radius:999px;
-      border:1px solid rgba(255,255,255,.14);
-      background: rgba(255,255,255,.06);
       cursor:pointer;
-      user-select:none;
-      font-weight:1000;
-      font-size:13px;
-      color: rgba(255,255,255,.88);
-      -webkit-tap-highlight-color: transparent;
+      transition: transform .15s ease, background .15s ease, border-color .15s ease;
     }
-    .chainBtn:hover{ background: rgba(255,255,255,.10); }
-    .chainBtn.active{
-      border:0;
-      background: linear-gradient(90deg, var(--g), var(--c), var(--p));
-      color:#061012;
-      box-shadow: 0 10px 24px rgba(0,0,0,.25);
+    .copyBox:hover{
+      transform: translateY(-1px);
+      background: rgba(0,0,0,.22);
+      border-color: rgba(255,255,255,.14);
     }
-    .chainIcon{
-      width:18px;
-      height:18px;
-      border-radius:6px;
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
+    .copyText{
+      margin-top:10px;
+      font-family:ui-monospace, Menlo, Consolas, monospace;
+      color:rgba(255,255,255,.88);
       overflow:hidden;
-      background: rgba(0,0,0,.25);
-      border:1px solid rgba(255,255,255,.10);
+      text-overflow:ellipsis;
+      white-space:nowrap;
+    }
+    .copyHint{
+      font-size:12px;
+      font-weight:950;
+      color:rgba(255,255,255,.70);
+      border:1px solid rgba(255,255,255,.14);
+      background:rgba(255,255,255,.06);
+      border-radius:999px;
+      padding:8px 10px;
       flex:0 0 auto;
     }
-    .chainIcon svg{ width:18px; height:18px; display:block; }
-    .chainMiniHint{
-      margin-top:10px;
-      font-size:12.5px;
-      color: rgba(255,255,255,.62);
-      font-weight:850;
-      line-height:1.35;
+    .copyHint.ok{
+      border:0;
+      color:#061012;
+      background: linear-gradient(90deg, var(--g), var(--c), var(--p));
     }
+
+    /* ===== HOW TO BUY ===== */
+    .steps{
+      display:grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap:14px;
+    }
+    .step{
+      padding:16px;
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.18);
+      box-shadow: var(--shadowSoft);
+    }
+    .step .num{
+      width:28px; height:28px; border-radius:10px;
+      display:inline-flex; align-items:center; justify-content:center;
+      background: rgba(255,255,255,.08);
+      border: 1px solid rgba(255,255,255,.12);
+      font-weight: 1000;
+      margin-bottom: 10px;
+    }
+    .step h4{margin:0 0 8px; font-weight: 1000}
+    .step p{margin:0; color: rgba(255,255,255,.74); font-weight:650}
+
+    /* ===== FAQ ===== */
+    details{
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.18);
+      padding: 14px 16px;
+      box-shadow: var(--shadowSoft);
+    }
+    details + details{margin-top:12px}
+    summary{
+      cursor:pointer;
+      font-weight: 950;
+      color: rgba(255,255,255,.90);
+      list-style:none;
+    }
+    summary::-webkit-details-marker{display:none}
+    details p{margin:10px 0 0; color: rgba(255,255,255,.74); font-weight:650}
+
+    /* ===== SOCIALS ===== */
+    .socialRow{display:flex; gap:12px; flex-wrap:wrap;}
 
     footer{
-      padding: 18px 0 34px;
-      color: rgba(255,255,255,.45);
+      padding: 24px 0 40px;
+      color: rgba(255,255,255,.55);
       font-weight:650;
       text-align:center;
-      font-size:12px;
     }
 
-    /* modal + toast (unchanged) */
-    .modalWrap{
-      position:fixed;
-      inset:0;
-      background: rgba(0,0,0,.55);
-      backdrop-filter: blur(10px);
-      display:none;
-      align-items:center;
-      justify-content:center;
-      padding:18px;
-      z-index:100;
+    /* ===== TOOLS (CLEAN + NOT LONG + ALWAYS STACKED) ===== */
+    .toolsGrid{
+      display:grid;
+      grid-template-columns: 1fr;   /* ✅ always under each other */
+      gap:18px;
+      align-items:stretch;
     }
-    .modal{
-      width:min(920px, 100%);
-      border-radius: 20px;
-      border: 1px solid rgba(255,255,255,.12);
-      background: rgba(7,7,17,.92);
-      box-shadow: 0 16px 50px rgba(0,0,0,.5);
+
+    .toolCard{
+      position:relative;
       overflow:hidden;
+      isolation:isolate;
+      transform: translateZ(0);
+      transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
     }
-    .modalHead{
+    .toolCard:hover{
+      transform: translateY(-2px);
+      border-color: rgba(255,255,255,.16);
+      box-shadow: 0 18px 60px rgba(0,0,0,.55);
+    }
+
+    .toolCard::after{
+      content:"";
+      position:absolute; inset:0;
+      background:
+        radial-gradient(900px 520px at 18% 28%, rgba(20,241,149,.12), transparent 62%),
+        radial-gradient(900px 520px at 82% 20%, rgba(0,209,255,.10), transparent 62%),
+        radial-gradient(900px 520px at 70% 86%, rgba(153,69,255,.10), transparent 62%);
+      opacity:.9;
+      z-index:0;
+      pointer-events:none;
+    }
+
+    /* Watermarks */
+    .dnaCard::before,
+    .guardianCard::before{
+      content:"";
+      position:absolute;
+      inset:-90px -40px;
+      background-size: min(920px, 120%);
+      background-repeat:no-repeat;
+      background-position: 50% 40%;
+      opacity: .095;
+      filter: saturate(1.1) blur(.25px);
+      transform: translateZ(0);
+      z-index:0;
+      pointer-events:none;
+    }
+    .dnaCard::before{ background-image: url("assets/dnalogo.png"); }
+    .guardianCard::before{ background-image: url("assets/guardian.png"); } /* ✅ guardian.png */
+
+    .toolInner{ position:relative; z-index:1; padding:22px; }
+
+    .toolTop{
       display:flex;
       align-items:center;
       justify-content:space-between;
-      padding:14px 16px;
-      border-bottom: 1px solid rgba(255,255,255,.10);
-    }
-    .modalTitle{ font-weight:1000; letter-spacing:-.3px; }
-    .modalBody{
-      padding:14px 16px 16px;
-      color: rgba(255,255,255,.84);
-      font-weight:850;
-      line-height:1.5;
-      overflow-wrap:anywhere;
-      word-break:break-word;
+      gap:12px;
+      flex-wrap:wrap;
+      margin-bottom:12px;
     }
 
-    .toast{
-      position:fixed;
-      top: max(16px, env(safe-area-inset-top));
-      left:50%;
-      transform:translateX(-50%);
-      width:min(920px, calc(100% - 28px));
-      border-radius: 18px;
-      border: 1px solid rgba(255,255,255,.12);
-      background: rgba(7,7,17,.90);
-      box-shadow: 0 16px 50px rgba(0,0,0,.45);
-      padding:14px 14px;
-      display:none;
-      z-index:120;
-      backdrop-filter: blur(12px);
+    .toolTag{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:8px 10px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      font-weight:950;
+      font-size:12px;
+      letter-spacing:.38px;
+      text-transform:uppercase;
+      color: rgba(255,255,255,.78);
     }
-    .toastRow{display:flex; align-items:center; justify-content:space-between; gap:12px;}
-    .toastTitle{font-weight:1000; font-size:18px; letter-spacing:-.3px;}
-    .toastClose{
+
+    .toolPills{display:flex; gap:8px; flex-wrap:wrap;}
+    .pill{
+      font-size:12px;
+      font-weight:900;
+      color: rgba(255,255,255,.70);
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.18);
+      border-radius: 999px;
+      padding:7px 10px;
+    }
+
+    .toolGrid{
+      display:grid;
+      grid-template-columns: 1.05fr .95fr;
+      gap:16px;
+      align-items:start;
+    }
+
+    .toolH{
+      margin:0;
+      font-weight:1100;
+      letter-spacing:-.9px;
+      line-height:1.05;
+      font-size: clamp(30px, 3.4vw, 50px);
+    }
+
+    /* ✅ keep text compact (no “endless” cards) */
+    .toolLead{
+      margin-top:10px;
+      color: rgba(255,255,255,.76);
+      font-weight:700;
+      max-width: 62ch;
+      display:-webkit-box;
+      -webkit-line-clamp: 5;
+      -webkit-box-orient: vertical;
+      overflow:hidden;
+    }
+
+    .featureChips{
+      margin-top:14px;
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+    }
+
+    .chip{
       padding:9px 12px;
       border-radius:999px;
-      border: 1px solid rgba(255,255,255,.14);
-      background: rgba(255,255,255,.06);
-      color: rgba(255,255,255,.88);
-      font-weight:950;
-      cursor:pointer;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.20);
+      color: rgba(255,255,255,.82);
+      font-weight:900;
+      font-size:13px;
+      white-space:nowrap;
     }
-    .toastClose:hover{background: rgba(255,255,255,.10);}
 
-    /* Responsive tightening */
-    @media (max-width: 980px){
-      .wrap{ padding: 0 14px; }
-      .inner{ padding: 16px; }
-      .panel{ padding: 14px; }
-      .brand{ min-width: 0; width: 100%; }
-      .actions{ width: 100%; justify-content: flex-start; }
-      .actions .btn{ width: 100%; justify-content: center; padding: 12px 14px; font-size: 14px; }
-      .resultTop{ flex-direction: column; align-items: stretch; }
-      .resultTop > div:last-child{ width: 100%; justify-content: flex-start; }
-      .resultTop .badge{ width: fit-content; }
-      .tokenHead{ flex-wrap: nowrap; }
-      .tokenName{ font-size: 18px; }
-      .tokenSymbol{ font-size: 13px; }
-      .metricV{ flex-direction: column; align-items: flex-start; gap: 6px; font-size: 22px; }
-      .metricK{ flex-wrap: wrap; gap: 8px; }
-      .metricK .badge{ margin-left: auto; }
-      .li{ flex-direction: column; align-items: flex-start; gap: 10px; }
-      .pillRow{ width:100%; justify-content:flex-start; flex-wrap:wrap; }
-      .modal{ width:100%; }
-      .toast{ left:14px; right:14px; transform:none; width:auto; }
+    /* ✅ keep “what you get” compact via internal scroll (content not removed) */
+    .toolBox{
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.18);
+      border-radius:18px;
+      padding:16px;
+      box-shadow: var(--shadowSoft);
+      max-height: 210px;
+      overflow:auto;
+    }
+    .toolBox::-webkit-scrollbar{ width:0; height:0; }
+
+    .toolList{
+      margin:0;
+      padding-left:18px;
+      color: rgba(255,255,255,.74);
+      font-weight:700;
+    }
+    .toolList li{ margin:8px 0; }
+
+    .toolCTA{
+      margin-top:14px;
+      display:flex;
+      gap:12px;
+      flex-wrap:wrap;
+      align-items:center;
+    }
+
+    .toolMini{
+      color: rgba(255,255,255,.60);
+      font-weight:750;
+      font-size:13px;
+    }
+
+    /* ===== ✅ ROADMAP (NEW) ===== */
+    .roadTop{
+      display:flex;
+      align-items:flex-end;
+      justify-content:space-between;
+      gap:12px;
+      flex-wrap:wrap;
+      margin-bottom: 14px;
+    }
+    .roadKicker{
+      display:inline-flex;
+      align-items:center;
+      gap:10px;
+      padding:8px 10px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      font-weight:950;
+      font-size:12px;
+      letter-spacing:.38px;
+      text-transform:uppercase;
+      color: rgba(255,255,255,.78);
+      width: fit-content;
+    }
+    .roadLead{
+      margin: 10px 0 0;
+      color: rgba(255,255,255,.74);
+      font-weight: 700;
+      max-width: 70ch;
+    }
+    .roadGrid{
+      display:grid;
+      grid-template-columns: 1fr;
+      gap:14px;
+      margin-top: 16px;
+    }
+
+    .phase{
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.18);
+      border-radius: 18px;
+      box-shadow: var(--shadowSoft);
+      overflow:hidden;
+      position:relative;
+      isolation:isolate;
+    }
+    .phase::after{
+      content:"";
+      position:absolute; inset:0;
+      background:
+        radial-gradient(900px 520px at 18% 28%, rgba(20,241,149,.08), transparent 62%),
+        radial-gradient(900px 520px at 82% 20%, rgba(0,209,255,.07), transparent 62%),
+        radial-gradient(900px 520px at 70% 86%, rgba(153,69,255,.07), transparent 62%);
+      opacity:.85;
+      pointer-events:none;
+      z-index:0;
+    }
+    .phaseInner{ position:relative; z-index:1; padding:18px; }
+
+    .phaseTop{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:12px;
+      flex-wrap:wrap;
+    }
+    .phaseTitle{
+      margin:0;
+      font-weight:1100;
+      letter-spacing:-.6px;
+      line-height:1.15;
+      font-size: 22px;
+    }
+    .phaseMeta{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      align-items:center;
+    }
+    .badgePill{
+      font-size:12px;
+      font-weight:950;
+      color: rgba(255,255,255,.72);
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.06);
+      border-radius: 999px;
+      padding:7px 10px;
+      white-space:nowrap;
+    }
+
+    .phaseTheme{
+      margin-top: 8px;
+      font-weight: 950;
+      color: rgba(255,255,255,.86);
+    }
+    .phaseSplit{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:14px;
+      margin-top: 14px;
+    }
+    .phaseBox{
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.18);
+      border-radius: 16px;
+      padding: 14px;
+    }
+    .phaseBoxT{
+      font-weight:950;
+      font-size:12px;
+      letter-spacing:.55px;
+      text-transform:uppercase;
+      color: rgba(255,255,255,.70);
+      margin-bottom:10px;
+    }
+    .phaseList{
+      margin:0;
+      padding-left: 18px;
+      color: rgba(255,255,255,.74);
+      font-weight: 700;
+    }
+    .phaseList li{ margin: 7px 0; }
+    .phaseOutcome{
+      margin-top: 14px;
+      padding: 14px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.18);
+      color: rgba(255,255,255,.78);
+      font-weight: 750;
+    }
+
+    /* ===== ✅ SCROLL REVEAL (NEW) ===== */
+    .reveal{
+      opacity: 0;
+      transform: translateY(14px);
+      filter: blur(2px);
+      transition:
+        opacity .7s ease,
+        transform .7s cubic-bezier(.2,.9,.2,1),
+        filter .7s ease;
+      will-change: opacity, transform, filter;
+    }
+    .reveal.from-left{ transform: translateX(-48px); }
+    .reveal.from-right{ transform: translateX(48px); }
+    .reveal.from-up{ transform: translateY(22px); }
+
+    .reveal.in{
+      opacity: 1;
+      transform: translateX(0) translateY(0);
+      filter: blur(0);
     }
 
     @media (prefers-reduced-motion: reduce){
-      .btn:hover{transform:none}
-      .bar > div{transition:none}
-      .infoBtn:hover{transform:none}
-      .explorerBtn:hover{transform:none}
+      .reveal{ opacity: 1 !important; transform: none !important; filter:none !important; transition:none !important; }
+    }
+
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 980px){
+      .headerRow{
+        grid-template-columns: auto 1fr auto;
+      }
+      .nav{
+        justify-content:flex-start;
+        overflow:auto;
+        -webkit-overflow-scrolling: touch;
+        padding-bottom:2px;
+      }
+      .nav::-webkit-scrollbar{height:0}
+    }
+
+    /* Mobile: no chaos → drawer menu */
+    @media (max-width: 860px){
+      section{padding:28px 0}
+
+      .headerRow{
+        grid-template-columns: 1fr auto;
+        gap:10px;
+      }
+
+      .nav{ display:none; } /* ✅ hide the button row on mobile */
+
+      .menu{ display:none; }             /* ✅ hide desktop menu on mobile */
+      .mToggle{ display:inline-flex; }   /* ✅ show mobile toggle */
+
+      .brand{ min-width: 0; }
+      .brandText .name{ font-size:13px; }
+
+      .heroCard{padding:34px 16px}
+      .heroCard::before{
+        background-position: 50% 28%;
+        background-size: min(700px, 132%);
+        opacity: .065;
+      }
+
+      .twoCol{grid-template-columns: 1fr}
+      .grid3{grid-template-columns: 1fr}
+      .steps{grid-template-columns: 1fr}
+
+      .toolInner{ padding:18px; }
+      .toolGrid{ grid-template-columns: 1fr; gap:14px; }
+      .toolH{ font-size: clamp(26px, 7vw, 38px); }
+      .toolBox{ max-height: 180px; }
+
+      .dnaCard::before,
+      .guardianCard::before{
+        background-position: 50% 30%;
+        background-size: min(740px, 140%);
+        opacity: .075;
+      }
+
+      .copyBox{
+        flex-direction: column;
+        align-items:flex-start;
+      }
+      .copyHint{ align-self:flex-end; }
+
+      /* ✅ proofs buttons full width on mobile */
+      .proofsRow .btn{
+        width:100%;
+        justify-content:center;
+      }
+
+      /* lore image a bit smaller on mobile */
+      .loreMedia img{ max-width: 280px; }
+
+      /* roadmap split becomes stacked */
+      .phaseSplit{ grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 420px){
+      .btn{padding:9px 11px}
+      .cardInner{padding:20px}
     }
   </style>
 </head>
 
 <body>
-  <!-- Toast -->
-  <div class="toast" id="toast">
-    <div class="toastRow">
-      <div class="toastTitle" id="toastTitle">—</div>
-      <button class="toastClose" id="toastClose" type="button">Close</button>
+  <!-- MOBILE DRAWER -->
+  <div class="mOverlay" id="mOverlay" aria-hidden="true"></div>
+  <aside class="mDrawer" id="mDrawer" aria-label="Mobile menu" aria-hidden="true">
+    <div class="mTop">
+      <div class="mTitle">Menu</div>
+      <button class="btn ghost icon" id="mClose" aria-label="Close menu">✕</button>
     </div>
-  </div>
 
-  <div class="topbar">
+    <div class="mGroup">
+      <div class="mLabel">Navigation</div>
+      <div class="mList">
+        <a class="btn" href="#what">What is $SOS?</a>
+        <a class="btn" href="#tools">Tools</a>
+        <a class="btn" href="#roadmap">Roadmap</a>
+        <a class="btn" href="#tokenomics">Tokenomics</a>
+        <a class="btn" href="#buy">How to Buy</a>
+        <a class="btn" href="#faq">FAQ</a>
+        <a class="btn" href="#socials">Socials</a>
+      </div>
+    </div>
+
+    <div class="mGroup">
+      <div class="mLabel">Tools</div>
+      <div class="mList">
+        <a class="btn grad" href="https://solanax1.com/wallet" target="_blank" rel="noreferrer">Guardian Wallet Scanner</a>
+        <a class="btn grad" href="https://solanax1.com/contract" target="_blank" rel="noreferrer">Guardian Contract Scanner</a>
+      </div>
+    </div>
+
+    <div class="mGroup">
+      <div class="mLabel">Socials</div>
+      <div class="mList">
+        <a class="btn grad" href="https://x.com/Solana_X1" target="_blank" rel="noreferrer">X</a>
+        <a class="btn grad" href="https://t.me/Solana_X1" target="_blank" rel="noreferrer">Telegram</a>
+        <a class="btn grad" href="https://t.me/solanaonsolana_bot" target="_blank" rel="noreferrer">Bot</a>
+      </div>
+    </div>
+  </aside>
+
+  <!-- HEADER -->
+  <div class="header">
     <div class="wrap">
-      <div class="row">
-        <div class="brand">
-          <img src="/assets/logo.png" alt="$SOS" onerror="this.style.display='none'">
-          <div class="bt">
-            <div class="t">$SOS</div>
-            <div class="s">Contract Scanner • Token Risk • Clusters</div>
+      <div class="headerRow">
+        <a class="brand" href="#top" aria-label="Home">
+          <img src="assets/logo.png" alt="$SOS Logo" />
+          <div class="brandText">
+            <div class="ticker">$SOS</div>
+            <div class="name">Solana on Solana</div>
           </div>
+        </a>
+
+        <!-- MAIN NAV (desktop/tablet) -->
+        <nav class="nav" aria-label="Main navigation">
+          <a class="btn" href="#what">What is $SOS?</a>
+          <a class="btn" href="#tools">Tools</a>
+          <a class="btn" href="#roadmap">Roadmap</a>
+          <a class="btn" href="#tokenomics">Tokenomics</a>
+          <a class="btn" href="#buy">How to Buy</a>
+          <a class="btn" href="#faq">FAQ</a>
+          <a class="btn" href="#socials">Socials</a>
+        </nav>
+
+        <div class="headerActions">
+          <!-- Desktop: unified action menu -->
+          <div class="menu" id="menu">
+            <button
+              class="btn ghost icon"
+              id="menuBtn"
+              aria-haspopup="true"
+              aria-expanded="false"
+              aria-label="Open menu"
+            >
+              ⋯
+            </button>
+
+            <div class="menuPop" id="menuPop" role="menu" aria-label="Quick links">
+              <!-- TOOLS -->
+              <a class="menuItem" role="menuitem" href="https://solanax1.com/wallet" target="_blank" rel="noreferrer">
+                Wallet Scanner
+                <span class="menuBadge">Tool</span>
+              </a>
+
+              <a class="menuItem" role="menuitem" href="https://solanax1.com/contract" target="_blank" rel="noreferrer">
+                Contract Scanner
+                <span class="menuBadge">Tool</span>
+              </a>
+
+              <div style="height:6px"></div>
+
+              <!-- SOCIALS -->
+              <a class="menuItem" role="menuitem" href="https://x.com/Solana_X1" target="_blank" rel="noreferrer">
+                X
+                <span class="menuBadge">Social</span>
+              </a>
+
+              <a class="menuItem" role="menuitem" href="https://t.me/Solana_X1" target="_blank" rel="noreferrer">
+                Telegram
+                <span class="menuBadge">Social</span>
+              </a>
+
+              <a class="menuItem" role="menuitem" href="https://t.me/solanaonsolana_bot" target="_blank" rel="noreferrer">
+                Bot
+                <span class="menuBadge">Bot</span>
+              </a>
+            </div>
+          </div>
+
+          <!-- Mobile: one clean button -->
+          <button class="btn ghost icon mToggle" id="mOpen" aria-label="Open menu">☰</button>
         </div>
 
-        <!-- IMPORTANT: Buttons NOT removed -->
-        <div class="actions">
-          <a class="btn" href="https://solanax1.com/" rel="noreferrer">← Back to Main</a>
-          <button class="btn grad" id="btnScan" type="button">Run Guardian Check</button>
-          <button class="btn grad" id="btnExport" type="button" disabled>Download Scan Report</button>
-        </div>
       </div>
     </div>
   </div>
 
-  <main class="wrap">
-    <section class="card hero">
-      <div class="inner">
-        <div class="classified">
-          <div class="stamp">GUARDIAN SYSTEM • MAINNET • BEST-EFFORT VERIFIED</div>
-          <div class="stamp" id="stampTime">—</div>
+  <!-- HERO -->
+  <main id="top" class="wrap">
+    <section class="hero">
+      <div class="card heroCard">
+        <h1 class="heroTitle"><span class="gradText">$SOS</span></h1>
+        <div class="heroSubName">Solana on Solana</div>
+        <div class="heroSlogan">Meet the Guardian of the chain.</div>
+
+        <p class="heroDesc">
+          $SOS is a Solana-native memecoin built around a guardian character — a protector of balance and harmony,
+          now protecting the culture that moves on the fastest chain.
+        </p>
+
+        <div class="heroActions">
+          <a class="btn primary" href="https://t.me/Solana_X1" target="_blank" rel="noreferrer">Join Telegram</a>
+          <a class="btn grad" href="https://x.com/Solana_X1" target="_blank" rel="noreferrer">Follow on X</a>
+          <a class="btn grad" href="https://t.me/solanaonsolana_bot" target="_blank" rel="noreferrer">Use the Bot</a>
         </div>
 
-        <h1 class="h1" style="margin-top:12px;">
-          <span class="gradText">Guardian Contract</span> Scanner
-        </h1>
-
-        <div class="sub">
-          Multi-chain scan: Solana + ETH + BNB + Base — now with
-          <span class="gradText">clusters</span>, <span class="gradText">bubble map</span>, and <span class="gradText">linked wallets</span> (best-effort).
-        </div>
-
-        <!-- Primary layout: input + results (unchanged idea) -->
-        <div class="layout">
-          <!-- INPUT -->
-          <div class="panel">
-            <label>Choose Chain</label>
-            <div class="chainRow" id="chainRow"></div>
-            <div class="chainMiniHint" id="chainHint">—</div>
-
-            <label for="mint" style="margin-top:14px;" id="addrLabel">Token Address</label>
-            <input id="mint" placeholder="Paste token address..." autocomplete="off" spellcheck="false" inputmode="text" />
-            <button class="btn grad" id="btnScanInline" type="button" style="width:100%; margin-top:12px;">Run Guardian Check</button>
-            <div class="statusLine" id="status"></div>
-          </div>
-
-          <!-- RESULTS -->
-          <div class="panel" id="resultsPanel">
-            <div class="resultTop">
-              <div style="min-width:0">
-                <div class="tokenHead">
-                  <!-- UPDATED: logo wrap always exists; if no logo we show identicon -->
-                  <div class="tokenLogoWrap" id="tokenLogoWrap" aria-hidden="false">
-                    <img id="tokenLogo" alt="" style="display:none">
-                    <svg class="identicon" id="tokenIdenticon" viewBox="0 0 44 44" aria-hidden="true"></svg>
-                  </div>
-                  <div style="min-width:0">
-                    <div class="tokenName" id="tokenName">—</div>
-                    <div class="tokenSymbol" id="tokenSymbol">—</div>
-                  </div>
-                </div>
-
-                <h3 class="resultTitle" id="verdictTitle">—</h3>
-                <div class="mono" id="mintShort">—</div>
-              </div>
-
-              <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-                <span class="badge" id="verdictBadge">—</span>
-                <span class="badge good" id="scoreBadge">—</span>
-              </div>
+        <!-- Contract under hero -->
+        <div class="heroContract">
+          <div class="stat copyBox" data-copy="XXXXXXXXXXXXXXXXXXXXXXXX" role="button" tabindex="0" aria-label="Copy Contract Address">
+            <div style="min-width:0">
+              <div class="k">Contract Address</div>
+              <div class="copyText">XXXXXXXXXXXXXXXXXXXXXXXX</div>
             </div>
-
-            <div class="metricStack" id="metrics"></div>
-            <div class="statusLine" id="summary">—</div>
+            <div class="copyHint">Click to copy</div>
           </div>
         </div>
 
-        <!-- NEW: Advanced analysis area (bubble map + cluster) -->
-        <div class="analysisGrid">
-          <!-- Bubble Map / Graph -->
-          <div class="panel" id="vizPanel">
-            <div class="panelHead">
-              <div>
-                <div class="panelTitle">
-                  <span class="badge">NEW</span>
-                  Bubble Map • Wallet Graph
-                </div>
-                <div class="panelSub" id="vizSub">
-                  Shows holder bubbles + linked wallet edges (best-effort). Run a scan to populate.
-                </div>
-              </div>
+      </div>
+    </section>
 
-              <div class="vizControls">
-                <div class="seg" role="tablist" aria-label="Visualization mode">
-                  <button type="button" id="vizModeBubbles" class="active" aria-selected="true">Bubbles</button>
-                  <button type="button" id="vizModeGraph" aria-selected="false">Graph</button>
-                </div>
-                <button class="btn" id="btnVizReset" type="button">Reset View</button>
+    <!-- WHAT IS -->
+    <section id="what">
+      <div class="card">
+        <div class="cardInner">
+          <div class="twoCol">
+            <div>
+              <h2 class="h2">What is $SOS?</h2>
+              <div class="bodyText">
+                <p>
+                  <b>$SOS</b> is a Solana-native memecoin built around a guardian character — made to live inside the Solana culture loop.
+                </p>
+                <p><b>Before memecoins.</b> Before blockchains. Before the Solana chain existed — there was Solana.</p>
+                <p>She began as a Pokémon Ranger in 2006, trained to protect balance and harmony. That training never left her. It evolved.</p>
+                <p>Years later, a new world emerged. Chaotic. Viral. Unstoppable. Out of this chaos, the fastest chain in crypto was born: <b>Solana</b>.</p>
+                <p>Not created by marketing. Not chosen by chance. Aligned by destiny.</p>
+                <p>The guardian of balance did not disappear — she went on-chain to become the guardian of memecoins and culture that Solana needs now more than ever.</p>
+                <p>Solana did not give her a name. It inherited it. <b>She is Solana on Solana.</b></p>
               </div>
             </div>
 
-            <div class="vizWrap">
-              <div class="vizTop">
-                <div style="min-width:0">
-                  <div class="vizTitle">Holders & Clusters (Preview)</div>
-                  <div class="vizHint" id="vizHint">
-                    Tip: Hover bubbles for wallet info. Click to open explorer (when enabled).
-                  </div>
-                </div>
-                <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; justify-content:flex-end;">
-                  <span class="badge" id="vizStamp">—</span>
-                  <span class="badge" id="vizLegend">—</span>
-                </div>
-              </div>
+            <!-- ✅ THE LORE: separate small box (Proofs + Buttons + Image) -->
+            <div class="loreBox" aria-label="The Lore">
+              <div class="loreInner">
+                <div class="loreTitle">The Lore: <span class="gradText">Origins of Solana</span></div>
 
-              <div class="vizStage" id="vizStage">
-                <canvas class="vizCanvas" id="vizCanvas"></canvas>
-                <div class="vizOverlay" id="vizOverlay">
-                  No visualization data yet. Run a scan.
-                </div>
-              </div>
-            </div>
-          </div>
+                <div class="proofsRow" aria-label="Pokémon proofs">
+                  <span class="proofLabel"><span class="pokeDot"></span> Proofs</span>
 
-          <!-- Cluster Summary / Bundles / Splits -->
-          <div class="panel" id="clusterPanel">
-            <div class="panelHead">
-              <div>
-                <div class="panelTitle">
-                  <span class="badge">NEW</span>
-                  Cluster Intelligence
-                </div>
-                <div class="panelSub" id="clusterSub">
-                  Detects linked wallets, split wallets, bundle-like patterns (best-effort).
-                </div>
-              </div>
-              <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end;">
-                <span class="badge" id="clusterStamp">—</span>
-              </div>
-            </div>
+                  <a class="btn grad proofBtn" href="https://bulbapedia.bulbagarden.net/wiki/Solana" target="_blank" rel="noreferrer">
+                    Pokémon • Bulbapedia
+                  </a>
 
-            <div class="clusterGrid" id="clusterGrid">
-              <!-- placeholder cards -->
-              <div class="clusterCard">
-                <div class="clusterLeft">
-                  <div class="clusterT"><span class="dot warn"></span> No scan yet</div>
-                  <div class="clusterD">Run a scan to generate cluster groups, linked wallets, and bundle/split heuristics.</div>
+                  <a class="btn grad proofBtn" href="https://pokemon.fandom.com/wiki/Solana" target="_blank" rel="noreferrer">
+                    Pokémon • Fandom
+                  </a>
                 </div>
-                <div class="clusterRight">
-                  <span class="badge warn">WAIT</span>
+
+                <div class="loreMedia">
+                  <!-- ✅ renamed sticker.png → WHAT.png -->
+                  <img src="assets/WHAT.png" alt="$SOS Lore Sticker" />
                 </div>
               </div>
             </div>
 
-            <div class="statusLine" id="clusterFoot" style="margin-top:12px;">
-              — 
-            </div>
           </div>
-        </div>
-
-        <!-- Checks -->
-        <div class="panel" style="margin-top:16px;">
-          <div class="classified">
-            <div class="stamp">GUARDIAN CHECKS</div>
-            <div class="stamp" id="scanHint">—</div>
-          </div>
-          <ul class="list" id="checksList" style="margin-top:10px;"></ul>
-        </div>
-
-        <!-- Launch readiness -->
-        <div class="panel" style="margin-top:16px;">
-          <div class="classified">
-            <div class="stamp">LAUNCH READINESS</div>
-            <div class="stamp">ACTION LIST</div>
-          </div>
-          <ul class="list" id="todoList" style="margin-top:10px;"></ul>
-        </div>
-
-        <!-- Token standard details -->
-        <div class="panel" style="margin-top:16px;">
-          <div class="classified">
-            <div class="stamp">TOKEN STANDARD DETAILS</div>
-            <div class="stamp">ON-CHAIN</div>
-          </div>
-          <ul class="list" id="extList" style="margin-top:10px;"></ul>
-        </div>
-
-        <!-- Metadata -->
-        <div class="panel" style="margin-top:16px;">
-          <div class="classified">
-            <div class="stamp">TOKEN METADATA</div>
-            <div class="stamp">RPC / ON-CHAIN</div>
-          </div>
-          <ul class="list" id="metaList" style="margin-top:10px;"></ul>
-        </div>
-
-        <!-- Top holders -->
-        <div class="panel" style="margin-top:16px;">
-          <div class="classified">
-            <div class="stamp">TOP HOLDERS (PREVIEW)</div>
-            <div class="stamp" id="holdersStamp">MAINNET</div>
-          </div>
-          <ul class="list" id="holdersList" style="margin-top:10px;"></ul>
         </div>
       </div>
     </section>
 
-    <footer>© <span id="y"></span> $SOS • Guardian Check</footer>
-  </main>
+    <!-- TOOLS (STACKED + COMPACT) -->
+    <section id="tools">
+      <div class="toolsGrid">
 
-  <!-- Modal -->
-  <div class="modalWrap" id="modalWrap" role="dialog" aria-modal="true" aria-hidden="true">
-    <div class="modal">
-      <div class="modalHead">
-        <div class="modalTitle" id="modalTitle">Guardian Details</div>
-        <button class="btn" id="modalClose" type="button">Close</button>
+        <!-- DNA -->
+        <div class="card toolCard dnaCard">
+          <div class="toolInner">
+            <div class="toolTop">
+              <div class="toolTag">GUARDIAN INTELLIGENCE • WALLET SCANNER</div>
+              <div class="toolPills">
+                <span class="pill">Mainnet</span>
+                <span class="pill">On-chain</span>
+                <span class="pill">Shareable</span>
+              </div>
+            </div>
+
+            <div class="toolGrid">
+              <div>
+                <h2 class="toolH">
+                  Scan any wallet. <span class="gradText">Reveal the Guardian.</span>
+                </h2>
+
+                <div class="toolLead">
+                  The Guardian is now operational. The <b>Wallet Scanner</b> profiles Solana wallets by
+                  <b>power</b>, <b>stability</b>, <b>activity</b>, and <b>venue footprint</b> — and shows how aligned they are with <b>$SOS</b>.
+                  <br><br>
+                  This is the culture layer turning into an on-chain identity signal.
+                </div>
+
+                <div class="featureChips" aria-label="Key features">
+                  <span class="chip">Archetype tiers</span>
+                  <span class="chip">Venue footprint</span>
+                  <span class="chip">Share to X</span>
+                  <span class="chip">$SOS alignment</span>
+                </div>
+
+                <div class="toolCTA">
+                  <a class="btn grad" href="https://solanax1.com/wallet" target="_blank" rel="noreferrer">
+                    Open Guardian Wallet Scanner
+                  </a>
+                  <span class="toolMini">Instant readout • Verifiable signals</span>
+                </div>
+              </div>
+
+              <div>
+                <div class="toolBox">
+                  <ul class="toolList">
+                    <li>Archetype classification (Guardian tiers)</li>
+                    <li>Power / Stability / Activity scores</li>
+                    <li>Top venues (Jupiter, Raydium, Orca…)</li>
+                    <li>$SOS alignment + holding tier</li>
+                    <li>Share to X in one click</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- GUARDIAN -->
+        <div class="card toolCard guardianCard">
+          <div class="toolInner">
+            <div class="toolTop">
+              <div class="toolTag">GUARDIAN SYSTEM • TOKEN RISK</div>
+              <div class="toolPills">
+                <span class="pill">Mainnet</span>
+                <span class="pill">On-chain</span>
+                <span class="pill">Shareable</span>
+              </div>
+            </div>
+
+            <div class="toolGrid">
+              <div>
+                <h2 class="toolH">
+                  Scan any token. <span class="gradText">Get Guardian Approved.</span>
+                </h2>
+
+                <div class="toolLead">
+                  The <b>Guardian Check</b> scans a Solana token mint and generates a action-driven risk readout:
+                  <b>authorities</b>, <b>holder concentration</b>, <b>token standard</b>, <b>supply</b> and more.
+                  <br><br>
+                  Built for fast decisions, Shareable badges, and verifiable on-chain signals.
+                </div>
+
+                <div class="featureChips" aria-label="Key features">
+                  <span class="chip">Risk score</span>
+                  <span class="chip">Authority checks</span>
+                  <span class="chip">Top holders</span>
+                  <span class="chip">Embed badge</span>
+                </div>
+
+                <div class="toolCTA">
+                  <a class="btn grad" href="https://solanax1.com/contract" target="_blank" rel="noreferrer">
+                    Open Guardian Contract Scanner
+                  </a>
+                  <span class="toolMini">Fast verdict • Shareable badge</span>
+                </div>
+              </div>
+
+              <div>
+                <div class="toolBox">
+                  <ul class="toolList">
+                    <li>Guardian verdict + risk score</li>
+                    <li>Mint / Freeze authority detection</li>
+                    <li>Top holders + concentration %</li>
+                    <li>Multi-chain scanner</li>
+                    <li>Download scan report</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
       </div>
-      <div class="modalBody" id="modalBody"></div>
-    </div>
-  </div>
+    </section>
+
+    <!-- ✅ ROADMAP (NEW, directly under tools) -->
+    <section id="roadmap">
+      <div class="card">
+        <div class="cardInner">
+          <div class="roadTop">
+            <div>
+              <div class="roadKicker">Roadmap • <span class="gradText">Guardian Protocol</span></div>
+              <h2 class="h2" style="margin-top:10px">From lore → intelligence → ecosystem.</h2>
+              <p class="roadLead">
+                This is built as a signal engine: narrative legitimacy first, then utility, then scale.
+                Every phase ships something real — not noise.
+              </p>
+            </div>
+            <a class="btn grad" href="#tools">Back to Tools</a>
+          </div>
+
+          <div class="roadGrid">
+
+            <!-- Phase I -->
+            <article class="phase reveal from-left">
+              <div class="phaseInner">
+                <div class="phaseTop">
+                  <div>
+                    <h3 class="phaseTitle">Phase I — Foundation & Signal</h3>
+                    <div class="phaseTheme">Theme: Establish authority, not noise.</div>
+                  </div>
+                  <div class="phaseMeta">
+                    <span class="badgePill">Months 1–3</span>
+                    <span class="badgePill">Ship early</span>
+                    <span class="badgePill">Signal &gt; speculation</span>
+                  </div>
+                </div>
+
+                <div class="phaseSplit">
+                  <div class="phaseBox reveal from-left">
+                    <div class="phaseBoxT">Objectives</div>
+                    <ul class="phaseList">
+                      <li>Lock narrative, character, and technical legitimacy.</li>
+                      <li>Release utility early so people feel the signal (not the hype).</li>
+                      <li>Define canon rules: what Solana would / wouldn’t do.</li>
+                    </ul>
+                  </div>
+
+                  <div class="phaseBox reveal from-right">
+                    <div class="phaseBoxT">Milestones</div>
+                    <ul class="phaseList">
+                      <li>✅ Finalize Solana Lore Bible (origin, traits, moral code, visual canon)</li>
+                      <li>✅ Launch $SOS Core Site (lore + protection thesis + tooling preview)</li>
+                      <li>✅ Release SOS DNA Scan v1 (wallet behavior, risk patterns, flow profiling)</li>
+                      <li>✅ Partner with AI / Animation Studio (pilot 30–60s, style locked)</li>
+                      <li>✅ Community formation (early believers, narrative-first comms)</li>
+                    </ul>
+                  </div>
+                </div>
+
+                <div class="phaseOutcome reveal from-up">
+                  <b>Outcome:</b> Solana is introduced as a protector intelligence — not a meme.
+                </div>
+              </div>
+            </article>
+
+            <!-- Phase II -->
+            <article class="phase reveal from-right">
+              <div class="phaseInner">
+                <div class="phaseTop">
+                  <div>
+                    <h3 class="phaseTitle">Phase II — Intelligence Becomes Product</h3>
+                    <div class="phaseTheme">Theme: Trust is earned through utility.</div>
+                  </div>
+                  <div class="phaseMeta">
+                    <span class="badgePill">Months 4–6</span>
+                    <span class="badgePill">Utility mode</span>
+                    <span class="badgePill">Proof &amp; repeat</span>
+                  </div>
+                </div>
+
+                <div class="phaseSplit">
+                  <div class="phaseBox reveal from-left">
+                    <div class="phaseBoxT">Objectives</div>
+                    <ul class="phaseList">
+                      <li>Make $SOS useful, daily.</li>
+                      <li>Prove the protection mandate works in public.</li>
+                      <li>Turn scans into decisions people trust.</li>
+                    </ul>
+                  </div>
+
+                  <div class="phaseBox reveal from-right">
+                    <div class="phaseBoxT">Milestones</div>
+                    <ul class="phaseList">
+                      <li>🚀 AI Agent Launch — “Solana Scout” (new project scans, scam vectors, upside vs risk)</li>
+                      <li>🚀 DNA Scan v2 (social + on-chain correlation, insider flow detection, anomaly alerts)</li>
+                      <li>🎬 AI Animation Series — Season 1 (2–4 min episodic shorts, weekly, lore-driven)</li>
+                      <li>🧠 Public Intelligence Reports (“why this failed / survived”)</li>
+                      <li>🎮 Game concept reveal (genre, mechanics, Solana’s role, early environments)</li>
+                    </ul>
+                  </div>
+                </div>
+
+                <div class="phaseOutcome reveal from-up">
+                  <b>Outcome:</b> Solana is now watching the ecosystem — and people listen.
+                </div>
+              </div>
+            </article>
+
+            <!-- Phase III -->
+            <article class="phase reveal from-left">
+              <div class="phaseInner">
+                <div class="phaseTop">
+                  <div>
+                    <h3 class="phaseTitle">Phase III — Expansion & Ecosystem</h3>
+                    <div class="phaseTheme">Theme: From tool → network.</div>
+                  </div>
+                  <div class="phaseMeta">
+                    <span class="badgePill">Months 7–9</span>
+                    <span class="badgePill">Build on top</span>
+                    <span class="badgePill">Reach outward</span>
+                  </div>
+                </div>
+
+                <div class="phaseSplit">
+                  <div class="phaseBox reveal from-left">
+                    <div class="phaseBoxT">Objectives</div>
+                    <ul class="phaseList">
+                      <li>Let others build on Solana’s intelligence layer.</li>
+                      <li>Expand reach beyond crypto natives.</li>
+                      <li>Ship network effects through modular agents.</li>
+                    </ul>
+                  </div>
+
+                  <div class="phaseBox reveal from-right">
+                    <div class="phaseBoxT">Milestones</div>
+                    <ul class="phaseList">
+                      <li>🧩 SOS Agent Marketplace (DeFi/NFT/meme/infra agents, community modules)</li>
+                      <li>🎮 Game Prototype (playable alpha, intelligence-based mechanics)</li>
+                      <li>🎥 Animation Series — Season 2 (bigger arcs, stakes, character depth)</li>
+                      <li>🤝 Strategic partnerships (launchpads, analytics, security protocols)</li>
+                      <li>🌍 Global narrative expansion (lore drops, factions, world-building)</li>
+                    </ul>
+                  </div>
+                </div>
+
+                <div class="phaseOutcome reveal from-up">
+                  <b>Outcome:</b> Solana becomes an ecosystem standard for discernment.
+                </div>
+              </div>
+            </article>
+
+            <!-- Phase IV -->
+            <article class="phase reveal from-right">
+              <div class="phaseInner">
+                <div class="phaseTop">
+                  <div>
+                    <h3 class="phaseTitle">Phase IV — Scale & Permanence</h3>
+                    <div class="phaseTheme">Theme: Make it impossible to ignore.</div>
+                  </div>
+                  <div class="phaseMeta">
+                    <span class="badgePill">Months 10–12</span>
+                    <span class="badgePill">Platform shift</span>
+                    <span class="badgePill">Permanence</span>
+                  </div>
+                </div>
+
+                <div class="phaseSplit">
+                  <div class="phaseBox reveal from-left">
+                    <div class="phaseBoxT">Objectives</div>
+                    <ul class="phaseList">
+                      <li>Cement Solana as a cultural + technical asset.</li>
+                      <li>Transition from “project” to “platform”.</li>
+                      <li>Build long-term protection infrastructure.</li>
+                    </ul>
+                  </div>
+
+                  <div class="phaseBox reveal from-right">
+                    <div class="phaseBoxT">Milestones</div>
+                    <ul class="phaseList">
+                      <li>🎮 Game public launch (seasonal content, play-to-unlock intelligence)</li>
+                      <li>🧠 Autonomous AI Agents v3 (self-improving, predictive risk mapping)</li>
+                      <li>📺 Animation Season 3 (cross-platform distribution, non-crypto reach)</li>
+                      <li>🏛 Governance layer (signal-weighted voting, intelligence-backed proposals)</li>
+                      <li>🔒 Long-term Protection Fund (victim support, ecosystem clean-up initiatives)</li>
+                    </ul>
+                  </div>
+                </div>
+
+                <div class="phaseOutcome reveal from-up">
+                  <b>Outcome:</b> Solana becomes institutional memory — protection infrastructure, not speculation.
+                </div>
+              </div>
+            </article>
+
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TOKENOMICS -->
+    <section id="tokenomics">
+      <div class="card">
+        <div class="cardInner">
+          <h2 class="h2">Tokenomics</h2>
+          <div class="grid3">
+            <div class="stat">
+              <div class="k">Supply</div>
+              <div class="v"><span class="grad">1,000,000,000</span> SOS</div>
+            </div>
+            <div class="stat">
+              <div class="k">Tax</div>
+              <div class="v">0%</div>
+            </div>
+            <div class="stat">
+              <div class="k">Supply</div>
+              <div class="v">Burned</div>
+            </div>
+          </div>
+
+          <div style="height:14px"></div>
+
+          <div class="stat copyBox" data-copy="XXXXXXXXXXXXXXXXXXXXXXXX" role="button" tabindex="0" aria-label="Copy Contract Address">
+            <div style="min-width:0">
+              <div class="k">Contract Address</div>
+              <div class="copyText">XXXXXXXXXXXXXXXXXXXXXXXX</div>
+            </div>
+            <div class="copyHint">Click to copy</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- HOW TO BUY -->
+    <section id="buy">
+      <div class="card">
+        <div class="cardInner">
+          <h2 class="h2">How to Buy</h2>
+          <div class="steps">
+            <div class="step">
+              <div class="num">1</div>
+              <h4>Get a Wallet</h4>
+              <p>Use a Solana wallet (Phantom, Solflare, Backpack) and set it up securely.</p>
+            </div>
+            <div class="step">
+              <div class="num">2</div>
+              <h4>Fund with SOL</h4>
+              <p>Buy SOL on an exchange and send it to your Solana wallet address.</p>
+            </div>
+            <div class="step">
+              <div class="num">3</div>
+              <h4>Swap for $SOS</h4>
+              <p>Use a Solana DEX and swap SOL → $SOS using the official contract address.</p>
+            </div>
+            <div class="step">
+              <div class="num">4</div>
+              <h4>Join the Community</h4>
+              <p>Follow updates, memes, and announcements via Telegram and X.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- FAQ -->
+    <section id="faq">
+      <div class="card">
+        <div class="cardInner">
+          <h2 class="h2">FAQ</h2>
+
+          <details>
+            <summary>What is $SOS?</summary>
+            <p>$SOS is a Solana-native memecoin built around a guardian character — made for Solana culture and community energy.</p>
+          </details>
+
+          <details>
+            <summary>Which chain is $SOS on?</summary>
+            <p>$SOS is on Solana.</p>
+          </details>
+
+          <details>
+            <summary>How do I buy $SOS?</summary>
+            <p>Get a Solana wallet, fund it with SOL, then swap SOL → $SOS on a Solana DEX using the official contract address.</p>
+          </details>
+
+          <details>
+            <summary>Where can I follow updates?</summary>
+            <p>Use the Socials section below for Telegram, X, and the Telegram bot.</p>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    <!-- SOCIALS -->
+    <section id="socials">
+      <div class="card">
+        <div class="cardInner">
+          <h2 class="h2">Socials</h2>
+
+          <div class="socialRow">
+            <a class="btn grad" href="#tools">Tools</a>
+            <a class="btn grad" href="https://t.me/Solana_X1" target="_blank" rel="noreferrer">Telegram</a>
+            <a class="btn grad" href="https://x.com/Solana_X1" target="_blank" rel="noreferrer">X (Twitter)</a>
+            <a class="btn grad" href="https://t.me/solanaonsolana_bot" target="_blank" rel="noreferrer">Telegram Bot</a>
+          </div>
+
+          <div style="height:14px"></div>
+
+          <div class="stat copyBox" data-copy="XXXXXXXXXXXXXXXXXXXXXXXX" role="button" tabindex="0" aria-label="Copy Contract Address">
+            <div style="min-width:0">
+              <div class="k">Contract Address</div>
+              <div class="copyText">XXXXXXXXXXXXXXXXXXXXXXXX</div>
+            </div>
+            <div class="copyHint">Click to copy</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      © <span id="y"></span> $SOS — Solana on Solana. All content is for community and entertainment.
+    </footer>
+  </main>
 
   <script>
-    /* =========================================================
-       PART 1 — FOUNDATION ONLY
-       - UI skeleton + advanced panels (bubble map + cluster)
-       - Keeps your existing buttons (no deletions)
-       - NO real scan logic yet (Part 2+)
-       - Includes identicon fallback + canvas resize plumbing
-       ========================================================= */
+    // Year
+    document.getElementById("y").textContent = new Date().getFullYear();
 
-    /* ===================== SAFE DOM HELPERS ===================== */
-    const qs = (id) => document.getElementById(id);
-    const setText = (id, v) => { const el = qs(id); if (el) el.textContent = (v ?? ""); };
-    const setHTML = (id, v) => { const el = qs(id); if (el) el.innerHTML = (v ?? ""); };
-    const on = (id, ev, fn) => { const el = qs(id); if (el) el.addEventListener(ev, fn); };
-
-    const esc = (x) => String(x ?? "")
-      .replaceAll("&","&amp;")
-      .replaceAll("<","&lt;")
-      .replaceAll(">","&gt;")
-      .replaceAll('"',"&quot;");
-
-    /* ===================== GLOBAL STATE (stub for Part 2) ===================== */
-    let ACTIVE_CHAIN_ID = "sol";
-    let LAST_SCAN = null;
-
-    /* ===================== CHAIN ICONS (same vibe as your v2.4) ===================== */
-    const ICONS = {
-      sol: `
-        <svg viewBox="0 0 64 64" aria-hidden="true">
-          <defs>
-            <linearGradient id="solg" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0" stop-color="${getComputedStyle(document.documentElement).getPropertyValue('--sol-g1').trim() || '#14F195'}"/>
-              <stop offset="0.5" stop-color="${getComputedStyle(document.documentElement).getPropertyValue('--sol-g2').trim() || '#00D1FF'}"/>
-              <stop offset="1" stop-color="${getComputedStyle(document.documentElement).getPropertyValue('--sol-g3').trim() || '#9945FF'}"/>
-            </linearGradient>
-          </defs>
-          <path d="M14 18c1.6-1.8 3.5-2.7 5.7-2.7h33.6c3.3 0 5 4 2.8 6.5l-6.1 6.8c-1.6 1.8-3.5 2.7-5.7 2.7H10.7c-3.3 0-5-4-2.8-6.5L14 18Z" fill="url(#solg)"/>
-          <path d="M14 38.9c1.6-1.8 3.5-2.7 5.7-2.7h33.6c3.3 0 5 4 2.8 6.5l-6.1 6.8c-1.6 1.8-3.5 2.7-5.7 2.7H10.7c-3.3 0-5-4-2.8-6.5L14 38.9Z" fill="url(#solg)" opacity=".7"/>
-          <path d="M50 28.5c-1.6 1.8-3.5 2.7-5.7 2.7H10.7c-3.3 0-5-4-2.8-6.5L14 17.9c1.6-1.8 3.5-2.7 5.7-2.7h33.6c3.3 0 5 4 2.8 6.5L50 28.5Z" fill="url(#solg)" opacity=".9"/>
-        </svg>
-      `,
-      eth: `
-        <svg viewBox="0 0 64 64" aria-hidden="true">
-          <path d="M32 6l16 26-16 9-16-9L32 6Z" fill="currentColor" opacity=".95"/>
-          <path d="M32 58l16-22-16 9-16-9 16 22Z" fill="currentColor" opacity=".75"/>
-        </svg>
-      `,
-      bnb: `
-        <svg viewBox="0 0 64 64" aria-hidden="true">
-          <path fill="${getComputedStyle(document.documentElement).getPropertyValue('--bnb-yellow').trim() || '#F0B90B'}"
-            d="M32 6l8.6 8.6L32 23.2l-8.6-8.6L32 6Zm15.4 15.4L56 30l-8.6 8.6-8.6-8.6L47.4 21.4ZM16.6 21.4 25.2 30l-8.6 8.6L8 30l8.6-8.6ZM32 32.8l8.6 8.6L32 50l-8.6-8.6L32 32.8Zm0-6.9 5.1 5.1L32 36.2 26.9 31 32 25.9Z"/>
-        </svg>
-      `,
-      base: `
-        <svg viewBox="0 0 64 64" aria-hidden="true">
-          <circle cx="32" cy="32" r="26" fill="${getComputedStyle(document.documentElement).getPropertyValue('--base-blue').trim() || '#0052FF'}"/>
-          <path d="M27.5 22h8.1c6.2 0 11.2 5 11.2 11.1S41.8 44.2 35.6 44.2h-8.1V22Zm5.3 5.1v12h2.4c3.3 0 6-2.7 6-6s-2.7-6-6-6h-2.4Z"
-                fill="#fff"/>
-        </svg>
-      `
-    };
-
-    const CHAINS = [
-      { id:"sol",  name:"Solana",   kind:"solana", stamp:"MAINNET", addrLabel:"Token Mint Address",      placeholder:"Paste token mint (Solana)..." },
-      { id:"eth",  name:"Ethereum", kind:"evm",    stamp:"ETH MAINNET", addrLabel:"Token Contract Address", placeholder:"Paste ERC-20 contract (0x...)" },
-      { id:"bnb",  name:"BNB",      kind:"evm",    stamp:"BNB MAINNET", addrLabel:"Token Contract Address", placeholder:"Paste BEP-20 contract (0x...)" },
-      { id:"base", name:"Base",     kind:"evm",    stamp:"BASE MAINNET", addrLabel:"Token Contract Address", placeholder:"Paste Base token contract (0x...)" }
-    ];
-
-    /* ===================== LIVE STAMP TIME ===================== */
-    let STAMP_TIMER = null;
-    function updateStampTime(){
-      const el = qs("stampTime");
+    // Copy helpers
+    function setHint(el, ok){
       if(!el) return;
-      const now = new Date();
-      const live = new Intl.DateTimeFormat("de-DE", {
-        timeZone: "Europe/Berlin",
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit"
-      }).format(now);
-      el.textContent = live;
-    }
-    function startLiveStampTime(){
-      if(STAMP_TIMER) clearInterval(STAMP_TIMER);
-      updateStampTime();
-      STAMP_TIMER = setInterval(updateStampTime, 1000);
-    }
-
-    /* ===================== IDENTICON (fallback token “logo”) ===================== */
-    function hash32(str){
-      // tiny non-crypto hash for identicon visuals
-      let h = 2166136261 >>> 0;
-      const s = String(str || "");
-      for(let i=0;i<s.length;i++){
-        h ^= s.charCodeAt(i);
-        h = Math.imul(h, 16777619) >>> 0;
-      }
-      return h >>> 0;
-    }
-
-    function identiconSvg(el, seed){
-      if(!el) return;
-      const h = hash32(seed || "—");
-      const c1 = `hsl(${(h % 360)}, 90%, 55%)`;
-      const c2 = `hsl(${((h>>>8) % 360)}, 90%, 45%)`;
-      const c3 = `hsl(${((h>>>16) % 360)}, 90%, 60%)`;
-
-      // 5x5 symmetric grid
-      const size = 44;
-      const cell = 44 / 5;
-      let bits = h ^ (h>>>13) ^ (h>>>7);
-
-      let rects = "";
-      for(let y=0;y<5;y++){
-        for(let x=0;x<3;x++){
-          const on = (bits & 1) === 1;
-          bits = (bits >>> 1) | (bits << 31);
-          if(on){
-            const xx = x * cell;
-            const yy = y * cell;
-            rects += `<rect x="${xx}" y="${yy}" width="${cell}" height="${cell}" rx="4" fill="${(x+y)%3===0?c1:(x+y)%3===1?c2:c3}" opacity="0.95"/>`;
-            // mirror
-            const mx = (4-x) * cell;
-            rects += `<rect x="${mx}" y="${yy}" width="${cell}" height="${cell}" rx="4" fill="${(x+y)%3===0?c1:(x+y)%3===1?c2:c3}" opacity="0.95"/>`;
-          }
-        }
-      }
-
-      el.innerHTML = `
-        <defs>
-          <linearGradient id="ig" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stop-color="${c1}" stop-opacity="0.65"/>
-            <stop offset="1" stop-color="${c3}" stop-opacity="0.20"/>
-          </linearGradient>
-        </defs>
-        <rect x="0" y="0" width="${size}" height="${size}" rx="12" fill="rgba(0,0,0,.12)" />
-        <rect x="0" y="0" width="${size}" height="${size}" rx="12" fill="url(#ig)" />
-        <g transform="translate(0,0)">${rects}</g>
-      `;
-    }
-
-    function applyTokenHeaderFoundation(meta, addr){
-      const nameEl = qs("tokenName");
-      const symEl  = qs("tokenSymbol");
-      const wrap   = qs("tokenLogoWrap");
-      const img    = qs("tokenLogo");
-      const ico    = qs("tokenIdenticon");
-
-      const name = (meta?.name || "Token").trim() || "Token";
-      const sym  = (meta?.symbol || "").trim();
-
-      if(nameEl) nameEl.textContent = name;
-      if(symEl)  symEl.textContent  = sym ? `$${sym}` : `Addr: ${addr ? (addr.slice(0,4) + "…" + addr.slice(-4)) : "—"}`;
-
-      if(wrap && img && ico){
-        const hasImg = !!(meta?.image && String(meta.image).trim());
-        if(hasImg){
-          img.style.display = "block";
-          img.src = meta.image;
-          img.alt = name;
-          ico.style.display = "none";
-          img.onerror = () => {
-            img.style.display = "none";
-            ico.style.display = "block";
-            identiconSvg(ico, addr || name);
-          };
-        }else{
-          img.removeAttribute("src");
-          img.alt = "";
-          img.style.display = "none";
-          ico.style.display = "block";
-          identiconSvg(ico, addr || name);
-        }
+      if(ok){
+        el.textContent = "Copied!";
+        el.classList.add("ok");
+        window.setTimeout(() => {
+          el.textContent = "Click to copy";
+          el.classList.remove("ok");
+        }, 1200);
+      } else {
+        el.textContent = "Copy failed";
+        window.setTimeout(() => {
+          el.textContent = "Click to copy";
+        }, 1200);
       }
     }
 
-    /* ===================== CHAIN BUTTONS ===================== */
-    function renderChainButtons(){
-      const row = qs("chainRow");
-      if(!row) return;
-      row.innerHTML = "";
-
-      for(const c of CHAINS){
-        const b = document.createElement("button");
-        b.type = "button";
-        b.className = "chainBtn" + (c.id === ACTIVE_CHAIN_ID ? " active" : "");
-        b.innerHTML = `
-          <span class="chainIcon">${ICONS[c.id] || ""}</span>
-          <span>${esc(c.name)}</span>
-        `;
-        b.addEventListener("click", () => setActiveChain(c.id, true));
-        row.appendChild(b);
-      }
-    }
-
-    function setActiveChain(chainId, pushUrl){
-      const found = CHAINS.find(x => x.id === chainId) || CHAINS[0];
-      ACTIVE_CHAIN_ID = found.id;
-
-      renderChainButtons();
-      setText("holdersStamp", found.stamp || "MAINNET");
-      setText("addrLabel", found.addrLabel || "Token Address");
-
-      const mint = qs("mint");
-      if(mint) mint.placeholder = found.placeholder || "Paste token address...";
-
-      // foundation reset
-      setText("chainHint", "");
-      setText("status", "");
-      setText("mintShort", "—");
-      setText("verdictTitle", "—");
-      setText("verdictBadge", "—");
-      setText("scoreBadge", "—");
-      setText("summary", "—");
-      setText("scanHint", "—");
-      setText("vizStamp", "—");
-      setText("vizLegend", "—");
-      setText("vizSub", "Shows holder bubbles + linked wallet edges (best-effort). Run a scan to populate.");
-      setText("clusterStamp", found.stamp || "MAINNET");
-      setText("clusterFoot", "—");
-
-      // clear placeholder list content (Part 2 will implement real renderList)
-      qs("metrics").innerHTML = "";
-      qs("checksList").innerHTML = "";
-      qs("todoList").innerHTML = "";
-      qs("extList").innerHTML = "";
-      qs("metaList").innerHTML = "";
-      qs("holdersList").innerHTML = "";
-
-      // placeholders
-      qs("vizOverlay").style.display = "flex";
-      setText("vizOverlay", "No visualization data yet. Run a scan.");
-
-      qs("clusterGrid").innerHTML = `
-        <div class="clusterCard">
-          <div class="clusterLeft">
-            <div class="clusterT"><span class="dot warn"></span> No scan yet</div>
-            <div class="clusterD">Run a scan to generate cluster groups, linked wallets, and bundle/split heuristics.</div>
-          </div>
-          <div class="clusterRight">
-            <span class="badge warn">WAIT</span>
-          </div>
-        </div>
-      `;
-
-      // token header placeholder with identicon
-      applyTokenHeaderFoundation({name:"—", symbol:""}, "");
-
-      // URL param
-      if(pushUrl){
-        const url = new URL(location.href);
-        url.searchParams.set("chain", found.id);
-        history.replaceState({}, "", url.toString());
-      }
-    }
-
-    /* ===================== VIZ CANVAS (foundation) ===================== */
-    const VIZ = {
-      mode: "bubbles", // "bubbles" | "graph"
-      nodes: [], // Part 5 will fill
-      edges: [], // Part 5 will fill
-      panX: 0,
-      panY: 0,
-      zoom: 1,
-      dragging: false,
-      lastX: 0,
-      lastY: 0
-    };
-
-    function resizeCanvas(){
-      const canvas = qs("vizCanvas");
-      const stage  = qs("vizStage");
-      if(!canvas || !stage) return;
-      const rect = stage.getBoundingClientRect();
-      const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
-      canvas.width = Math.floor(rect.width * dpr);
-      canvas.height = Math.floor(rect.height * dpr);
-      canvas.dataset.dpr = String(dpr);
-      drawViz();
-    }
-
-    function drawViz(){
-      const canvas = qs("vizCanvas");
-      if(!canvas) return;
-      const ctx = canvas.getContext("2d");
-      if(!ctx) return;
-
-      const dpr = Number(canvas.dataset.dpr || 1);
-      const w = canvas.width;
-      const h = canvas.height;
-
-      ctx.clearRect(0,0,w,h);
-
-      // If no data, keep it subtle background
-      if(!VIZ.nodes.length){
-        // subtle grid dots
-        ctx.save();
-        ctx.globalAlpha = 0.22;
-        for(let y=20*dpr;y<h;y+=34*dpr){
-          for(let x=20*dpr;x<w;x+=34*dpr){
-            ctx.beginPath();
-            ctx.arc(x,y,1.2*dpr,0,Math.PI*2);
-            ctx.fillStyle = "rgba(255,255,255,0.18)";
-            ctx.fill();
-          }
-        }
-        ctx.restore();
-        return;
-      }
-
-      // Part 5 will draw real bubbles/graph. For foundation: draw a demo placeholder if data exists.
-      ctx.save();
-      ctx.translate(VIZ.panX*dpr, VIZ.panY*dpr);
-      ctx.scale(VIZ.zoom, VIZ.zoom);
-
-      // edges
-      ctx.globalAlpha = 0.35;
-      ctx.lineWidth = 1.2*dpr;
-      ctx.strokeStyle = "rgba(255,255,255,0.22)";
-      for(const e of VIZ.edges){
-        const a = VIZ.nodes[e.a];
-        const b = VIZ.nodes[e.b];
-        if(!a || !b) continue;
-        ctx.beginPath();
-        ctx.moveTo(a.x*dpr, a.y*dpr);
-        ctx.lineTo(b.x*dpr, b.y*dpr);
-        ctx.stroke();
-      }
-
-      // nodes
-      ctx.globalAlpha = 0.92;
-      for(const n of VIZ.nodes){
-        ctx.beginPath();
-        ctx.arc(n.x*dpr, n.y*dpr, (n.r||14)*dpr, 0, Math.PI*2);
-
-        // color mode
-        const fill = n.sev === "bad" ? "rgba(255,120,150,0.30)"
-                   : n.sev === "warn" ? "rgba(255,220,130,0.24)"
-                   : "rgba(20,241,149,0.22)";
-        ctx.fillStyle = fill;
-        ctx.fill();
-
-        ctx.strokeStyle = "rgba(255,255,255,0.14)";
-        ctx.stroke();
-      }
-
-      ctx.restore();
-    }
-
-    function setVizMode(mode){
-      VIZ.mode = mode === "graph" ? "graph" : "bubbles";
-      const b1 = qs("vizModeBubbles");
-      const b2 = qs("vizModeGraph");
-      if(b1 && b2){
-        b1.classList.toggle("active", VIZ.mode === "bubbles");
-        b2.classList.toggle("active", VIZ.mode === "graph");
-        b1.setAttribute("aria-selected", VIZ.mode === "bubbles" ? "true" : "false");
-        b2.setAttribute("aria-selected", VIZ.mode === "graph" ? "true" : "false");
-      }
-      drawViz();
-    }
-
-    function resetViz(){
-      VIZ.panX = 0;
-      VIZ.panY = 0;
-      VIZ.zoom = 1;
-      drawViz();
-    }
-
-    function wireVizInteractions(){
-      const canvas = qs("vizCanvas");
-      if(!canvas) return;
-
-      // pan
-      canvas.addEventListener("pointerdown", (e) => {
-        VIZ.dragging = true;
-        VIZ.lastX = e.clientX;
-        VIZ.lastY = e.clientY;
-        canvas.setPointerCapture(e.pointerId);
-      });
-      canvas.addEventListener("pointermove", (e) => {
-        if(!VIZ.dragging) return;
-        const dx = e.clientX - VIZ.lastX;
-        const dy = e.clientY - VIZ.lastY;
-        VIZ.lastX = e.clientX;
-        VIZ.lastY = e.clientY;
-        VIZ.panX += dx;
-        VIZ.panY += dy;
-        drawViz();
-      });
-      canvas.addEventListener("pointerup", (e) => {
-        VIZ.dragging = false;
-        try{ canvas.releasePointerCapture(e.pointerId); }catch{}
-      });
-
-      // zoom
-      canvas.addEventListener("wheel", (e) => {
-        e.preventDefault();
-        const delta = Math.sign(e.deltaY);
-        const factor = delta > 0 ? 0.92 : 1.08;
-        VIZ.zoom = Math.max(0.55, Math.min(2.4, VIZ.zoom * factor));
-        drawViz();
-      }, { passive:false });
-    }
-
-    /* ===================== TOAST / MODAL (foundation) ===================== */
-    function openModal(title, bodyHtml){
-      setText("modalTitle", title || "Guardian Details");
-      setHTML("modalBody", bodyHtml || "");
-      const w = qs("modalWrap");
-      if(w){
-        w.style.display = "flex";
-        w.setAttribute("aria-hidden","false");
-      }
-    }
-    function closeModal(){
-      const w = qs("modalWrap");
-      if(w){
-        w.style.display = "none";
-        w.setAttribute("aria-hidden","true");
-      }
-    }
-    function showToast(title){
-      const t = qs("toast");
-      if(!t) return;
-      setText("toastTitle", title || "");
-      t.style.display = "block";
-    }
-    function hideToast(){
-      const t = qs("toast");
-      if(!t) return;
-      t.style.display = "none";
-    }
-
-    /* ===================== STUB SCAN (Part 2 will replace) ===================== */
-    function runScanStub(){
-      const addr = (qs("mint")?.value || "").trim();
-      if(!addr){
-        showToast("Paste an address first.");
-        setText("status", "Paste a token address and run the scan.");
-        return;
-      }
-
-      // Foundation demo: fill token header + show viz placeholders
-      setText("mintShort", addr.slice(0,4) + "…" + addr.slice(-4));
-      applyTokenHeaderFoundation({name:"Token", symbol:"", image:""}, addr);
-
-      setText("verdictTitle", "— (Part 2 adds real scan)");
-      setText("verdictBadge", "—");
-      setText("scoreBadge", "—");
-      setText("summary", "Foundation loaded. Real scan engine comes in Part 2.");
-
-      setText("vizStamp", "PREVIEW");
-      setText("vizLegend", "PASS / WATCH / FAIL");
-      qs("vizOverlay").style.display = "none";
-
-      // demo nodes (so you see the canvas working immediately)
-      VIZ.nodes = Array.from({length: 18}).map((_, i) => {
-        const sev = i % 9 === 0 ? "bad" : (i % 4 === 0 ? "warn" : "ok");
-        return {
-          x: 80 + (i%6)*110,
-          y: 70 + Math.floor(i/6)*110,
-          r: (i%5===0?26:(i%3===0?18:14)),
-          sev
-        };
-      });
-      VIZ.edges = [
-        {a:0,b:1},{a:1,b:2},{a:2,b:3},{a:3,b:4},{a:4,b:5},
-        {a:0,b:6},{a:6,b:12},{a:2,b:8},{a:8,b:14},{a:5,b:11},
-        {a:7,b:13},{a:10,b:16},{a:9,b:15}
-      ];
-      resizeCanvas();
-
-      // cluster placeholder cards
-      qs("clusterGrid").innerHTML = `
-        <div class="clusterCard">
-          <div class="clusterLeft">
-            <div class="clusterT"><span class="dot warn"></span> Cluster preview</div>
-            <div class="clusterD">Part 3–4 will compute linked wallets, split wallets, and bundle-like patterns (best-effort).</div>
-          </div>
-          <div class="clusterRight">
-            <span class="badge warn">PREVIEW</span>
-            <button class="infoBtn" type="button" id="clusterInfoBtn"><span>i</span></button>
-          </div>
-        </div>
-      `;
-      setText("clusterFoot", "Note: This is a UI foundation preview. Real clustering comes next.");
-
-      const btn = qs("clusterInfoBtn");
-      if(btn){
-        btn.onclick = () => openModal("Cluster Intelligence", `
-          <div style="font-weight:1000; font-size:18px; margin-bottom:10px">What you’ll get next</div>
-          <div style="color:rgba(255,255,255,.72); font-weight:850; line-height:1.55">
-            <div style="margin:6px 0">• Wallet clusters (LP/team/treasury/routers) with tags.</div>
-            <div style="margin:6px 0">• Split wallets (same source / same pattern) best-effort.</div>
-            <div style="margin:6px 0">• Bundle-like patterns: block/slot proximity + routing similarity (best-effort).</div>
-            <div style="margin:6px 0">• Bubble map + interactive graph + explorer drilldown.</div>
-          </div>
-        `);
-      }
-
-      setText("status", "Foundation preview complete. (Part 2 will add real scan.)");
-    }
-
-    /* ===================== INIT ===================== */
-    function init(){
-      setText("y", String(new Date().getFullYear()));
-      on("modalClose", "click", closeModal);
-      on("toastClose", "click", hideToast);
-
-      on("modalWrap", "click", (e) => {
-        if(e.target === qs("modalWrap")) closeModal();
-      });
-
-      // IMPORTANT: keep your buttons & flow, just wired to stub for now
-      on("btnScan", "click", runScanStub);
-      on("btnScanInline", "click", runScanStub);
-      on("mint", "keydown", (e) => { if(e.key === "Enter") runScanStub(); });
-
-      // viz controls
-      on("vizModeBubbles", "click", () => setVizMode("bubbles"));
-      on("vizModeGraph", "click", () => setVizMode("graph"));
-      on("btnVizReset", "click", resetViz);
-
-      // chain param
-      const url = new URL(location.href);
-      const chainParam = url.searchParams.get("chain");
-      if(chainParam && CHAINS.some(c => c.id === chainParam)){
-        ACTIVE_CHAIN_ID = chainParam;
-      }
-      setActiveChain(ACTIVE_CHAIN_ID, false);
-
-      // initial token header identicon
-      identiconSvg(qs("tokenIdenticon"), "—");
-
-      startLiveStampTime();
-      wireVizInteractions();
-      resizeCanvas();
-      window.addEventListener("resize", () => resizeCanvas(), { passive:true });
-    }
-
-    /* =========================================================
-       PART 2 — REAL SCAN ENGINE (Solana + EVM) + LOGO FALLBACKS
-       - Replaces runScanStub with a real multi-chain scanner
-       - Populates: metrics, checks, todo, standard details, metadata, holders
-       - Populates Bubble Map with real holder bubbles (best-effort)
-       - Keeps ALL buttons + layout (no deletions)
-       ========================================================= */
-
-    /* ===================== CONFIG (edit keys if needed) ===================== */
-    const CFG = {
-      // Solana (Helius RPC key required for getAsset + stable RPC)
-      HELIUS_KEY: "b566a086-57d4-4433-8661-faed9ad07ba0",
-
-      // EVM holders (optional). Without this, EVM holders will show "needs indexer".
-      // Covalent GoldRush API key
-      GOLDRUSH_API_KEY: "cqt_rQVTMTXwYkPJBrwf7ff6JWmdkywR",
-
-      // RPCs (best-effort public endpoints)
-      EVM_RPCS: {
-        1:    ["https://ethereum.publicnode.com", "https://rpc.ankr.com/eth", "https://cloudflare-eth.com"],
-        56:   ["https://bsc.publicnode.com", "https://rpc.ankr.com/bsc", "https://bsc-dataseed.binance.org"],
-        8453: ["https://base.publicnode.com", "https://mainnet.base.org", "https://rpc.ankr.com/base"]
-      },
-
-      // Solana token programs
-      TOKEN_PROGRAM: "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
-      TOKEN_2022_PROGRAM: "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
-
-      // UI toggles
-      UI: {
-        SHOW_PASS_DETAILS_EVM: false,
-        SHOW_NO_SIGNAL_METRICS: false
-      }
-    };
-
-    /* ===================== SMALL UTILS ===================== */
-    let SCANNING = false;
-
-    function clamp(n, min, max){ return Math.max(min, Math.min(max, n)); }
-    function shortAddr(a){ return a ? (a.slice(0,4) + "…" + a.slice(-4)) : "—"; }
-
-    function fmtInt(n){
-      if(n === null || n === undefined || Number.isNaN(n)) return "—";
-      try { return new Intl.NumberFormat("en-US").format(Math.round(Number(n))); }
-      catch { return String(n); }
-    }
-    function fmtPct(n){
-      if(n === null || n === undefined || Number.isNaN(n)) return "—";
-      return `${Number(n).toFixed(2)}%`;
-    }
-
-    function setStatus(msg){ setText("status", msg || ""); }
-
-    function setBadge(el, txt, mode){
-      if(!el) return;
-      el.textContent = txt ?? "";
-      el.classList.remove("good","warn","bad");
-      if(mode) el.classList.add(mode);
-    }
-
-    function looksBase58(s){
-      return typeof s === "string" && s.length >= 32 && s.length <= 52 && /^[1-9A-HJ-NP-Za-km-z]+$/.test(s);
-    }
-    function looksEvmAddress(s){
-      return typeof s === "string" && /^0x[0-9a-fA-F]{40}$/.test(s.trim());
-    }
-
-    function chainObj(){
-      return CHAINS.find(c => c.id === ACTIVE_CHAIN_ID) || CHAINS[0];
-    }
-
-    function explorerBase(chainId){
-      if(chainId === "sol")  return {name:"Solscan", base:"https://solscan.io/account/"};
-      if(chainId === "eth")  return {name:"Etherscan", base:"https://etherscan.io/address/"};
-      if(chainId === "bnb")  return {name:"BscScan", base:"https://bscscan.com/address/"};
-      if(chainId === "base") return {name:"BaseScan", base:"https://basescan.org/address/"};
-      return {name:"Explorer", base:"#"};
-    }
-
-    /* ===================== INFO MODAL MAP (for list items) ===================== */
-    const INFO_MAP = new Map();
-    function newInfoId(){ return "i_" + Math.random().toString(36).slice(2) + Date.now().toString(36); }
-    function registerInfo(html){
-      const id = newInfoId();
-      INFO_MAP.set(id, html);
-      return id;
-    }
-    function getInfo(id){ return INFO_MAP.get(id) || ""; }
-
-    function explain(title, bullets){
-      const body = (bullets||[]).map(b => `<div style="margin:6px 0">${esc(b)}</div>`).join("");
-      return `
-        <div style="font-weight:1000; font-size:18px; margin-bottom:10px">${esc(title)}</div>
-        <div style="color:rgba(255,255,255,.72); font-weight:850; line-height:1.55">${body}</div>
-      `;
-    }
-
-    function pillLabel(sev){ return sev==="ok" ? "PASS" : sev==="bad" ? "FAIL" : "WATCH"; }
-    function pillClass(sev){ return sev==="ok" ? "pill ok" : sev==="bad" ? "pill bad" : "pill warn"; }
-
-    /* ===================== LIST + METRICS RENDERERS ===================== */
-    function renderList(listEl, items, defaultTitle){
-      if(!listEl) return;
-      listEl.innerHTML = "";
-      const arr = Array.isArray(items) ? items : [];
-
-      for(const it of arr){
-        const sev = it.sev || "warn";
-        const title = it.t || defaultTitle || "Details";
-        const desc = it.d || "—";
-        const infoTitle = it.infoTitle || title;
-        const html = (it.infoHtml && String(it.infoHtml).trim())
-          ? String(it.infoHtml)
-          : explain(infoTitle, [
-              desc,
-              it.why ? ("Why: " + it.why) : "Why: best-effort.",
-              "Status: " + pillLabel(sev)
-            ]);
-
-        const infoId = registerInfo(html);
-
-        const li = document.createElement("li");
-        li.className = "li";
-        li.innerHTML = `
-          <div class="left">
-            <div class="t">${esc(title)}</div>
-            <div class="d">${esc(desc)}</div>
-          </div>
-          <div class="pillRow">
-            <span class="${pillClass(sev)}" role="button" tabindex="0"
-                  data-open="1" data-title="${esc(infoTitle)}" data-info="${esc(infoId)}">${pillLabel(sev)}</span>
-            <button class="infoBtn" type="button" aria-label="Info"
-                    data-open="1" data-title="${esc(infoTitle)}" data-info="${esc(infoId)}"><span>i</span></button>
-          </div>
-        `;
-        listEl.appendChild(li);
-      }
-
-      if(!arr.length){
-        const li = document.createElement("li");
-        li.className = "li";
-        li.innerHTML = `
-          <div class="left">
-            <div class="t">${esc(defaultTitle || "No data")}</div>
-            <div class="d">—</div>
-          </div>
-          <div class="pillRow"><span class="pill warn">WATCH</span></div>
-        `;
-        listEl.appendChild(li);
-      }
-    }
-
-    function renderMetrics(rows){
-      const wrap = qs("metrics");
-      if(!wrap) return;
-      wrap.innerHTML = "";
-
-      const filtered = (rows || []).filter(r => {
-        if(CFG.UI.SHOW_NO_SIGNAL_METRICS) return true;
-        const v = String(r?.value ?? "").toLowerCase();
-        if(v.includes("no signal")) return false;
-        if(v.includes("not found")) return false;
+    async function copyText(text){
+      try{
+        await navigator.clipboard.writeText(text);
         return true;
-      });
-
-      for(const r of filtered){
-        const d = document.createElement("div");
-        d.className = "metric";
-        const bar = (typeof r.barPct === "number")
-          ? `<div class="bar"><div style="width:${clamp(r.barPct,0,100)}%"></div></div>`
-          : "";
-        d.innerHTML = `
-          <div class="metricK">
-            <span>${esc(r.label || "—")}</span>
-            <span class="badge" style="opacity:.9">${esc(r.badge || r.value || "—")}</span>
-          </div>
-          <div class="metricV">${esc(r.value || "—")}</div>
-          <div class="metricMini">${esc(r.mini || "")}</div>
-          ${bar}
-        `;
-        wrap.appendChild(d);
-      }
-    }
-
-    /* ===================== CLICK -> MODAL (for list pills/info buttons) ===================== */
-    (function wireInfoClicks(){
-      document.addEventListener("click", (e) => {
-        const t = e.target;
-        const openEl = t?.closest?.("[data-open='1']");
-        if(openEl){
-          const title = openEl.getAttribute("data-title") || "Details";
-          const infoId = openEl.getAttribute("data-info") || "";
-          const html = getInfo(infoId);
-          if(html) openModal(title, html);
-        }
-      });
-
-      document.addEventListener("keydown", (e) => {
-        if(e.key !== "Enter" && e.key !== " ") return;
-        const a = document.activeElement;
-        if(a && a.matches && a.matches("[data-open='1']")){
-          e.preventDefault();
-          const title = a.getAttribute("data-title") || "Details";
-          const infoId = a.getAttribute("data-info") || "";
-          const html = getInfo(infoId);
-          if(html) openModal(title, html);
-        }
-      });
-    })();
-
-    /* ===================== TOKEN LOGO FALLBACKS (EVM) ===================== */
-    function toChecksumLike(addr){
-      // Not a true EIP-55 checksum (would require keccak). We keep it lowercase for asset folders (most lists use checksum, but some accept lowercase).
-      // We will try both lowercase and original.
-      return String(addr || "").trim();
-    }
-
-    function trustWalletLogo(chainId, addr){
-      const a = String(addr || "").trim();
-      if(!a) return "";
-      const lower = a.toLowerCase();
-      const base =
-        chainId === 1    ? "ethereum"
-        : chainId === 56 ? "smartchain"
-        : chainId === 8453 ? "base"
-        : "ethereum";
-
-      // TrustWallet usually stores in: blockchains/<chain>/assets/<CHECKSUM>/logo.png
-      // We'll try lowercase folder too (some forks mirror).
-      return [
-        `https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/${base}/assets/${a}/logo.png`,
-        `https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/${base}/assets/${lower}/logo.png`
-      ];
-    }
-
-    function applyTokenHeaderWithEvmLogo(meta, addr, evmChainId){
-      // try: meta.image -> trustwallet -> identicon
-      const m = { ...(meta||{}) };
-      const imgCandidates = [];
-
-      if(m.image) imgCandidates.push(String(m.image).trim());
-      for(const u of trustWalletLogo(evmChainId, addr)) imgCandidates.push(u);
-
-      // apply: set first, then onerror rotate
-      const wrap = qs("tokenLogoWrap");
-      const img  = qs("tokenLogo");
-      const ico  = qs("tokenIdenticon");
-      if(!wrap || !img || !ico) return;
-
-      const name = (m?.name || "Token").trim() || "Token";
-      const symbol = (m?.symbol || "").trim();
-
-      setText("tokenName", name);
-      setText("tokenSymbol", symbol ? `$${symbol}` : `Addr: ${shortAddr(addr)}`);
-
-      let idx = 0;
-      function tryNext(){
-        if(idx >= imgCandidates.length){
-          img.style.display = "none";
-          ico.style.display = "block";
-          identiconSvg(ico, addr || name);
-          return;
-        }
-        const u = imgCandidates[idx++];
-        img.style.display = "block";
-        ico.style.display = "none";
-        img.src = u;
-        img.alt = name;
-      }
-
-      img.onerror = () => tryNext();
-      tryNext();
-    }
-
-    /* ===================== VIZ: BUILD REAL HOLDER BUBBLES ===================== */
-    function buildBubblesFromHolders(holderItems){
-      // holderItems: [{addr, pct, sev, label, sub}]
-      const stage = qs("vizStage");
-      if(!stage) return;
-
-      const rect = stage.getBoundingClientRect();
-      const W = Math.max(520, rect.width || 820);
-      const H = Math.max(360, rect.height || 420);
-
-      const nodes = [];
-      const edges = []; // Part 4/5 will fill edges based on clustering heuristics
-
-      // simple spiral packing
-      let cx = W/2, cy = H/2;
-      let angle = 0;
-      let radius = 10;
-
-      for(let i=0;i<holderItems.length;i++){
-        const it = holderItems[i];
-        const pct = Number(it.pct || 0);
-        const r = clamp(10 + (pct * 2.2), 12, 48);
-
-        angle += 0.8;
-        radius += 8 + r*0.12;
-        const x = cx + Math.cos(angle) * radius;
-        const y = cy + Math.sin(angle) * radius;
-
-        nodes.push({
-          x, y, r,
-          sev: it.sev || "ok",
-          addr: it.addr || "",
-          label: it.label || shortAddr(it.addr || ""),
-          sub: it.sub || (pct ? (pct.toFixed(2)+"%") : "")
-        });
-      }
-
-      VIZ.nodes = nodes;
-      VIZ.edges = edges;
-      VIZ.panX = 0;
-      VIZ.panY = 0;
-      VIZ.zoom = 1;
-
-      qs("vizOverlay").style.display = nodes.length ? "none" : "flex";
-      drawViz();
-    }
-
-    // Upgrade the drawViz to show labels (still light)
-    const _drawVizBase = drawViz;
-    function drawViz(){
-      const canvas = qs("vizCanvas");
-      if(!canvas) return;
-      const ctx = canvas.getContext("2d");
-      if(!ctx) return;
-
-      const dpr = Number(canvas.dataset.dpr || 1);
-      const w = canvas.width;
-      const h = canvas.height;
-      ctx.clearRect(0,0,w,h);
-
-      if(!VIZ.nodes.length){
-        // same subtle background from Part 1
-        ctx.save();
-        ctx.globalAlpha = 0.22;
-        for(let y=20*dpr;y<h;y+=34*dpr){
-          for(let x=20*dpr;x<w;x+=34*dpr){
-            ctx.beginPath();
-            ctx.arc(x,y,1.2*dpr,0,Math.PI*2);
-            ctx.fillStyle = "rgba(255,255,255,0.18)";
-            ctx.fill();
-          }
-        }
-        ctx.restore();
-        return;
-      }
-
-      ctx.save();
-      ctx.translate(VIZ.panX*dpr, VIZ.panY*dpr);
-      ctx.scale(VIZ.zoom, VIZ.zoom);
-
-      // edges (none in Part 2, but kept)
-      ctx.globalAlpha = 0.35;
-      ctx.lineWidth = 1.2*dpr;
-      ctx.strokeStyle = "rgba(255,255,255,0.22)";
-      for(const e of VIZ.edges){
-        const a = VIZ.nodes[e.a];
-        const b = VIZ.nodes[e.b];
-        if(!a || !b) continue;
-        ctx.beginPath();
-        ctx.moveTo(a.x*dpr, a.y*dpr);
-        ctx.lineTo(b.x*dpr, b.y*dpr);
-        ctx.stroke();
-      }
-
-      // nodes
-      for(const n of VIZ.nodes){
-        const fill = n.sev === "bad" ? "rgba(255,120,150,0.30)"
-                   : n.sev === "warn" ? "rgba(255,220,130,0.24)"
-                   : "rgba(20,241,149,0.22)";
-
-        ctx.globalAlpha = 0.95;
-        ctx.beginPath();
-        ctx.arc(n.x*dpr, n.y*dpr, (n.r||14)*dpr, 0, Math.PI*2);
-        ctx.fillStyle = fill;
-        ctx.fill();
-        ctx.strokeStyle = "rgba(255,255,255,0.14)";
-        ctx.stroke();
-
-        // label
-        ctx.globalAlpha = 0.9;
-        ctx.fillStyle = "rgba(255,255,255,0.82)";
-        ctx.font = `${12*dpr}px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial`;
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        const txt = (VIZ.mode === "graph") ? (n.sub || "") : (n.sub || "");
-        if(txt){
-          ctx.fillText(txt, n.x*dpr, (n.y + (n.r||14) + 12)*dpr);
-        }
-      }
-
-      ctx.restore();
-    }
-
-    /* ===================== HOLDERS LIST (with explorer button) ===================== */
-    function renderHoldersWithExplorer(items, chain){
-      const el = qs("holdersList");
-      if(!el) return;
-      el.innerHTML = "";
-      const ex = explorerBase(chain.id);
-
-      for(const it of items){
-        const infoId = registerInfo(it.infoHtml || explain("Top holder", [
-          "Meaning: Share of supply.",
-          "Why it matters: high % = dump risk.",
-          "Tip: check if LP/Burn/Team/Treasury."
-        ]));
-
-        const li = document.createElement("li");
-        li.className = "li";
-        li.innerHTML = `
-          <div class="left">
-            <div class="t">${esc(it.t || "Holder")}</div>
-            <div class="d">${esc(it.d || "—")}</div>
-          </div>
-          <div class="pillRow">
-            <a class="explorerBtn" href="${esc(ex.base + (it.addr||""))}" target="_blank" rel="noreferrer">${esc(ex.name)}</a>
-            <button class="infoBtn" type="button" aria-label="Info"
-                    data-open="1" data-title="${esc(it.t || "Holder")}" data-info="${esc(infoId)}"><span>i</span></button>
-          </div>
-        `;
-        el.appendChild(li);
-      }
-    }
-
-    function renderHoldersEmpty(){
-      renderList(qs("holdersList"), [{
-        t:"No holder data",
-        sev:"warn",
-        d: chainObj().kind === "solana"
-          ? "Holders will load after scan."
-          : (CFG.GOLDRUSH_API_KEY ? "Indexer returned no data." : "EVM holders need an indexer key (GoldRush)."),
-        infoHtml: explain("Top holders", [
-          "Meaning: Distribution shows whale risk.",
-          "Solana: via RPC largest accounts.",
-          "EVM: needs an indexer (RPC alone cannot list holders)."
-        ])
-      }], "Top Holders");
-    }
-
-    /* ===================== SCORING (basic v1; Part 3 will expand to bundles/splits) ===================== */
-    function verdictFrom(score, critical){
-      if(critical) return {label:"FLAGGED", mode:"bad",  title:"FLAGGED • High Risk"};
-      if(score >= 80) return {label:"APPROVED", mode:"good", title:"APPROVED • Guardian Grade"};
-      if(score >= 50) return {label:"OBSERVED", mode:"warn", title:"OBSERVED • Mixed Signals"};
-      return {label:"FLAGGED", mode:"bad", title:"FLAGGED • High Risk"};
-    }
-
-    /* ===================== SOLANA RPC (Helius) ===================== */
-    function HELIUS_RPC(){
-      return `https://mainnet.helius-rpc.com/?api-key=${encodeURIComponent(CFG.HELIUS_KEY)}`;
-    }
-
-    async function solRpc(method, params){
-      if(!CFG.HELIUS_KEY || String(CFG.HELIUS_KEY).includes("PUT_YOUR_HELIUS_KEY_HERE")){
-  throw new Error("Helius key missing in CFG. Set CFG.HELIUS_KEY.");
-}
-      
-      const res = await fetch(HELIUS_RPC(), {
-        method:"POST",
-        headers:{ "Content-Type":"application/json" },
-        body: JSON.stringify({ jsonrpc:"2.0", id:1, method, params })
-      });
-      if(!res.ok){
-        const t = await res.text().catch(()=> "");
-        throw new Error(`Solana RPC HTTP ${res.status}: ${t.slice(0,180)}`);
-      }
-      const j = await res.json();
-      if(j?.error) throw new Error(j.error.message || "Solana RPC error");
-      return j.result;
-    }
-
-    async function getMintParsed(mint){
-      const r = await solRpc("getAccountInfo", [mint, { encoding:"jsonParsed", commitment:"confirmed" }]);
-      const v = r?.value;
-      if(!v) return null;
-      const owner = v.owner;
-      const parsed = (v.data && typeof v.data === "object") ? v.data.parsed : null;
-      const info = parsed?.info || null;
-      return { owner, info, rawParsed: parsed };
-    }
-    async function getTokenSupply(mint){
-      const r = await solRpc("getTokenSupply", [mint]);
-      return r?.value || null;
-    }
-    async function getLargest(mint){
-      const r = await solRpc("getTokenLargestAccounts", [mint]);
-      return r?.value || [];
-    }
-    async function getAsset(mint){
-      try { return await solRpc("getAsset", [mint]); }
-      catch { return null; }
-    }
-
-    function pickTokenMetaFromAsset(asset){
-      if(!asset) return null;
-      const md = asset?.content?.metadata || {};
-      const name = (md?.name || asset?.metadata?.name || "").trim();
-      const symbol = (md?.symbol || asset?.metadata?.symbol || "").trim();
-
-      let image = "";
-      const linksImg = asset?.content?.links?.image;
-      if(typeof linksImg === "string") image = linksImg;
-      if(!image && Array.isArray(asset?.content?.files)){
-        const f = asset.content.files.find(x => (x?.mime || "").includes("image") && x?.uri);
-        if(f?.uri) image = f.uri;
-      }
-
-      const uri = (asset?.content?.json_uri || asset?.content?.links?.external_url || "").trim();
-      const description = (md?.description || asset?.content?.metadata?.description || "").trim();
-      return { name, symbol, image, uri, description };
-    }
-
-    function scoreSol(sig){
-      let score = 100;
-      const checks = [];
-
-      if(sig.freezeActive){
-        score -= 35;
-        checks.push({ t:"Freeze Authority", sev:"bad", d:"Freeze authority is active — wallets can be frozen.", why:"Freeze is set.",
-          infoHtml: explain("Freeze Authority", ["Admin can freeze token accounts.", "Risk: buyers might be unable to sell/transfer.", "PASS = freeze authority removed."])
-        });
-      }else{
-        checks.push({ t:"Freeze Authority", sev:"ok", d:"Freeze authority removed (good).", why:"Freeze is null.",
-          infoHtml: explain("Freeze Authority", ["Freeze authority not set.", "PASS: admin cannot freeze accounts."])
-        });
-      }
-
-      if(sig.mintAuthActive){
-        score -= 30;
-        checks.push({ t:"Mint Authority", sev:"bad", d:"Mint authority is active — supply can be increased.", why:"Mint is set.",
-          infoHtml: explain("Mint Authority", ["Admin can mint new tokens.", "Risk: inflation / rug mechanics.", "PASS = mint authority renounced."])
-        });
-      }else{
-        checks.push({ t:"Mint Authority", sev:"ok", d:"Mint authority renounced (good).", why:"Mint is null.",
-          infoHtml: explain("Mint Authority", ["Mint authority not set.", "PASS: supply cannot be increased by admin minting."])
-        });
-      }
-
-      const t20 = Number(sig.top20 || 0);
-      if(t20 >= 75){ score -= 28; checks.push({ t:"Holder concentration (Top20)", sev:"bad", d:`Top20 hold ~${t20.toFixed(2)}% (very high).`, why:"Extreme concentration." }); }
-      else if(t20 >= 55){ score -= 18; checks.push({ t:"Holder concentration (Top20)", sev:"warn", d:`Top20 hold ~${t20.toFixed(2)}% (high).`, why:"High concentration." }); }
-      else if(t20 >= 35){ score -= 8;  checks.push({ t:"Holder concentration (Top20)", sev:"warn", d:`Top20 hold ~${t20.toFixed(2)}% (moderate).`, why:"Moderate concentration." }); }
-      else { checks.push({ t:"Holder concentration (Top20)", sev:"ok", d:`Top20 hold ~${t20.toFixed(2)}% (better).`, why:"Lower concentration." }); }
-
-      if(sig.programType === "TOKEN_2022"){
-        score -= 6;
-        checks.push({ t:"Token Standard", sev:"warn", d:"Token-2022 detected (extensions possible).", why:"Token-2022 can include extra rules.",
-          infoHtml: explain("Token-2022", ["Token-2022 allows extensions (fees/restrictions).", "WATCH: review standard details section."])
-        });
-      }else if(sig.programType === "SPL_TOKEN"){
-        checks.push({ t:"Token Standard", sev:"ok", d:"Standard SPL Token program.", why:"Mint owned by Token Program." });
-      }else{
-        score -= 10;
-        checks.push({ t:"Token Standard", sev:"warn", d:"Unknown token program (caution).", why:"Not standard program." });
-      }
-
-      if(sig.meta && (sig.meta.name || sig.meta.symbol)){
-        checks.push({ t:"Metadata", sev:"ok", d:"Name/symbol found.", why:"Metadata loaded." });
-      }else{
-        score -= 4;
-        checks.push({ t:"Metadata", sev:"warn", d:"Metadata missing/unreadable.", why:"No name/symbol." });
-      }
-
-      score = clamp(Math.round(score), 0, 100);
-      const critical = !!(sig.freezeActive || sig.mintAuthActive);
-      return { score, checks, critical };
-    }
-
-    function todoSol(sig){
-      const t = [];
-
-      t.push(sig.freezeActive
-        ? {t:"Remove Freeze Authority", sev:"bad", d:"Freeze can block buyers.", why:"Freeze is active — remove it."}
-        : {t:"Freeze Authority", sev:"ok", d:"Already removed.", why:"Freeze not active."}
-      );
-
-      t.push(sig.mintAuthActive
-        ? {t:"Renounce Mint Authority", sev:"bad", d:"Mint can inflate supply.", why:"Mint is active — renounce it."}
-        : {t:"Mint Authority", sev:"ok", d:"Already renounced.", why:"Mint not active."}
-      );
-
-      const t20 = Number(sig.top20 || 0);
-      if(t20 >= 55) t.push({t:"Reduce whale concentration", sev:"warn", d:`Top20 ~${t20.toFixed(2)}%.`, why:"High concentration — inspect wallets."});
-      else if(t20 >= 35) t.push({t:"Monitor distribution", sev:"warn", d:`Top20 ~${t20.toFixed(2)}%.`, why:"Moderate concentration — monitor."});
-      else t.push({t:"Distribution", sev:"ok", d:`Top20 ~${t20.toFixed(2)}% (better).`, why:"Healthier distribution."});
-
-      return t.map(x => ({
-        ...x,
-        infoHtml: explain(x.t, [x.d, "Status: " + pillLabel(x.sev)])
-      }));
-    }
-
-    /* ===================== EVM RPC + ERC-20 ===================== */
-    async function evmRpc(chainId, method, params){
-      const urls = CFG.EVM_RPCS[chainId] || [];
-      if(!urls.length) throw new Error("No RPC configured for this chain.");
-
-      const errors = [];
-      for(const url of urls){
-        const ctrl = new AbortController();
-        const timer = setTimeout(() => ctrl.abort(), 12000);
+      }catch(e){
+        const ta = document.createElement("textarea");
+        ta.value = text;
+        ta.setAttribute("readonly","");
+        ta.style.position="fixed";
+        ta.style.top="-9999px";
+        document.body.appendChild(ta);
+        ta.select();
         try{
-          const res = await fetch(url, {
-            method:"POST",
-            headers:{ "Content-Type":"application/json" },
-            body: JSON.stringify({ jsonrpc:"2.0", id:1, method, params }),
-            signal: ctrl.signal
-          });
-          clearTimeout(timer);
+          const ok = document.execCommand("copy");
+          document.body.removeChild(ta);
+          return ok;
+        }catch(err){
+          document.body.removeChild(ta);
+          return false;
+        }
+      }
+    }
 
-          if(!res.ok){
-            const t = await res.text().catch(()=> "");
-            errors.push(`HTTP ${res.status} ${t.slice(0,120)}`);
-            continue;
+    document.querySelectorAll(".copyBox").forEach(box => {
+      const value = (box.getAttribute("data-copy") || "").trim();
+      const hint = box.querySelector(".copyHint");
+
+      const handler = async () => {
+        const ok = await copyText(value);
+        setHint(hint, ok);
+      };
+
+      box.addEventListener("click", handler);
+      box.addEventListener("keydown", (e) => {
+        if(e.key === "Enter" || e.key === " "){
+          e.preventDefault();
+          handler();
+        }
+      });
+    });
+
+    // Desktop menu (⋯)
+    const menuBtn = document.getElementById("menuBtn");
+    const menuPop = document.getElementById("menuPop");
+
+    function closeMenu(){
+      if(!menuPop) return;
+      menuPop.classList.remove("open");
+      if(menuBtn) menuBtn.setAttribute("aria-expanded","false");
+    }
+    function toggleMenu(){
+      const open = menuPop.classList.toggle("open");
+      menuBtn.setAttribute("aria-expanded", open ? "true" : "false");
+    }
+
+    if(menuBtn && menuPop){
+      menuBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        toggleMenu();
+      });
+      document.addEventListener("click", () => closeMenu());
+      document.addEventListener("keydown", (e) => {
+        if(e.key === "Escape") closeMenu();
+      });
+      menuPop.addEventListener("click", (e) => e.stopPropagation());
+    }
+
+    // Mobile drawer
+    const mOpen = document.getElementById("mOpen");
+    const mClose = document.getElementById("mClose");
+    const mDrawer = document.getElementById("mDrawer");
+    const mOverlay = document.getElementById("mOverlay");
+
+    function openDrawer(){
+      mDrawer.classList.add("open");
+      mOverlay.classList.add("open");
+      mDrawer.setAttribute("aria-hidden","false");
+      mOverlay.setAttribute("aria-hidden","false");
+      document.body.style.overflow = "hidden";
+    }
+
+    function closeDrawer(){
+      mDrawer.classList.remove("open");
+      mOverlay.classList.remove("open");
+      mDrawer.setAttribute("aria-hidden","true");
+      mOverlay.setAttribute("aria-hidden","true");
+      document.body.style.overflow = "";
+    }
+
+    if(mOpen && mClose && mDrawer && mOverlay){
+      mOpen.addEventListener("click", (e) => { e.preventDefault(); openDrawer(); });
+      mClose.addEventListener("click", (e) => { e.preventDefault(); closeDrawer(); });
+      mOverlay.addEventListener("click", () => closeDrawer());
+      document.addEventListener("keydown", (e) => { if(e.key === "Escape") closeDrawer(); });
+
+      // close drawer on link click
+      mDrawer.querySelectorAll('a[href^="#"]').forEach(a=>{
+        a.addEventListener("click", ()=> closeDrawer());
+      });
+    }
+
+    // ✅ Scroll reveal (IntersectionObserver)
+    (function(){
+      if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+      const els = Array.from(document.querySelectorAll(".reveal"));
+      if(!els.length) return;
+
+      const io = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          if(entry.isIntersecting){
+            entry.target.classList.add("in");
+            io.unobserve(entry.target);
           }
-          const j = await res.json();
-          if(j?.error){
-            errors.push(String(j.error?.message || "RPC error").slice(0,120));
-            continue;
-          }
-          return j.result;
-        }catch(e){
-          clearTimeout(timer);
-          errors.push(String(e?.message || e).slice(0,120));
-        }
-      }
-      throw new Error(`All RPCs failed. ${errors.slice(-3).join(" • ")}`);
-    }
-
-    async function ethCall(chainId, to, data){
-      return await evmRpc(chainId, "eth_call", [{to, data}, "latest"]);
-    }
-    async function getCode(chainId, addr){
-      return await evmRpc(chainId, "eth_getCode", [addr, "latest"]);
-    }
-    async function getStorageAt(chainId, addr, slot){
-      return await evmRpc(chainId, "eth_getStorageAt", [addr, slot, "latest"]);
-    }
-
-    const SEL = {
-      name: "0x06fdde03",
-      symbol: "0x95d89b41",
-      decimals: "0x313ce567",
-      totalSupply: "0x18160ddd",
-      owner: "0x8da5cb5b",
-      paused: "0x5c975abb"
-    };
-
-    function strip0x(h){ return (h||"").startsWith("0x") ? h.slice(2) : (h||""); }
-
-    function decodeUint256(hex){
-      const h = strip0x(hex);
-      if(!h) return null;
-      const padded = h.padStart(64,"0").slice(-64);
-      try { return BigInt("0x"+padded); } catch { return null; }
-    }
-
-    function decodeAddressFrom32(hex){
-      const h = strip0x(hex);
-      if(!h) return null;
-      const padded = h.padStart(64,"0").slice(-40);
-      return "0x" + padded;
-    }
-
-    function bytes32ToAscii(hex){
-      const h = strip0x(hex);
-      if(h.length !== 64) return "";
-      try{
-        const bytes = new Uint8Array(h.match(/.{1,2}/g).map(b => parseInt(b,16)));
-        let s = new TextDecoder().decode(bytes).replace(/\0/g,"").trim();
-        if(!s) return "";
-        if(/^[\x20-\x7E]+$/.test(s)) return s;
-        return "";
-      }catch{ return ""; }
-    }
-
-    function decodeString(hex){
-      const data = strip0x(hex);
-      if(!data) return "";
-
-      if(data.length === 64){
-        const b = bytes32ToAscii("0x"+data);
-        if(b) return b;
-      }
-
-      if(data.length < 128) return "";
-      const lenHex = data.slice(64,128);
-      let len = 0;
-      try { len = Number(BigInt("0x"+lenHex)); } catch { return ""; }
-      if(!Number.isFinite(len) || len <= 0) return "";
-
-      const strData = data.slice(128, 128 + len*2);
-      if(!strData) return "";
-
-      try{
-        const bytes = new Uint8Array(strData.match(/.{1,2}/g).map(b => parseInt(b,16)));
-        return new TextDecoder().decode(bytes).replace(/\0/g,"").trim();
-      }catch{ return ""; }
-    }
-
-    async function getErc20Meta(chainId, addr){
-      const out = { name:"", symbol:"", decimals:null, totalSupply:null };
-      try { out.name = decodeString(await ethCall(chainId, addr, SEL.name)); } catch {}
-      try { out.symbol = decodeString(await ethCall(chainId, addr, SEL.symbol)); } catch {}
-      try {
-        const v = decodeUint256(await ethCall(chainId, addr, SEL.decimals));
-        out.decimals = (v === null) ? null : Number(v);
-        if(!Number.isFinite(out.decimals)) out.decimals = null;
-      } catch {}
-      try { out.totalSupply = decodeUint256(await ethCall(chainId, addr, SEL.totalSupply)); } catch {}
-      return out;
-    }
-
-    async function getOwner(chainId, addr){
-      try{ return decodeAddressFrom32(await ethCall(chainId, addr, SEL.owner)); }
-      catch{ return null; }
-    }
-
-    async function getPaused(chainId, addr){
-      try{
-        const r = await ethCall(chainId, addr, SEL.paused);
-        const v = decodeUint256(r || "0x");
-        if(v === null) return null;
-        return v !== 0n;
-      }catch{
-        return null;
-      }
-    }
-
-    // Proxy detection (EIP-1967)
-    const SLOT_IMPL  = "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc";
-    const SLOT_ADMIN = "0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103";
-
-    async function detectProxy(chainId, addr){
-      try{
-        const [implRaw, adminRaw] = await Promise.all([
-          getStorageAt(chainId, addr, SLOT_IMPL),
-          getStorageAt(chainId, addr, SLOT_ADMIN)
-        ]);
-        const impl  = decodeAddressFrom32(implRaw  || "0x");
-        const admin = decodeAddressFrom32(adminRaw || "0x");
-        const zero = "0x0000000000000000000000000000000000000000";
-        const implNonZero  = impl  && impl.toLowerCase()  !== zero;
-        const adminNonZero = admin && admin.toLowerCase() !== zero;
-        return { isProxy: implNonZero || adminNonZero, implementation: implNonZero ? impl : null, admin: adminNonZero ? admin : null };
-      }catch{
-        return {isProxy:false, implementation:null, admin:null};
-      }
-    }
-
-    function scoreEvm(sig){
-      let score = 100;
-      const checks = [];
-
-      if(!sig.hasCode){
-        checks.push({ t:"Contract found", sev:"bad", d:"No bytecode at this address.", why:"Wrong chain or not a contract." });
-        return { score:0, checks, critical:true };
-      }
-
-      checks.push({ t:"Contract found", sev:"ok", d:"Bytecode exists (contract).", why:"eth_getCode != 0x" });
-
-      const hasName = !!sig.metaOnChain?.name;
-      const hasSymbol = !!sig.metaOnChain?.symbol;
-
-      if(!hasName || !hasSymbol){
-        score -= 10;
-        checks.push({ t:"ERC-20 metadata", sev:"warn", d:"Name or symbol not cleanly readable.", why:"Non-standard ABI / reverted." });
-      }else{
-        checks.push({ t:"ERC-20 metadata", sev:"ok", d:"Name & symbol readable.", why:"name()/symbol() ok." });
-      }
-
-      const decOk = Number.isFinite(sig.metaOnChain?.decimals) && sig.metaOnChain.decimals >= 0 && sig.metaOnChain.decimals <= 36;
-      if(!decOk){
-        score -= 12;
-        checks.push({ t:"Decimals", sev:"warn", d:"decimals() not readable or unusual.", why:"Missing/reverted/out-of-range." });
-      }else{
-        checks.push({ t:"Decimals", sev:"ok", d:`Decimals: ${sig.metaOnChain.decimals}`, why:"decimals() ok." });
-      }
-
-      const supplyReadable = sig.metaOnChain?.totalSupply !== null && sig.metaOnChain?.totalSupply !== undefined;
-      if(!supplyReadable){
-        score -= 10;
-        checks.push({ t:"Total supply", sev:"warn", d:"totalSupply() not readable.", why:"Missing/reverted." });
-      }else{
-        checks.push({ t:"Total supply", sev:"ok", d:"Supply readable on-chain.", why:"totalSupply() ok." });
-      }
-
-      const zero = "0x0000000000000000000000000000000000000000";
-      if(sig.owner){
-        if(sig.owner.toLowerCase() === zero){
-          checks.push({ t:"Owner / Admin", sev:"ok", d:"Owner is renounced (0x0).", why:"owner()==0x0" });
-        }else{
-          score -= 22;
-          checks.push({ t:"Owner / Admin", sev:"warn", d:`Owner active: ${shortAddr(sig.owner)}`, why:"owner()!=0x0" });
-        }
-      }else{
-        score -= 6;
-        checks.push({ t:"Owner / Admin", sev:"warn", d:"owner() not found / unreadable.", why:"Missing or reverted." });
-      }
-
-      if(sig.proxy?.isProxy){
-        score -= 18;
-        checks.push({ t:"Proxy / Upgradeability", sev:"warn", d:"Upgradeable proxy detected.", why:"EIP-1967 slots non-zero." });
-      }else{
-        checks.push({ t:"Proxy / Upgradeability", sev:"ok", d:"No proxy signal found.", why:"EIP-1967 empty (best-effort)." });
-      }
-
-      if(sig.paused === true){
-        score -= 25;
-        checks.push({ t:"Transfer controls (Pause)", sev:"bad", d:"paused() = TRUE — transfers may be blocked.", why:"paused()==true" });
-      }else if(sig.paused === false){
-        score -= 6;
-        checks.push({ t:"Transfer controls (Pause)", sev:"warn", d:"Pause function exists (not active).", why:"paused()==false" });
-      }else{
-        checks.push({ t:"Transfer controls (Pause)", sev:"ok", d:"No pause function found.", why:"paused() missing/unreadable." });
-      }
-
-      score = clamp(Math.round(score), 0, 100);
-      const critical = !!(sig.paused === true || !sig.hasCode);
-      return { score, checks, critical };
-    }
-
-    function todoEvm(sig){
-      const t = [];
-      if(!sig.hasCode){
-        t.push({ t:"Fix address / chain", sev:"bad", d:"No contract bytecode found.", why:"Wrong address or wrong chain." });
-      }else{
-        const zero = "0x0000000000000000000000000000000000000000";
-        if(sig.owner && sig.owner.toLowerCase() !== zero){
-          t.push({ t:"Secure admin", sev:"warn", d:"Owner is active. Review privileges/timelock/multisig.", why:"Admin can often change parameters." });
-        }else if(sig.owner && sig.owner.toLowerCase() === zero){
-          t.push({ t:"Owner", sev:"ok", d:"Owner appears renounced.", why:"0x0" });
-        }else{
-          t.push({ t:"Admin review", sev:"warn", d:"Owner not visible — check alternative admin controls.", why:"owner() missing." });
-        }
-
-        if(sig.proxy?.isProxy) t.push({ t:"Upgradeability review", sev:"warn", d:"Proxy detected — logic can be upgraded.", why:"Upgradeable." });
-        else t.push({ t:"Upgradeability", sev:"ok", d:"No proxy signal.", why:"EIP-1967 empty." });
-
-        if(sig.paused === true) t.push({ t:"Unpause transfers", sev:"bad", d:"Token appears paused.", why:"paused()==true" });
-        else if(sig.paused === false) t.push({ t:"Disclose pause rules", sev:"warn", d:"Pause function exists.", why:"Admin can pause." });
-        else t.push({ t:"Transfer controls", sev:"ok", d:"No pause function found.", why:"No paused() signal." });
-
-        t.push({ t:"Holders distribution", sev:"warn", d:"Top holders are a key risk factor.", why:"Review whale risk." });
-      }
-      return t.map(x => ({...x, infoHtml: explain(x.t, [x.d, "Status: " + pillLabel(x.sev)])}));
-    }
-
-    function renderStandardEvm(sig){
-      const rows = [
-        { t:"Token standard", sev:"ok", d:"ERC-20 (on-chain calls).", why:"name/symbol/decimals/totalSupply." },
-        { t:"Proxy / upgradeability", sev: sig.proxy?.isProxy ? "warn" : "ok", d: sig.proxy?.isProxy ? "Upgradeable proxy detected." : "No proxy signal found.", why:"EIP-1967 best-effort." },
-        { t:"Transfer controls (Pause)", sev: sig.paused===true ? "bad" : (sig.paused===false ? "warn" : "ok"),
-          d: sig.paused===true ? "Currently paused." : (sig.paused===false ? "Pause function exists." : "No pause function found."),
-          why:"paused() best-effort." }
-      ];
-
-      let out = rows;
-      if(!CFG.UI.SHOW_PASS_DETAILS_EVM){
-        out = rows.filter(r => {
-          if(r.t === "Token standard") return true;
-          const d = String(r.d||"").toLowerCase();
-          const passNoSignal = (r.sev === "ok") && (d.includes("no proxy") || d.includes("no pause"));
-          return !passNoSignal;
         });
-        if(out.length === 1){
-          out.push({ t:"Standard signals", sev:"ok", d:"No proxy / pause red flags detected (best-effort).", why:"Condensed." });
-        }
-      }
-      renderList(qs("extList"), out, "Token Standard Details");
-    }
+      }, { threshold: 0.12, rootMargin: "0px 0px -10% 0px" });
 
-    function renderMetaSol(meta){
-      const items = [];
-      if(!meta){
-        items.push({ t:"Metadata not available", sev:"warn", d:"Could not fetch metadata.", why:"getAsset returned none." });
-      }else{
-        items.push({ t:"Name / Symbol", sev:(meta.name||meta.symbol)?"ok":"warn", d:`${meta.name||"—"} • ${meta.symbol?("$"+meta.symbol):"—"}`, why:"From metadata." });
-        items.push({ t:"Metadata Link", sev: meta.uri ? "ok" : "warn", d: meta.uri ? "Metadata link found." : "No metadata link found.", why:"Off-chain JSON." });
-        items.push({ t:"Image / Logo", sev: meta.image ? "ok" : "warn", d: meta.image ? "Logo found." : "No logo found.", why:"Image URL." });
-        if(meta.description){
-          items.push({ t:"Description", sev:"ok", d: meta.description.slice(0,120) + (meta.description.length>120?"…":""), why:"From metadata." });
-        }
-      }
-      renderList(qs("metaList"), items, "Token Metadata");
-    }
-
-    function renderMetaEvm(metaMerged, metaOnChain){
-      const items = [];
-      items.push({ t:"Name / Symbol", sev:(metaMerged?.name && metaMerged?.symbol)?"ok":"warn",
-        d:`${metaMerged?.name||"—"} • ${metaMerged?.symbol?("$"+metaMerged.symbol):"—"}`, why:"From on-chain calls (logo best-effort)." });
-
-      items.push({ t:"Decimals", sev:Number.isFinite(metaOnChain?.decimals)?"ok":"warn",
-        d:Number.isFinite(metaOnChain?.decimals)?String(metaOnChain.decimals):"Not readable", why:"decimals()" });
-
-      const supplyReadable = metaOnChain?.totalSupply!==null && metaOnChain?.totalSupply!==undefined;
-      items.push({ t:"Total Supply", sev:supplyReadable?"ok":"warn", d:supplyReadable?"Readable on-chain":"Not readable", why:"totalSupply()" });
-
-      items.push({ t:"Logo", sev:"warn", d:"Logo best-effort via public tokenlists (TrustWallet) + identicon fallback.", why:"No on-chain logos on EVM." });
-
-      renderList(qs("metaList"), items, "Token Metadata");
-    }
-
-    /* ===================== EVM HOLDERS via GoldRush (optional) ===================== */
-    function goldrushChain(chainId){
-      if(chainId === 1) return "eth-mainnet";
-      if(chainId === 56) return "bsc-mainnet";
-      if(chainId === 8453) return "base-mainnet";
-      return "eth-mainnet";
-    }
-
-    async function goldrushHolders(chainId, addr){
-      if(!CFG.GOLDRUSH_API_KEY || String(CFG.GOLDRUSH_API_KEY).includes("PUT_YOUR_GOLDRUSH_KEY_HERE")) return [];
-      const url = `https://api.covalenthq.com/v1/${goldrushChain(chainId)}/tokens/${addr}/token_holders/?page-size=10&key=${encodeURIComponent(CFG.GOLDRUSH_API_KEY)}`;
-      try{
-        const r = await fetch(url);
-        if(!r.ok) return [];
-        const j = await r.json();
-        return Array.isArray(j?.data?.items) ? j.data.items : [];
-      }catch{
-        return [];
-      }
-    }
-
-    function safeBigIntFromStr(s){
-      try{
-        if(s === null || s === undefined) return null;
-        if(typeof s === "string"){
-          if(s.trim() === "") return null;
-          if(s.includes(".")) return BigInt(s.split(".")[0]);
-          return BigInt(s);
-        }
-        if(typeof s === "number"){
-          if(!Number.isFinite(s)) return null;
-          return BigInt(Math.trunc(s));
-        }
-        return BigInt(s);
-      }catch{
-        return null;
-      }
-    }
-
-    function formatUnits(bigint, decimals){
-      if(bigint === null || bigint === undefined) return null;
-      const d = Number.isFinite(decimals) ? decimals : 18;
-      const neg = bigint < 0n;
-      let x = neg ? -bigint : bigint;
-
-      const base = 10n ** BigInt(d);
-      const whole = x / base;
-      const frac  = x % base;
-
-      const fracStr = frac.toString().padStart(d,"0").slice(0,6).replace(/0+$/,"");
-      return (neg ? "-" : "") + whole.toString() + (fracStr ? ("." + fracStr) : "");
-    }
-
-    async function renderHoldersEvm(chainId, tokenAddr, metaOnChain){
-      const supplyBI = metaOnChain?.totalSupply ?? null;
-      const decimals = metaOnChain?.decimals ?? 18;
-      const holders = await goldrushHolders(chainId, tokenAddr);
-
-      if(!holders || !holders.length){
-        renderHoldersEmpty();
-        buildBubblesFromHolders([]);
-        return;
-      }
-
-      const supplyReadable = !!(supplyBI && supplyBI > 0n);
-
-      const items = holders.slice(0,10).map((h, i) => {
-        const addr = (h?.address || "").trim();
-        const balRaw = h?.balance ?? h?.token_balance ?? null;
-        const balBI = safeBigIntFromStr(balRaw);
-
-        let pct = null;
-        if(supplyReadable && balBI !== null){
-          const p = Number((balBI * 10000n) / supplyBI) / 100;
-          pct = Number.isFinite(p) ? p : null;
-        }else{
-          const p2 = Number(h?.percentage ?? h?.pct ?? NaN);
-          pct = Number.isFinite(p2) ? p2 : null;
-        }
-
-        const balFmt = (balBI !== null) ? formatUnits(balBI, decimals) : "—";
-        const pctStr = (pct === null) ? "—" : pct.toFixed(2) + "%";
-
-        return {
-          t:`#${i+1} ${shortAddr(addr)}`,
-          d:`${balFmt} tokens • ${pctStr}`,
-          addr,
-          pct: (pct === null ? 0 : pct),
-          sev: (pct !== null && pct >= 10) ? "bad" : (pct !== null && pct >= 3 ? "warn" : "ok"),
-          infoHtml: explain("Top holder", [
-            `Share: ${pctStr}`,
-            "Why it matters: high % = whale/dump risk.",
-            "Note: % computed from totalSupply when available."
-          ])
-        };
-      });
-
-      renderHoldersWithExplorer(items, chainObj());
-
-      // bubble map
-      buildBubblesFromHolders(items.map(x => ({
-        addr: x.addr,
-        pct: x.pct,
-        sev: x.sev,
-        label: x.t,
-        sub: (Number.isFinite(x.pct) ? x.pct.toFixed(2)+"%" : "—")
-      })));
-    }
-
-    /* ===================== SOLANA HOLDERS -> list + bubbles ===================== */
-    function renderHoldersSol(mint, uiSupply, largest){
-      if(!uiSupply || !largest || !largest.length){
-        renderHoldersEmpty();
-        buildBubblesFromHolders([]);
-        return;
-      }
-
-      const top = largest.slice(0,10);
-      const items = top.map((x,i) => {
-        const addr = x?.address || "";
-        const amt = Number(x?.uiAmount || 0);
-        const pct = uiSupply > 0 ? (amt / uiSupply) * 100 : 0;
-
-        return {
-          t:`#${i+1} ${shortAddr(addr)}`,
-          d:`${fmtInt(amt)} tokens • ${pct.toFixed(2)}%`,
-          addr,
-          pct,
-          sev: pct >= 10 ? "bad" : (pct >= 3 ? "warn" : "ok"),
-          infoHtml: explain("Top holder", [
-            `Wallet holds ~${pct.toFixed(2)}% of supply.`,
-            "Why it matters: high % = dump risk.",
-            "Tip: check if LP/Burn/Team/Treasury."
-          ])
-        };
-      });
-
-      renderHoldersWithExplorer(items, chainObj());
-      buildBubblesFromHolders(items.map(x => ({ addr:x.addr, pct:x.pct, sev:x.sev, label:x.t, sub:x.pct.toFixed(2)+"%" })));
-    }
-
-    /* ===================== CLUSTER PANEL (Part 2 = “lite intelligence”) ===================== */
-    function renderClusterLite(holderItems){
-      const grid = qs("clusterGrid");
-      if(!grid) return;
-
-      if(!holderItems || !holderItems.length){
-        grid.innerHTML = `
-          <div class="clusterCard">
-            <div class="clusterLeft">
-              <div class="clusterT"><span class="dot warn"></span> No cluster data</div>
-              <div class="clusterD">Run a scan and ensure holders are available to generate cluster intelligence.</div>
-            </div>
-            <div class="clusterRight">
-              <span class="badge warn">WAIT</span>
-            </div>
-          </div>
-        `;
-        setText("clusterFoot", "—");
-        return;
-      }
-
-      // “Lite” heuristics: whale groups + concentration warnings
-      const top1 = holderItems[0]?.pct ?? 0;
-      const top3 = holderItems.slice(0,3).reduce((a,x)=>a+(x.pct||0),0);
-      const top10 = holderItems.slice(0,10).reduce((a,x)=>a+(x.pct||0),0);
-
-      const sev =
-        top1 >= 15 || top3 >= 35 ? "bad"
-        : top1 >= 8  || top3 >= 25 ? "warn"
-        : "ok";
-
-      const dotCls = sev === "bad" ? "dot bad" : sev === "warn" ? "dot warn" : "dot good";
-      const badgeCls = sev === "bad" ? "badge bad" : sev === "warn" ? "badge warn" : "badge good";
-      const label = sev === "bad" ? "HIGH RISK" : sev === "warn" ? "WATCH" : "OK";
-
-      const infoId = registerInfo(explain("Cluster Intelligence (Lite)", [
-        "Part 2 shows holder-based cluster signals.",
-        "Part 3–5 will add: linked wallets, split wallets, bundle-like patterns, router tagging, edges in graph mode."
-      ]));
-
-      grid.innerHTML = `
-        <div class="clusterCard">
-          <div class="clusterLeft">
-            <div class="clusterT"><span class="${dotCls}"></span> Concentration signal</div>
-            <div class="clusterD">
-              Top1: ${top1.toFixed(2)}% • Top3: ${top3.toFixed(2)}% • Top10: ${top10.toFixed(2)}%
-              <br/>Heuristic: whales + concentration (best-effort).
-            </div>
-          </div>
-          <div class="clusterRight">
-            <span class="${badgeCls}">${label}</span>
-            <button class="infoBtn" type="button" aria-label="Info"
-                    data-open="1" data-title="Cluster Intelligence" data-info="${esc(infoId)}"><span>i</span></button>
-          </div>
-        </div>
-      `;
-
-      setText("clusterFoot", "Part 2: concentration intelligence. Part 3–5: linked-wallet clusters + bundles/splits + graph edges.");
-    }
-
-    /* ===================== REAL SCAN (overrides stub; keeps same name) ===================== */
-    async function runScanStub(){
-      if(SCANNING) return;
-      SCANNING = true;
-
-      hideToast();
-      updateStampTime();
-
-      const chain = chainObj();
-      const addr = (qs("mint")?.value || "").trim();
-
-      // reset UI quickly
-      qs("vizOverlay").style.display = "flex";
-      setText("vizOverlay", "Loading scan…");
-      setText("vizStamp", chain.stamp || "MAINNET");
-      setText("vizLegend", "PASS / WATCH / FAIL");
-      setText("clusterStamp", chain.stamp || "MAINNET");
-      setText("scanHint", "—");
-      setText("summary", "—");
-      renderMetrics([]);
-      renderList(qs("checksList"), [], "Guardian Checks");
-      renderList(qs("todoList"), [], "Launch Readiness");
-      renderList(qs("extList"), [], "Token Standard Details");
-      renderList(qs("metaList"), [], "Token Metadata");
-      renderHoldersEmpty();
-      buildBubblesFromHolders([]);
-      renderClusterLite([]);
-
-      if(!addr){
-        showToast("Paste an address first.");
-        setStatus("Paste a token address and run the scan.");
-        SCANNING = false;
-        return;
-      }
-
-      setText("mintShort", shortAddr(addr));
-
-      try{
-        if(chain.kind === "solana"){
-          if(!looksBase58(addr)) throw new Error("Invalid Solana mint. (Base58, 32–52 chars)");
-          setStatus("Connecting to Solana RPC…");
-
-          const mintParsed = await getMintParsed(addr);
-          if(!mintParsed || !mintParsed.info) throw new Error("Mint not found or not parsable.");
-
-          const ownerProg = mintParsed.owner || "";
-          const programType =
-            ownerProg === CFG.TOKEN_2022_PROGRAM ? "TOKEN_2022"
-            : ownerProg === CFG.TOKEN_PROGRAM ? "SPL_TOKEN"
-            : "UNKNOWN";
-
-          setStatus("Fetching supply…");
-          const supply = await getTokenSupply(addr);
-          const uiSupply = Number(supply?.uiAmount ?? NaN);
-
-          setStatus("Fetching largest holders…");
-          const largest = await getLargest(addr);
-
-          setStatus("Fetching metadata (getAsset)…");
-          const asset = await getAsset(addr);
-          const meta = pickTokenMetaFromAsset(asset);
-
-          // token header + identicon fallback
-          applyTokenHeaderFoundation(meta || {name:"Token",symbol:""}, addr);
-
-          const mintAuth = mintParsed.info?.mintAuthority ?? null;
-          const freezeAuth = mintParsed.info?.freezeAuthority ?? null;
-
-          let top20 = 0;
-          if(Number.isFinite(uiSupply) && uiSupply > 0 && Array.isArray(largest)){
-            top20 = largest.slice(0,20).reduce((acc, x) => acc + (Number(x?.uiAmount || 0) / uiSupply * 100), 0);
-          }
-
-          // === Holder % signals (Solana) ===
-let top1Pct = null;
-let top3Pct = null;
-
-if(Number.isFinite(uiSupply) && uiSupply > 0 && Array.isArray(largest) && largest.length){
-  const top1Amt = Number(largest[0]?.uiAmount || 0);
-  top1Pct = (top1Amt / uiSupply) * 100;
-
-  top3Pct = largest.slice(0,3).reduce((acc, x) => {
-    const amt = Number(x?.uiAmount || 0);
-    return acc + (amt / uiSupply) * 100;
-  }, 0);
-}
-
-          const sig = {
-            programType,
-            mintAuthActive: !!mintAuth,
-            freezeActive: !!freezeAuth,
-            uiSupply: Number.isFinite(uiSupply) ? uiSupply : null,
-            top20,
-            meta
-          };
-
-          const {score, checks, critical} = scoreSol(sig);
-          const verdict = verdictFrom(score, critical);
-
-          setText("verdictTitle", verdict.title);
-          setBadge(qs("verdictBadge"), verdict.label, verdict.mode);
-          setText("scoreBadge", `${score}/100`);
-          setText("scanHint", programType === "TOKEN_2022" ? "Token-2022 • Review extensions" : "Standard checks");
-
-          const metricRows = [
-            { label:"Guardian Score", value:`${score}/100`, badge: verdict.label, barPct: score, mini:"Composite risk score (heuristic)." },
-            { label:"Token Standard", value: programType==="TOKEN_2022" ? "Token-2022" : (programType==="SPL_TOKEN" ? "SPL Token" : "Unknown"), badge:"On-chain", mini:"Mint owner program." },
-            { label:"Total Supply", value: Number.isFinite(uiSupply) ? fmtInt(uiSupply) : "—", badge:"Supply", mini:"From getTokenSupply." },
-            { label:"Top20 Concentration", value: Number.isFinite(top20) ? fmtPct(top20) : "—", badge:"Holders", mini:"Approx via largest accounts.", barPct: Number.isFinite(top20) ? clamp(top20,0,100) : undefined }
-          ];
-          renderMetrics(metricRows);
-
-          setText("summary",
-            critical ? "Critical risk detected (mint/freeze authority)."
-                     : (score>=80 ? "Looks strong — still verify liquidity and official links."
-                                 : "Mixed signals — verify admin controls and holders.")
-          );
-
-          renderList(qs("checksList"), checks, "Guardian Checks");
-          renderList(qs("todoList"), todoSol(sig), "Launch Readiness");
-
-          // standard details (Part 3 adds Token-2022 extension parsing)
-          renderList(qs("extList"), [{
-            t:"Token standard",
-            sev: programType==="SPL_TOKEN" ? "ok" : (programType==="TOKEN_2022" ? "warn" : "warn"),
-            d: programType==="SPL_TOKEN" ? "Standard SPL Token." : (programType==="TOKEN_2022" ? "Token-2022 detected (extensions possible)." : "Unknown token program."),
-            why:"On-chain mint owner."
-          }], "Token Standard Details");
-
-          renderMetaSol(meta);
-
-          // holders list + bubbles + cluster lite
-          renderHoldersSol(addr, uiSupply, largest);
-          buildGraphFromCurrentBubbles();
-          const holderForCluster = (Array.isArray(largest) && Number.isFinite(uiSupply) && uiSupply>0)
-            ? largest.slice(0,10).map(x => {
-                const a = x?.address || "";
-                const amt = Number(x?.uiAmount||0);
-                const pct = (amt/uiSupply)*100;
-                return { addr:a, pct };
-              })
-            : [];
-          renderClusterLite(holderForCluster);
-          
-          LAST_SCAN = {
-  chain,
-  address: addr,
-  score,
-  verdict,
-  metrics: metricRows,
-  checks,
-  todos: todoSol(sig),
-  signals: {
-    top1Pct: top1Pct ?? undefined,
-    top3Pct: top3Pct ?? undefined,
-    top20Pct: top20 ?? undefined
-  }
-};
-
-          enableExportLite();
-
-          qs("vizOverlay").style.display = (VIZ.nodes.length ? "none" : "flex");
-          setText("vizSub", "Holders loaded. Part 3–5 adds linked wallets, edges, bundles/splits.");
-          setStatus("Scan complete.");
-        }else{
-          // EVM
-          if(!looksEvmAddress(addr)) throw new Error("Invalid EVM address. Must be 0x + 40 hex chars.");
-          const evmChainId = chain.id === "eth" ? 1 : (chain.id === "bnb" ? 56 : 8453);
-
-          setStatus("Connecting to EVM RPC…");
-          const code = await getCode(evmChainId, addr);
-          const hasCode = !!(code && code !== "0x" && code !== "0x0");
-
-          setStatus("Reading ERC-20 on-chain metadata…");
-          const metaOnChain = await getErc20Meta(evmChainId, addr);
-
-          // Token header zuerst (on-chain + TrustWallet fallback)
-applyTokenHeaderWithEvmLogo(
-  { name: (metaOnChain?.name||"").trim() || "Token",
-    symbol: (metaOnChain?.symbol||"").trim() || "" },
-  addr,
-  evmChainId
-);
-
-// Dann Dexscreener enrichment (kann Logo überschreiben + liefert lpPairs)
-const { lpPairs } = await enrichEvmFromDexscreener(evmChainId, addr, metaOnChain);
-          
-
-          setStatus("Checking owner/proxy/controls…");
-          const [owner, proxy, paused] = await Promise.all([
-            getOwner(evmChainId, addr),
-            detectProxy(evmChainId, addr),
-            getPaused(evmChainId, addr)
-          ]);
-
-          const sig = { hasCode, metaOnChain, owner, proxy, paused };
-          const {score, checks, critical} = scoreEvm(sig);
-          const verdict = verdictFrom(score, critical);
-
-          setText("verdictTitle", verdict.title);
-          setBadge(qs("verdictBadge"), verdict.label, verdict.mode);
-          setText("scoreBadge", `${score}/100`);
-          setText("scanHint", `${chain.stamp} • ERC-20 checks`);
-
-          const supplyReadable = metaOnChain?.totalSupply !== null && metaOnChain?.totalSupply !== undefined;
-          const supplyText = supplyReadable ? formatUnits(metaOnChain.totalSupply, metaOnChain.decimals ?? 18) : "—";
-
-          const metricRows = [
-            { label:"Guardian Score", value:`${score}/100`, badge: verdict.label, barPct: score, mini:"Composite risk score (heuristic)." },
-            { label:"Owner", value: owner ? shortAddr(owner) : "—", badge: owner ? "Admin" : "Unknown", mini:"Best-effort owner() call." },
-            { label:"Proxy", value: proxy?.isProxy ? "Upgradeable" : "No signal", badge: proxy?.isProxy ? "WATCH" : "PASS", mini:"EIP-1967 slots check." },
-            { label:"Total Supply", value: supplyText || "—", badge: supplyReadable ? "On-chain" : "Unknown", mini:"From totalSupply()." }
-          ];
-          renderMetrics(metricRows);
-
-          setText("summary",
-            critical ? "Critical risk detected (paused or contract missing)."
-                     : (score>=80 ? "Looks strong — still verify liquidity and official links."
-                                 : "Mixed signals — verify admin/upgradeability/holders.")
-          );
-
-          renderList(qs("checksList"), checks, "Guardian Checks");
-          renderList(qs("todoList"), todoEvm(sig), "Launch Readiness");
-          renderStandardEvm(sig);
-          renderMetaEvm({name: metaOnChain?.name||"", symbol: metaOnChain?.symbol||""}, metaOnChain);
-
-          setStatus("Fetching top holders (indexer)…");
-          await renderHoldersEvm(evmChainId, addr, metaOnChain);
-
-          // Tag contracts + show cluster cards (Part 3)
-const holdersForTags = (VIZ.nodes || []).map(n => ({ addr:n.addr, pct: Number(String(n.sub||"0").replace("%","")) || 0 }));
-for(const h of holdersForTags.slice(0,10)){
-  h.isContract = await isContractEvm(evmChainId, h.addr);
-}
-renderClusterCardsEvm({ chainId: evmChainId, holders: holdersForTags.slice(0,10), lpPairs });
-          buildGraphForEvmTagged(holdersForTags.slice(0,10), { chainId: evmChainId, lpPairs });
-
-
-
-          LAST_SCAN = { chain, address: addr, score, verdict, metrics: metricRows, checks, todos: todoEvm(sig) };
-          enableExportLite();
-
-          qs("vizOverlay").style.display = (VIZ.nodes.length ? "none" : "flex");
-          setText("vizSub", "If holders are available, bubbles are real. Part 3–5 adds edges + linked wallets + bundles/splits.");
-          setStatus("Scan complete.");
-        }
-      }catch(err){
-        const msg = String(err?.message || err);
-        setStatus("Error: " + msg);
-        showToast("Scan error: " + msg);
-        qs("vizOverlay").style.display = "flex";
-        setText("vizOverlay", "Scan failed. Check toast for details.");
-        renderHoldersEmpty();
-        buildBubblesFromHolders([]);
-        renderClusterLite([]);
-      }finally{
-        SCANNING = false;
-      }
-    }
-
-    /* =========================================================
-   PART 3 — EVM UPGRADE: better logos + address tagging + richer cluster cards
-   - Dexscreener logo + liquidity (no key)
-   - Tags: LP / Burn / Router / Contract / Whale
-   - Cluster cards show groups
-   ========================================================= */
-
-/* ===================== DEXSCREENER ENRICHMENT ===================== */
-async function fetchDexscreenerToken(addr){
-  try{
-    const r = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${addr}`);
-    if(!r.ok) return null;
-    const j = await r.json();
-    const pairs = Array.isArray(j?.pairs) ? j.pairs : [];
-    if(!pairs.length) return { pairs: [] };
-
-    // pick “best” pair by liquidity usd if possible
-    const best = pairs.slice().sort((a,b)=> (Number(b?.liquidity?.usd||0) - Number(a?.liquidity?.usd||0)))[0] || pairs[0];
-    return { best, pairs };
-  }catch{
-    return null;
-  }
-}
-
-function formatUsd(n){
-  const x = Number(n);
-  if(!Number.isFinite(x)) return "—";
-  if(x >= 1e9) return (x/1e9).toFixed(2) + "B";
-  if(x >= 1e6) return (x/1e6).toFixed(2) + "M";
-  if(x >= 1e3) return (x/1e3).toFixed(2) + "K";
-  return x.toFixed(2);
-}
-
-/* ===================== EVM ADDRESS TAGGING ===================== */
-const EVM_TAGS = {
-  dead: [
-    "0x000000000000000000000000000000000000dead",
-    "0x0000000000000000000000000000000000000000"
-  ],
-  // common routers (best-effort)
-  routers: {
-    1: [
-      "0x7a250d5630b4cf539739df2c5dacb4c659f2488d" // Uniswap V2
-    ],
-    56: [
-      "0x10ed43c718714eb63d5aa57b78b54704e256024e" // PancakeSwap V2
-    ],
-    8453: [
-      // Base Uniswap V3 router is different; keep best-effort (not guaranteed)
-    ]
-  }
-};
-
-function isDead(addr){
-  const a = String(addr||"").toLowerCase();
-  return EVM_TAGS.dead.includes(a);
-}
-function isRouter(chainId, addr){
-  const a = String(addr||"").toLowerCase();
-  const list = EVM_TAGS.routers[chainId] || [];
-  return list.includes(a);
-}
-
-async function isContractEvm(chainId, addr){
-  try{
-    const code = await getCode(chainId, addr);
-    return !!(code && code !== "0x" && code !== "0x0");
-  }catch{
-    return false;
-  }
-}
-
-/* ===================== CLUSTER CARDS (EVM) ===================== */
-function renderClusterCardsEvm({chainId, holders, lpPairs}){
-  const grid = qs("clusterGrid");
-  if(!grid) return;
-
-  if(!holders || !holders.length){
-    renderClusterLite([]);
-    return;
-  }
-
-  const lpSet = new Set((lpPairs||[]).map(x => String(x||"").toLowerCase()));
-  const whales = holders.filter(h => (h.pct||0) >= 3);
-  const burns  = holders.filter(h => isDead(h.addr));
-  const lps    = holders.filter(h => lpSet.has(String(h.addr||"").toLowerCase()));
-  const routers = holders.filter(h => isRouter(chainId, h.addr));
-  const contracts = holders.filter(h => h.isContract);
-
-  function card({sev, title, desc, badge}){
-    const dotCls = sev==="bad" ? "dot bad" : sev==="warn" ? "dot warn" : "dot good";
-    const badgeCls = sev==="bad" ? "badge bad" : sev==="warn" ? "badge warn" : "badge good";
-    return `
-      <div class="clusterCard">
-        <div class="clusterLeft">
-          <div class="clusterT"><span class="${dotCls}"></span> ${esc(title)}</div>
-          <div class="clusterD">${esc(desc)}</div>
-        </div>
-        <div class="clusterRight">
-          <span class="${badgeCls}">${esc(badge)}</span>
-        </div>
-      </div>
-    `;
-  }
-
-  const top1 = holders[0]?.pct ?? 0;
-  const top3 = holders.slice(0,3).reduce((a,x)=>a+(x.pct||0),0);
-
-  const concSev = (top1 >= 15 || top3 >= 35) ? "bad" : (top1 >= 8 || top3 >= 25) ? "warn" : "ok";
-
-  let html = "";
-  html += card({
-    sev: concSev,
-    title: "Whale / Concentration",
-    desc: `Top1: ${top1.toFixed(2)}% • Top3: ${top3.toFixed(2)}% • Whale wallets (>=3%): ${whales.length}`,
-    badge: concSev==="bad" ? "HIGH RISK" : concSev==="warn" ? "WATCH" : "OK"
-  });
-
-  html += card({
-    sev: lps.length ? "ok" : "warn",
-    title: "Liquidity pools detected",
-    desc: lps.length ? `${lps.length} holder(s) match LP pair addresses (best-effort).` : "No LP address matched (maybe no data / no pair).",
-    badge: lps.length ? "FOUND" : "UNKNOWN"
-  });
-
-  if(burns.length){
-    html += card({
-      sev: "ok",
-      title: "Burn / Dead wallets",
-      desc: `${burns.length} burn/dead holder(s) detected (0xdead/0x0).`,
-      badge: "FOUND"
-    });
-  }
-
-  if(routers.length){
-    html += card({
-      sev: "warn",
-      title: "Router wallets in holders",
-      desc: `${routers.length} router address appears in top holders (can be normal but check).`,
-      badge: "CHECK"
-    });
-  }
-
-  if(contracts.length){
-    html += card({
-      sev: "warn",
-      title: "Contracts in top holders",
-      desc: `${contracts.length} top holders are contracts (LP/vesting/treasury possible).`,
-      badge: "TAGGED"
-    });
-  }
-
-  grid.innerHTML = html;
-  setText("clusterFoot", "Part 3: tagged holders + LP/router detection. Part 4–5: linked-wallet edges + split/bundle heuristics.");
-}
-
-/* ===================== APPLY DEXSCREENER TO HEADER + METRICS (EVM) ===================== */
-async function enrichEvmFromDexscreener(evmChainId, tokenAddr, metaOnChain){
-  const ds = await fetchDexscreenerToken(tokenAddr);
-  if(!ds || !ds.best) return { ds:null, lpPairs:[] };
-
-  const best = ds.best;
-  const logo = best?.baseToken?.logoURI || best?.info?.imageUrl || "";
-
-  if(logo){
-    applyTokenHeaderWithEvmLogo(
-      { name: metaOnChain?.name || best?.baseToken?.name || "Token",
-        symbol: metaOnChain?.symbol || best?.baseToken?.symbol || "",
-        image: logo
-      },
-      tokenAddr,
-      evmChainId
-    );
-  }
-
-  // Also surface liquidity + FDV if present (append metrics)
-  try{
-    const liq = Number(best?.liquidity?.usd || 0);
-    const fdv = Number(best?.fdv || 0);
-    const dex = String(best?.dexId || "").toUpperCase();
-    const chain = String(best?.chainId || "").toUpperCase();
-
-    // merge: read current metrics from UI (we don’t store them centrally yet)
-    // So we just add a small hint under vizSub
-    const hint = `DEX: ${dex || "—"} • Chain: ${chain || "—"} • Liquidity: $${formatUsd(liq)} • FDV: $${formatUsd(fdv)}`;
-    setText("vizSub", hint);
-  }catch{}
-
-  const lpPairs = (Array.isArray(ds.pairs) ? ds.pairs : [])
-    .map(p => p?.pairAddress)
-    .filter(Boolean);
-
-  return { ds, lpPairs };
-}
-    /* =========================================================
-   PART 4 — VIZ INTERACTION: hover tooltip + click to explorer
-   ========================================================= */
-
-let VIZ_TIP = null;
-
-function ensureVizTooltip(){
-  const stage = qs("vizStage");
-  if(!stage) return null;
-  if(VIZ_TIP) return VIZ_TIP;
-
-  const d = document.createElement("div");
-  d.style.position = "absolute";
-  d.style.left = "0";
-  d.style.top = "0";
-  d.style.transform = "translate(-9999px,-9999px)";
-  d.style.pointerEvents = "none";
-  d.style.padding = "10px 10px";
-  d.style.borderRadius = "14px";
-  d.style.border = "1px solid rgba(255,255,255,.14)";
-  d.style.background = "rgba(7,7,17,.92)";
-  d.style.backdropFilter = "blur(10px)";
-  d.style.color = "rgba(255,255,255,.92)";
-  d.style.fontWeight = "900";
-  d.style.fontSize = "12.5px";
-  d.style.lineHeight = "1.35";
-  d.style.maxWidth = "260px";
-  d.style.boxShadow = "0 16px 50px rgba(0,0,0,.45)";
-  d.style.zIndex = "5";
-  stage.appendChild(d);
-
-  VIZ_TIP = d;
-  return d;
-}
-
-function currentVizNodes(){
-  return (VIZ.mode === "graph" && Array.isArray(VIZ._graphNodes) && VIZ._graphNodes.length)
-    ? VIZ._graphNodes
-    : VIZ.nodes;
-}
-function currentVizEdges(){
-  return (VIZ.mode === "graph" && Array.isArray(VIZ._graphEdges) && VIZ._graphEdges.length)
-    ? VIZ._graphEdges
-    : VIZ.edges;
-}
-
-function hitTestViz(clientX, clientY){
-  const canvas = qs("vizCanvas");
-  const stage  = qs("vizStage");
-  if(!canvas || !stage) return null;
-
-  const rect = stage.getBoundingClientRect();
-  const dpr = Number(canvas.dataset.dpr || 1);
-
-  // canvas pixel coords
-  const px = (clientX - rect.left) * dpr;
-  const py = (clientY - rect.top) * dpr;
-
-  // invert transforms used in draw
-  const x = (px - (VIZ.panX * dpr)) / (VIZ.zoom || 1);
-  const y = (py - (VIZ.panY * dpr)) / (VIZ.zoom || 1);
-
-  const nodes = currentVizNodes();
-  // iterate top-down: last drawn wins
-  for(let i = nodes.length - 1; i >= 0; i--){
-    const n = nodes[i];
-    const nx = (n.x || 0) * dpr;
-    const ny = (n.y || 0) * dpr;
-    const rr = (n.r || 14) * dpr;
-    const dx = x - nx;
-    const dy = y - ny;
-    if(dx*dx + dy*dy <= rr*rr) return { node:n, index:i };
-  }
-  return null;
-}
-
-function showVizTip(clientX, clientY, html){
-  const tip = ensureVizTooltip();
-  if(!tip) return;
-  const stage = qs("vizStage");
-  const rect = stage.getBoundingClientRect();
-
-  tip.innerHTML = html || "";
-  const x = clientX - rect.left + 12;
-  const y = clientY - rect.top + 12;
-  tip.style.transform = `translate(${x}px, ${y}px)`;
-}
-function hideVizTip(){
-  const tip = ensureVizTooltip();
-  if(!tip) return;
-  tip.style.transform = "translate(-9999px,-9999px)";
-}
-
-/* Patch wireVizInteractions: add hover + click */
-(function patchVizInteractions(){
-  const canvas = qs("vizCanvas");
-  if(!canvas) return;
-
-  canvas.addEventListener("pointermove", (e) => {
-    if(VIZ.dragging) return hideVizTip();
-    const hit = hitTestViz(e.clientX, e.clientY);
-    if(!hit || !hit.node) return hideVizTip();
-
-    const n = hit.node;
-    const addr = n.addr ? String(n.addr) : "";
-    const label = n.label || (addr ? shortAddr(addr) : "Node");
-    const sub = n.sub ? String(n.sub) : "";
-
-    const tag = n.tag ? `<div style="opacity:.8;margin-top:4px">Tag: ${esc(n.tag)}</div>` : "";
-    const aLine = addr ? `<div style="opacity:.8;margin-top:4px">${esc(shortAddr(addr))}</div>` : "";
-
-    showVizTip(e.clientX, e.clientY, `
-      <div style="font-weight:1000; font-size:13px">${esc(label)}</div>
-      <div style="opacity:.86">${esc(sub)}</div>
-      ${aLine}
-      ${tag}
-      <div style="opacity:.65;margin-top:6px">Click → open explorer</div>
-    `);
-  });
-
-  canvas.addEventListener("pointerleave", () => hideVizTip());
-
-  canvas.addEventListener("click", (e) => {
-    const hit = hitTestViz(e.clientX, e.clientY);
-    if(!hit || !hit.node) return;
-
-    const addr = hit.node.addr ? String(hit.node.addr) : "";
-    if(!addr) return;
-
-    const ex = explorerBase(ACTIVE_CHAIN_ID);
-    window.open(ex.base + addr, "_blank", "noopener,noreferrer");
-  });
-})();
-
-    /* =========================================================
-   PART 5 — GRAPH MODE: edges + simple force layout (best-effort)
-   ========================================================= */
-
-function forceLayout(nodes, edges, W, H, steps = 220){
-  // Very small force layout (no libs)
-  const cx = W/2, cy = H/2;
-
-  // init if missing
-  for(const n of nodes){
-    if(!Number.isFinite(n.x)) n.x = cx + (Math.random()-0.5)*W*0.6;
-    if(!Number.isFinite(n.y)) n.y = cy + (Math.random()-0.5)*H*0.6;
-    if(!Number.isFinite(n.vx)) n.vx = 0;
-    if(!Number.isFinite(n.vy)) n.vy = 0;
-  }
-
-  const rep = 2200;     // repulsion strength
-  const spring = 0.01;  // edge spring
-  const damp = 0.86;    // velocity damp
-
-  for(let s=0; s<steps; s++){
-    // repulsion
-    for(let i=0;i<nodes.length;i++){
-      for(let j=i+1;j<nodes.length;j++){
-        const a = nodes[i], b = nodes[j];
-        const dx = (a.x-b.x);
-        const dy = (a.y-b.y);
-        const dist2 = dx*dx + dy*dy + 0.01;
-        const f = rep / dist2;
-        const fx = f*dx;
-        const fy = f*dy;
-        a.vx += fx; a.vy += fy;
-        b.vx -= fx; b.vy -= fy;
-      }
-    }
-
-    // springs
-    for(const e of edges){
-      const a = nodes[e.a];
-      const b = nodes[e.b];
-      if(!a || !b) continue;
-      const dx = b.x - a.x;
-      const dy = b.y - a.y;
-      const dist = Math.sqrt(dx*dx + dy*dy) || 1;
-      const target = e.len || 120;
-      const k = spring * (dist - target);
-      const fx = (k * dx) / dist;
-      const fy = (k * dy) / dist;
-      a.vx += fx; a.vy += fy;
-      b.vx -= fx; b.vy -= fy;
-    }
-
-    // center pull + integrate
-    for(const n of nodes){
-      n.vx += (cx - n.x) * 0.0009;
-      n.vy += (cy - n.y) * 0.0009;
-      n.vx *= damp; n.vy *= damp;
-      n.x += n.vx;  n.y += n.vy;
-
-      // bounds
-      n.x = clamp(n.x, 40, W-40);
-      n.y = clamp(n.y, 40, H-40);
-    }
-  }
-}
-
-function buildGraphFromCurrentBubbles(){
-  const stage = qs("vizStage");
-  if(!stage) return;
-
-  const rect = stage.getBoundingClientRect();
-  const W = Math.max(520, rect.width || 820);
-  const H = Math.max(360, rect.height || 420);
-
-  if(!VIZ.nodes || !VIZ.nodes.length){
-    VIZ._graphNodes = [];
-    VIZ._graphEdges = [];
-    return;
-  }
-
-  // center node
-  const center = {
-    x: W/2, y: H/2, r: 18,
-    sev: "ok",
-    label: "TOKEN",
-    sub: "hub",
-    addr: "" // none
-  };
-
-  const nodes = [center, ...VIZ.nodes.map(n => ({
-    x: n.x, y: n.y,
-    r: clamp((n.r||14)*0.85, 10, 28),
-    sev: n.sev,
-    addr: n.addr,
-    label: n.label,
-    sub: n.sub
-  }))];
-
-  const edges = [];
-  for(let i=1;i<nodes.length;i++){
-    edges.push({ a:0, b:i, len: 110 + (nodes[i].r||14)*2 });
-  }
-
-  forceLayout(nodes, edges, W, H, 220);
-  VIZ._graphNodes = nodes;
-  VIZ._graphEdges = edges;
-}
-
-/* Build “group nodes” for EVM using tags (LP/BURN/ROUTER/CONTRACT/WHALE) */
-function buildGraphForEvmTagged(holders, {chainId, lpPairs}){
-  const stage = qs("vizStage");
-  if(!stage) return;
-  const rect = stage.getBoundingClientRect();
-  const W = Math.max(520, rect.width || 820);
-  const H = Math.max(360, rect.height || 420);
-
-  if(!holders || !holders.length){
-    VIZ._graphNodes = [];
-    VIZ._graphEdges = [];
-    return;
-  }
-
-  const lpSet = new Set((lpPairs||[]).map(x => String(x).toLowerCase()));
-  const groups = [
-    { key:"LP",      match:(h)=>lpSet.has(String(h.addr||"").toLowerCase()) },
-    { key:"BURN",    match:(h)=>isDead(h.addr) },
-    { key:"ROUTER",  match:(h)=>isRouter(chainId, h.addr) },
-    { key:"CONTRACT",match:(h)=>!!h.isContract },
-    { key:"WHALE",   match:(h)=>(h.pct||0) >= 3 }
-  ];
-
-  // center token node
-  const nodes = [{
-    x: W/2, y: H/2, r: 18,
-    sev:"ok", label:"TOKEN", sub:"hub", addr:""
-  }];
-
-  const edges = [];
-
-  // group nodes
-  const groupIndex = new Map();
-  for(const g of groups){
-    nodes.push({
-      x: W/2 + (Math.random()-0.5)*240,
-      y: H/2 + (Math.random()-0.5)*240,
-      r: 16,
-      sev: "warn",
-      label: g.key,
-      sub: "group",
-      tag: g.key
-    });
-    const idx = nodes.length - 1;
-    groupIndex.set(g.key, idx);
-    edges.push({a:0,b:idx,len:140});
-  }
-
-  // holder nodes
-  for(const h of holders){
-    const sev = (h.pct||0) >= 10 ? "bad" : (h.pct||0) >= 3 ? "warn" : "ok";
-    nodes.push({
-      x: W/2 + (Math.random()-0.5)*W*0.7,
-      y: H/2 + (Math.random()-0.5)*H*0.7,
-      r: clamp(10 + (h.pct||0)*1.4, 10, 26),
-      sev,
-      addr: h.addr,
-      label: shortAddr(h.addr||""),
-      sub: Number.isFinite(h.pct) ? (h.pct.toFixed(2)+"%") : "—"
-    });
-    const hi = nodes.length - 1;
-    edges.push({a:0,b:hi,len:150});
-
-    // connect to matching groups
-    for(const g of groups){
-      if(g.match(h)){
-        const gi = groupIndex.get(g.key);
-        if(gi !== undefined) edges.push({a:gi,b:hi,len:110});
-      }
-    }
-  }
-
-  forceLayout(nodes, edges, W, H, 260);
-  VIZ._graphNodes = nodes;
-  VIZ._graphEdges = edges;
-}
-
-/* Patch setVizMode to auto-build graph when switching */
-const _setVizModeBase = setVizMode;
-function setVizMode(mode){
-  VIZ.mode = (mode === "graph") ? "graph" : "bubbles";
-  const b1 = qs("vizModeBubbles");
-  const b2 = qs("vizModeGraph");
-  if(b1 && b2){
-    b1.classList.toggle("active", VIZ.mode === "bubbles");
-    b2.classList.toggle("active", VIZ.mode === "graph");
-    b1.setAttribute("aria-selected", VIZ.mode === "bubbles" ? "true" : "false");
-    b2.setAttribute("aria-selected", VIZ.mode === "graph" ? "true" : "false");
-  }
-
-  // if switching to graph and no graph built yet, build a default star-graph
-  if(VIZ.mode === "graph"){
-    if(!Array.isArray(VIZ._graphNodes) || !VIZ._graphNodes.length){
-      buildGraphFromCurrentBubbles();
-    }
-  }
-  drawViz();
-}
-    /* =========================================================
-   PART 6 — EXPORT: Download Scan Report (HTML)
-   ========================================================= */
-
-function buildReportHtml(){
-  // 1) CSS aus deiner Seite übernehmen (damit es exakt gleich aussieht)
-  const css = Array.from(document.querySelectorAll("style"))
-    .map(s => s.textContent || "")
-    .join("\n\n");
-
-  const when = new Date().toISOString();
-  const chain = LAST_SCAN?.chain?.name || ACTIVE_CHAIN_ID;
-  const addr  = LAST_SCAN?.address || "";
-  const score = LAST_SCAN?.score ?? "—";
-  const verdict = LAST_SCAN?.verdict?.label || "—";
-    // === EXTRA SIGNALS (best-effort) ===
-  const checksArr = Array.isArray(LAST_SCAN?.checks) ? LAST_SCAN.checks : [];
-
-  const hasCheck = (needle, sev) =>
-    checksArr.some(c => String(c?.t||"").toLowerCase().includes(needle) && (!sev || c?.sev === sev));
-
-  const mintRenounced   = hasCheck("mint authority", "ok");
-  const freezeRenounced = hasCheck("freeze authority", "ok");
-  const ownerRenounced  = hasCheck("owner", "ok") || hasCheck("owner / admin", "ok");
-  const proxyWarn       = hasCheck("proxy", "warn");
-  const pausedBad       = hasCheck("pause", "bad");
-
-  // Holder stats (wenn du sie in LAST_SCAN.signals speicherst -> siehe Schritt 2 unten)
-  const top1Pct  = Number(LAST_SCAN?.signals?.top1Pct ?? NaN);
-  const top3Pct  = Number(LAST_SCAN?.signals?.top3Pct ?? NaN);
-  const top20Pct = Number(LAST_SCAN?.signals?.top20Pct ?? NaN);
-
-  // LP Burn % (optional, wenn wir es berechnen -> siehe Schritt 2C)
-  const lpBurnPct = Number(LAST_SCAN?.signals?.lpBurnPct ?? NaN);
-
-  function badgeHtml(label, mode){ // mode: good|warn|bad|null
-    const cls = mode ? `badge ${mode}` : "badge";
-    return `<span class="${cls}">${esc(label)}</span>`;
-  }
-
-  const extraBadges = [];
-  if(mintRenounced)   extraBadges.push(badgeHtml("MINT RENOUNCED", "good"));
-  if(freezeRenounced) extraBadges.push(badgeHtml("FREEZE OFF", "good"));
-  if(ownerRenounced)  extraBadges.push(badgeHtml("OWNER RENOUNCED", "good"));
-  if(proxyWarn)       extraBadges.push(badgeHtml("PROXY", "warn"));
-  if(pausedBad)       extraBadges.push(badgeHtml("PAUSED", "bad"));
-
-  if(Number.isFinite(top1Pct))  extraBadges.push(badgeHtml(`TOP1 ${top1Pct.toFixed(2)}%`, top1Pct>=15 ? "bad" : top1Pct>=8 ? "warn" : "good"));
-  if(Number.isFinite(top3Pct))  extraBadges.push(badgeHtml(`TOP3 ${top3Pct.toFixed(2)}%`, top3Pct>=35 ? "bad" : top3Pct>=25 ? "warn" : "good"));
-  if(Number.isFinite(top20Pct)) extraBadges.push(badgeHtml(`TOP20 ${top20Pct.toFixed(2)}%`, top20Pct>=75 ? "bad" : top20Pct>=55 ? "warn" : "good"));
-
-  if(Number.isFinite(lpBurnPct)){
-    extraBadges.push(badgeHtml(`LP BURN ${lpBurnPct.toFixed(1)}%`, lpBurnPct>=90 ? "good" : lpBurnPct>=50 ? "warn" : "bad"));
-  }
-
-  // 2) Panels direkt aus der Seite klonen (sehen dann genauso aus)
-  //    -> Wir nehmen komplette .panel Blöcke, nicht nur die Listen
-  const resultsPanel = qs("resultsPanel")?.outerHTML || "";
-  const checksPanel  = qs("checksList")?.closest(".panel")?.outerHTML || "";
-  const todoPanel    = qs("todoList")?.closest(".panel")?.outerHTML || "";
-  const extPanel     = qs("extList")?.closest(".panel")?.outerHTML || "";
-  const metaPanel    = qs("metaList")?.closest(".panel")?.outerHTML || "";
-  const holdersPanel = qs("holdersList")?.closest(".panel")?.outerHTML || "";
-  const clusterPanel = qs("clusterPanel")?.outerHTML || "";
-  const vizPanel     = qs("vizPanel")?.outerHTML || "";
-
-  // 3) Canvas als Bild “einfrieren”, weil Canvas im Export sonst leer sein kann
-  let vizImg = "";
-  try{
-    const c = qs("vizCanvas");
-    if(c && c.width && c.height){
-      vizImg = c.toDataURL("image/png");
-    }
-  }catch{}
-
-  // 4) Im geklonten vizPanel ersetzen wir das <canvas> durch ein <img>
-  let vizPanelFixed = vizPanel;
-  if(vizPanelFixed && vizImg){
-    vizPanelFixed = vizPanelFixed.replace(
-      /<canvas[^>]*id="vizCanvas"[^>]*><\/canvas>/i,
-      `<img src="${vizImg}" alt="Bubble map snapshot" style="width:100%;height:100%;object-fit:cover;display:block">`
-    );
-  }
-
-  // 5) Logo + Brand URL (Passe das an deine Domain an)
-  const brandUrl = "https://solanax1.com/";
-  const logoUrl  = "https://solanax1.com/assets/logo.png";
-
-  // 6) Report-Seite im gleichen Look (gleiches CSS, gleiche Klassen)
-  return `<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>$SOS — Guardian Scan Report</title>
-<style>${css}</style>
-</head>
-<body>
-  <div class="topbar">
-    <div class="wrap">
-      <div class="row">
-        <div class="brand">
-          <img src="${logoUrl}" alt="$SOS" onerror="this.style.display='none'">
-          <div class="bt">
-            <div class="t">$SOS</div>
-            <div class="s">Guardian Scan Report • Export</div>
-          </div>
-        </div>
-
-        <div class="actions">
-  <a class="btn" href="${brandUrl}" rel="noreferrer">← Back to Main</a>
-  <span class="badge">${esc(chain)}</span>
-  <span class="badge good">${esc(String(score))}/100</span>
-  <span class="badge">${esc(verdict)}</span>
-  ${extraBadges.join("")}
-</div>
-      </div>
-    </div>
-  </div>
-
-  <main class="wrap">
-    <section class="card hero">
-      <div class="inner">
-        <div class="classified">
-          <div class="stamp">EXPORTED REPORT • BEST-EFFORT</div>
-          <div class="stamp">${esc(when)}</div>
-        </div>
-
-        <div class="panel" style="margin-top:16px;">
-          <div class="classified">
-            <div class="stamp">TARGET</div>
-            <div class="stamp">${esc(chain)} • ${esc(shortAddr(addr))}</div>
-          </div>
-          <div class="statusLine" style="margin-top:10px;">
-            Full address: <span class="mono">${esc(addr)}</span>
-          </div>
-        </div>
-
-        <div style="margin-top:16px;">${resultsPanel}</div>
-        <div style="margin-top:16px;">${vizPanelFixed || ""}</div>
-        <div style="margin-top:16px;">${clusterPanel}</div>
-        <div style="margin-top:16px;">${checksPanel}</div>
-        <div style="margin-top:16px;">${todoPanel}</div>
-        <div style="margin-top:16px;">${extPanel}</div>
-        <div style="margin-top:16px;">${metaPanel}</div>
-        <div style="margin-top:16px;">${holdersPanel}</div>
-
-        <div class="statusLine" style="margin-top:14px; opacity:.75">
-          Brand: ${esc(brandUrl)} • Logo: ${esc(logoUrl)}
-        </div>
-      </div>
-    </section>
-
-    <footer>© ${new Date().getFullYear()} $SOS • Guardian Report</footer>
-  </main>
-</body>
-</html>`;
-}
-
-function downloadTextFile(filename, text){
-  const blob = new Blob([text], {type:"text/html;charset=utf-8"});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(()=>URL.revokeObjectURL(url), 2000);
-}
-
-/* Replace enableExportLite: now it really exports */
-function enableExportLite(){
-  const ex = qs("btnExport");
-  if(!ex) return;
-  ex.disabled = false;
-  ex.onclick = () => {
-    if(!LAST_SCAN){
-      showToast("Run a scan first.");
-      return;
-    }
-    const chain = LAST_SCAN?.chain?.id || ACTIVE_CHAIN_ID;
-    const addr = (LAST_SCAN?.address || "token").slice(0,10);
-    const name = `sos_guardian_report_${chain}_${addr}.html`;
-    downloadTextFile(name, buildReportHtml());
-  };
-}
-    /* ===================== PATCH: drawViz supports graph nodes/edges ===================== */
-const __drawVizPrev = drawViz;
-function drawViz(){
-  const canvas = qs("vizCanvas");
-  if(!canvas) return;
-  const ctx = canvas.getContext("2d");
-  if(!ctx) return;
-
-  const dpr = Number(canvas.dataset.dpr || 1);
-  const w = canvas.width;
-  const h = canvas.height;
-  ctx.clearRect(0,0,w,h);
-
-  const nodes = (VIZ.mode === "graph" && Array.isArray(VIZ._graphNodes) && VIZ._graphNodes.length)
-    ? VIZ._graphNodes
-    : VIZ.nodes;
-
-  const edges = (VIZ.mode === "graph" && Array.isArray(VIZ._graphEdges) && VIZ._graphEdges.length)
-    ? VIZ._graphEdges
-    : VIZ.edges;
-
-  if(!nodes || !nodes.length){
-    // subtle background dots
-    ctx.save();
-    ctx.globalAlpha = 0.22;
-    for(let y=20*dpr;y<h;y+=34*dpr){
-      for(let x=20*dpr;x<w;x+=34*dpr){
-        ctx.beginPath();
-        ctx.arc(x,y,1.2*dpr,0,Math.PI*2);
-        ctx.fillStyle = "rgba(255,255,255,0.18)";
-        ctx.fill();
-      }
-    }
-    ctx.restore();
-    return;
-  }
-
-  ctx.save();
-  ctx.translate(VIZ.panX*dpr, VIZ.panY*dpr);
-  ctx.scale(VIZ.zoom, VIZ.zoom);
-
-  // edges
-  ctx.globalAlpha = 0.35;
-  ctx.lineWidth = 1.2*dpr;
-  ctx.strokeStyle = "rgba(255,255,255,0.22)";
-  for(const e of (edges||[])){
-    const a = nodes[e.a];
-    const b = nodes[e.b];
-    if(!a || !b) continue;
-    ctx.beginPath();
-    ctx.moveTo((a.x||0)*dpr, (a.y||0)*dpr);
-    ctx.lineTo((b.x||0)*dpr, (b.y||0)*dpr);
-    ctx.stroke();
-  }
-
-  // nodes + labels
-  for(const n of nodes){
-    const fill = n.sev === "bad" ? "rgba(255,120,150,0.30)"
-               : n.sev === "warn" ? "rgba(255,220,130,0.24)"
-               : "rgba(20,241,149,0.22)";
-
-    ctx.globalAlpha = 0.95;
-    ctx.beginPath();
-    ctx.arc((n.x||0)*dpr, (n.y||0)*dpr, (n.r||14)*dpr, 0, Math.PI*2);
-    ctx.fillStyle = fill;
-    ctx.fill();
-    ctx.strokeStyle = "rgba(255,255,255,0.14)";
-    ctx.stroke();
-
-    const label = (n.sub || "");
-    if(label){
-      ctx.globalAlpha = 0.9;
-      ctx.fillStyle = "rgba(255,255,255,0.82)";
-      ctx.font = `${12*dpr}px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial`;
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText(label, (n.x||0)*dpr, ((n.y||0) + (n.r||14) + 12)*dpr);
-    }
-  }
-
-  ctx.restore();
-}
-    /* ===================== FINISH INIT + CALL ===================== */
-    init();
+      els.forEach(el => io.observe(el));
+    })();
   </script>
 </body>
 </html>
