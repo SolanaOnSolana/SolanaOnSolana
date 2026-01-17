@@ -1001,13 +1001,22 @@ function startLiveStampTime(){
         img.alt = name;
         wrap.style.display = "block";
         img.onerror = () => { wrap.style.display = "none"; };
-      }else{
-        wrap.style.display = "none";
-        img.removeAttribute("src");
-        img.alt = "";
+            }else{
+        // FALLBACK: wenn kein Token-Logo vorhanden ist, zeige Chain-Logo (Sol / ETH / BNB / Base)
+        const rawSvg = (ICONS[activeChain?.id] || ICONS.sol || "").trim();
+        const safeSvg = rawSvg.replace(/currentColor/g, "#ffffff"); // ETH icon uses currentColor
+        if(safeSvg){
+          const uri = "data:image/svg+xml;utf8," + encodeURIComponent(safeSvg);
+          img.src = uri;
+          img.alt = activeChain?.name || "Chain";
+          wrap.style.display = "block";
+          img.onerror = () => { wrap.style.display = "none"; };
+        }else{
+          wrap.style.display = "none";
+          img.removeAttribute("src");
+          img.alt = "";
+        }
       }
-    }
-  }
 
   function pillLabel(sev){ return sev==="ok" ? "PASS" : sev==="bad" ? "FAIL" : "WATCH"; }
   function pillClass(sev){ return sev==="ok" ? "pill ok" : sev==="bad" ? "pill bad" : "pill warn"; }
