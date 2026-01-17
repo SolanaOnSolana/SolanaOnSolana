@@ -216,7 +216,15 @@
       .tokenHead{ flex-wrap: nowrap; }
       .tokenName{ font-size: 18px; }
       .tokenSymbol{ font-size: 13px; }
-      .metricV{ flex-direction: column; align-items: flex-start; gap: 6px; font-size: 22px; }
+      .metricV{
+      margin-top:8px;
+      font-weight:1000;
+      font-size:22px;
+      line-height:1.15;
+      display:block;
+      overflow-wrap:anywhere;
+      word-break:break-word;
+    }
       .metricK{ flex-wrap: wrap; gap: 8px; }
       .metricK .badge{ margin-left: auto; }
       .li{ flex-direction: column; align-items: flex-start; gap: 10px; }
@@ -361,11 +369,10 @@
       margin-top:8px;
       font-weight:1000;
       font-size:20px;
-      display:flex;
-      align-items:baseline;
-      justify-content:space-between;
-      gap:12px;
-      flex-wrap:wrap;
+      line-height:1.15;
+      display:block;
+      overflow-wrap:anywhere;
+      word-break:break-word;
     }
     .metricMini{
       margin-top:6px;
@@ -646,16 +653,6 @@
           <img src="/assets/logo.png" alt="$SOS" onerror="this.style.display='none'">
           <div class="bt">
             <div class="t">$SOS</div>
-            <div id="topTokenBadge" class="tokenBadge" style="display:none">
-              <div class="tokenImgWrap">
-                <img class="tokenImg" id="topTokenImg" alt="token" />
-                <div class="tokenImg tokenFallback" id="topTokenFallback" aria-hidden="true">??</div>
-              </div>
-              <div class="tokenTxt">
-                <div class="tokenSym" id="topTokenSym">TOKEN</div>
-                <div class="tokenNm" id="topTokenNm">Scanned asset</div>
-              </div>
-            </div>
             <div class="s">Contract Scanner • Token Risk</div>
           </div>
         </div>
@@ -1193,38 +1190,12 @@ function startLiveStampTime(){
       }
     }
 
-    // Topbar token badge (logo + symbol)
-    const top = qs('topTokenBadge');
-    if(top){
-      const topImg = qs('topTokenImg');
-      const topFb  = qs('topTokenFallback');
-      const topSym = qs('topTokenSym');
-      const topNm  = qs('topTokenNm');
-
-      const nm = name;
-      const sy = (sym || '').trim();
-      const initials = (sy || nm || '??').replace(/[^a-zA-Z0-9]/g,'').slice(0,2).toUpperCase() || '??';
-
-      if(topSym) topSym.textContent = sy ? ('$' + sy) : 'TOKEN';
-      if(topNm)  topNm.textContent  = nm || 'Scanned asset';
-
-      if(meta?.image && topImg && topFb){
-        topImg.src = meta.image;
-        topImg.style.display = 'block';
-        topFb.style.display = 'none';
-        topImg.onerror = () => { topImg.style.display='none'; topFb.style.display='flex'; topFb.textContent = initials; };
-      }else if(topFb){
-        if(topImg) topImg.style.display = 'none';
-        topFb.style.display = 'flex';
-        topFb.textContent = initials;
-      }
-
-      top.style.display = 'flex';
-    }
+    // Topbar token badge removed (token info stays in the scan panel/report)
 
   }
 
-  function pillLabel(sev){ return sev==="ok" ? "PASS" : sev==="bad" ? "FAIL" : "WATCH"; }
+  function pillIcon(sev){ return sev==="ok" ? '✓' : '✕'; }
+function pillLabel(sev){ return (sev==="ok" ? (pillIcon(sev)+' PASS') : (pillIcon(sev)+' ' + (sev==="bad" ? 'FAIL' : 'WATCH'))); }
   function pillClass(sev){ return sev==="ok" ? "pill ok" : sev==="bad" ? "pill bad" : "pill warn"; }
 
   function renderList(listEl, items, defaultTitle){
@@ -1307,18 +1278,33 @@ function startLiveStampTime(){
     const el = qs("holdersList");
     if(!el) return;
 
-    renderList(el, [{
-      t:"No holder data",
-      sev:"warn",
-      d: activeChain.kind === "solana"
-        ? "Top holders appear after scan."
-        : (CFG.GOLDRUSH_API_KEY ? "Holders appear if the indexer returns data." : "Holders need an indexer (GoldRush)."),
-      infoHtml: explain("Top holders", [
-        "Meaning: Distribution shows whale risk.",
-        "Solana: via RPC largest accounts.",
-        "EVM: needs an indexer (e.g., GoldRush) — RPC alone cannot list holders."
-      ])
-    }], "Top Holders");
+    const ex = explorerBase(activeChain);
+    const addr = (qs('addrInput')?.value || '').trim();
+    const hasAddr = addr && (activeChain.kind==='evm' ? /^0x[0-9a-fA-F]{40}$/.test(addr) : addr.length>10);
+
+    el.innerHTML = '';
+    const li = document.createElement('li');
+    li.className = 'li';
+
+    const infoId = registerInfo(explain('Top holders', [
+      'Meaning: Distribution shows whale risk.',
+      'Solana: via RPC largest accounts.',
+      'EVM: needs an indexer (e.g., GoldRush) — RPC alone cannot list holders.',
+      'Tip: If the list is empty, open the explorer holders tab.'
+    ]));
+
+    li.innerHTML = `
+      <div class="left">
+        <div class="t">No holder data</div>
+        <div class="d">${activeChain.kind==='solana' ? 'Top holders appear after scan.' : (CFG.GOLDRUSH_API_KEY ? 'Indexer returned no holder list (rate-limit/coverage). Use explorer as fallback.' : 'EVM holders need an indexer (GoldRush).')}<\/div>
+      </div>
+      <div class="pillRow">
+        ${hasAddr ? `<a class="explorerBtn" href="${esc(ex.base + addr)}" target="_blank" rel="noreferrer">Open ${esc(ex.name)}<\/a>` : ''}
+        <span class="${pillClass('warn')}" role="button" tabindex="0" data-open="1" data-title="Top holders" data-info="${esc(infoId)}">${pillLabel('warn')}<\/span>
+        <button class="infoBtn" type="button" aria-label="Info" data-open="1" data-title="Top holders" data-info="${esc(infoId)}"><span>i</span><\/button>
+      </div>`;
+
+    el.appendChild(li);
   }
 
   function renderHoldersWithExplorer(items, chain){
@@ -2917,7 +2903,7 @@ async function evmRpc(chainId, method, params){
       nodes,
       edges: cut,
       bundles,
-      hint: 'Size = holder % (indexer). Links = recent token transfers (sampled). Drag to explore.'
+      hint: (top.length ? 'Size = holder % (indexer). Links = recent token transfers (sampled). Drag to explore.' : 'Size = activity (no holder list). Links = recent token transfers (sampled). Drag to explore.')
     };
   }
 
@@ -3357,18 +3343,25 @@ async function evmRpc(chainId, method, params){
   }
 
   function pickBestDecimals(total, metaDec, dexDec){
-    const m = Number(metaDec);
-    const d = Number(dexDec);
-    const metaOk = Number.isFinite(m) && m >= 0 && m <= 36;
-    const dexOk  = Number.isFinite(d) && d >= 0 && d <= 36;
-    if(!metaOk && dexOk) return d;
-    if(metaOk && !dexOk) return m;
-    if(!metaOk && !dexOk) return 18;
+    // Treat null/undefined as missing (do NOT coerce to 0).
+    const metaOk = !(metaDec === null || metaDec === undefined || metaDec === '') && Number.isFinite(Number(metaDec));
+    const dexOk  = !(dexDec  === null || dexDec  === undefined || dexDec  === '') && Number.isFinite(Number(dexDec));
+
+    const m = metaOk ? Number(metaDec) : NaN;
+    const d = dexOk  ? Number(dexDec)  : NaN;
+
+    const mOk = Number.isFinite(m) && m >= 0 && m <= 36;
+    const dOk = Number.isFinite(d) && d >= 0 && d <= 36;
+
+    if(!mOk && dOk) return d;
+    if(mOk && !dOk) return m;
+    if(!mOk && !dOk) return 18;
 
     // If meta decimals produce a fractional supply but dex decimals aligns perfectly, prefer dex decimals.
     const metaAlign = isMultipleOfDecimals(total, m);
     const dexAlign  = isMultipleOfDecimals(total, d);
     if(!metaAlign && dexAlign) return d;
+
     return m;
   }
 
@@ -3395,9 +3388,23 @@ async function evmRpc(chainId, method, params){
 
   function formatSupplyNice(total, metaDec, dexDec){
     if(total === null || total === undefined) return { text:'—', usedDecimals:null, approx:false };
-    const used = pickBestDecimals(total, metaDec, dexDec);
+
+    let used = pickBestDecimals(total, metaDec, dexDec);
+    let approx = false;
+
+    // Heuristic: if decimals resolved to 0 but supply is absurdly large, assume 18.
+    try{
+      if(used === 0){
+        const TH = 10n ** 24n;
+        if(total > TH){
+          used = 18;
+          approx = true;
+        }
+      }
+    }catch{}
+
     const raw = formatUnits(total, used);
-    return { text: compactNumberFromString(raw), usedDecimals: used, approx:false };
+    return { text: compactNumberFromString(raw), usedDecimals: used, approx };
   }
 
   function hasSelectorInCode(codeHex, selectorNo0x){
@@ -3697,7 +3704,7 @@ async function evmRpc(chainId, method, params){
           { label:"Price", value: dex?.priceUsd != null ? priceUsdFmt(dex.priceUsd) : "—", badge: "USD", mini: dex?.volume24h != null ? `Vol24h ${money(dex.volume24h)}` : "—" },
           { label:"LP Burned", value: lpBurn?.pct != null ? `${lpBurn.pct.toFixed(2)}%` : "UNKNOWN", badge: lpBurn?.pct != null ? (lpBurn.pct>=90?"PASS":"WATCH") : "UNKNOWN", mini: lpBurn?.note || "Best-effort V2 LP burn check." },
           { label:"Proxy", value: proxy?.isProxy ? "Upgradeable" : "No signal", badge: proxy?.isProxy ? "WATCH" : "PASS", mini:"EIP-1967 slots check." },
-          { label:"Total Supply", value: supplyText || "—", badge: supplyReadable ? "On-chain" : "Unknown", mini: supplyReadable ? `totalSupply() • decimals=${supplyNice.usedDecimals ?? '—'}` : 'From totalSupply().' }
+          { label:"Total Supply", value: supplyText || "—", badge: supplyReadable ? "On-chain" : "Unknown", mini: supplyReadable ? `totalSupply() • decimals=${supplyNice.usedDecimals ?? '—'}${supplyNice.approx ? ' (assumed)' : ''}` : 'From totalSupply().' }
         ];
         renderMetrics(metricRows);
 
@@ -3735,7 +3742,7 @@ async function evmRpc(chainId, method, params){
         }
 
         if(lpBurn && lpBurn.pct !== null){
-          flags.push({t:"LP Burned (best-effort)", sev: lpBurn.pct>=90?"ok":"warn", d:`${lpBurn.pct.toFixed(2)}%`, why: lpBurn.note || "V2 LP burn check."});
+          flags.push({t:"LP Burned (best-effort)", sev: lpBurn.pct>=90?"ok":"warn", d:`${lpBurn.pct.toFixed(2)}%`, why: (lpBurn.note || 'Only counts LP tokens in dead/0x0. Lockers/V3 not included.')});
         }
 
         renderContractFlags(flags);
@@ -3751,10 +3758,11 @@ async function evmRpc(chainId, method, params){
         setStatus("Fetching recent transfers (indexer)…");
         const transfers = await goldrushTransfersV2(chainId, addr, 700);
 
-        if(holdersRaw && holdersRaw.length && transfers && transfers.length){
-          const model = buildBubbleModelEvm(holdersRaw, transfers);
-          setText('bubbleStamp', activeChain.name + ' • TOP HOLDERS + FLOWS');
-          setText('bubbleHint', model.hint || 'Bubble map generated.');
+        if(transfers && transfers.length){
+          const model = buildBubbleModelEvm(holdersRaw || [], transfers);
+          const hasHolders = (holdersRaw && holdersRaw.length);
+          setText('bubbleStamp', activeChain.name + (hasHolders ? ' • TOP HOLDERS + FLOWS' : ' • TRANSFER FLOWS'));
+          setText('bubbleHint', hasHolders ? (model.hint || 'Bubble map generated.') : 'Size = activity (no holder list). Links = recent transfers (sampled). Drag to explore.');
           drawBubbleMap(model);
           renderClustersFromModel(model);
           renderBundles(model.bundles || []);
