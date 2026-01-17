@@ -984,38 +984,42 @@ function startLiveStampTime(){
 
   /* ===================== UI RENDER ===================== */
   function applyTokenHeader(meta, addr){
-    const nameEl = qs("tokenName");
-    const symEl  = qs("tokenSymbol");
-    const wrap   = qs("tokenLogoWrap");
-    const img    = qs("tokenLogo");
+  const nameEl = qs("tokenName");
+  const symEl  = qs("tokenSymbol");
+  const wrap   = qs("tokenLogoWrap");
+  const img    = qs("tokenLogo");
 
-    const name = (meta?.name || "Token").trim() || "Token";
-    const sym  = (meta?.symbol || "").trim();
+  const name = (meta?.name || "Token").trim() || "Token";
+  const sym  = (meta?.symbol || "").trim();
 
-    if(nameEl) nameEl.textContent = name;
-    if(symEl)  symEl.textContent  = sym ? `$${sym}` : `Addr: ${shortAddr(addr)}`;
+  if(nameEl) nameEl.textContent = name;
+  if(symEl)  symEl.textContent  = sym ? `$${sym}` : `Addr: ${shortAddr(addr)}`;
 
-    if(wrap && img){
-      if(meta?.image){
-        img.src = meta.image;
-        img.alt = name;
-        wrap.style.display = "block";
-        img.onerror = () => { wrap.style.display = "none"; };
-            }else{
-        // FALLBACK: wenn kein Token-Logo vorhanden ist, zeige Chain-Logo (Sol / ETH / BNB / Base)
-        const rawSvg = (ICONS[activeChain?.id] || ICONS.sol || "").trim();
-        const safeSvg = rawSvg.replace(/currentColor/g, "#ffffff"); // ETH icon uses currentColor
-        if(safeSvg){
-          const uri = "data:image/svg+xml;utf8," + encodeURIComponent(safeSvg);
-          img.src = uri;
-          img.alt = activeChain?.name || "Chain";
-          wrap.style.display = "block";
-          img.onerror = () => { wrap.style.display = "none"; };
-        }else{
-          wrap.style.display = "none";
-          img.removeAttribute("src");
-                img.alt = "";
-    }
+  if(!wrap || !img) return;
+
+  // 1) echtes Token-Logo (wenn vorhanden)
+  if(meta?.image){
+    img.src = meta.image;
+    img.alt = name;
+    wrap.style.display = "block";
+    img.onerror = () => { wrap.style.display = "none"; };
+    return;
+  }
+
+  // 2) FALLBACK: Chain-Logo als Data-URI
+  const rawSvg  = (ICONS[activeChain?.id] || ICONS.sol || "").trim();
+  const safeSvg = rawSvg.replace(/currentColor/g, "#ffffff"); // ETH uses currentColor
+
+  if(safeSvg){
+    const uri = "data:image/svg+xml;utf8," + encodeURIComponent(safeSvg);
+    img.src = uri;
+    img.alt = activeChain?.name || "Chain";
+    wrap.style.display = "block";
+    img.onerror = () => { wrap.style.display = "none"; };
+  }else{
+    wrap.style.display = "none";
+    img.removeAttribute("src");
+    img.alt = "";
   }
 }
     
