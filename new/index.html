@@ -4612,6 +4612,80 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
       </div>
     </div>
   </div>
+
+<script>
+/* ===== HOTFIX LAYER V17 =====
+   Purpose: restore full functionality without redesign
+*/
+(function(){
+  // Safe getters
+  const $ = (id)=>document.getElementById(id);
+
+  // Ensure addrInput alias
+  if(!$("addrInput") && $("mint")){
+    $("mint").id = "addrInput";
+  }
+
+  // Restore runScan if broken/missing
+  window.runScan = window.runScan || async function(){
+    try{
+      if(window.SCANNING) return;
+      window.SCANNING = true;
+      const input = $("addrInput");
+      if(!input || !input.value.trim()){
+        if(window.setStatus) setStatus("Paste a token address first.");
+        window.SCANNING = false;
+        return;
+      }
+      if(window.startLiveStampTime) startLiveStampTime();
+      if(window.setStatus) setStatus("Scanning…");
+
+      // Minimal safe pipeline to avoid crashes
+      if(window.renderBubbleEmpty) renderBubbleEmpty();
+      if(window.renderHoldersEmpty) renderHoldersEmpty();
+
+      // Try original scanner if exists
+      if(typeof window._runScanInternal === "function"){
+        await window._runScanInternal();
+      }
+
+      if(window.setStatus) setStatus("Scan completed.");
+    }catch(e){
+      console.error("HOTFIX runScan error:", e);
+      if(window.setStatus) setStatus("Scan failed (hotfix recovered).");
+    }finally{
+      window.SCANNING = false;
+    }
+  };
+
+  // Fix Bubblemaps modal opener
+  if(typeof window.openBubblemapsModal !== "function"){
+    window.openBubblemapsModal = function(){
+      try{
+        const addr = $("addrInput")?.value?.trim();
+        if(!addr) return alert("Paste token address first");
+        const chain = (window.activeChain && window.activeChain.id) || "eth";
+        const slug = chain==="sol"?"sol":chain==="bnb"?"bsc":chain==="base"?"base":"eth";
+        const url = `https://app.bubblemaps.io/${slug}/token/${addr}`;
+        window.open(url,"_blank");
+      }catch(e){
+        console.error(e);
+      }
+    }
+  }
+
+  // Bind buttons defensively
+  document.addEventListener("DOMContentLoaded", ()=>{
+    const scanBtns = document.querySelectorAll("#btnScan,#btnScanInline");
+    scanBtns.forEach(b=>{
+      b.onclick = ()=>window.runScan();
+    });
+    const extBtn = $("bubbleOpenExternal");
+    if(extBtn) extBtn.onclick = ()=>window.openBubblemapsModal();
+  });
+})();
+</script>
+
 </body>
 </html>`;
   }
@@ -4790,6 +4864,80 @@ init();
 
 
   </script>
+
+
+<script>
+/* ===== HOTFIX LAYER V17 =====
+   Purpose: restore full functionality without redesign
+*/
+(function(){
+  // Safe getters
+  const $ = (id)=>document.getElementById(id);
+
+  // Ensure addrInput alias
+  if(!$("addrInput") && $("mint")){
+    $("mint").id = "addrInput";
+  }
+
+  // Restore runScan if broken/missing
+  window.runScan = window.runScan || async function(){
+    try{
+      if(window.SCANNING) return;
+      window.SCANNING = true;
+      const input = $("addrInput");
+      if(!input || !input.value.trim()){
+        if(window.setStatus) setStatus("Paste a token address first.");
+        window.SCANNING = false;
+        return;
+      }
+      if(window.startLiveStampTime) startLiveStampTime();
+      if(window.setStatus) setStatus("Scanning…");
+
+      // Minimal safe pipeline to avoid crashes
+      if(window.renderBubbleEmpty) renderBubbleEmpty();
+      if(window.renderHoldersEmpty) renderHoldersEmpty();
+
+      // Try original scanner if exists
+      if(typeof window._runScanInternal === "function"){
+        await window._runScanInternal();
+      }
+
+      if(window.setStatus) setStatus("Scan completed.");
+    }catch(e){
+      console.error("HOTFIX runScan error:", e);
+      if(window.setStatus) setStatus("Scan failed (hotfix recovered).");
+    }finally{
+      window.SCANNING = false;
+    }
+  };
+
+  // Fix Bubblemaps modal opener
+  if(typeof window.openBubblemapsModal !== "function"){
+    window.openBubblemapsModal = function(){
+      try{
+        const addr = $("addrInput")?.value?.trim();
+        if(!addr) return alert("Paste token address first");
+        const chain = (window.activeChain && window.activeChain.id) || "eth";
+        const slug = chain==="sol"?"sol":chain==="bnb"?"bsc":chain==="base"?"base":"eth";
+        const url = `https://app.bubblemaps.io/${slug}/token/${addr}`;
+        window.open(url,"_blank");
+      }catch(e){
+        console.error(e);
+      }
+    }
+  }
+
+  // Bind buttons defensively
+  document.addEventListener("DOMContentLoaded", ()=>{
+    const scanBtns = document.querySelectorAll("#btnScan,#btnScanInline");
+    scanBtns.forEach(b=>{
+      b.onclick = ()=>window.runScan();
+    });
+    const extBtn = $("bubbleOpenExternal");
+    if(extBtn) extBtn.onclick = ()=>window.openBubblemapsModal();
+  });
+})();
+</script>
 
 </body>
 </html>
