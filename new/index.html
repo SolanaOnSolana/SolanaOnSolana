@@ -1079,7 +1079,7 @@ function startLiveStampTime(){
       d.innerHTML = `
         <div class="metricK">
           <span>${esc(r.label || "—")}</span>
-          <span class="badge" style="opacity:.9">${esc(r.badge || r.value || "—")}</span>
+          <span class="badge ${r.badgeMode ? esc(r.badgeMode) : ""}" style="opacity:.9">${esc(r.badge || r.value || "—")}</span>
         </div>
         <div class="metricV">${esc(r.value || "—")}</div>
         <div class="metricMini">${esc(r.mini || "")}</div>
@@ -2597,6 +2597,9 @@ function startLiveStampTime(){
 
         const supplyReadable = metaOnChain?.totalSupply !== null && metaOnChain?.totalSupply !== undefined;
         const supplyText = supplyReadable ? formatUnits(metaOnChain.totalSupply, metaOnChain.decimals ?? 18) : "—";
+
+        const zero = "0x0000000000000000000000000000000000000000";
+        const isRenounced = !!owner && owner.toLowerCase() === zero;
 
         const metricRows = [
           { label:"Guardian Score", value:`${score}/100`, badge: verdict.label, barPct: score, mini:"Composite risk score (heuristic)." },
