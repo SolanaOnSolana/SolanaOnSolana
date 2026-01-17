@@ -1033,29 +1033,41 @@
   }
 
   async function lpBurnedPercentV2(chainId, pairAddr){
-    // For UniswapV2-style pairs, LP token = pair address (ERC20)
-    // Returns {pct:number|null, note:string}
-    try{
-      if(!pairAddr || !pairAddr.startsWith('0x')) return {pct:null, note:'No pair address.'};
-      const totalHex = await ethCall(chainId, pairAddr, SEL.totalSupply);
-      const total = decodeUint256(totalHex);
-      if(!total || total === 0n) return {pct:null, note:'No LP supply.'};
+  // Uniswap V2-style LP burn = LP token balance of burn addresses / totalSupply.
+  // If the pair is not V2 (e.g., Uniswap V3 pool), returns { pct:null, note:"Not V2" }.
+  try{
+    if(!pairAddr || !String(pairAddr).toLowerCase().startsWith("0x")) return {pct:null, note:"No pair"};
+    // Quick V2 probe
+    const token0Sel = "0x0dfe1681";
+    const token1Sel = "0xd21220a7";
+    const t0 = await ethCall(chainId, pairAddr, token0Sel).catch(()=>null);
+    const t1 = await ethCall(chainId, pairAddr, token1Sel).catch(()=>null);
+    if(!t0 || !t1) return {pct:null, note:"Not V2 pool"};
 
-      const dead = '0x000000000000000000000000000000000000dEaD';
-      const zero = '0x0000000000000000000000000000000000000000';
+    const total = await ethCall(chainId, pairAddr, "0x18160ddd"); // totalSupply()
+    const totalBI = safeBigIntFromStr(total);
+    if(totalBI === null || totalBI === 0n) return {pct:null, note:"No LP supply"};
 
-      const balSel = '0x70a08231';
-      const deadHex = await ethCall(chainId, pairAddr, balSel + encodeAddrParam(dead));
-      const zeroHex = await ethCall(chainId, pairAddr, balSel + encodeAddrParam(zero));
-      const deadBal = decodeUint256(deadHex) || 0n
-      const zeroBal = decodeUint256(zeroHex) || 0n
-      const burned = deadBal + zeroBal;
-      const pct = Number((burned * 10000n) / total) / 100;
-      return {pct, note:'V2 LP burn check (dead + 0x0).'}
-    }catch(e){
-      return {pct:null, note:'LP burn check unavailable.'};
+    const burnAddrs = [
+      "0x0000000000000000000000000000000000000000",
+      "0x000000000000000000000000000000000000dEaD",
+      "0x0000000000000000000000000000000000000001"
+    ];
+
+    let burned = 0n;
+    for(const a of burnAddrs){
+      const bal = await ethCall(chainId, pairAddr, encAbiCall("70a08231", [a])); // balanceOf(address)
+      const b = safeBigIntFromStr(bal);
+      if(b !== null) burned += b;
     }
+
+    const pct = Number((burned * 10000n) / totalBI) / 100;
+    return {pct: Math.max(0, Math.min(100, pct)), burned, total: totalBI, note:"dead+0x0+0x1"};
+  }catch{
+    return {pct:null, note:"Error"};
   }
+}
+
 
 function setStatus(msg){ setText("status", msg || ""); }
   function setBadge(el, txt, mode){
@@ -2776,28 +2788,37 @@ async function evmRpc(chainId, method, params){
   }
 
   async function goldrushHolders(chainId, addr, limit=80){
-    if(!CFG.GOLDRUSH_API_KEY) return [];
-    const chain = goldrushChain(chainId);
-    const pageSize = Math.min(100, Math.max(10, Number(limit)||80));
-    const url = `https://api.covalenthq.com/v1/${chain}/tokens/${addr}/token_holders/?page-size=${pageSize}&key=${encodeURIComponent(CFG.GOLDRUSH_API_KEY)}`;
-    try{
-      const r = await fetch(url);
-      if(!r.ok) return [];
-      const j = await r.json();
-      return Array.isArray(j?.data?.items) ? j.data.items : [];
-    }catch{
-      return [];
-    }
+  if(!CFG.GOLDRUSH_API_KEY) return [];
+  const chain = goldrushChain(chainId);
+  const pageSize = Math.min(100, Math.max(10, Number(limit)||80));
+  const page = 0;
+  // GoldRush Wallet API (Covalent) — token holders v2
+  const url = `https://api.covalenthq.com/v1/${chain}/tokens/${addr}/token_holders_v2/?page-size=${pageSize}&page-number=${page}&key=${encodeURIComponent(CFG.GOLDRUSH_API_KEY)}`;
+  try{
+    const r = await fetch(url);
+    if(!r.ok) return [];
+    const j = await r.json();
+    return Array.isArray(j?.data?.items) ? j.data.items : [];
+  }catch{
+    return [];
   }
+}
+
 
   async function goldrushTransfersV2(chainId, addr, limit=600){
-    if(!CFG.GOLDRUSH_API_KEY) return [];
+  // Best-effort: try GoldRush token transfers endpoint if key is set,
+  // otherwise fall back to RPC log sampling (no key).
+  const want = Math.max(200, Math.min(1600, Number(limit)||600));
+
+  // 1) GoldRush (if available)
+  if(CFG.GOLDRUSH_API_KEY){
     const chain = goldrushChain(chainId);
-    const want = Math.max(100, Math.min(1200, Number(limit)||600));
     const pageSize = 200;
     const maxPages = 6;
     const out = [];
     for(let page=0; page<maxPages && out.length<want; page++){
+      // NOTE: Some GoldRush deployments expose `token_transfers_v2` for tokens.
+      // If it returns 404/empty, we fall back to RPC sampling.
       const url = `https://api.covalenthq.com/v1/${chain}/tokens/${addr}/token_transfers_v2/?page-size=${pageSize}&page-number=${page}&key=${encodeURIComponent(CFG.GOLDRUSH_API_KEY)}`;
       try{
         const r = await fetch(url);
@@ -2810,8 +2831,71 @@ async function evmRpc(chainId, method, params){
         break;
       }
     }
-    return out.slice(0, want);
+    if(out.length) return out.slice(0, want);
   }
+
+  // 2) RPC fallback: sample recent Transfer logs
+  return await evmTokenTransfersSample(chainId, addr, want);
+}
+
+function hexToInt(h){ return parseInt(String(h||"0x0"), 16) || 0; }
+function intToHex(n){ return "0x" + Math.max(0, Number(n)||0).toString(16); }
+
+// Fetches a *sample* of ERC20 Transfer logs from recent blocks (no indexer needed).
+// Returned objects mimic GoldRush items (from_address/to_address/value/tx_hash/block_height/block_signed_at).
+async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
+  try{
+    const latestHex = await evmRpc(chainId, "eth_blockNumber", []);
+    const latest = hexToInt(latestHex);
+    let from = Math.max(0, latest - 18000); // ~3-7h depending on chain
+    let step = 2000;
+    const topic0 = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"; // Transfer(address,address,uint256)
+    const out = [];
+    // Walk backwards to get the most recent activity first
+    for(let to=latest; to>from && out.length<maxEvents; to-=step){
+      const fb = Math.max(from, to-step+1);
+      const params = [{
+        address: tokenAddr,
+        fromBlock: intToHex(fb),
+        toBlock: intToHex(to),
+        topics: [topic0]
+      }];
+      let logs = [];
+      try{
+        logs = await evmRpc(chainId, "eth_getLogs", params);
+        if(!Array.isArray(logs)) logs = [];
+      }catch(err){
+        // If provider complains about too many results, shrink the window
+        step = Math.max(200, Math.floor(step/2));
+        continue;
+      }
+      // Take newest logs first
+      logs.reverse();
+      for(const lg of logs){
+        if(out.length>=maxEvents) break;
+        const topics = lg?.topics || [];
+        const data = String(lg?.data || "0x0");
+        if(topics.length < 3) continue;
+        const fromA = "0x" + String(topics[1]).slice(26).toLowerCase();
+        const toA   = "0x" + String(topics[2]).slice(26).toLowerCase();
+        const valueHex = data.startsWith("0x") ? data : ("0x"+data);
+        const valBI = safeBigIntFromStr(valueHex);
+        out.push({
+          from_address: fromA,
+          to_address: toA,
+          value: valBI !== null ? valBI.toString() : "0",
+          tx_hash: String(lg?.transactionHash || "").toLowerCase(),
+          block_height: hexToInt(lg?.blockNumber),
+          block_signed_at: null
+        });
+      }
+    }
+    return out;
+  }catch{
+    return [];
+  }
+}
+
 
   function buildBubbleModelEvm(holdersRaw, transfersRaw){
     const holders = Array.isArray(holdersRaw) ? holdersRaw : [];
@@ -3450,15 +3534,13 @@ async function evmRpc(chainId, method, params){
   }
 
   async function renderHoldersEvm(chainId, tokenAddr, metaOnChain){
-    const supplyBI = metaOnChain?.totalSupply ?? null;
-    const decimals = metaOnChain?.decimals ?? 18;
-    const holders = await goldrushHolders(chainId, tokenAddr);
+  const supplyBI = metaOnChain?.totalSupply ?? null;
+  const decimals = metaOnChain?.decimals ?? 18;
 
-    if(!holders || !holders.length){
-      renderHoldersEmpty();
-      return [];
-    }
+  // 1) Prefer GoldRush holders if available
+  const holders = await goldrushHolders(chainId, tokenAddr);
 
+  if(holders && holders.length){
     const items = holders.slice(0,10).map((h, i) => {
       const addr = (h?.address || "").trim();
 
@@ -3466,7 +3548,7 @@ async function evmRpc(chainId, method, params){
       const balBI = safeBigIntFromStr(balRaw);
 
       let pct = null;
-      if(supplyBI && balBI !== null && supplyBI > 0n){
+      if(supplyBI !== null && supplyBI > 0n && balBI !== null){
         const p = Number((balBI * 10000n) / supplyBI) / 100;
         pct = Number.isFinite(p) ? p : null;
       }else{
@@ -3481,17 +3563,51 @@ async function evmRpc(chainId, method, params){
         t:`#${i+1} ${shortAddr(addr)}`,
         d:`${balFmt} tokens • ${pctStr}`,
         addr,
-        infoHtml: explain("Top holder", [
-          `Share: ${pctStr}`,
-          "Why it matters: high % = whale/dump risk.",
-          "Note: % computed from totalSupply when available."
-        ])
+        infoHtml: explain("Top holders via GoldRush indexer (best-effort).")
       };
     });
 
-    renderHoldersWithExplorer(items, activeChain);
+    renderHoldersList(items);
     return holders;
   }
+
+  // 2) Fallback: derive "top wallets" from a recent transfer sample (NOT true balances)
+  const transfers = await evmTokenTransfersSample(chainId, tokenAddr, 900);
+  if(transfers && transfers.length){
+    // net flow approximation: inflow - outflow in the sample window
+    const net = new Map();
+    for(const t of transfers){
+      const fa = String(t?.from_address||"").toLowerCase();
+      const ta = String(t?.to_address||"").toLowerCase();
+      const vBI = safeBigIntFromStr(t?.value);
+      if(vBI === null) continue;
+      if(fa.startsWith("0x")){
+        net.set(fa, (net.get(fa)||0n) - vBI);
+      }
+      if(ta.startsWith("0x")){
+        net.set(ta, (net.get(ta)||0n) + vBI);
+      }
+    }
+    const top = [...net.entries()]
+      .filter(([a, v]) => a.startsWith("0x") && v>0n)
+      .sort((a,b)=> (b[1]>a[1]?1:(b[1]<a[1]?-1:0)))
+      .slice(0,10);
+
+    const items = top.map(([addr, v], i) => ({
+      t:`#${i+1} ${shortAddr(addr)}`,
+      d:`Net inflow (sample): ${formatUnits(v, decimals)} tokens`,
+      addr,
+      infoHtml: explain("Fallback list based on *recent transfers sample* (not a true holder snapshot).")
+    }));
+
+    renderHoldersList(items);
+    return [];
+  }
+
+  renderHoldersEmpty();
+  return [];
+}
+
 
   /* ===================== MAIN SCAN FLOW (same, just calls updated display) ===================== */
   async function runScan(){
