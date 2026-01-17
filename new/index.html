@@ -555,6 +555,10 @@
       flex:0 0 auto;
     }
     .chainIcon svg{ width:18px; height:18px; display:block; }
+    .chainBtn .chainIcon svg{ color: rgba(255,255,255,.92); }
+    .chainBtn.active .chainIcon{ background: rgba(0,0,0,.18); border-color: rgba(255,255,255,.25); }
+    .chainBtn.active .chainIcon svg{ color:#fff; }
+
     .chainMiniHint{
       margin-top:10px;
       font-size:12.5px;
@@ -633,7 +637,7 @@
     <section class="card hero">
       <div class="inner">
         <div class="classified">
-          <div class="stamp">GUARDIAN SYSTEM • MAINNET • ON-CHAIN VERIFIED</div>
+          <div class="stamp">GUARDIAN SYSTEM • MAINNET • BEST-EFFORT VERIFIED</div>
           <div class="stamp" id="stampTime">—</div>
         </div>
 
@@ -698,8 +702,8 @@
         <!-- Launch readiness -->
         <div class="panel" style="margin-top:16px;">
           <div class="classified">
-            <div class="stamp">LAUNCH READINESS</div>
-            <div class="stamp">ACTION LIST</div>
+            <div class="stamp">MARKET / DEX</div>
+            <div class="stamp">LIVE DATA</div>
           </div>
           <ul class="list" id="todoList" style="margin-top:10px;"></ul>
         </div>
@@ -707,8 +711,8 @@
         <!-- Token standard details -->
         <div class="panel" style="margin-top:16px;">
           <div class="classified">
-            <div class="stamp">TOKEN STANDARD DETAILS</div>
-            <div class="stamp">ON-CHAIN</div>
+            <div class="stamp">CONTRACT FLAGS</div>
+            <div class="stamp">BEST-EFFORT</div>
           </div>
           <ul class="list" id="extList" style="margin-top:10px;"></ul>
         </div>
@@ -717,7 +721,7 @@
         <div class="panel" style="margin-top:16px;">
           <div class="classified">
             <div class="stamp">TOKEN METADATA</div>
-            <div class="stamp">RPC / ON-CHAIN</div>
+            <div class="stamp">RPC / BEST-EFFORT</div>
           </div>
           <ul class="list" id="metaList" style="margin-top:10px;"></ul>
         </div>
@@ -864,44 +868,128 @@
   let SCANNING = false;
 
   /* ===================== UTIL ===================== */
-function clamp(n, min, max){ return Math.max(min, Math.min(max, n)); }
+  function clamp(n, min, max){ return Math.max(min, Math.min(max, n)); }
+  function shortAddr(a){ return a ? (a.slice(0,4) + "…" + a.slice(-4)) : "—"; }
+  function fmtInt(n){
+    if (n === null || n === undefined || Number.isNaN(n)) return "—";
+    try { return new Intl.NumberFormat("en-US").format(Math.round(Number(n))); }
+    catch { return String(n); }
+  }
+  function fmtPct(n){
+    if (n === null || n === undefined || Number.isNaN(n)) return "—";
+    return `${Number(n).toFixed(2)}%`;
+  }
+  
+  // ===================== LIVE MARKET DATA (DexScreener) =====================
+  function safeNum(x){
+    const n = Number(x);
+    return Number.isFinite(n) ? n : null;
+  }
 
-function shortAddr(a){ return a ? (a.slice(0,4) + "…" + a.slice(-4)) : "—"; }
+  async function fetchJsonWithTimeout(url, ms=8500){
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), ms);
+    try{
+      const r = await fetch(url, {signal: ctrl.signal});
+      clearTimeout(t);
+      if(!r.ok) throw new Err||(`HTTP ${r.status}`);
+      return await r.json();
+    }finally{
+      clearTimeout(t);
+    }
+  }
 
-function fmtInt(n){
-  if (n === null || n === undefined || Number.isNaN(n)) return "—";
-  try { return new Intl.NumberFormat("en-US").format(Math.round(Number(n))); }
-  catch { return String(n); }
-}
+  async function fetchDexScreener(tokenAddr){
+    // Works for Solana mints and EVM token contracts
+    const url = `https://api.dexscreener.com/latest/dex/tokens/${tokenAddr}`;
+    const j = await fetchJsonWithTimeout(url, 9000);
+    const pairs = Array.isArray(j?.pairs) ? j.pairs : [];
+    if(!pairs.length) return null;
 
-    function addCommas(numStr){
-  const s = String(numStr || "");
-  if(!s) return s;
-  const neg = s.startsWith("-");
-  const x = neg ? s.slice(1) : s;
-  const parts = x.split(".");
-  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-  return (neg ? "-" : "") + parts.join(".");
-}
+    // choose the most liquid pair
+    pairs.sort((a,b) => (safeNum(b?.liquidity?.usd) || 0) - (safeNum(a?.liquidity?.usd) || 0));
+    const p = pairs[0];
 
+    const out = {
+      dexId: p?.dexId || '',
+      chainId: p?.chainId || '',
+      pairAddress: p?.pairAddress || '',
+      url: p?.url || '',
+      priceUsd: safeNum(p?.priceUsd),
+      fdv: safeNum(p?.fdv),
+      marketCap: safeNum(p?.marketCap),
+      liquidityUsd: safeNum(p?.liquidity?.usd),
+      volume24h: safeNum(p?.volume?.h24),
+      txns24h: safeNum(p?.txns?.h24 ? (safeNum(p.txns.h24.buys)||0) + (safeNum(p.txns.h24.sells)||0) : null),
+      baseToken: p?.baseToken || null,
+      quoteToken: p?.quoteToken || null,
+      info: p?.info || null,
+      rawPair: p
+    };
+    return out;
+  }
 
-function fmtPct(n){
-  if (n === null || n === undefined || Number.isNaN(n)) return "—";
-  return `${Number(n).toFixed(2)}%`;
-}
+  function money(n){
+    if(n === null || n === undefined || Number.isNaN(n)) return '—';
+    try{
+      const abs = Math.abs(Number(n));
+      if(abs >= 1e9) return '$' + (Number(n)/1e9).toFixed(2) + 'B';
+      if(abs >= 1e6) return '$' + (Number(n)/1e6).toFixed(2) + 'M';
+      if(abs >= 1e3) return '$' + (Number(n)/1e3).toFixed(2) + 'K';
+      return '$' + new Intl.NumberFormat('en-US',{maximumFractionDigits:2}).format(Number(n));
+    }catch{
+      return String(n);
+    }
+  }
 
-function evmTrustWalletLogo(chainId, addr){
-  const a = (addr || "").toLowerCase();
-  if(!/^0x[0-9a-f]{40}$/.test(a)) return "";
+  function priceUsdFmt(n){
+    if(n === null || n === undefined || Number.isNaN(n)) return '—';
+    const num = Number(n);
+    if(num === 0) return '$0';
+    const dec = num < 0.01 ? 8 : (num < 1 ? 6 : 4);
+    return '$' + num.toFixed(dec).replace(/0+$/,'').replace(/\.$/,'');
+  }
 
-  if(chainId === 1)    return `https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/${a}/logo.png`;
-  if(chainId === 56)   return `https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/smartchain/assets/${a}/logo.png`;
-  if(chainId === 8453) return `https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/base/assets/${a}/logo.png`;
+  function normalizeAddr(a){
+    return String(a||'').toLowerCase();
+  }
 
-  return "";
-}
+  function isBurnAddr(a){
+    const x = normalizeAddr(a);
+    return x === '0x0000000000000000000000000000000000000000' || x === '0x000000000000000000000000000000000000dead';
+  }
 
-  function setStatus(msg){ setText("status", msg || ""); }
+  function encodeAddrParam(addr){
+    const a = normalizeAddr(addr).replace(/^0x/,'');
+    return a.padStart(64,'0');
+  }
+
+  async function lpBurnedPercentV2(chainId, pairAddr){
+    // For UniswapV2-style pairs, LP token = pair address (ERC20)
+    // Returns {pct:number|null, note:string}
+    try{
+      if(!pairAddr || !pairAddr.startsWith('0x')) return {pct:null, note:'No pair address.'};
+      const totalHex = await ethCall(chainId, pairAddr, SEL.totalSupply);
+      const total = decodeUint256(totalHex);
+      if(!total || total === 0n) return {pct:null, note:'No LP supply.'};
+
+      const dead = '0x000000000000000000000000000000000000dEaD';
+      const zero = '0x0000000000000000000000000000000000000000';
+
+      const balSel = '0x70a08231';
+      const deadHex = await ethCall(chainId, pairAddr, balSel + encodeAddrParam(dead));
+      const zeroHex = await ethCall(chainId, pairAddr, balSel + encodeAddrParam(zero));
+      const deadBal = decodeUint256(deadHex) || 0n
+      const zeroBal = decodeUint256(zeroHex) || 0n
+      const burned = deadBal + zeroBal;
+      const pct = Number((burned * 10000n) / total) / 100;
+      return {pct, note:'V2 LP burn check (dead + 0x0).'}
+    }catch(e){
+      return {pct:null, note:'LP burn check unavailable.'};
+    }
+  }
+
+function setStatus(msg){ setText("status", msg || ""); }
   function setBadge(el, txt, mode){
     if(!el) return;
     el.textContent = txt ?? "";
@@ -1010,72 +1098,32 @@ function startLiveStampTime(){
 
   /* ===================== UI RENDER ===================== */
   function applyTokenHeader(meta, addr){
-  const nameEl = qs("tokenName");
-  const symEl  = qs("tokenSymbol");
-  const wrap   = qs("tokenLogoWrap");
-  const img    = qs("tokenLogo");
+    const nameEl = qs("tokenName");
+    const symEl  = qs("tokenSymbol");
+    const wrap   = qs("tokenLogoWrap");
+    const img    = qs("tokenLogo");
 
-  const name = (meta?.name || "Token").trim() || "Token";
-  const sym  = (meta?.symbol || "").trim();
+    const name = (meta?.name || "Token").trim() || "Token";
+    const sym  = (meta?.symbol || "").trim();
 
-  if(nameEl) nameEl.textContent = name;
-  if(symEl)  symEl.textContent  = sym ? `$${sym}` : `Addr: ${shortAddr(addr)}`;
+    if(nameEl) nameEl.textContent = name;
+    if(symEl)  symEl.textContent  = sym ? `$${sym}` : `Addr: ${shortAddr(addr)}`;
 
-  if(!wrap || !img) return;
-
-  // 1) echtes Token-Logo (wenn vorhanden)
-    // 1) Token logo (if provided)
-const preferred = (meta?.image || "").trim();
-
-// 2) TrustWallet fallback for EVM (free)
-const tw = (activeChain?.kind === "evm")
-  ? evmTrustWalletLogo(activeChain.chainId, addr)
-  : "";
-
-// pick best candidate
-const logoUrl = preferred || tw;
-
-if(logoUrl){
-  img.src = logoUrl;
-  img.alt = name;
-  wrap.style.display = "block";
-
-  // if token logo fails, fallback to chain icon
-  img.onerror = () => {
-    const rawSvg = (ICONS[activeChain?.id] || ICONS.sol || "").trim();
-    const safeSvg = rawSvg.replace(/currentColor/g, "#ffffff");
-    if(safeSvg){
-      img.onerror = () => { wrap.style.display = "none"; };
-      img.src = "data:image/svg+xml;utf8," + encodeURIComponent(safeSvg);
-      img.alt = activeChain?.name || "Chain";
-      wrap.style.display = "block";
-    }else{
-      wrap.style.display = "none";
-      img.removeAttribute("src");
-      img.alt = "";
+    if(wrap && img){
+      if(meta?.image){
+        img.src = meta.image;
+        img.alt = name;
+        wrap.style.display = "block";
+        img.onerror = () => { wrap.style.display = "none"; };
+      }else{
+        wrap.style.display = "none";
+        img.removeAttribute("src");
+        img.alt = "";
+      }
     }
-  };
-
-}else{
-  // FALLBACK: chain icon
-  const rawSvg = (ICONS[activeChain?.id] || ICONS.sol || "").trim();
-  const safeSvg = rawSvg.replace(/currentColor/g, "#ffffff");
-  if(safeSvg){
-    img.src = "data:image/svg+xml;utf8," + encodeURIComponent(safeSvg);
-    img.alt = activeChain?.name || "Chain";
-    wrap.style.display = "block";
-    img.onerror = () => { wrap.style.display = "none"; };
-   }else{
-    wrap.style.display = "none";
-    img.removeAttribute("src");
-    img.alt = "";
   }
-}
 
-} // end applyTokenHeader
-
-function pillLabel(sev){ return sev==="ok" ? "PASS" : sev==="bad" ? "FAIL" : "WATCH"; }
-
+  function pillLabel(sev){ return sev==="ok" ? "PASS" : sev==="bad" ? "FAIL" : "WATCH"; }
   function pillClass(sev){ return sev==="ok" ? "pill ok" : sev==="bad" ? "pill bad" : "pill warn"; }
 
   function renderList(listEl, items, defaultTitle){
@@ -1136,7 +1184,7 @@ function pillLabel(sev){ return sev==="ok" ? "PASS" : sev==="bad" ? "FAIL" : "WA
       d.innerHTML = `
         <div class="metricK">
           <span>${esc(r.label || "—")}</span>
-          <span class="badge ${r.badgeMode ? esc(r.badgeMode) : ""}" style="opacity:.9">${esc(r.badge || r.value || "—")}</span>
+          <span class="badge" style="opacity:.9">${esc(r.badge || r.value || "—")}</span>
         </div>
         <div class="metricV">${esc(r.value || "—")}</div>
         <div class="metricMini">${esc(r.mini || "")}</div>
@@ -1632,7 +1680,35 @@ function pillLabel(sev){ return sev==="ok" ? "PASS" : sev==="bad" ? "FAIL" : "WA
     }));
   }
 
-  function renderExtSol(programType, extReadable, extList){
+  
+  // ===================== MARKET / DEX PANEL (replaces Launch Readiness) =====================
+  function renderMarketDex(dex){
+    const items = [];
+    if(!dex){
+      items.push({t:'No DexScreener pair found', sev:'warn', d:'Could not find a live DEX pair for this token via DexScreener.', why:'No indexed pair / very new / wrong chain.'});
+    }else{
+      const link = dex.url ? `Open pair on DexScreener: ${dex.url}` : 'Pair link unavailable.';
+      items.push({t:'DEX Pair', sev:'ok', d:`${(dex.dexId||'DEX').toUpperCase()} • ${dex.pairAddress ? shortAddr(dex.pairAddress) : '—'}`, why: link});
+      if(dex.liquidityUsd != null) items.push({t:'Liquidity', sev: dex.liquidityUsd >= 10000 ? 'ok' : 'warn', d: money(dex.liquidityUsd), why:'Higher liquidity usually reduces slippage/manipulation.'});
+      if(dex && (dex.marketCap != null || dex.fdv != null)) items.push({t:'Market Cap / FDV', sev:'ok', d: dex.marketCap!=null ? money(dex.marketCap) : money(dex.fdv), why:'From DexScreener.'});
+      if(dex.priceUsd != null) items.push({t:'Price', sev:'ok', d: priceUsdFmt(dex.priceUsd), why:'From DexScreener.'});
+      if(dex.volume24h != null) items.push({t:'Volume 24h', sev: dex.volume24h >= 5000 ? 'ok' : 'warn', d: money(dex.volume24h), why:'Low volume can mean thin markets.'});
+    }
+    renderList(qs('todoList'), items, 'Market / DEX');
+    return items;
+  }
+
+  // ===================== CONTRACT FLAGS PANEL (replaces Token Standard Details) =====================
+  function renderContractFlags(flags){
+    // flags: array of {t, sev, d, why}
+    const items = Array.isArray(flags) ? flags : [];
+    if(!items.length){
+      items.push({t:'No flags', sev:'ok', d:'No major risk flags detected by the current checks.', why:'Still verify official links and liquidity.'});
+    }
+    renderList(qs('extList'), items, 'Contract Flags');
+  }
+
+function renderExtSol(programType, extReadable, extList){
     const el = qs("extList");
     if(!el) return;
 
@@ -1787,43 +1863,63 @@ function pillLabel(sev){ return sev==="ok" ? "PASS" : sev==="bad" ? "FAIL" : "WA
 
     renderHoldersWithExplorer(items, activeChain);
   }
-
-  /* ===================== EVM RPC + ERC-20 ===================== */
-  async function evmRpc(chainId, method, params){
+    /* ===================== EVM RPC + ERC-20 ===================== */
+async function evmRpc(chainId, method, params){
     const urls = CFG.EVM_RPCS[chainId] || [];
     if(!urls.length) throw new Error("No RPC configured for this chain.");
 
-    const errors = [];
-    for(const url of urls){
+    const timeoutMs = 6500;
+    const call = (url) => new Promise((resolve, reject) => {
       const ctrl = new AbortController();
-      const timer = setTimeout(() => ctrl.abort(), 12000);
-      try{
-        const res = await fetch(url, {
-          method:"POST",
-          headers:{ "Content-Type":"application/json" },
-          body: JSON.stringify({ jsonrpc:"2.0", id:1, method, params }),
-          signal: ctrl.signal
-        });
+      const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+      fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
+        signal: ctrl.signal
+      }).then(async (res) => {
         clearTimeout(timer);
-
         if(!res.ok){
-          const t = await res.text().catch(()=> "");
-          errors.push(`HTTP ${res.status} ${t.slice(0,160)}`);
-          continue;
+          const t = await res.text().catch(() => "");
+          reject(new Error(`HTTP ${res.status} ${t.slice(0,140)}`));
+          return;
         }
-        const j = await res.json();
-        if(j?.error){
-          errors.push(String(j.error?.message || "RPC error").slice(0,160));
-          continue;
-        }
-        return j.result;
-      }catch(e){
+        const j = await res.json().catch(() => null);
+        if(!j){ reject(new Error("Bad JSON")); return; }
+        if(j.error){ reject(new Error(String(j.error?.message || "RPC error").slice(0,140))); return; }
+        resolve(j.result);
+      }).catch((e) => {
         clearTimeout(timer);
-        errors.push(String(e?.message || e).slice(0,160));
+        reject(e);
+      });
+    });
+
+    // Promise.any polyfill
+    const any = (proms) => new Promise((resolve, reject) => {
+      let pending = proms.length;
+      const errors = [];
+      for(const p of proms){
+        Promise.resolve(p).then(resolve).catch((e) => {
+          errors.push(e);
+          pending -= 1;
+          if(pending <= 0) reject(new Error(errors.slice(-3).map(x => String(x?.message||x)).join(" • ")));
+        });
+      }
+    });
+
+    // Try 3 at once, then the rest
+    const first = urls.slice(0,3);
+    const rest  = urls.slice(3);
+    try{
+      return await any(first.map(call));
+    }catch(e1){
+      if(!rest.length) throw new Error(`All RPCs failed. ${String(e1?.message||e1)}`);
+      try{
+        return await any(rest.map(call));
+      }catch(e2){
+        throw new Error(`All RPCs failed. ${String(e2?.message||e2)}`);
       }
     }
-
-    throw new Error(`All RPCs failed. ${errors.slice(-3).join(" • ")}`);
   }
 
   async function ethCall(chainId, to, data){
@@ -2488,9 +2584,7 @@ function pillLabel(sev){ return sev==="ok" ? "PASS" : sev==="bad" ? "FAIL" : "WA
         pct = Number.isFinite(p2) ? p2 : null;
       }
 
-      const balFmt = (balBI !== null && formatUnits(balBI, decimals) !== null)
-        ? addCommas(formatUnits(balBI, decimals))
-        : "—";
+      const balFmt = (balBI !== null) ? formatUnits(balBI, decimals) : (typeof balRaw === "string" ? balRaw : "—");
       const pctStr = (pct === null) ? "—" : pct.toFixed(2) + "%";
 
       return {
@@ -2558,8 +2652,16 @@ function pillLabel(sev){ return sev==="ok" ? "PASS" : sev==="bad" ? "FAIL" : "WA
           top20 = largest.slice(0,20).reduce((acc, x) => acc + (Number(x?.uiAmount || 0) / uiSupply * 100), 0);
         }
 
+        setStatus("Fetching live market data (DexScreener)…");
+        const dex = await fetchDexScreener(addr).catch(()=> null);
+        if(dex && !meta?.image){
+          const img = (dex?.info?.imageUrl || dex?.info?.image || dex?.baseToken?.logoURI || "");
+          if(img) meta.image = String(img);
+        }
+
         const sig = {
           programType,
+          dex,
           extReadable,
           extensions: extListRaw || [],
           mintAuthActive: !!mintAuth,
@@ -2580,21 +2682,22 @@ function pillLabel(sev){ return sev==="ok" ? "PASS" : sev==="bad" ? "FAIL" : "WA
         setBadge(qs("verdictBadge"), verdict.label, verdict.mode);
         setText("scoreBadge", `${score}/100`);
         setText("scanHint", programType === "TOKEN_2022" ? "Token-2022 • Review extensions" : "Standard checks");
+        const mintRevoked = !mintAuth;
+        const freezeRevoked = !freezeAuth;
 
         const metricRows = [
-  { label:"Guardian Score", value:`${score}/100`, badge: verdict.label, barPct: score, mini:"Composite risk score (heuristic)." },
-
-  { label:"Mint Authority", value: sig.mintAuthActive ? "ACTIVE" : "REVOKED", badge: sig.mintAuthActive ? "NO" : "YES", badgeMode: sig.mintAuthActive ? "bad" : "good", mini:"Mint revoked = supply cannot be increased (best-effort)." },
-
-  { label:"Freeze Authority", value: sig.freezeActive ? "ACTIVE" : "REVOKED", badge: sig.freezeActive ? "NO" : "YES", badgeMode: sig.freezeActive ? "bad" : "good", mini:"Freeze revoked = accounts cannot be frozen (best-effort)." },
-
-  { label:"Token Standard", value: programType==="TOKEN_2022" ? "Token-2022" : (programType==="SPL_TOKEN" ? "SPL Token" : "Unknown"), badge:"On-chain", mini:"Mint owner program." },
-
-  { label:"Total Supply", value: Number.isFinite(uiSupply) ? fmtInt(uiSupply) : "—", badge:"Supply", mini:"From getTokenSupply." },
-
-  { label:"Top20 Concentration", value: Number.isFinite(top20) ? fmtPct(top20) : "—", badge:"Holders", mini:"Approx via largest accounts.", barPct: Number.isFinite(top20) ? clamp(top20,0,100) : undefined }
-];
+          { label:"Guardian Score", value:`${score}/100`, badge: verdict.label, barPct: score, mini:"Composite risk score (heuristic)." },
+          { label:"Mint Authority", value: mintRevoked ? "REVOKED" : "ACTIVE", badge: mintRevoked ? "PASS" : "FAIL", mini: mintRevoked ? "No mint authority (cannot mint more)." : "Mint authority exists (supply can increase)." },
+          { label:"Freeze Authority", value: freezeRevoked ? "REVOKED" : "ACTIVE", badge: freezeRevoked ? "PASS" : "WATCH", mini: freezeRevoked ? "No freeze authority." : "Freeze authority exists (can freeze accounts)." },
+          { label:"Liquidity", value: dex?.liquidityUsd ? money(dex.liquidityUsd) : "—", badge: dex?.dexId ? dex.dexId.toUpperCase() : "DEX", mini: dex?.url ? "From DexScreener (best pair)." : "—" },
+          { label:"Market Cap", value: (dex?.marketCap ? money(dex.marketCap) : (dex?.fdv ? money(dex.fdv) : "—")), badge: dex?.marketCap ? "MCAP" : (dex?.fdv ? "FDV" : "—"), mini: "From DexScreener." },
+          { label:"Price", value: dex?.priceUsd ? priceUsdFmt(dex.priceUsd) : "—", badge: "USD", mini: dex?.volume24h ? `Vol24h ${money(dex.volume24h)}` : "—" },
+          { label:"Total Supply", value: Number.isFinite(uiSupply) ? fmtInt(uiSupply) : "—", badge:"Supply", mini:"From getTokenSupply." },
+          { label:"Top20 Concentration", value: Number.isFinite(top20) ? fmtPct(top20) : "—", badge:"Holders", mini:"Approx via largest accounts.", barPct: Number.isFinite(top20) ? clamp(top20,0,100) : undefined }
+        ];
         renderMetrics(metricRows);
+
+
 
         setText(
           "summary",
@@ -2604,9 +2707,12 @@ function pillLabel(sev){ return sev==="ok" ? "PASS" : sev==="bad" ? "FAIL" : "WA
         );
 
         renderList(qs("checksList"), checks, "Guardian Checks");
-        const todos = todoSol(sig);
-        renderList(qs("todoList"), todos, "Launch Readiness");
-        renderExtSol(programType, extReadable, sig.extensions);
+        const todos = renderMarketDex(dex) || [];
+        const flags = [];
+        flags.push({t:"Mint Authority Revoked", sev: mintRevoked ? "ok" : "bad", d: mintRevoked ? "YES" : "NO", why: mintRevoked ? "Supply cannot be increased." : "Owner can mint more supply."});
+        flags.push({t:"Freeze Authority Revoked", sev: freezeRevoked ? "ok" : "warn", d: freezeRevoked ? "YES" : "NO", why: freezeRevoked ? "Cannot freeze accounts." : "Freeze authority exists."});
+        flags.push({t:"Token Program", sev: programType === "TOKEN_2022" ? "warn" : "ok", d: programType === "TOKEN_2022" ? "Token-2022" : "SPL Token", why: programType === "TOKEN_2022" ? "Token-2022 can include extra extensions — review." : "Standard SPL token."});
+        renderContractFlags(flags);
         renderMetaSol(meta);
         renderHoldersSol(addr, uiSupply, largest);
 
@@ -2621,7 +2727,7 @@ function pillLabel(sev){ return sev==="ok" ? "PASS" : sev==="bad" ? "FAIL" : "WA
           metrics: metricRows
         };
 
-        enableExport();
+        enableExport(); /* defined in Part 3 (export system) */
         setStatus("Scan complete.");
       }else{
         if(!looksEvmAddress(addr)) throw new Error("Invalid EVM address. Must be 0x + 40 hex chars.");
@@ -2643,7 +2749,19 @@ function pillLabel(sev){ return sev==="ok" ? "PASS" : sev==="bad" ? "FAIL" : "WA
           image: (metaApi?.image || "").trim()
         };
 
+        setStatus("Fetching live market data (DexScreener)…");
+        const dex = await fetchDexScreener(addr).catch(()=> null);
+        if(dex && !metaMerged.image){
+          const img = (dex?.info?.imageUrl || dex?.info?.image || dex?.baseToken?.logoURI || "");
+          if(img) metaMerged.image = String(img);
+        }
         applyTokenHeader(metaMerged, addr);
+
+        // best-effort LP burn check (V2-style Uniswap pairs)
+        let lpBurn = {pct:null, note:"No LP data."};
+        if(dex && dex.pairAddress){
+          lpBurn = await lpBurnedPercentV2(chainId, dex.pairAddress);
+        }
 
         setStatus("Checking owner/proxy/controls…");
         const [owner, proxy, paused] = await Promise.all([
@@ -2652,7 +2770,7 @@ function pillLabel(sev){ return sev==="ok" ? "PASS" : sev==="bad" ? "FAIL" : "WA
           getPaused(chainId, addr)
         ]);
 
-        const sig = { hasCode, metaOnChain, metaMerged, owner, proxy, paused };
+        const sig = { hasCode, metaOnChain, metaMerged, owner, proxy, paused, dex };
         const {score, checks, critical} = scoreEvm(sig);
         const verdict = verdictFrom(score, critical);
 
@@ -2662,17 +2780,15 @@ function pillLabel(sev){ return sev==="ok" ? "PASS" : sev==="bad" ? "FAIL" : "WA
         setText("scanHint", `${activeChain.stamp} • ERC-20 checks`);
 
         const supplyReadable = metaOnChain?.totalSupply !== null && metaOnChain?.totalSupply !== undefined;
-        const supplyText = supplyReadable
-          ? addCommas(formatUnits(metaOnChain.totalSupply, metaOnChain.decimals ?? 18))
-          : "—";
-
-        const zero = "0x0000000000000000000000000000000000000000";
-        const isRenounced = !!owner && owner.toLowerCase() === zero;
+        const supplyText = supplyReadable ? formatUnits(metaOnChain.totalSupply, metaOnChain.decimals ?? 18) : "—";
 
         const metricRows = [
           { label:"Guardian Score", value:`${score}/100`, badge: verdict.label, barPct: score, mini:"Composite risk score (heuristic)." },
-          { label:"Owner", value: owner ? shortAddr(owner) : "—", badge: owner ? "Admin" : "Unknown", mini:"Best-effort owner() call." },
-          { label:"Renounced", value: isRenounced ? "YES" : "NO", badge: isRenounced ? "YES" : "NO", badgeMode: isRenounced ? "good" : "bad", mini:"Owner == 0x0 (best-effort)." },
+          { label:"Ownership Renounced", value: (owner ? (isBurnAddr(owner)?"YES":"NO") : "UNKNOWN"), badge: owner ? (isBurnAddr(owner)?"PASS":"WATCH") : "UNKNOWN", mini:"Best-effort from owner()." },
+          { label:"Liquidity", value: dex?.liquidityUsd != null ? money(dex.liquidityUsd) : "—", badge: dex?.dexId ? dex.dexId.toUpperCase() : "DEX", mini: dex?.url ? "From DexScreener (best pair)." : "—" },
+          { label:"Market Cap", value: (dex?.marketCap != null ? money(dex.marketCap) : (dex?.fdv != null ? money(dex.fdv) : "—")), badge: dex?.marketCap != null ? "MCAP" : (dex?.fdv != null ? "FDV" : "—"), mini:"From DexScreener." },
+          { label:"Price", value: dex?.priceUsd != null ? priceUsdFmt(dex.priceUsd) : "—", badge: "USD", mini: dex?.volume24h != null ? `Vol24h ${money(dex.volume24h)}` : "—" },
+          { label:"LP Burned", value: lpBurn?.pct != null ? `${lpBurn.pct.toFixed(2)}%` : "UNKNOWN", badge: lpBurn?.pct != null ? (lpBurn.pct>=90?"PASS":"WATCH") : "UNKNOWN", mini: lpBurn?.note || "Best-effort V2 LP burn check." },
           { label:"Proxy", value: proxy?.isProxy ? "Upgradeable" : "No signal", badge: proxy?.isProxy ? "WATCH" : "PASS", mini:"EIP-1967 slots check." },
           { label:"Total Supply", value: supplyText || "—", badge: supplyReadable ? "On-chain" : "Unknown", mini:"From totalSupply()." }
         ];
@@ -2686,11 +2802,14 @@ function pillLabel(sev){ return sev==="ok" ? "PASS" : sev==="bad" ? "FAIL" : "WA
         );
 
         renderList(qs("checksList"), checks, "Guardian Checks");
-        const todos = todoEvm(sig);
-        renderList(qs("todoList"), todos, "Launch Readiness");
-
-        // FIXED DISPLAY HERE:
-        renderStandardEvm(sig);
+        const todos = renderMarketDex(dex) || [];
+        const flags = [];
+        const renounced = owner ? isBurnAddr(owner) : null;
+        flags.push({t:"Ownership Renounced", sev: renounced===true ? "ok" : (renounced===false?"warn":"warn"), d: renounced===null?"UNKNOWN":(renounced?"YES":"NO"), why:"Best-effort from owner()."});
+        flags.push({t:"Proxy / Upgradeable", sev: proxy?.isProxy ? "warn" : "ok", d: proxy?.isProxy ? "YES" : "NO", why:"EIP-1967 slots check."});
+        flags.push({t:"Paused", sev: paused===true ? "bad" : (paused===false?"ok":"warn"), d: paused===null?"UNKNOWN":(paused?"YES":"NO"), why:"Best-effort paused() check."});
+        if(lpBurn && lpBurn.pct !== null){ flags.push({t:"LP Burned (best-effort)", sev: lpBurn.pct>=90?"ok":"warn", d:`${lpBurn.pct.toFixed(2)}%`, why: lpBurn.note || "V2 LP burn check."}); }
+        renderContractFlags(flags);
 
         renderMetaEvm(metaMerged, metaOnChain);
 
