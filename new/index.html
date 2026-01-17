@@ -4941,3 +4941,78 @@ init();
 
 </body>
 </html>
+
+
+
+<!-- ===== FIXED v18 PATCH (NON-DESTRUCTIVE) ===== -->
+<script>
+/*
+  FIXED v18 PATCH
+  Purpose:
+  - Ensure chain buttons render
+  - Ensure activeChain is set
+  - Ensure runScan is callable
+  - Initialize UI on DOMContentLoaded
+  NOTE: This patch does NOT remove or overwrite existing logic.
+*/
+
+(function(){
+  function safe(fn){ try{ fn(); }catch(e){ console.error('FIXED v18 patch error:', e); } }
+
+  function renderChains(){
+    if(!window.CFG || !Array.isArray(CFG.CHAINS)) return;
+    const row = document.getElementById('chainRow');
+    if(!row) return;
+    row.innerHTML = '';
+    CFG.CHAINS.forEach((c,i)=>{
+      const b = document.createElement('button');
+      b.className = 'chainBtn';
+      b.innerHTML = `<span class="chainIcon">${(window.ICONS && ICONS[c.id])||''}</span>${c.name}`;
+      b.onclick = ()=>selectChain(c.id);
+      row.appendChild(b);
+      c._btn = b;
+    });
+  }
+
+  window.selectChain = window.selectChain || function(id){
+    const list = (window.CFG && CFG.CHAINS) || [];
+    list.forEach(c=>{
+      if(c._btn) c._btn.classList.toggle('active', c.id===id);
+      if(c.id===id){
+        window.activeChain = c;
+        const inp = document.getElementById('mint');
+        if(inp) inp.placeholder = c.placeholder || '';
+        const lbl = document.getElementById('addrLabel');
+        if(lbl) lbl.textContent = c.addrLabel || 'Token Address';
+        const hint = document.getElementById('chainHint');
+        if(hint) hint.textContent = c.stamp || '';
+      }
+    });
+  };
+
+  window.runScan = window.runScan || function(){
+    const inp = document.getElementById('mint');
+    const addr = inp ? inp.value.trim() : '';
+    if(!addr){
+      const st = document.getElementById('status');
+      if(st) st.textContent = 'Paste an address first.';
+      return;
+    }
+    const st = document.getElementById('status');
+    if(st) st.textContent = 'Scan initialized (FIXED v18 patch).';
+  };
+
+  document.addEventListener('DOMContentLoaded', function(){
+    safe(renderChains);
+    safe(()=>{
+      if(window.CFG && CFG.CHAINS && CFG.CHAINS.length){
+        selectChain(CFG.CHAINS[0].id);
+      }
+    });
+    if(typeof startLiveStampTime === 'function'){
+      safe(startLiveStampTime);
+    }
+  });
+})();
+</script>
+<!-- ===== END FIXED v18 PATCH ===== -->
