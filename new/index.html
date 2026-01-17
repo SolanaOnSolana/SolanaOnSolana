@@ -633,6 +633,13 @@
           <img src="/assets/logo.png" alt="$SOS" onerror="this.style.display='none'">
           <div class="bt">
             <div class="t">$SOS</div>
+      <div class=\"tokenBadge\">
+        ${tokenImage ? `<img class=\"tokenImg\" src=\"${escAttr(tokenImage)}\" alt=\"token\"/>` : `<div class=\"tokenImg\" style=\"display:flex;align-items:center;justify-content:center;font-weight:800;\">${escAttr((tokenSymbol||'?').slice(0,2).toUpperCase())}</div>`}
+        <div class=\"tokenTxt\">
+          <div class=\"tokenSym\">${escAttr(tokenSymbol || 'TOKEN')}</div>
+          <div class=\"tokenNm\">${escAttr(tokenName || 'Scanned asset')}</div>
+        </div>
+      </div>
             <div class="s">Contract Scanner • Token Risk</div>
           </div>
         </div>
@@ -2520,7 +2527,11 @@ async function evmRpc(chainId, method, params){
     decimals: "0x313ce567",
     totalSupply: "0x18160ddd",
     owner: "0x8da5cb5b",
-    paused: "0x5c975abb"
+    getOwner: "0x893d20e8",
+    paused: "0x5c975abb",
+    isPaused: "0xb187bd26",
+    pause: "0x8456cb59",
+    unpause: "0x3f4ba83a"
   };
 
   function strip0x(h){ return (h||"").startsWith("0x") ? h.slice(2) : (h||""); }
@@ -2597,12 +2608,16 @@ async function evmRpc(chainId, method, params){
   }
 
   async function getOwner(chainId, addr){
-    try{
-      const r = await ethCall(chainId, addr, SEL.owner);
-      return decodeAddressFrom32(r || "0x");
-    }catch{
-      return null;
+    // Try common ownership getters
+    const sels = [SEL.owner, SEL.getOwner].filter(Boolean);
+    for(const sel of sels){
+      try{
+        const r = await ethCall(chainId, addr, sel);
+        const a = decodeAddressFrom32(r || "0x");
+        if(a && /^0x[0-9a-fA-F]{40}$/.test(a)) return a;
+      }catch{}
     }
+    return null;
   }
 
   // paused() check:
@@ -2610,14 +2625,17 @@ async function evmRpc(chainId, method, params){
   // - FALSE => pause function exists (watch)
   // - null => pause function not found/unreadable (pass for this item)
   async function getPaused(chainId, addr){
-    try{
-      const r = await ethCall(chainId, addr, SEL.paused);
-      const v = decodeUint256(r || "0x");
-      if(v === null) return null;
-      return v !== 0n;
-    }catch{
-      return null;
+    // Try paused() and isPaused() (best-effort)
+    const sels = [SEL.paused, SEL.isPaused].filter(Boolean);
+    for(const sel of sels){
+      try{
+        const r = await ethCall(chainId, addr, sel);
+        const v = decodeUint256(r || "0x");
+        if(v === null) continue;
+        return v !== 0n;
+      }catch{}
     }
+    return null;
   }
 
   /* Proxy detection (EIP-1967) */
@@ -3123,6 +3141,86 @@ async function evmRpc(chainId, method, params){
     return (neg ? "-" : "") + whole.toString() + (fracStr ? ("." + fracStr) : "");
   }
 
+  function pow10n(d){
+    try{ return 10n ** BigInt(Math.max(0, Math.min(36, Number(d||0)))); }catch{ return 10n ** 18n; }
+  }
+
+  function isMultipleOfDecimals(total, decimals){
+    if(total === null || total === undefined) return false;
+    const d = Number(decimals);
+    if(!Number.isFinite(d) || d < 0 || d > 36) return false;
+    const base = pow10n(d);
+    try{ return (total % base) === 0n; }catch{ return false; }
+  }
+
+  function pickBestDecimals(total, metaDec, dexDec){
+    const m = Number(metaDec);
+    const d = Number(dexDec);
+    const metaOk = Number.isFinite(m) && m >= 0 && m <= 36;
+    const dexOk  = Number.isFinite(d) && d >= 0 && d <= 36;
+    if(!metaOk && dexOk) return d;
+    if(metaOk && !dexOk) return m;
+    if(!metaOk && !dexOk) return 18;
+
+    // If meta decimals produce a fractional supply but dex decimals aligns perfectly, prefer dex decimals.
+    const metaAlign = isMultipleOfDecimals(total, m);
+    const dexAlign  = isMultipleOfDecimals(total, d);
+    if(!metaAlign && dexAlign) return d;
+    return m;
+  }
+
+  function compactNumberFromString(numStr){
+    if(!numStr) return '—';
+    const s = String(numStr);
+    const n = Number(s);
+    if(Number.isFinite(n) && Math.abs(n) < 1e15){
+      const abs = Math.abs(n);
+      if(abs >= 1e12) return (n/1e12).toFixed(2).replace(/0+$/,'').replace(/\.$/,'') + 'T';
+      if(abs >= 1e9)  return (n/1e9 ).toFixed(2).replace(/0+$/,'').replace(/\.$/,'') + 'B';
+      if(abs >= 1e6)  return (n/1e6 ).toFixed(2).replace(/0+$/,'').replace(/\.$/,'') + 'M';
+      if(abs >= 1e3)  return (n/1e3 ).toFixed(2).replace(/0+$/,'').replace(/\.$/,'') + 'K';
+      return new Intl.NumberFormat('en-US', { maximumFractionDigits: 6 }).format(n);
+    }
+    // Fallback: comma-separate integer part
+    const neg = s.startsWith('-');
+    const parts = s.replace('-','').split('.');
+    const intp = parts[0];
+    const withCommas = intp.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    const frac = parts[1] ? ('.' + parts[1].slice(0,6).replace(/0+$/,'')) : '';
+    return (neg?'-':'') + withCommas + (frac=='.'?'':frac);
+  }
+
+  function formatSupplyNice(total, metaDec, dexDec){
+    if(total === null || total === undefined) return { text:'—', usedDecimals:null, approx:false };
+    const used = pickBestDecimals(total, metaDec, dexDec);
+    const raw = formatUnits(total, used);
+    return { text: compactNumberFromString(raw), usedDecimals: used, approx:false };
+  }
+
+  function hasSelectorInCode(codeHex, selectorNo0x){
+    try{
+      const c = strip0x(codeHex).toLowerCase();
+      const sel = String(selectorNo0x||'').toLowerCase().replace(/^0x/,'');
+      if(!sel || sel.length !== 8) return false;
+      return c.includes(sel);
+    }catch{ return false; }
+  }
+
+  function scanEvmBytecodeFeatures(codeHex){
+    // Heuristic: looks for 4-byte selectors inside bytecode dispatch tables
+    const has = (sel) => hasSelectorInCode(codeHex, sel);
+    return {
+      mintable: has('40c10f19'),
+      blacklist: has('f9f92be4') || has('fe575a87') || has('153b0d1e'),
+      botList:   has('bfd79284') || has('3bbac579') || has('13b2a23e'),
+      maxTx:     has('8c0b5e22') || has('ec28438a'),
+      maxWallet: has('aa4bde28') || has('27a14fc2'),
+      tradingSwitch: has('8a8c523c') || has('4ada218b') || has('c2e5ec04'),
+      pausable: has('5c975abb') || has('b187bd26') || has('8456cb59') || has('3f4ba83a'),
+      removeLimits: has('751039fc')
+    };
+  }
+
   function safeBigIntFromStr(s){
     try{
       if(s === null || s === undefined) return null;
@@ -3317,7 +3415,12 @@ async function evmRpc(chainId, method, params){
           verdict,
           checks,
           todos,
-          metrics: metricRows
+          metrics: metricRows,
+          token: {
+            name: (meta?.name || '').trim(),
+            symbol: (meta?.symbol || '').trim(),
+            image: (meta?.image || '').trim()
+          }
         };
 
         enableExport(); /* defined in Part 3 (export system) */
@@ -3329,6 +3432,8 @@ async function evmRpc(chainId, method, params){
         setStatus("Connecting to EVM RPC…");
         const code = await getCode(chainId, addr);
         const hasCode = !!(code && code !== "0x" && code !== "0x0");
+
+        const bytecodeFeatures = hasCode ? scanEvmBytecodeFeatures(code) : {mintable:false, blacklist:false, botList:false, maxTx:false, maxWallet:false, tradingSwitch:false, pausable:false, removeLimits:false};
 
         setStatus("Reading ERC-20 on-chain metadata…");
         const metaOnChain = await getErc20Meta(chainId, addr);
@@ -3363,7 +3468,10 @@ async function evmRpc(chainId, method, params){
           getPaused(chainId, addr)
         ]);
 
-        const sig = { hasCode, metaOnChain, metaMerged, owner, proxy, paused, dex };
+        const ownerEff = owner || (proxy?.admin ? proxy.admin : null);
+        const ownerSource = owner ? 'owner()/getOwner()' : (proxy?.admin ? 'proxy admin' : 'unavailable');
+
+        const sig = { hasCode, metaOnChain, metaMerged, owner: ownerEff, proxy, paused, dex, ownerSource, bytecodeFeatures };
         const {score, checks, critical} = scoreEvm(sig);
         const verdict = verdictFrom(score, critical);
 
@@ -3373,17 +3481,19 @@ async function evmRpc(chainId, method, params){
         setText("scanHint", `${activeChain.stamp} • ERC-20 checks`);
 
         const supplyReadable = metaOnChain?.totalSupply !== null && metaOnChain?.totalSupply !== undefined;
-        const supplyText = supplyReadable ? formatUnits(metaOnChain.totalSupply, metaOnChain.decimals ?? 18) : "—";
+        const dexDec = safeNum(dex?.baseToken?.decimals);
+        const supplyNice = supplyReadable ? formatSupplyNice(metaOnChain.totalSupply, metaOnChain.decimals, dexDec) : {text:'—', usedDecimals:null};
+        const supplyText = supplyNice.text;
 
         const metricRows = [
           { label:"Guardian Score", value:`${score}/100`, badge: verdict.label, barPct: score, mini:"Composite risk score (heuristic)." },
-          { label:"Ownership Renounced", value: (owner ? (isBurnAddr(owner)?"YES":"NO") : "UNKNOWN"), badge: owner ? (isBurnAddr(owner)?"PASS":"WATCH") : "UNKNOWN", mini:"Best-effort from owner()." },
+          { label:"Ownership Renounced", value: (ownerEff ? (isBurnAddr(ownerEff)?"YES":"NO") : "UNKNOWN"), badge: ownerEff ? (isBurnAddr(ownerEff)?"PASS":"WATCH") : "UNKNOWN", mini:`Best-effort via ${ownerSource}.` },
           { label:"Liquidity", value: dex?.liquidityUsd != null ? money(dex.liquidityUsd) : "—", badge: dex?.dexId ? dex.dexId.toUpperCase() : "DEX", mini: dex?.url ? "From DexScreener (best pair)." : "—" },
           { label:"Market Cap", value: (dex?.marketCap != null ? money(dex.marketCap) : (dex?.fdv != null ? money(dex.fdv) : "—")), badge: dex?.marketCap != null ? "MCAP" : (dex?.fdv != null ? "FDV" : "—"), mini:"From DexScreener." },
           { label:"Price", value: dex?.priceUsd != null ? priceUsdFmt(dex.priceUsd) : "—", badge: "USD", mini: dex?.volume24h != null ? `Vol24h ${money(dex.volume24h)}` : "—" },
           { label:"LP Burned", value: lpBurn?.pct != null ? `${lpBurn.pct.toFixed(2)}%` : "UNKNOWN", badge: lpBurn?.pct != null ? (lpBurn.pct>=90?"PASS":"WATCH") : "UNKNOWN", mini: lpBurn?.note || "Best-effort V2 LP burn check." },
           { label:"Proxy", value: proxy?.isProxy ? "Upgradeable" : "No signal", badge: proxy?.isProxy ? "WATCH" : "PASS", mini:"EIP-1967 slots check." },
-          { label:"Total Supply", value: supplyText || "—", badge: supplyReadable ? "On-chain" : "Unknown", mini:"From totalSupply()." }
+          { label:"Total Supply", value: supplyText || "—", badge: supplyReadable ? "On-chain" : "Unknown", mini: supplyReadable ? `totalSupply() • decimals=${supplyNice.usedDecimals ?? '—'}` : 'From totalSupply().' }
         ];
         renderMetrics(metricRows);
 
@@ -3397,11 +3507,33 @@ async function evmRpc(chainId, method, params){
         renderList(qs("checksList"), checks, "Guardian Checks");
         const todos = renderMarketDex(dex) || [];
         const flags = [];
-        const renounced = owner ? isBurnAddr(owner) : null;
-        flags.push({t:"Ownership Renounced", sev: renounced===true ? "ok" : (renounced===false?"warn":"warn"), d: renounced===null?"UNKNOWN":(renounced?"YES":"NO"), why:"Best-effort from owner()."});
+        const renounced = ownerEff ? isBurnAddr(ownerEff) : null;
+
+        flags.push({t:"Owner / Admin", sev: ownerEff ? (isBurnAddr(ownerEff)?"ok":"warn") : "warn", d: ownerEff ? (isBurnAddr(ownerEff)?"Renounced":shortAddr(ownerEff)) : "UNKNOWN", why: `Source: ${ownerSource}.`});
+        flags.push({t:"Ownership Renounced", sev: renounced===true ? "ok" : (renounced===false?"warn":"warn"), d: renounced===null?"UNKNOWN":(renounced?"YES":"NO"), why:`Best-effort via ${ownerSource}.`});
+
+        // Upgradeability / proxy
         flags.push({t:"Proxy / Upgradeable", sev: proxy?.isProxy ? "warn" : "ok", d: proxy?.isProxy ? "YES" : "NO", why:"EIP-1967 slots check."});
-        flags.push({t:"Paused", sev: paused===true ? "bad" : (paused===false?"ok":"warn"), d: paused===null?"UNKNOWN":(paused?"YES":"NO"), why:"Best-effort paused() check."});
-        if(lpBurn && lpBurn.pct !== null){ flags.push({t:"LP Burned (best-effort)", sev: lpBurn.pct>=90?"ok":"warn", d:`${lpBurn.pct.toFixed(2)}%`, why: lpBurn.note || "V2 LP burn check."}); }
+
+        // Pausable state + presence
+        flags.push({t:"Paused (state)", sev: paused===true ? "bad" : (paused===false?"warn":"ok"), d: paused===null?"UNKNOWN":(paused?"YES":"NO"), why: paused===true ? "paused()==true / isPaused()==true" : (paused===false ? "pausable detected (not paused)" : "no signal")});
+        flags.push({t:"Pausable (bytecode)", sev: bytecodeFeatures.pausable ? "warn" : "ok", d: bytecodeFeatures.pausable ? "DETECTED" : "NOT DETECTED", why:"Heuristic selector scan."});
+
+        // Mint / blacklist / limits heuristics
+        flags.push({t:"Mint Function", sev: bytecodeFeatures.mintable ? "warn" : "ok", d: bytecodeFeatures.mintable ? "DETECTED" : "NOT DETECTED", why:"Heuristic selector scan (mint)."});
+        flags.push({t:"Blacklist", sev: bytecodeFeatures.blacklist ? "warn" : "ok", d: bytecodeFeatures.blacklist ? "DETECTED" : "NOT DETECTED", why:"Heuristic selector scan (blacklist)."});
+        flags.push({t:"Bot List", sev: bytecodeFeatures.botList ? "warn" : "ok", d: bytecodeFeatures.botList ? "DETECTED" : "NOT DETECTED", why:"Heuristic selector scan (bots)."});
+        flags.push({t:"Max Tx", sev: bytecodeFeatures.maxTx ? "warn" : "ok", d: bytecodeFeatures.maxTx ? "DETECTED" : "NOT DETECTED", why:"Heuristic selector scan (limits)."});
+        flags.push({t:"Max Wallet", sev: bytecodeFeatures.maxWallet ? "warn" : "ok", d: bytecodeFeatures.maxWallet ? "DETECTED" : "NOT DETECTED", why:"Heuristic selector scan (limits)."});
+        flags.push({t:"Trading Switch", sev: bytecodeFeatures.tradingSwitch ? "warn" : "ok", d: bytecodeFeatures.tradingSwitch ? "DETECTED" : "NOT DETECTED", why:"Heuristic selector scan (enableTrading/tradingEnabled)."});
+        if(bytecodeFeatures.removeLimits){
+          flags.push({t:"Remove Limits", sev:"warn", d:"DETECTED", why:"Heuristic selector scan (removeLimits)."});
+        }
+
+        if(lpBurn && lpBurn.pct !== null){
+          flags.push({t:"LP Burned (best-effort)", sev: lpBurn.pct>=90?"ok":"warn", d:`${lpBurn.pct.toFixed(2)}%`, why: lpBurn.note || "V2 LP burn check."});
+        }
+
         renderContractFlags(flags);
 
         renderMetaEvm(metaMerged, metaOnChain);
@@ -3429,7 +3561,12 @@ async function evmRpc(chainId, method, params){
           verdict,
           checks,
           todos,
-          metrics: metricRows
+          metrics: metricRows,
+          token: {
+            name: (metaMerged?.name || '').trim(),
+            symbol: (metaMerged?.symbol || '').trim(),
+            image: (metaMerged?.image || '').trim()
+          }
         };
 
         enableExport(); /* defined in Part 3 (export system) */
@@ -3490,6 +3627,10 @@ async function evmRpc(chainId, method, params){
       ? String(CFG.UI.REPORT_LOGO_URL).trim()
       : "/assets/logo.png";
 
+    const tokenName = (scan?.token?.name || '').trim();
+    const tokenSymbol = (scan?.token?.symbol || '').trim();
+    const tokenImage = (scan?.token?.image || '').trim();
+
     const metricsHtml = (Array.isArray(scan.metrics) ? scan.metrics : []).map(m => `
       <div class="metric">
         <div class="k">
@@ -3541,7 +3682,7 @@ async function evmRpc(chainId, method, params){
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
   <meta name="theme-color" content="#070711"/>
-  <title>$SOS Guardian Scan Report</title>
+  <title>$SOS Guardian Scan Report • ${escAttr(tokenSymbol || "TOKEN")}</title>
   <style>
     :root{
       --bg:#070711;
@@ -3599,6 +3740,26 @@ async function evmRpc(chainId, method, params){
       gap:12px;
       min-width: 240px;
     }
+    .tokenBadge{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      padding:10px 12px;
+      border-radius: 999px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.05);
+    }
+    .tokenImg{
+      width:32px;
+      height:32px;
+      border-radius: 10px;
+      object-fit: cover;
+      background: rgba(255,255,255,.08);
+      border:1px solid rgba(255,255,255,.10);
+    }
+    .tokenTxt{display:flex; flex-direction:column; line-height:1.1}
+    .tokenSym{font-weight:800; letter-spacing:.02em}
+    .tokenNm{font-size:12px; color: rgba(255,255,255,.70)}
     .brand img{width:44px;height:44px;object-fit:contain;filter: drop-shadow(0 10px 25px rgba(0,0,0,.45));}
     .bt{display:flex; flex-direction:column; line-height:1.05}
     .bt .t{font-weight:1000; letter-spacing:-.2px; font-size:16px}
@@ -3977,7 +4138,8 @@ async function evmRpc(chainId, method, params){
     if(!LAST_SCAN) return;
 
     const safeAddr = fileSafe((LAST_SCAN.address || "").replace(/^0x/i,"").slice(0, 16));
-    const htmlName = `guardian_scan_${LAST_SCAN.chain.id}_${safeAddr}.html`;
+    const sym = fileSafe((LAST_SCAN?.token?.symbol || '').toLowerCase()).slice(0,12);
+    const htmlName = `guardian_scan_${LAST_SCAN.chain.id}_${sym || 'token'}_${safeAddr}.html`;
     const html = buildBrandedReportHtml(LAST_SCAN);
     downloadHtml(htmlName, html);
   });
