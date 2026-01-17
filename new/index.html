@@ -874,6 +874,17 @@ function fmtInt(n){
   catch { return String(n); }
 }
 
+    function addCommas(numStr){
+  const s = String(numStr || "");
+  if(!s) return s;
+  const neg = s.startsWith("-");
+  const x = neg ? s.slice(1) : s;
+  const parts = x.split(".");
+  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  return (neg ? "-" : "") + parts.join(".");
+}
+
+
 function fmtPct(n){
   if (n === null || n === undefined || Number.isNaN(n)) return "—";
   return `${Number(n).toFixed(2)}%`;
@@ -1023,6 +1034,7 @@ const tw = (activeChain?.kind === "evm")
 
 // pick best candidate
 const logoUrl = preferred || tw;
+    setStatus("Logo URL: " + (logoUrl || "—"));
 
 if(logoUrl){
   img.src = logoUrl;
@@ -1054,14 +1066,16 @@ if(logoUrl){
     img.alt = activeChain?.name || "Chain";
     wrap.style.display = "block";
     img.onerror = () => { wrap.style.display = "none"; };
-  }else{
+   }else{
     wrap.style.display = "none";
     img.removeAttribute("src");
     img.alt = "";
   }
 }
-    
-    function pillLabel(sev){ return sev==="ok" ? "PASS" : sev==="bad" ? "FAIL" : "WATCH"; }
+
+} // end applyTokenHeader
+
+function pillLabel(sev){ return sev==="ok" ? "PASS" : sev==="bad" ? "FAIL" : "WATCH"; }
 
   function pillClass(sev){ return sev==="ok" ? "pill ok" : sev==="bad" ? "pill bad" : "pill warn"; }
 
@@ -2647,7 +2661,9 @@ if(logoUrl){
         setText("scanHint", `${activeChain.stamp} • ERC-20 checks`);
 
         const supplyReadable = metaOnChain?.totalSupply !== null && metaOnChain?.totalSupply !== undefined;
-        const supplyText = supplyReadable ? formatUnits(metaOnChain.totalSupply, metaOnChain.decimals ?? 18) : "—";
+        const supplyText = supplyReadable
+          ? addCommas(formatUnits(metaOnChain.totalSupply, metaOnChain.decimals ?? 18))
+          : "—";
 
         const zero = "0x0000000000000000000000000000000000000000";
         const isRenounced = !!owner && owner.toLowerCase() === zero;
