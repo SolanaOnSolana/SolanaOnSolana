@@ -1013,21 +1013,44 @@ function startLiveStampTime(){
   if(!wrap || !img) return;
 
   // 1) echtes Token-Logo (wenn vorhanden)
-  if(meta?.image){
-    img.src = meta.image;
-    img.alt = name;
-    wrap.style.display = "block";
-    img.onerror = () => { wrap.style.display = "none"; };
-    return;
-  }
+    // 1) Token logo (if provided)
+const preferred = (meta?.image || "").trim();
 
-  // 2) FALLBACK: Chain-Logo als Data-URI
-  const rawSvg  = (ICONS[activeChain?.id] || ICONS.sol || "").trim();
-  const safeSvg = rawSvg.replace(/currentColor/g, "#ffffff"); // ETH uses currentColor
+// 2) TrustWallet fallback for EVM (free)
+const tw = (activeChain?.kind === "evm")
+  ? evmTrustWalletLogo(activeChain.chainId, addr)
+  : "";
 
+// pick best candidate
+const logoUrl = preferred || tw;
+
+if(logoUrl){
+  img.src = logoUrl;
+  img.alt = name;
+  wrap.style.display = "block";
+
+  // if token logo fails, fallback to chain icon
+  img.onerror = () => {
+    const rawSvg = (ICONS[activeChain?.id] || ICONS.sol || "").trim();
+    const safeSvg = rawSvg.replace(/currentColor/g, "#ffffff");
+    if(safeSvg){
+      img.onerror = () => { wrap.style.display = "none"; };
+      img.src = "data:image/svg+xml;utf8," + encodeURIComponent(safeSvg);
+      img.alt = activeChain?.name || "Chain";
+      wrap.style.display = "block";
+    }else{
+      wrap.style.display = "none";
+      img.removeAttribute("src");
+      img.alt = "";
+    }
+  };
+
+}else{
+  // FALLBACK: chain icon
+  const rawSvg = (ICONS[activeChain?.id] || ICONS.sol || "").trim();
+  const safeSvg = rawSvg.replace(/currentColor/g, "#ffffff");
   if(safeSvg){
-    const uri = "data:image/svg+xml;utf8," + encodeURIComponent(safeSvg);
-    img.src = uri;
+    img.src = "data:image/svg+xml;utf8," + encodeURIComponent(safeSvg);
     img.alt = activeChain?.name || "Chain";
     wrap.style.display = "block";
     img.onerror = () => { wrap.style.display = "none"; };
