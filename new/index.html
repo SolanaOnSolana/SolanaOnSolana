@@ -2525,11 +2525,18 @@ function startLiveStampTime(){
         setText("scanHint", programType === "TOKEN_2022" ? "Token-2022 • Review extensions" : "Standard checks");
 
         const metricRows = [
-          { label:"Guardian Score", value:`${score}/100`, badge: verdict.label, barPct: score, mini:"Composite risk score (heuristic)." },
-          { label:"Token Standard", value: programType==="TOKEN_2022" ? "Token-2022" : (programType==="SPL_TOKEN" ? "SPL Token" : "Unknown"), badge:"On-chain", mini:"Mint owner program." },
-          { label:"Total Supply", value: Number.isFinite(uiSupply) ? fmtInt(uiSupply) : "—", badge:"Supply", mini:"From getTokenSupply." },
-          { label:"Top20 Concentration", value: Number.isFinite(top20) ? fmtPct(top20) : "—", badge:"Holders", mini:"Approx via largest accounts.", barPct: Number.isFinite(top20) ? clamp(top20,0,100) : undefined }
-        ];
+  { label:"Guardian Score", value:`${score}/100`, badge: verdict.label, barPct: score, mini:"Composite risk score (heuristic)." },
+
+  { label:"Mint Authority", value: sig.mintAuthActive ? "ACTIVE" : "REVOKED", badge: sig.mintAuthActive ? "NO" : "YES", badgeMode: sig.mintAuthActive ? "bad" : "good", mini:"Mint revoked = supply cannot be increased (best-effort)." },
+
+  { label:"Freeze Authority", value: sig.freezeActive ? "ACTIVE" : "REVOKED", badge: sig.freezeActive ? "NO" : "YES", badgeMode: sig.freezeActive ? "bad" : "good", mini:"Freeze revoked = accounts cannot be frozen (best-effort)." },
+
+  { label:"Token Standard", value: programType==="TOKEN_2022" ? "Token-2022" : (programType==="SPL_TOKEN" ? "SPL Token" : "Unknown"), badge:"On-chain", mini:"Mint owner program." },
+
+  { label:"Total Supply", value: Number.isFinite(uiSupply) ? fmtInt(uiSupply) : "—", badge:"Supply", mini:"From getTokenSupply." },
+
+  { label:"Top20 Concentration", value: Number.isFinite(top20) ? fmtPct(top20) : "—", badge:"Holders", mini:"Approx via largest accounts.", barPct: Number.isFinite(top20) ? clamp(top20,0,100) : undefined }
+];
         renderMetrics(metricRows);
 
         setText(
