@@ -2555,7 +2555,7 @@ function startLiveStampTime(){
           metrics: metricRows
         };
 
-        enableExport(); /* defined in Part 3 (export system) */
+        enableExport();
         setStatus("Scan complete.");
       }else{
         if(!looksEvmAddress(addr)) throw new Error("Invalid EVM address. Must be 0x + 40 hex chars.");
@@ -2604,6 +2604,7 @@ function startLiveStampTime(){
         const metricRows = [
           { label:"Guardian Score", value:`${score}/100`, badge: verdict.label, barPct: score, mini:"Composite risk score (heuristic)." },
           { label:"Owner", value: owner ? shortAddr(owner) : "—", badge: owner ? "Admin" : "Unknown", mini:"Best-effort owner() call." },
+          { label:"Renounced", value: isRenounced ? "YES" : "NO", badge: isRenounced ? "YES" : "NO", badgeMode: isRenounced ? "good" : "bad", mini:"Owner == 0x0 (best-effort)." },
           { label:"Proxy", value: proxy?.isProxy ? "Upgradeable" : "No signal", badge: proxy?.isProxy ? "WATCH" : "PASS", mini:"EIP-1967 slots check." },
           { label:"Total Supply", value: supplyText || "—", badge: supplyReadable ? "On-chain" : "Unknown", mini:"From totalSupply()." }
         ];
