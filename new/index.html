@@ -864,17 +864,32 @@
   let SCANNING = false;
 
   /* ===================== UTIL ===================== */
-  function clamp(n, min, max){ return Math.max(min, Math.min(max, n)); }
-  function shortAddr(a){ return a ? (a.slice(0,4) + "…" + a.slice(-4)) : "—"; }
-  function fmtInt(n){
-    if (n === null || n === undefined || Number.isNaN(n)) return "—";
-    try { return new Intl.NumberFormat("en-US").format(Math.round(Number(n))); }
-    catch { return String(n); }
-  }
-  function fmtPct(n){
-    if (n === null || n === undefined || Number.isNaN(n)) return "—";
-    return `${Number(n).toFixed(2)}%`;
-  }
+function clamp(n, min, max){ return Math.max(min, Math.min(max, n)); }
+
+function shortAddr(a){ return a ? (a.slice(0,4) + "…" + a.slice(-4)) : "—"; }
+
+function fmtInt(n){
+  if (n === null || n === undefined || Number.isNaN(n)) return "—";
+  try { return new Intl.NumberFormat("en-US").format(Math.round(Number(n))); }
+  catch { return String(n); }
+}
+
+function fmtPct(n){
+  if (n === null || n === undefined || Number.isNaN(n)) return "—";
+  return `${Number(n).toFixed(2)}%`;
+}
+
+function evmTrustWalletLogo(chainId, addr){
+  const a = (addr || "").toLowerCase();
+  if(!/^0x[0-9a-f]{40}$/.test(a)) return "";
+
+  if(chainId === 1)    return `https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/${a}/logo.png`;
+  if(chainId === 56)   return `https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/smartchain/assets/${a}/logo.png`;
+  if(chainId === 8453) return `https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/base/assets/${a}/logo.png`;
+
+  return "";
+}
+
   function setStatus(msg){ setText("status", msg || ""); }
   function setBadge(el, txt, mode){
     if(!el) return;
