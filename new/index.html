@@ -3765,7 +3765,7 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
   const raw = await goldrushHolders(chainId, tokenAddr);
 
   const pickAddr = (h) => (h?.address || h?.wallet_address || h?.holder_address || h?.owner_address || h?.wallet || h?.holder || '').trim();
-  const pickBal  = (h) => (h?.balance ?? h?.token_balance ?? h?.token_balance_wei ?? h?.balance_wei ?? h?.balance_raw ?? h?.token_balance_raw ?? h?.value ?? h?.balance_quote ?? null);
+  const pickBal  = (h) => (h?.balance ?? h?.token_balance ?? h?.token_balance_wei ?? h?.balance_wei ?? h?.balance_raw ?? h?.token_balance_raw ?? h?.raw_balance ?? h?.raw_token_balance ?? null);
 
   const holders = [];
   if(Array.isArray(raw) && raw.length){
@@ -3776,13 +3776,14 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
       const balRaw = pickBal(h);
       const balBI = safeBigIntFromStr(balRaw);
 
-      let pct = null;
-      if(supplyBI !== null && supplyBI !== undefined && supplyBI > 0n && balBI !== null){
+      // Prefer indexer-provided percentage (matches explorer holders tab).
+      const pIdx = Number(h?.percentage_relative_to_total_supply ?? h?.percentage ?? h?.pct ?? h?.share ?? h?.holding ?? NaN);
+      let pct = Number.isFinite(pIdx) ? pIdx : null;
+
+      // If the indexer didn't provide a percentage, compute it from on-chain totalSupply + raw holder balance.
+      if(pct === null && supplyBI !== null && supplyBI !== undefined && supplyBI > 0n && balBI !== null){
         const p = pctFromBI(balBI, supplyBI);
         pct = (p === null || p === undefined || Number.isNaN(p)) ? null : p;
-      }else{
-        const p2 = Number(h?.percentage ?? h?.pct ?? h?.share ?? h?.holding ?? NaN);
-        pct = Number.isFinite(p2) ? p2 : null;
       }
 
       holders.push({
