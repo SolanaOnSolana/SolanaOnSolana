@@ -3723,6 +3723,34 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
   const supplyBI = metaOnChain?.totalSupply ?? null;
   const decimals = metaOnChain?.decimals ?? 18;
 
+  // Holder display formatting (commas like Solana list)
+  function commaTokenStr(numStr){
+    if(numStr === null || numStr === undefined) return '—';
+    const s = String(numStr);
+    if(!s) return '—';
+    const neg = s.startsWith('-');
+    const parts = s.replace('-','').split('.');
+    const intp = parts[0] || '0';
+    const withCommas = intp.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    const frac = parts[1] ? ('.' + parts[1].slice(0,6).replace(/0+$/,'')) : '';
+    return (neg?'-':'') + withCommas + (frac=='.'?'':frac);
+  }
+
+  // Percent with 2 decimals from BigInt parts (best-effort)
+  function pctFromBI(partBI, totalBI){
+    try{
+      if(partBI === null || partBI === undefined) return null;
+      if(totalBI === null || totalBI === undefined) return null;
+      const p = BigInt(partBI);
+      const t = BigInt(totalBI);
+      if(t <= 0n) return null;
+      const bp = (p * 10000n) / t; // basis points
+      return Number(bp) / 100;
+    }catch{
+      return null;
+    }
+  }
+
   // 1) Prefer GoldRush holders if available (best-effort)
   const raw = await goldrushHolders(chainId, tokenAddr);
 
@@ -3761,7 +3789,8 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
     const items = holders.slice(0,10).map((h,i) => {
       const addr = h.address;
       const balBI2 = safeBigIntFromStr(h.balance);
-      const balFmt = (balBI2 !== null) ? formatUnits(balBI2, decimals) : (h.balance ? String(h.balance) : '—');
+      const balFmtRaw = (balBI2 !== null) ? formatUnits(balBI2, decimals) : (h.balance ? String(h.balance) : '—');
+      const balFmt = commaTokenStr(balFmtRaw);
       const pctStr = (h.percentage === null || h.percentage === undefined) ? '—' : (Number(h.percentage).toFixed(2) + '%');
       return {
         t:`#${i+1} ${shortAddr(addr)}`,
@@ -3797,16 +3826,22 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
       .filter(([a,v]) => a.startsWith('0x') && v > 0n)
       .sort((a,b) => (b[1] > a[1] ? 1 : (b[1] < a[1] ? -1 : 0)))
       .slice(0,10);
+    const items = top.map(([addr, v], i) => {
+      const amtRaw = formatUnits(v, decimals);
+      const amt = commaTokenStr(amtRaw);
+      const pct = pctFromBI(v, supplyBI);
+      const pctStr = (pct === null || pct === undefined || Number.isNaN(pct)) ? '—' : pct.toFixed(2) + '%';
+      return {
+        t:`#${i+1} ${shortAddr(addr)}`,
+        d:`${amt} tokens • ${pctStr}`,
+        addr,
+        infoHtml: explain('Fallback top wallets (sample)', [
+          'This is NOT a holder snapshot.',
+          'We approximate using a recent on-chain transfer sample when no indexer holder list is available.'
+        ])
+      };
+    });
 
-    const items = top.map(([addr, v], i) => ({
-      t:`#${i+1} ${shortAddr(addr)}`,
-      d:`${formatUnits(v, decimals)} tokens`,
-      addr,
-      infoHtml: explain('Fallback top wallets (sample)', [
-        'This is NOT a holder snapshot.',
-        'We approximate using a recent on-chain transfer sample when no indexer holder list is available.'
-      ])
-    }));
 
     renderHoldersWithExplorer(items, activeChain);
     return [];
