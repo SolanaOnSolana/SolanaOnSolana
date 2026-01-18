@@ -3629,9 +3629,10 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
   }
 
   function pickBestDecimals(total, metaDec, dexDec){
-    // Treat null/undefined as missing (do NOT coerce to 0).
-    const metaOk = !(metaDec === null || metaDec === undefined || metaDec === '') && Number.isFinite(Number(metaDec));
-    const dexOk  = !(dexDec  === null || dexDec  === undefined || dexDec  === '') && Number.isFinite(Number(dexDec));
+    // Decimals: trust on-chain (metaDec) when available.
+    // Use dexDec only as a fallback when on-chain decimals are missing.
+    const metaOk = !(metaDec === null || metaDec === undefined || metaDec === '' ) && Number.isFinite(Number(metaDec));
+    const dexOk  = !(dexDec  === null || dexDec  === undefined || dexDec  === '' ) && Number.isFinite(Number(dexDec));
 
     const m = metaOk ? Number(metaDec) : NaN;
     const d = dexOk  ? Number(dexDec)  : NaN;
@@ -3639,16 +3640,9 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
     const mOk = Number.isFinite(m) && m >= 0 && m <= 36;
     const dOk = Number.isFinite(d) && d >= 0 && d <= 36;
 
-    if(!mOk && dOk) return d;
-    if(mOk && !dOk) return m;
-    if(!mOk && !dOk) return 18;
-
-    // If meta decimals produce a fractional supply but dex decimals aligns perfectly, prefer dex decimals.
-    const metaAlign = isMultipleOfDecimals(total, m);
-    const dexAlign  = isMultipleOfDecimals(total, d);
-    if(!metaAlign && dexAlign) return d;
-
-    return m;
+    if(mOk) return m;
+    if(dOk) return d;
+    return 18;
   }
 
   function compactNumberFromString(numStr){
