@@ -3819,12 +3819,10 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
         return neg ? -bi : bi;
       }
 
-      // If it's a huge integer, treat it as already-raw (wei) instead of token units.
-      // (Prevents accidentally multiplying an already-raw value by 10^decimals.)
-      if(/^[0-9]+$/.test(s) && s.length > (d + 4)){
-        const bi = BigInt(s);
-        return neg ? -bi : bi;
-      }
+      // NOTE:
+      // Some indexers return holder balances as raw base-units, others return human token units.
+      // We intentionally do NOT guess here. The caller disambiguates by comparing against
+      // totalSupply and/or the indexer-provided percentage when available.
 
       const base = 10n ** BigInt(d);
       if(s.includes('.')){
@@ -3866,12 +3864,39 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
 
       const balPick = pickBalObj(h);
       let balBI = null;
-      if(balPick && balPick.kind === 'raw'){
-        balBI = safeBigIntFromStr(balPick.v);
-      }else if(balPick && balPick.v !== null && balPick.v !== undefined){
-        // Treat as token units (human) unless it clearly looks like raw.
-        balBI = parseTokenAmountToRaw(balPick.v, decUse);
-        if(balBI === null) balBI = safeBigIntFromStr(balPick.v);
+
+      // Balance normalization:
+      // - If API gives explicit "*_wei/raw" fields => treat as raw
+      // - Otherwise it can be either raw OR human token units depending on provider.
+      //   We try both and pick the one that best matches the provided percentage (if any),
+      //   otherwise we fall back to totalSupply bounds.
+      if(balPick && balPick.v !== null && balPick.v !== undefined){
+        const rawCand   = safeBigIntFromStr(balPick.v);
+        const humanCand = parseTokenAmountToRaw(balPick.v, decUse); // interprets as token units
+
+        if(balPick.kind === 'raw'){
+          balBI = rawCand;
+        }else{
+          // If we have pct from indexer + supply, choose the candidate whose computed % is closest.
+          if(pctIdx !== null && pctIdx !== undefined && supplyUse !== null && supplyUse !== undefined && supplyUse > 0n){
+            const pRaw   = (rawCand   !== null) ? pctFromBI(rawCand, supplyUse)   : null;
+            const pHuman = (humanCand !== null) ? pctFromBI(humanCand, supplyUse) : null;
+
+            const dRaw   = (pRaw   !== null && Number.isFinite(pRaw))   ? Math.abs(pRaw   - pctIdx) : Infinity;
+            const dHuman = (pHuman !== null && Number.isFinite(pHuman)) ? Math.abs(pHuman - pctIdx) : Infinity;
+
+            if(dHuman < dRaw) balBI = humanCand;
+            else if(dRaw < Infinity) balBI = rawCand;
+            else balBI = (humanCand !== null ? humanCand : rawCand);
+          }else if(supplyUse !== null && supplyUse !== undefined && supplyUse > 0n){
+            // Use totalSupply bounds as a fallback signal.
+            if(rawCand !== null && rawCand > supplyUse && humanCand !== null && humanCand <= supplyUse) balBI = humanCand;
+            else if(humanCand !== null && humanCand > supplyUse && rawCand !== null && rawCand <= supplyUse) balBI = rawCand;
+            else balBI = (humanCand !== null ? humanCand : rawCand);
+          }else{
+            balBI = (humanCand !== null ? humanCand : rawCand);
+          }
+        }
       }
 
       // Compute % from raw balance and raw supply (most reliable)
