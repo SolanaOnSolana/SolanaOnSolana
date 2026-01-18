@@ -3761,11 +3761,39 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
     }
   }
 
+
+  // Normalize indexer percentage formats (fraction vs percent vs basispoints).
+  function normalizeIndexerPct(x){
+    try{
+      if(x === null || x === undefined) return null;
+      let v = x;
+      if(typeof v === 'string'){
+        v = v.trim().replace(/%/g, '');
+        if(!v) return null;
+      }
+      const n = Number(v);
+      if(!Number.isFinite(n) || n < 0) return null;
+      if(n <= 1) return n * 100;           // fraction (0-1)
+      if(n <= 100) return n;               // percent already
+      if(n <= 10000) return n / 100;       // basispoints
+      if(n <= 1000000) return n / 10000;   // ppm-ish fallback
+      return n;
+    }catch{
+      return null;
+    }
+  }
+
   // 1) Prefer GoldRush holders if available (best-effort)
   const raw = await goldrushHolders(chainId, tokenAddr);
 
   const pickAddr = (h) => (h?.address || h?.wallet_address || h?.holder_address || h?.owner_address || h?.wallet || h?.holder || '').trim();
-  const pickBal  = (h) => (h?.balance ?? h?.token_balance ?? h?.token_balance_wei ?? h?.balance_wei ?? h?.balance_raw ?? h?.token_balance_raw ?? h?.raw_balance ?? h?.raw_token_balance ?? null);
+  const pickBal  = (h) => (
+    h?.token_balance_wei ?? h?.balance_wei ??
+    h?.token_balance_raw ?? h?.balance_raw ??
+    h?.raw_token_balance ?? h?.raw_balance ??
+    h?.token_balance ?? h?.balance ??
+    null
+  );
 
   const holders = [];
   if(Array.isArray(raw) && raw.length){
@@ -3777,8 +3805,8 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
       const balBI = safeBigIntFromStr(balRaw);
 
       // Prefer indexer-provided percentage (matches explorer holders tab).
-      const pIdx = Number(h?.percentage_relative_to_total_supply ?? h?.percentage ?? h?.pct ?? h?.share ?? h?.holding ?? NaN);
-      let pct = Number.isFinite(pIdx) ? pIdx : null;
+      const pIdxRaw = (h?.percentage_relative_to_total_supply ?? h?.percentage ?? h?.pct ?? h?.share ?? h?.holding ?? null);
+      let pct = normalizeIndexerPct(pIdxRaw);
 
       // If the indexer didn't provide a percentage, compute it from on-chain totalSupply + raw holder balance.
       if(pct === null && supplyBI !== null && supplyBI !== undefined && supplyBI > 0n && balBI !== null){
