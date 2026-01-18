@@ -1774,15 +1774,16 @@ function pillLabel(sev){ return (sev==="ok" ? "PASS" : (sev==="bad" ? "FAIL" : "
         autoCenterFrames--;
       }
 
-      // edges draw (stronger + weighted like DexScreener)
-      ctx.strokeStyle = 'rgba(255,255,255,.32)';
+      // edges draw (cluster-colored like DexScreener)
       for(const e of edges){
         const a = byId.get(e.a);
         const b = byId.get(e.b);
         if(!a || !b) continue;
         const wgt = Math.max(1, Math.min(6, (e.w || 1)));
         ctx.lineWidth = 0.9 + wgt * 0.35;
-        ctx.globalAlpha = Math.min(0.78, 0.22 + wgt * 0.10);
+        const alpha = (typeof e.alpha === 'number') ? e.alpha : Math.min(0.78, 0.22 + wgt * 0.10);
+        ctx.globalAlpha = alpha;
+        ctx.strokeStyle = e.color || 'rgba(255,255,255,.32)';
         ctx.beginPath();
         ctx.moveTo(a.x, a.y);
         ctx.lineTo(b.x, b.y);
@@ -2279,9 +2280,81 @@ renderHoldersEmpty();
       }
     }
 
-    // keep top 80 edges by weight
+    // keep only meaningful edges (avoid hairballs): mutual top links + weight filter
     edges.sort((a,b)=> (b.w||0)-(a.w||0));
-    const cut = edges.slice(0, 80).map(e => ({a:e.a, b:e.b, w:e.w}));
+    const minWStrong = (edges.length > 40 ? 2 : 1);
+
+    function _hash32(str){
+      let h = 2166136261;
+      for(let i=0;i<str.length;i++){ h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+      return (h>>>0);
+    }
+
+    const adj = new Map();
+    const pushAdj = (u,v,w)=>{ let a=adj.get(u); if(!a){a=[]; adj.set(u,a);} a.push({to:v,w:(w||1)}); };
+    for(const e of edges){ pushAdj(e.a,e.b,e.w); pushAdj(e.b,e.a,e.w); }
+
+    // detect flow-hubs by edge-degree (top 1) and limit their links
+    const degE = new Map();
+    for(const e of edges){ degE.set(e.a,(degE.get(e.a)||0)+1); degE.set(e.b,(degE.get(e.b)||0)+1); }
+    const degRank = Array.from(degE.entries()).sort((a,b)=>b[1]-a[1]);
+    const hubSet = new Set(degRank.slice(0,1).filter(x=>x[1]>=8).map(x=>x[0]));
+
+    const topNbrs = new Map();
+    for(const n of nodes){
+      const id = n.id;
+      const neigh = (adj.get(id)||[]).slice().sort((a,b)=> (b.w||0)-(a.w||0));
+      const isHub = hubSet.has(id);
+      const k = isHub ? 3 : 5;
+      topNbrs.set(id, new Set(neigh.slice(0,k).map(x=>x.to)));
+    }
+
+    const kept = [];
+    const seen = new Set();
+    for(const e of edges){
+      const wgt = (e.w || 1);
+      const aTop = topNbrs.get(e.a)?.has(e.b);
+      const bTop = topNbrs.get(e.b)?.has(e.a);
+      const keep = (aTop && bTop) || ((aTop || bTop) && wgt >= Math.max(3, minWStrong+1)) || (wgt >= minWStrong && (aTop || bTop));
+      if(!keep) continue;
+      const k = (e.a < e.b) ? (e.a + '|' + e.b) : (e.b + '|' + e.a);
+      if(seen.has(k)) continue;
+      seen.add(k);
+      kept.push({a:e.a, b:e.b, w:wgt});
+    }
+
+    kept.sort((a,b)=> (b.w||0)-(a.w||0));
+    const cut = kept.slice(0, 120);
+
+    // Cluster colors
+    const comp = new Map();
+    (function(){
+      const adj2 = new Map();
+      const add2 = (u,v)=>{ let a=adj2.get(u); if(!a){a=[]; adj2.set(u,a);} a.push(v); };
+      for(const e of cut){ add2(e.a,e.b); add2(e.b,e.a); }
+      let idx = 0;
+      for(const n of nodes){
+        if(comp.has(n.id)) continue;
+        const q = [n.id];
+        comp.set(n.id, idx);
+        while(q.length){
+          const u = q.pop();
+          const nb = adj2.get(u) || [];
+          for(const v of nb){ if(!comp.has(v)) { comp.set(v, idx); q.push(v); } }
+        }
+        idx++;
+      }
+    })();
+
+    for(const e of cut){
+      const ci = comp.get(e.a) ?? 0;
+      const baseHue = (210 + (ci * 57)) % 360;
+      const jitter = (_hash32(e.a + '|' + e.b) % 19) - 9;
+      const hue = (baseHue + jitter + 360) % 360;
+      e.color = `hsl(${hue}, 92%, 66%)`;
+      const wgt = Math.max(1, Math.min(6, (e.w || 1)));
+      e.alpha = Math.min(0.82, 0.18 + wgt * 0.10);
+    }
 
     return {
       kind:'sol',
@@ -3255,7 +3328,101 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
       edges.push({a,b,w});
     }
     edges.sort((x,y)=>(y.w||0)-(x.w||0));
-    const cut = edges.slice(0, 140);
+
+    // DexScreener-style edge filtering: reduce hub hairballs + keep only meaningful wallet links
+    const byIdLocal = new Map(nodes.map(n => [n.id, n]));
+    const minWStrong = (edges.length > 60 ? 2 : 1);
+
+    // adjacency for per-node top-k edge keeping
+    const adj = new Map();
+    const pushAdj = (u,v,w)=>{
+      let a = adj.get(u);
+      if(!a){ a = []; adj.set(u,a); }
+      a.push({to:v, w:(w||1)});
+    };
+    for(const e of edges){
+      pushAdj(e.a, e.b, e.w);
+      pushAdj(e.b, e.a, e.w);
+    }
+
+    // detect hubs (routers/pairs/exchanges) by transfer degree (top 2) + absolute threshold
+    const degRank = nodes.map(n => ({id:n.id, d:(deg.get(n.id)||0)})).sort((a,b)=>b.d-a.d);
+    const hubSet = new Set(degRank.slice(0,2).filter(x => x.d >= 8).map(x => x.id));
+    for(const x of degRank){ if(x.d >= 22) hubSet.add(x.id); }
+
+    // pick top neighbors per node (hubs get fewer)
+    const topNbrs = new Map();
+    for(const n of nodes){
+      const id = n.id;
+      const neigh = (adj.get(id)||[]).slice().sort((a,b)=> (b.w||0)-(a.w||0));
+      const isHub = hubSet.has(id);
+      const k = (n.kind==='holder') ? (isHub ? 4 : 8) : (isHub ? 3 : 6);
+      topNbrs.set(id, new Set(neigh.slice(0,k).map(x=>x.to)));
+    }
+
+    // keep edges that are mutual-top (strong relationship) OR strong holder links; de-dupe
+    const kept = [];
+    const seen = new Set();
+    for(const e of edges){
+      const wgt = (e.w || 1);
+      const aTop = topNbrs.get(e.a)?.has(e.b);
+      const bTop = topNbrs.get(e.b)?.has(e.a);
+      const aNode = byIdLocal.get(e.a);
+      const bNode = byIdLocal.get(e.b);
+      const isHolderEdge = (aNode?.kind==='holder' || bNode?.kind==='holder');
+
+      let keep = false;
+      if(aTop && bTop) keep = true;
+      else if(isHolderEdge && (aTop || bTop) && wgt >= minWStrong) keep = true;
+      else if((aTop || bTop) && wgt >= Math.max(3, minWStrong+1)) keep = true;
+
+      if(!keep) continue;
+      const k = (e.a < e.b) ? (e.a + '|' + e.b) : (e.b + '|' + e.a);
+      if(seen.has(k)) continue;
+      seen.add(k);
+      kept.push({a:e.a, b:e.b, w:wgt});
+    }
+
+    kept.sort((x,y)=>(y.w||0)-(x.w||0));
+    const cut = kept.slice(0, 160);
+
+    // Cluster colors (connected components) -> edges get a consistent palette like DexScreener
+    function _hash32(str){
+      let h = 2166136261;
+      for(let i=0;i<str.length;i++){ h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+      return (h>>>0);
+    }
+
+    const comp = new Map();
+    (function(){
+      const adj2 = new Map();
+      const add2 = (u,v)=>{ let a=adj2.get(u); if(!a){a=[]; adj2.set(u,a);} a.push(v); };
+      for(const e of cut){ add2(e.a,e.b); add2(e.b,e.a); }
+      let idx = 0;
+      for(const n of nodes){
+        if(comp.has(n.id)) continue;
+        const q = [n.id];
+        comp.set(n.id, idx);
+        while(q.length){
+          const u = q.pop();
+          const nb = adj2.get(u) || [];
+          for(const v of nb){
+            if(!comp.has(v)) { comp.set(v, idx); q.push(v); }
+          }
+        }
+        idx++;
+      }
+    })();
+
+    for(const e of cut){
+      const ci = comp.get(e.a) ?? 0;
+      const baseHue = (210 + (ci * 57)) % 360;
+      const jitter = (_hash32(e.a + '|' + e.b) % 19) - 9; // small variance so not all edges look identical
+      const hue = (baseHue + jitter + 360) % 360;
+      e.color = `hsl(${hue}, 92%, 66%)`;
+      const wgt = Math.max(1, Math.min(6, (e.w || 1)));
+      e.alpha = Math.min(0.82, 0.18 + wgt * 0.10);
+    }
 
     // Bundles (same tx: one sender -> many recipients)
     const txMap = new Map();
