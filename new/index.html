@@ -3856,11 +3856,17 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
 
       // Use supply from holder item if provided, otherwise fall back to on-chain totalSupply()
       const supplyItem = safeBigIntFromStr(h?.total_supply ?? h?.totalSupply ?? h?.token_total_supply ?? h?.token_supply ?? null);
-      const supplyUse = (supplyItem !== null && supplyItem !== undefined && supplyItem > 0n) ? supplyItem : supplyBI;
+      // IMPORTANT: Always prefer on-chain totalSupply() for % calculations.
+      // Some indexers return incorrect/shifted total_supply values (often off by 10x), which would make % wrong.
+      const supplyUse = (supplyBI !== null && supplyBI !== undefined && supplyBI > 0n)
+        ? supplyBI
+        : ((supplyItem !== null && supplyItem !== undefined && supplyItem > 0n) ? supplyItem : null);
 
-      const decUse = (Number.isFinite(Number(h?.contract_decimals)) ? Number(h.contract_decimals)
+      // IMPORTANT: Prefer on-chain decimals() over indexer decimals (indexers are sometimes off by 1/10x).
+      const decUse = (Number.isFinite(Number(decimals)) ? Number(decimals)
+                    : (Number.isFinite(Number(h?.contract_decimals)) ? Number(h.contract_decimals)
                     : (Number.isFinite(Number(h?.token_decimals)) ? Number(h.token_decimals)
-                    : decimals));
+                    : 18)));
 
       const balPick = pickBalObj(h);
       let balBI = null;
