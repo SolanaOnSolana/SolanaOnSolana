@@ -3787,13 +3787,64 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
   const raw = await goldrushHolders(chainId, tokenAddr);
 
   const pickAddr = (h) => (h?.address || h?.wallet_address || h?.holder_address || h?.owner_address || h?.wallet || h?.holder || '').trim();
-  const pickBal  = (h) => (
-    h?.token_balance_wei ?? h?.balance_wei ??
-    h?.token_balance_raw ?? h?.balance_raw ??
-    h?.raw_token_balance ?? h?.raw_balance ??
-    h?.token_balance ?? h?.balance ??
-    null
-  );
+
+  // GoldRush / indexers can return balances in *raw base units* (wei) OR in human token units.
+  // We normalize to raw BigInt so holder % stays correct on all EVM chains.
+  const pickBalObj = (h) => {
+    if(h?.token_balance_wei !== undefined && h?.token_balance_wei !== null) return {v:h.token_balance_wei, kind:'raw'};
+    if(h?.balance_wei !== undefined && h?.balance_wei !== null) return {v:h.balance_wei, kind:'raw'};
+    if(h?.token_balance_raw !== undefined && h?.token_balance_raw !== null) return {v:h.token_balance_raw, kind:'raw'};
+    if(h?.balance_raw !== undefined && h?.balance_raw !== null) return {v:h.balance_raw, kind:'raw'};
+    if(h?.raw_token_balance !== undefined && h?.raw_token_balance !== null) return {v:h.raw_token_balance, kind:'raw'};
+    if(h?.raw_balance !== undefined && h?.raw_balance !== null) return {v:h.raw_balance, kind:'raw'};
+
+    if(h?.token_balance !== undefined && h?.token_balance !== null) return {v:h.token_balance, kind:'human'};
+    if(h?.balance !== undefined && h?.balance !== null) return {v:h.balance, kind:'human'};
+    return {v:null, kind:null};
+  };
+
+  function parseTokenAmountToRaw(x, dec){
+    try{
+      if(x === null || x === undefined) return null;
+      let s = String(x).trim().replace(/,/g,'');
+      if(!s) return null;
+      const neg = s.startsWith('-');
+      if(neg) s = s.slice(1);
+
+      const d = Number.isFinite(Number(dec)) ? Math.max(0, Math.min(36, Number(dec))) : 18;
+
+      // Hex / already raw
+      if(s.startsWith('0x') || s.startsWith('0X')){
+        const bi = BigInt(s);
+        return neg ? -bi : bi;
+      }
+
+      // If it's a huge integer, treat it as already-raw (wei) instead of token units.
+      // (Prevents accidentally multiplying an already-raw value by 10^decimals.)
+      if(/^[0-9]+$/.test(s) && s.length > (d + 4)){
+        const bi = BigInt(s);
+        return neg ? -bi : bi;
+      }
+
+      const base = 10n ** BigInt(d);
+      if(s.includes('.')){
+        const parts = s.split('.');
+        const wholeStr = parts[0] || '0';
+        const fracStr  = (parts[1] || '').slice(0, d).padEnd(d, '0');
+        const whole = wholeStr ? BigInt(wholeStr) : 0n;
+        const frac  = fracStr  ? BigInt(fracStr)  : 0n;
+        const bi = whole * base + frac;
+        return neg ? -bi : bi;
+      }
+
+      // Integer token amount -> scale to raw
+      if(!/^[0-9]+$/.test(s)) return null;
+      const bi = BigInt(s) * base;
+      return neg ? -bi : bi;
+    }catch{
+      return null;
+    }
+  }
 
   const holders = [];
   if(Array.isArray(raw) && raw.length){
@@ -3801,22 +3852,39 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
       const addr = String(pickAddr(h) || '').toLowerCase();
       if(!addr.startsWith('0x') || addr.length !== 42) continue;
 
-      const balRaw = pickBal(h);
-      const balBI = safeBigIntFromStr(balRaw);
-
-      // Prefer indexer-provided percentage (matches explorer holders tab).
+      // Prefer indexer-provided percentage (if present), but we still compute from balance/supply when possible.
       const pIdxRaw = (h?.percentage_relative_to_total_supply ?? h?.percentage ?? h?.pct ?? h?.share ?? h?.holding ?? null);
-      let pct = normalizeIndexerPct(pIdxRaw);
+      const pctIdx = normalizeIndexerPct(pIdxRaw);
 
-      // If the indexer didn't provide a percentage, compute it from on-chain totalSupply + raw holder balance.
-      if(pct === null && supplyBI !== null && supplyBI !== undefined && supplyBI > 0n && balBI !== null){
-        const p = pctFromBI(balBI, supplyBI);
+      // Use supply from holder item if provided, otherwise fall back to on-chain totalSupply()
+      const supplyItem = safeBigIntFromStr(h?.total_supply ?? h?.totalSupply ?? h?.token_total_supply ?? h?.token_supply ?? null);
+      const supplyUse = (supplyItem !== null && supplyItem !== undefined && supplyItem > 0n) ? supplyItem : supplyBI;
+
+      const decUse = (Number.isFinite(Number(h?.contract_decimals)) ? Number(h.contract_decimals)
+                    : (Number.isFinite(Number(h?.token_decimals)) ? Number(h.token_decimals)
+                    : decimals));
+
+      const balPick = pickBalObj(h);
+      let balBI = null;
+      if(balPick && balPick.kind === 'raw'){
+        balBI = safeBigIntFromStr(balPick.v);
+      }else if(balPick && balPick.v !== null && balPick.v !== undefined){
+        // Treat as token units (human) unless it clearly looks like raw.
+        balBI = parseTokenAmountToRaw(balPick.v, decUse);
+        if(balBI === null) balBI = safeBigIntFromStr(balPick.v);
+      }
+
+      // Compute % from raw balance and raw supply (most reliable)
+      let pct = null;
+      if(balBI !== null && supplyUse !== null && supplyUse !== undefined && supplyUse > 0n){
+        const p = pctFromBI(balBI, supplyUse);
         pct = (p === null || p === undefined || Number.isNaN(p)) ? null : p;
       }
+      if(pct === null) pct = pctIdx;
 
       holders.push({
         address: addr,
-        balance: (balBI !== null) ? balBI.toString() : (balRaw !== null && balRaw !== undefined ? String(balRaw) : null),
+        balance: (balBI !== null) ? balBI.toString() : (balPick?.v !== null && balPick?.v !== undefined ? String(balPick.v) : null),
         percentage: pct
       });
     }
