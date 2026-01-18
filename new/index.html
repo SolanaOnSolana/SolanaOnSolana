@@ -1535,12 +1535,13 @@ function pillLabel(sev){ return (sev==="ok" ? "PASS" : (sev==="bad" ? "FAIL" : "
       hint.textContent = model?.hint || 'Top holders + recent flows (limited sample).';
     }
 
-    // init positions
+    // init positions (clustered center like DexScreener)
+    const initR = Math.min(w, h) * 0.28;
     for(const n of nodes){
-      if(typeof n.x !== 'number') n.x = Math.random()*w;
-      if(typeof n.y !== 'number') n.y = Math.random()*h;
-      if(typeof n.vx !== 'number') n.vx = (Math.random()-.5)*0.5;
-      if(typeof n.vy !== 'number') n.vy = (Math.random()-.5)*0.5;
+      if(typeof n.x !== 'number') n.x = (Math.random()*2-1) * initR;
+      if(typeof n.y !== 'number') n.y = (Math.random()*2-1) * initR;
+      if(typeof n.vx !== 'number') n.vx = (Math.random()-.5) * 0.2;
+      if(typeof n.vy !== 'number') n.vy = (Math.random()-.5) * 0.2;
     }
 
     const byId = new Map(nodes.map(n => [n.id, n]));
@@ -1550,7 +1551,8 @@ function pillLabel(sev){ return (sev==="ok" ? "PASS" : (sev==="bad" ? "FAIL" : "
     let dragOffX = 0, dragOffY = 0;
 
     // view (pan/zoom) in device pixels
-    let view = { ox: 0, oy: 0, s: 1 };
+    // Start centered like DexScreener (world origin in the middle)
+    let view = { ox: c.width/2, oy: c.height/2, s: 1 };
     let panning = false;
     let panStart = {x:0,y:0,ox:0,oy:0};
 
@@ -1651,7 +1653,8 @@ function pillLabel(sev){ return (sev==="ok" ? "PASS" : (sev==="bad" ? "FAIL" : "
           const dx = a.x - b.x;
           const dy = a.y - b.y;
           const dist2 = dx*dx + dy*dy + 0.01;
-          const f = 650 / dist2;
+          // repulsion scaled by node size (prevents corner pinning)
+          const f = ((a.r*b.r*0.35) + 140) / dist2;
           const fx = dx * f;
           const fy = dy * f;
           if(a !== dragging){ a.vx += fx; a.vy += fy; }
@@ -1667,35 +1670,73 @@ function pillLabel(sev){ return (sev==="ok" ? "PASS" : (sev==="bad" ? "FAIL" : "
         const dx = b.x - a.x;
         const dy = b.y - a.y;
         const dist = Math.sqrt(dx*dx + dy*dy) || 1;
-        const target = 130;
-        const k = (dist - target) * 0.0020 * (e.w || 1);
+        const target = Math.max(90, (a.r + b.r) * 2.4 + 32);
+        const k = (dist - target) * 0.0032 * (e.w || 1);
         const fx = dx * k;
         const fy = dy * k;
         if(a !== dragging){ a.vx += fx; a.vy += fy; }
         if(b !== dragging){ b.vx -= fx; b.vy -= fy; }
       }
 
-      // integrate + bounds
+      // collision (prevents overlap) + center gravity (keeps cluster in the middle)
+      for(let i=0;i<nodes.length;i++){
+        const a = nodes[i];
+        // soft pull to center (world origin)
+        if(a !== dragging){
+          a.vx += (-a.x) * 0.0009;
+          a.vy += (-a.y) * 0.0009;
+        }
+        for(let j=i+1;j<nodes.length;j++){
+          const b = nodes[j];
+          const dx = b.x - a.x;
+          const dy = b.y - a.y;
+          const dist = Math.sqrt(dx*dx + dy*dy) || 1;
+          const minD = (a.r + b.r + 8);
+          if(dist < minD){
+            const push = (minD - dist) * 0.018;
+            const nx = dx / dist;
+            const ny = dy / dist;
+            if(a !== dragging){ a.vx -= nx * push; a.vy -= ny * push; }
+            if(b !== dragging){ b.vx += nx * push; b.vy += ny * push; }
+          }
+        }
+      }
+
+      // integrate (DexScreener-ish: no hard screen clamp)
+      const softBound = Math.max(worldW, worldH) * 0.75; // world units
       for(const n of nodes){
         if(n !== dragging){
-          n.vx *= 0.82;
-          n.vy *= 0.82;
+          // damping
+          n.vx *= 0.86;
+          n.vy *= 0.86;
+
+          // soft bounds around origin (keeps cluster visible while allowing pan/zoom)
+          const ax = Math.abs(n.x), ay = Math.abs(n.y);
+          if(ax > softBound) n.vx += (-Math.sign(n.x)) * (ax - softBound) * 0.004;
+          if(ay > softBound) n.vy += (-Math.sign(n.y)) * (ay - softBound) * 0.004;
+
+          // velocity cap for stability
+          const v = Math.sqrt(n.vx*n.vx + n.vy*n.vy);
+          const vmax = 10;
+          if(v > vmax){
+            n.vx = n.vx / v * vmax;
+            n.vy = n.vy / v * vmax;
+          }
+
           n.x += n.vx;
           n.y += n.vy;
         }
-        const pad = n.r + 10;
-        n.x = Math.max(worldX0 + pad, Math.min(worldX0 + worldW - pad, n.x));
-        n.y = Math.max(worldY0 + pad, Math.min(worldY0 + worldH - pad, n.y));
       }
 
-      // edges draw
-      ctx.lineWidth = 1;
-      ctx.strokeStyle = 'rgba(255,255,255,.18)';
+      // edges draw (stronger + weighted like DexScreener)
+      ctx.strokeStyle = 'rgba(255,255,255,.32)';
       for(const e of edges){
         const a = byId.get(e.a);
         const b = byId.get(e.b);
         if(!a || !b) continue;
-        ctx.globalAlpha = Math.min(0.55, 0.15 + (e.w || 1)*0.05);
+        const wgt = Math.max(1, Math.min(6, (e.w || 1)));
+        ctx.lineWidth = 0.9 + wgt * 0.35;
+        ctx.globalAlpha = Math.min(0.78, 0.22 + wgt * 0.10);
         ctx.beginPath();
         ctx.moveTo(a.x, a.y);
         ctx.lineTo(b.x, b.y);
@@ -3149,6 +3190,14 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
       .map(([a])=>a);
 
     for(const a of extras){ addNode(a, null, false); }
+
+    // scale non-holder node sizes by transfer activity (DexScreener-ish)
+    for(const n of nodes){
+      if(n.kind !== 'holder'){
+        const d = (deg.get(n.id) || 1);
+        n.r = Math.max(8, Math.min(26, 8 + Math.sqrt(d) * 2.2));
+      }
+    }
 
     const allow2 = new Set(nodes.map(n=>n.id));
     const edges = [];
