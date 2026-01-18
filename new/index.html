@@ -1358,7 +1358,7 @@ function pillLabel(sev){ return (sev==="ok" ? (pillIcon(sev)+' PASS') : (pillIco
           <span class="badge" style="opacity:.9">${esc(r.badge || r.value || "—")}</span>
         </div>
         <div class="metricV">${esc(r.value || "—")}</div>
-        <div class="metricMini">${esc(r.mini || "")}</div>
+        ${r.mini ? `<div class="metricMini">${esc(r.mini)}</div>` : ''}
         ${bar}
       `;
       wrap.appendChild(d);
@@ -2524,8 +2524,8 @@ function pickTokenMetaFromAsset(asset){
       const link = dex.url ? `Open pair on DexScreener: ${dex.url}` : 'Pair link unavailable.';
       items.push({t:'DEX Pair', sev:'ok', d:`${(dex.dexId||'DEX').toUpperCase()} • ${dex.pairAddress ? shortAddr(dex.pairAddress) : '—'}`, why: link});
       if(dex.liquidityUsd != null) items.push({t:'Liquidity', sev: dex.liquidityUsd >= 10000 ? 'ok' : 'warn', d: money(dex.liquidityUsd), why:'Higher liquidity usually reduces slippage/manipulation.'});
-      if(dex && (dex.marketCap != null || dex.fdv != null)) items.push({t:'Market Cap / FDV', sev:'ok', d: dex.marketCap!=null ? money(dex.marketCap) : money(dex.fdv), why:'From DexScreener.'});
-      if(dex.priceUsd != null) items.push({t:'Price', sev:'ok', d: priceUsdFmt(dex.priceUsd), why:'From DexScreener.'});
+      if(dex && (dex.marketCap != null || dex.fdv != null)) items.push({t:'Market Cap / FDV', sev:'ok', d: dex.marketCap!=null ? money(dex.marketCap) : money(dex.fdv), why:''});
+      if(dex.priceUsd != null) items.push({t:'Price', sev:'ok', d: priceUsdFmt(dex.priceUsd), why:''});
       if(dex.volume24h != null) items.push({t:'Volume 24h', sev: dex.volume24h >= 5000 ? 'ok' : 'warn', d: money(dex.volume24h), why:'Low volume can mean thin markets.'});
     }
     renderList(qs('todoList'), items, 'Market / DEX');
@@ -3551,11 +3551,11 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
     items.push({
       t:"Total Supply",
       sev:supplyReadable ? "ok" : "warn",
-      d:supplyReadable ? "Readable on-chain" : "Not readable",
+      d:supplyReadable ? (formatSupplyNice(metaOnChain.totalSupply, metaOnChain.decimals, (metaMerged?.decimals ?? null)).text || "—") : "—",
       why: supplyReadable ? "totalSupply() ok." : "totalSupply() missing.",
       infoHtml: explain("Total Supply", [
         "Meaning: Basis for holder %.",
-        supplyReadable ? "Why PASS: readable on-chain." : "Why WATCH: not readable."
+        supplyReadable ? "Why PASS: readable." : "Why WATCH: not readable."
       ])
     });
 
@@ -3563,7 +3563,7 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
       items.push({
         t:"Logo / Image",
         sev:"ok",
-        d:"Logo via metadata provider (API key).",
+        d:"Available",
         why:"Logo is off-chain (normal for EVM).",
         infoHtml: explain("Token Logo (EVM)", [
           "EVM tokens typically do not store logos on-chain.",
@@ -3574,8 +3574,8 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
       items.push({
         t:"Logo / Image",
         sev:"warn",
-        d: CFG.EVM_METADATA_KEY ? "No logo returned by metadata API." : "EVM logos need an API key integration (optional).",
-        why: CFG.EVM_METADATA_KEY ? "Provider returned none." : "No provider enabled.",
+        d: "Not available",
+        why: "Logo not available.",
         infoHtml: explain("Token Logo (EVM)", [
           CFG.EVM_METADATA_KEY ? "Provider returned no logo." : "Optional: set EVM_METADATA_KEY (Moralis) to fetch logos."
         ])
@@ -3800,7 +3800,7 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
 
     const items = top.map(([addr, v], i) => ({
       t:`#${i+1} ${shortAddr(addr)}`,
-      d:`Net inflow (sample): ${formatUnits(v, decimals)} tokens`,
+      d:`${formatUnits(v, decimals)} tokens`,
       addr,
       infoHtml: explain('Fallback top wallets (sample)', [
         'This is NOT a holder snapshot.',
@@ -3902,14 +3902,14 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
         const freezeRevoked = !freezeAuth;
 
         const metricRows = [
-          { label:"Guardian Score", value:`${score}/100`, badge: verdict.label, barPct: score, mini:"Composite risk score (heuristic)." },
-          { label:"Mint Authority", value: mintRevoked ? "REVOKED" : "ACTIVE", badge: mintRevoked ? "PASS" : "FAIL", mini: mintRevoked ? "No mint authority (cannot mint more)." : "Mint authority exists (supply can increase)." },
-          { label:"Freeze Authority", value: freezeRevoked ? "REVOKED" : "ACTIVE", badge: freezeRevoked ? "PASS" : "WATCH", mini: freezeRevoked ? "No freeze authority." : "Freeze authority exists (can freeze accounts)." },
-          { label:"Liquidity", value: dex?.liquidityUsd ? money(dex.liquidityUsd) : "—", badge: dex?.dexId ? dex.dexId.toUpperCase() : "DEX", mini: dex?.url ? "From DexScreener (best pair)." : "—" },
-          { label:"Market Cap", value: (dex?.marketCap ? money(dex.marketCap) : (dex?.fdv ? money(dex.fdv) : "—")), badge: dex?.marketCap ? "MCAP" : (dex?.fdv ? "FDV" : "—"), mini: "From DexScreener." },
-          { label:"Price", value: dex?.priceUsd ? priceUsdFmt(dex.priceUsd) : "—", badge: "USD", mini: dex?.volume24h ? `Vol24h ${money(dex.volume24h)}` : "—" },
-          { label:"Total Supply", value: Number.isFinite(uiSupply) ? fmtInt(uiSupply) : "—", badge:"Supply", mini:"From getTokenSupply." },
-          { label:"Top20 Concentration", value: Number.isFinite(top20) ? fmtPct(top20) : "—", badge:"Holders", mini:"Approx via largest accounts.", barPct: Number.isFinite(top20) ? clamp(top20,0,100) : undefined }
+          { label:"Guardian Score", value:`${score}/100`, badge: verdict.label, barPct: score, mini:"" },
+          { label:"Mint Authority", value: mintRevoked ? "REVOKED" : "ACTIVE", badge: mintRevoked ? "PASS" : "FAIL", mini:"" },
+          { label:"Freeze Authority", value: freezeRevoked ? "REVOKED" : "ACTIVE", badge: freezeRevoked ? "PASS" : "WATCH", mini:""},
+          { label:"Liquidity", value: dex?.liquidityUsd ? money(dex.liquidityUsd) : "—", badge: dex?.dexId ? dex.dexId.toUpperCase() : "DEX", mini:""},
+          { label:"Market Cap", value: (dex?.marketCap ? money(dex.marketCap) : (dex?.fdv ? money(dex.fdv) : "—")), badge: dex?.marketCap ? "MCAP" : (dex?.fdv ? "FDV" : "—"), mini:"" },
+          { label:"Price", value: dex?.priceUsd ? priceUsdFmt(dex.priceUsd) : "—", badge: "USD", mini:"" },
+          { label:"Total Supply", value: Number.isFinite(uiSupply) ? fmtInt(uiSupply) : "—", badge:"Supply", mini:"" },
+          { label:"Top20 Concentration", value: Number.isFinite(top20) ? fmtPct(top20) : "—", badge:"Holders", mini:"", barPct: Number.isFinite(top20) ? clamp(top20,0,100) : undefined }
         ];
         renderMetrics(metricRows);
 
@@ -4033,14 +4033,14 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
         const supplyText = supplyNice.text;
 
         const metricRows = [
-          { label:"Guardian Score", value:`${score}/100`, badge: verdict.label, barPct: score, mini:"Composite risk score (heuristic)." },
-          { label:"Ownership Renounced", value: (ownerEff ? (isBurnAddr(ownerEff)?"YES":"NO") : "NOT DETECTED"), badge: ownerEff ? (isBurnAddr(ownerEff)?"PASS":"WATCH") : "WATCH", mini:`Best-effort via ${ownerSource}.` },
-          { label:"Liquidity", value: dex?.liquidityUsd != null ? money(dex.liquidityUsd) : "—", badge: dex?.dexId ? dex.dexId.toUpperCase() : "DEX", mini: dex?.url ? "From DexScreener (best pair)." : "—" },
-          { label:"Market Cap", value: (dex?.marketCap != null ? money(dex.marketCap) : (dex?.fdv != null ? money(dex.fdv) : "—")), badge: dex?.marketCap != null ? "MCAP" : (dex?.fdv != null ? "FDV" : "—"), mini:"From DexScreener." },
-          { label:"Price", value: dex?.priceUsd != null ? priceUsdFmt(dex.priceUsd) : "—", badge: "USD", mini: dex?.volume24h != null ? `Vol24h ${money(dex.volume24h)}` : "—" },
-          { label:"LP Burned", value: lpBurn?.pct != null ? `${lpBurn.pct.toFixed(2)}%` : "UNKNOWN", badge: lpBurn?.pct != null ? (lpBurn.pct>=90?"PASS":"WATCH") : "UNKNOWN", mini: lpBurn?.note || "Best-effort V2 LP burn check." },
-          { label:"Proxy", value: proxy?.isProxy ? "Upgradeable" : "No signal", badge: proxy?.isProxy ? "WATCH" : "PASS", mini:"EIP-1967 slots check." },
-          { label:"Total Supply", value: supplyText || "—", badge: supplyReadable ? "On-chain" : "Unknown", mini: supplyReadable ? `totalSupply() • decimals=${supplyNice.usedDecimals ?? '—'}${supplyNice.approx ? ' (assumed)' : ''}` : 'From totalSupply().' }
+          { label:"Guardian Score", value:`${score}/100`, badge: verdict.label, barPct: score, mini:"" },
+          { label:"Ownership Renounced", value: (ownerEff ? (isBurnAddr(ownerEff)?"YES":"NO") : "NOT DETECTED"), badge: ownerEff ? (isBurnAddr(ownerEff)?"PASS":"WATCH") : "WATCH", mini:"" },
+          { label:"Liquidity", value: dex?.liquidityUsd != null ? money(dex.liquidityUsd) : "—", badge: dex?.dexId ? dex.dexId.toUpperCase() : "DEX", mini:""},
+          { label:"Market Cap", value: (dex?.marketCap != null ? money(dex.marketCap) : (dex?.fdv != null ? money(dex.fdv) : "—")), badge: dex?.marketCap != null ? "MCAP" : (dex?.fdv != null ? "FDV" : "—"), mini:"" },
+          { label:"Price", value: dex?.priceUsd != null ? priceUsdFmt(dex.priceUsd) : "—", badge: "USD", mini:"" },
+          { label:"LP Burned", value: lpBurn?.pct != null ? `${lpBurn.pct.toFixed(2)}%` : "UNKNOWN", badge: lpBurn?.pct != null ? (lpBurn.pct>=90?"PASS":"WATCH") : "UNKNOWN", mini:""},
+          { label:"Proxy", value: proxy?.isProxy ? "Upgradeable" : "No signal", badge: proxy?.isProxy ? "WATCH" : "PASS", mini:"" },
+          { label:"Total Supply", value: supplyText ? (supplyText + (supplyNice.approx ? " (assumed)" : "")) : "—", badge: supplyReadable ? "On-chain" : "Unknown", mini:"" }
         ];
         renderMetrics(metricRows);
 
@@ -4104,7 +4104,7 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
           renderBundles(model.bundles || []);
         }else{
           setText('bubbleStamp', activeChain.name + ' • LIMITED');
-          setText('bubbleHint', CFG.GOLDRUSH_API_KEY ? 'Indexer returned no transfer graph for this token (or rate-limited).' : 'EVM bubble map needs an indexer API key.' );
+          setText('bubbleHint', CFG.GOLDRUSH_API_KEY ? 'Indexer returned no transfer graph for this token (or rate-limited).' : 'EVM bubble map needs an indexer.' );
           renderBubbleEmpty();
           renderList(qs('clusterList'), [{t:'No cluster data', sev:'warn', d:'No graph could be built from recent transfers.', why:'Try again or a different token.'}], 'Clusters');
           renderList(qs('bundleList'), [{t:'No bundle data', sev:'warn', d:'No same-tx distributions detected in the sample.', why:'Limited sample.'}], 'Bundles');
@@ -4197,7 +4197,7 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
           <span class="chip">${escAttr(m.badge || m.value || "—")}</span>
         </div>
         <div class="v">${escAttr(m.value || "—")}</div>
-        <div class="mini">${escAttr(m.mini || "")}</div>
+        ${(m.mini && String(m.mini).trim()) ? `<div class="mini">${escAttr(m.mini)}</div>` : ''}
       </div>
     `).join("");
 
