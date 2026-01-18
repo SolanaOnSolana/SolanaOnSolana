@@ -293,6 +293,9 @@
     .badge.good::before{content:"✓";margin-right:6px;font-weight:1100}
     .badge.warn::before{content:"✕";margin-right:6px;font-weight:1100}
     .badge.bad::before{content:"✕";margin-right:6px;font-weight:1100}
+    .goodText{color: rgba(20,241,149,.95); font-weight:1100}
+    .warnText{color: rgba(255,220,130,.95); font-weight:1100}
+    .badText{color: rgba(255,120,150,.95); font-weight:1100}
     .resultTop{
       display:flex;
       align-items:flex-start;
@@ -1352,12 +1355,15 @@ function pillLabel(sev){ return (sev==="ok" ? "PASS" : (sev==="bad" ? "FAIL" : "
       const bar = (typeof r.barPct === "number")
         ? `<div class="bar"><div style="width:${clamp(r.barPct,0,100)}%"></div></div>`
         : "";
+      const sev = String(r.sev||'').toLowerCase();
+      const badgeCls = sev==='ok' ? 'badge good' : sev==='bad' ? 'badge bad' : sev==='warn' ? 'badge warn' : 'badge';
+      const valCls = sev==='ok' ? 'goodText' : sev==='bad' ? 'badText' : sev==='warn' ? 'warnText' : '';
       d.innerHTML = `
         <div class="metricK">
           <span>${esc(r.label || "—")}</span>
-          <span class="badge" style="opacity:.9">${esc(r.badge || r.value || "—")}</span>
+          <span class="${badgeCls}" style="opacity:.95">${esc(r.badge || r.value || "—")}</span>
         </div>
-        <div class="metricV">${esc(r.value || "—")}</div>
+        <div class="metricV ${valCls}">${esc(r.value || "—")}</div>
         ${r.mini ? `<div class="metricMini">${esc(r.mini)}</div>` : ''}
         ${bar}
       `;
@@ -1553,6 +1559,7 @@ function pillLabel(sev){ return (sev==="ok" ? "PASS" : (sev==="bad" ? "FAIL" : "
     // view (pan/zoom) in device pixels
     // Start centered like DexScreener (world origin in the middle)
     let view = { ox: c.width/2, oy: c.height/2, s: 1 };
+    let autoCenterFrames = 140;
     let panning = false;
     let panStart = {x:0,y:0,ox:0,oy:0};
 
@@ -1635,6 +1642,20 @@ function pillLabel(sev){ return (sev==="ok" ? "PASS" : (sev==="bad" ? "FAIL" : "
     };
 
     function tick(){
+      // Dynamic resize (canvas can be hidden when initialized)
+      const rectNow = c.getBoundingClientRect();
+      if(rectNow.width>0 && rectNow.height>0){
+        const nw = Math.round(rectNow.width * dpr);
+        const nh = Math.round(rectNow.height * dpr);
+        if(nw !== c.width || nh !== c.height){
+          c.width = nw;
+          c.height = nh;
+          // Reset view to centered origin after resize
+          view.ox = c.width/2;
+          view.oy = c.height/2;
+          autoCenterFrames = Math.max(autoCenterFrames, 90);
+        }
+      }
       ctx.clearRect(0,0,c.width,c.height);
       ctx.save();
       ctx.setTransform(view.s, 0, 0, view.s, view.ox, view.oy);
@@ -1645,24 +1666,29 @@ function pillLabel(sev){ return (sev==="ok" ? "PASS" : (sev==="bad" ? "FAIL" : "
       const worldX0 = (-view.ox) / view.s;
       const worldY0 = (-view.oy) / view.s;
 
-      // forces: repulsion (stable)
+      // forces: repulsion (DexScreener-ish, clamped)
+      const kRep = 520; // higher = more spacing
       for(let i=0;i<nodes.length;i++){
         const a = nodes[i];
         for(let j=i+1;j<nodes.length;j++){
           const b = nodes[j];
           const dx = a.x - b.x;
           const dy = a.y - b.y;
-          const dist2 = dx*dx + dy*dy + 0.01;
-          // repulsion scaled by node size (prevents corner pinning)
-          const f = ((a.r*b.r*0.35) + 140) / dist2;
-          const fx = dx * f;
-          const fy = dy * f;
+          const dist2 = dx*dx + dy*dy + 1e-3;
+          const dist = Math.sqrt(dist2);
+          // scale a bit with bubble size but keep stable
+          const sizeScale = 0.65 + Math.min(0.9, (a.r + b.r) / 70);
+          let f = (kRep * sizeScale) / dist2;
+          // clamp to avoid explosions when overlapping
+          if(f > 3.2) f = 3.2;
+          const fx = (dx / dist) * f;
+          const fy = (dy / dist) * f;
           if(a !== dragging){ a.vx += fx; a.vy += fy; }
           if(b !== dragging){ b.vx -= fx; b.vy -= fy; }
         }
       }
 
-      // edges attraction
+      // edges attraction (weighted + clamped)
       for(const e of edges){
         const a = byId.get(e.a);
         const b = byId.get(e.b);
@@ -1670,45 +1696,52 @@ function pillLabel(sev){ return (sev==="ok" ? "PASS" : (sev==="bad" ? "FAIL" : "
         const dx = b.x - a.x;
         const dy = b.y - a.y;
         const dist = Math.sqrt(dx*dx + dy*dy) || 1;
-        const target = Math.max(90, (a.r + b.r) * 2.4 + 32);
-        const k = (dist - target) * 0.0032 * (e.w || 1);
-        const fx = dx * k;
-        const fy = dy * k;
+        const wgt = Math.max(0.6, Math.min(6, (e.w || 1)));
+        const target = Math.max(82, (a.r + b.r) * 2.15 + 44);
+        const k = (dist - target) * 0.0026 * wgt;
+        const fx = (dx / dist) * k;
+        const fy = (dy / dist) * k;
         if(a !== dragging){ a.vx += fx; a.vy += fy; }
         if(b !== dragging){ b.vx -= fx; b.vy -= fy; }
       }
 
-      // collision (prevents overlap) + center gravity (keeps cluster in the middle)
+      // collision (prevents overlap) + center gravity (keeps cluster centered)
       for(let i=0;i<nodes.length;i++){
         const a = nodes[i];
-        // soft pull to center (world origin)
         if(a !== dragging){
-          a.vx += (-a.x) * 0.0009;
-          a.vy += (-a.y) * 0.0009;
+          // slightly stronger pull to origin
+          a.vx += (-a.x) * 0.0016;
+          a.vy += (-a.y) * 0.0016;
         }
         for(let j=i+1;j<nodes.length;j++){
           const b = nodes[j];
           const dx = b.x - a.x;
           const dy = b.y - a.y;
           const dist = Math.sqrt(dx*dx + dy*dy) || 1;
-          const minD = (a.r + b.r + 8);
+          const minD = (a.r + b.r + 10);
           if(dist < minD){
-            const push = (minD - dist) * 0.018;
             const nx = dx / dist;
             const ny = dy / dist;
+            const overlap = (minD - dist);
+            // position correction (prevents "stacking")
+            const corr = overlap * 0.55;
+            if(a !== dragging){ a.x -= nx * (corr*0.5); a.y -= ny * (corr*0.5); }
+            if(b !== dragging){ b.x += nx * (corr*0.5); b.y += ny * (corr*0.5); }
+            // velocity push
+            const push = overlap * 0.09;
             if(a !== dragging){ a.vx -= nx * push; a.vy -= ny * push; }
             if(b !== dragging){ b.vx += nx * push; b.vy += ny * push; }
           }
         }
       }
 
-      // integrate (DexScreener-ish: no hard screen clamp)
-      const softBound = Math.max(worldW, worldH) * 0.75; // world units
+// integrate (DexScreener-ish: no hard screen clamp)
+      const softBound = Math.min(worldW, worldH) * 0.45; // world units (keeps cluster on-screen)
       for(const n of nodes){
         if(n !== dragging){
           // damping
-          n.vx *= 0.86;
-          n.vy *= 0.86;
+          n.vx *= 0.78;
+          n.vy *= 0.78;
 
           // soft bounds around origin (keeps cluster visible while allowing pan/zoom)
           const ax = Math.abs(n.x), ay = Math.abs(n.y);
@@ -1717,7 +1750,7 @@ function pillLabel(sev){ return (sev==="ok" ? "PASS" : (sev==="bad" ? "FAIL" : "
 
           // velocity cap for stability
           const v = Math.sqrt(n.vx*n.vx + n.vy*n.vy);
-          const vmax = 10;
+          const vmax = 6;
           if(v > vmax){
             n.vx = n.vx / v * vmax;
             n.vy = n.vy / v * vmax;
@@ -1726,6 +1759,19 @@ function pillLabel(sev){ return (sev==="ok" ? "PASS" : (sev==="bad" ? "FAIL" : "
           n.x += n.vx;
           n.y += n.vy;
         }
+      }
+
+      // auto-center the cluster during the first seconds (prevents drifting/off-screen)
+      if(autoCenterFrames>0 && !panning && !dragging){
+        let cx = 0, cy = 0;
+        for(const n of nodes){ cx += n.x; cy += n.y; }
+        cx /= nodes.length;
+        cy /= nodes.length;
+        const targetOx = c.width/2 - cx * view.s;
+        const targetOy = c.height/2 - cy * view.s;
+        view.ox += (targetOx - view.ox) * 0.08;
+        view.oy += (targetOy - view.oy) * 0.08;
+        autoCenterFrames--;
       }
 
       // edges draw (stronger + weighted like DexScreener)
@@ -4136,8 +4182,8 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
 
         const metricRows = [
           { label:"Guardian Score", value:`${score}/100`, badge: verdict.label, barPct: score, mini:"" },
-          { label:"Mint Authority", value: mintRevoked ? "REVOKED" : "ACTIVE", badge: mintRevoked ? "PASS" : "FAIL", mini:"" },
-          { label:"Freeze Authority", value: freezeRevoked ? "REVOKED" : "ACTIVE", badge: freezeRevoked ? "PASS" : "WATCH", mini:""},
+          { label:"Mint Authority", value: mintRevoked ? "REVOKED" : "ACTIVE", badge: mintRevoked ? "PASS" : "FAIL", sev: mintRevoked ? "ok" : "bad", mini:"" },
+          { label:"Freeze Authority", value: freezeRevoked ? "REVOKED" : "ACTIVE", badge: freezeRevoked ? "PASS" : "WATCH", sev: freezeRevoked ? "ok" : "warn", mini:""},
           { label:"Liquidity", value: dex?.liquidityUsd ? money(dex.liquidityUsd) : "—", badge: dex?.dexId ? dex.dexId.toUpperCase() : "DEX", mini:""},
           { label:"Market Cap", value: (dex?.marketCap ? money(dex.marketCap) : (dex?.fdv ? money(dex.fdv) : "—")), badge: dex?.marketCap ? "MCAP" : (dex?.fdv ? "FDV" : "—"), mini:"" },
           { label:"Price", value: dex?.priceUsd ? priceUsdFmt(dex.priceUsd) : "—", badge: "USD", mini:"" },
@@ -4267,12 +4313,12 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
 
         const metricRows = [
           { label:"Guardian Score", value:`${score}/100`, badge: verdict.label, barPct: score, mini:"" },
-          { label:"Ownership Renounced", value: (ownerEff ? (isBurnAddr(ownerEff)?"YES":"NO") : "NOT DETECTED"), badge: ownerEff ? (isBurnAddr(ownerEff)?"PASS":"WATCH") : "WATCH", mini:"" },
+          { label:"Ownership Renounced", value: (ownerEff ? (isBurnAddr(ownerEff)?"YES":"NO") : "NOT DETECTED"), badge: ownerEff ? (isBurnAddr(ownerEff)?"PASS":"WATCH") : "WATCH", sev: (ownerEff && isBurnAddr(ownerEff)) ? "ok" : "warn", mini:"" },
           { label:"Liquidity", value: dex?.liquidityUsd != null ? money(dex.liquidityUsd) : "—", badge: dex?.dexId ? dex.dexId.toUpperCase() : "DEX", mini:""},
           { label:"Market Cap", value: (dex?.marketCap != null ? money(dex.marketCap) : (dex?.fdv != null ? money(dex.fdv) : "—")), badge: dex?.marketCap != null ? "MCAP" : (dex?.fdv != null ? "FDV" : "—"), mini:"" },
           { label:"Price", value: dex?.priceUsd != null ? priceUsdFmt(dex.priceUsd) : "—", badge: "USD", mini:"" },
-          { label:"LP Burned", value: lpBurn?.pct != null ? `${lpBurn.pct.toFixed(2)}%` : "UNKNOWN", badge: lpBurn?.pct != null ? (lpBurn.pct>=90?"PASS":"WATCH") : "UNKNOWN", mini:""},
-          { label:"Proxy", value: proxy?.isProxy ? "Upgradeable" : "No signal", badge: proxy?.isProxy ? "WATCH" : "PASS", mini:"" },
+          { label:"LP Burned", value: lpBurn?.pct != null ? `${lpBurn.pct.toFixed(2)}%` : "UNKNOWN", badge: lpBurn?.pct != null ? (lpBurn.pct>=90?"PASS":"WATCH") : "UNKNOWN", sev: lpBurn?.pct != null ? (lpBurn.pct>=90?"ok":"warn") : "warn", mini:""},
+          { label:"Proxy", value: proxy?.isProxy ? "Upgradeable" : "No signal", badge: proxy?.isProxy ? "WATCH" : "PASS", sev: proxy?.isProxy ? "warn" : "ok", mini:"" },
           { label:"Total Supply", value: supplyText ? (supplyText + (supplyNice.approx ? " (assumed)" : "")) : "—", badge: supplyReadable ? "On-chain" : "Unknown", mini:"" }
         ];
         renderMetrics(metricRows);
@@ -4627,6 +4673,9 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
     .badge.good::before{content:"✓";margin-right:6px;font-weight:1100}
     .badge.warn::before{content:"✕";margin-right:6px;font-weight:1100}
     .badge.bad::before{content:"✕";margin-right:6px;font-weight:1100}
+    .goodText{color: rgba(20,241,149,.95); font-weight:1100}
+    .warnText{color: rgba(255,220,130,.95); font-weight:1100}
+    .badText{color: rgba(255,120,150,.95); font-weight:1100}
     .sectionTitle{
       display:flex;
       align-items:center;
