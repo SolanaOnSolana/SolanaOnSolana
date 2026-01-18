@@ -171,7 +171,58 @@
 
     /* Desktop menu (⋯) */
     .menu{ position:relative; display:inline-flex; }
-    .menuPop{
+    
+
+    /* Floating menu only (header removed) */
+    .menuFloat{
+      position: fixed;
+      top: 14px;
+      right: 14px;
+      z-index: 90;
+    }
+    .menuBtn{ font-size: 20px; padding: 10px 14px; border-radius: 16px; }
+
+    .menuLabel{
+      font-size: 11.5px;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,.55);
+      padding: 10px 10px 6px;
+    }
+    .menuSep{
+      height: 1px;
+      margin: 10px 6px;
+      background: rgba(255,255,255,.10);
+    }
+
+    /* Icons */
+    .ico{ width: 34px; height: 34px; display:block; }
+    .ico.sm{ width: 28px; height: 28px; }
+
+    /* How-to-buy steps with icons */
+    .stepTop{display:flex; align-items:center; justify-content:space-between; margin-bottom: 10px;}
+    .stepIcon{
+      width: 46px; height: 46px;
+      display:grid; place-items:center;
+      border-radius: 16px;
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.10);
+      box-shadow: 0 10px 30px rgba(0,0,0,.22);
+    }
+
+    /* Tokenomics stat icons */
+    .statHead{display:flex; align-items:center; gap:12px;}
+    .statIcon{
+      width: 46px; height: 46px;
+      display:grid; place-items:center;
+      border-radius: 16px;
+      background: rgba(255,255,255,.05);
+      border: 1px solid rgba(255,255,255,.10);
+    }
+
+    /* Remove leftover header spacing expectations */
+    .header{display:none !important;}
+.menuPop{
       position:absolute;
       top: calc(100% + 10px);
       right: 0;
@@ -1385,126 +1436,111 @@
 </head>
 
 <body>
-  <!-- MOBILE DRAWER -->
-  <div class="mOverlay" id="mOverlay" aria-hidden="true"></div>
-  <aside class="mDrawer" id="mDrawer" aria-label="Mobile menu" aria-hidden="true">
-    <div class="mTop">
-      <div class="mTitle">Menu</div>
-      <button class="btn ghost icon" id="mClose" aria-label="Close menu">✕</button>
-    </div>
 
-    <div class="mGroup">
-      <div class="mLabel">Navigation</div>
-      <div class="mList">
-        <a class="btn" href="#what">What is $SOS?</a>
-        <a class="btn" href="#tools">Tools</a>
-        <a class="btn" href="#tokenomics">Tokenomics</a>
-        <a class="btn" href="#roadmap">Roadmap</a>
-        <a class="btn" href="#buy">How to Buy</a>
-        <a class="btn" href="#faq">FAQ</a>
-        <a class="btn" href="#socials">Socials</a>
-      </div>
-    </div>
+  <!-- ICON SPRITE (no emojis) -->
+  <svg aria-hidden="true" focusable="false" style="position:absolute;width:0;height:0;overflow:hidden">
+    <defs>
+      <linearGradient id="gradBrand" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0" stop-color="var(--g)"/>
+        <stop offset="0.5" stop-color="var(--c)"/>
+        <stop offset="1" stop-color="var(--p)"/>
+      </linearGradient>
+    </defs>
 
-    <div class="mGroup">
-      <div class="mLabel">Tools</div>
-      <div class="mList">
-        <a class="btn grad" href="https://solanax1.com/wallet" target="_blank" rel="noreferrer">Guardian Wallet Scanner</a>
-        <a class="btn grad" href="https://solanax1.com/contract" target="_blank" rel="noreferrer">Guardian Contract Scanner</a>
-      </div>
-    </div>
+    <symbol id="ico-vault" viewBox="0 0 24 24">
+      <path d="M4.5 7.5h15a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-15a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2Z" fill="none" stroke="url(#gradBrand)" stroke-width="2" stroke-linecap="round"/>
+      <path d="M7 7.5V6a3 3 0 0 1 3-3h4a3 3 0 0 1 3 3v1.5" fill="none" stroke="url(#gradBrand)" stroke-width="2" stroke-linecap="round"/>
+      <path d="M12 12.2a1.8 1.8 0 1 0 0 3.6a1.8 1.8 0 0 0 0-3.6Z" fill="none" stroke="url(#gradBrand)" stroke-width="2"/>
+      <path d="M12 10.5v1.7" fill="none" stroke="url(#gradBrand)" stroke-width="2" stroke-linecap="round"/>
+    </symbol>
 
-    <div class="mGroup">
-      <div class="mLabel">Socials</div>
-      <div class="mList">
-        <a class="btn grad" href="https://x.com/Solana_X1" target="_blank" rel="noreferrer">X</a>
-        <a class="btn grad" href="https://t.me/Solana_X1" target="_blank" rel="noreferrer">Telegram</a>
-        <a class="btn grad" href="https://t.me/solanaonsolana_bot" target="_blank" rel="noreferrer">Bot</a>
-      </div>
-    </div>
-  </aside>
+    <symbol id="ico-sol" viewBox="0 0 24 24">
+      <path d="M6 7.2c.5-.5 1.2-.8 1.9-.8h12.6c.4 0 .6.5.3.8l-2 2c-.5.5-1.2.8-1.9.8H4.3c-.4 0-.6-.5-.3-.8l2-2Z" fill="url(#gradBrand)"/>
+      <path d="M6 13c.5-.5 1.2-.8 1.9-.8h12.6c.4 0 .6.5.3.8l-2 2c-.5.5-1.2.8-1.9.8H4.3c-.4 0-.6-.5-.3-.8l2-2Z" fill="url(#gradBrand)" opacity=".9"/>
+      <path d="M6 18.8c.5-.5 1.2-.8 1.9-.8h12.6c.4 0 .6.5.3.8l-2 2c-.5.5-1.2.8-1.9.8H4.3c-.4 0-.6-.5-.3-.8l2-2Z" fill="url(#gradBrand)" opacity=".8"/>
+    </symbol>
 
-  <!-- HEADER -->
-  <div class="header">
-    <div class="wrap">
-      <div class="headerRow">
-        <a class="brand" href="#top" aria-label="Home">
-          <img src="assets/logo.png" alt="$SOS Logo" />
-          <div class="brandText">
-            <div class="ticker">$SOS</div>
-            <div class="name">Solana on Solana</div>
-          </div>
-        </a>
+    <symbol id="ico-arrows" viewBox="0 0 24 24">
+      <path d="M7 7h10l-2-2" fill="none" stroke="url(#gradBrand)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M17 7l-2 2" fill="none" stroke="url(#gradBrand)" stroke-width="2" stroke-linecap="round"/>
+      <path d="M17 17H7l2 2" fill="none" stroke="url(#gradBrand)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M7 17l2-2" fill="none" stroke="url(#gradBrand)" stroke-width="2" stroke-linecap="round"/>
+    </symbol>
 
-        <!-- MAIN NAV (desktop/tablet) -->
-        <nav class="nav" aria-label="Main navigation">
-          <a class="btn" href="#what">What is $SOS?</a>
-          <a class="btn" href="#tools">Tools</a>
-          <a class="btn" href="#tokenomics">Tokenomics</a>
-          <a class="btn" href="#roadmap">Roadmap</a>
-          <a class="btn" href="#buy">How to Buy</a>
-          <a class="btn" href="#faq">FAQ</a>
-          <a class="btn" href="#socials">Socials</a>
-        </nav>
+    <symbol id="ico-swap" viewBox="0 0 24 24">
+      <path d="M8 7h10" fill="none" stroke="url(#gradBrand)" stroke-width="2" stroke-linecap="round"/>
+      <path d="M16 5l2 2-2 2" fill="none" stroke="url(#gradBrand)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M16 17H6" fill="none" stroke="url(#gradBrand)" stroke-width="2" stroke-linecap="round"/>
+      <path d="M8 19l-2-2 2-2" fill="none" stroke="url(#gradBrand)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M11 11.2h2" fill="none" stroke="url(#gradBrand)" stroke-width="2" stroke-linecap="round" opacity=".7"/>
+    </symbol>
 
-        <div class="headerActions">
+    <symbol id="ico-community" viewBox="0 0 24 24">
+      <path d="M8.2 12.2a3 3 0 1 1 0-6a3 3 0 0 1 0 6Z" fill="none" stroke="url(#gradBrand)" stroke-width="2"/>
+      <path d="M16 11.2a2.6 2.6 0 1 1 0-5.2a2.6 2.6 0 0 1 0 5.2Z" fill="none" stroke="url(#gradBrand)" stroke-width="2" opacity=".85"/>
+      <path d="M3.6 20c.7-3.1 2.7-4.8 5.3-4.8s4.6 1.7 5.3 4.8" fill="none" stroke="url(#gradBrand)" stroke-width="2" stroke-linecap="round"/>
+      <path d="M14.2 15.8c1.8.2 3.1 1.4 3.8 4.2" fill="none" stroke="url(#gradBrand)" stroke-width="2" stroke-linecap="round" opacity=".8"/>
+    </symbol>
 
-          <!-- Desktop & Mobile: unified action menu -->
-          <div class="menu" id="menu">
-            <button
-              class="btn ghost icon"
-              id="menuBtn"
-              aria-haspopup="true"
-              aria-expanded="false"
-              aria-label="Open menu"
-            >
-              ⋯
-            </button>
+    <symbol id="ico-fire" viewBox="0 0 24 24">
+      <path d="M12 22c4 0 7-3 7-7c0-3.5-2.6-5.8-4.3-7.8c-.7-.8-1.2-1.7-1.4-2.7c-1 1.1-2 2.4-2.6 3.9c-.8 2-.4 3.1-1.9 4.6c-1.1 1.1-3 2.4-3 5.1c0 4 3 6.9 6.2 6.9Z" fill="none" stroke="url(#gradBrand)" stroke-width="2" stroke-linejoin="round"/>
+      <path d="M10.2 15.4c.2-1.5 1.3-2.4 2-3.4c.3-.4.5-.8.6-1.2c.6 1 .9 1.8 1.1 2.7c.2 1.1-.3 1.8-.8 2.5c-.5.7-.7 1.1-.7 1.9c0 1.4 1.1 2.1 2 2.4" fill="none" stroke="url(#gradBrand)" stroke-width="2" stroke-linecap="round" opacity=".75"/>
+    </symbol>
 
-            <div class="menuPop" id="menuPop" role="menu" aria-label="Quick links">
+    <symbol id="ico-percent" viewBox="0 0 24 24">
+      <path d="M19 5L5 19" fill="none" stroke="url(#gradBrand)" stroke-width="2" stroke-linecap="round"/>
+      <path d="M7.5 9a1.8 1.8 0 1 0 0-3.6a1.8 1.8 0 0 0 0 3.6Z" fill="none" stroke="url(#gradBrand)" stroke-width="2"/>
+      <path d="M16.5 18.6a1.8 1.8 0 1 0 0-3.6a1.8 1.8 0 0 0 0 3.6Z" fill="none" stroke="url(#gradBrand)" stroke-width="2"/>
+    </symbol>
 
-              <!-- TOOLS -->
-              <a class="menuItem" role="menuitem" href="https://solanax1.com/wallet" target="_blank" rel="noreferrer">
-                Wallet Scanner
-                <span class="menuBadge">Tool</span>
-              </a>
+    <symbol id="ico-stack" viewBox="0 0 24 24">
+      <path d="M12 4l9 5-9 5-9-5 9-5Z" fill="none" stroke="url(#gradBrand)" stroke-width="2" stroke-linejoin="round"/>
+      <path d="M21 9v6l-9 5-9-5V9" fill="none" stroke="url(#gradBrand)" stroke-width="2" stroke-linejoin="round" opacity=".8"/>
+    </symbol>
+  </svg>
 
-              <a class="menuItem" role="menuitem" href="https://solanax1.com/contract" target="_blank" rel="noreferrer">
-                Contract Scanner
-                <span class="menuBadge">Tool</span>
-              </a>
 
-              <div style="height:6px"></div>
+  <!-- FLOATING MENU (ALL NAV INSIDE) -->
+  <div class="menuFloat" id="menuFloat">
+    <div class="menu" id="menu">
+      <button
+        class="btn ghost icon menuBtn"
+        id="menuBtn"
+        aria-haspopup="true"
+        aria-expanded="false"
+        aria-label="Open menu"
+      >
+        ⋯
+      </button>
 
-              <!-- SOCIALS -->
-              <a class="menuItem" role="menuitem" href="https://x.com/Solana_X1" target="_blank" rel="noreferrer">
-                X
-                <span class="menuBadge">Social</span>
-              </a>
+      <div class="menuPop" id="menuPop" role="menu" aria-label="Quick links">
 
-              <a class="menuItem" role="menuitem" href="https://t.me/Solana_X1" target="_blank" rel="noreferrer">
-                Telegram
-                <span class="menuBadge">Social</span>
-              </a>
+        <div class="menuLabel">Navigate</div>
+        <a class="menuItem" role="menuitem" href="#what">What is $SOS?<span class="menuBadge">Section</span></a>
+        <a class="menuItem" role="menuitem" href="#tools">Tools<span class="menuBadge">Section</span></a>
+        <a class="menuItem" role="menuitem" href="#tokenomics">Tokenomics<span class="menuBadge">Section</span></a>
+        <a class="menuItem" role="menuitem" href="#roadmap">Roadmap<span class="menuBadge">Section</span></a>
+        <a class="menuItem" role="menuitem" href="#buy">How to Buy<span class="menuBadge">Section</span></a>
+        <a class="menuItem" role="menuitem" href="#faq">FAQ<span class="menuBadge">Section</span></a>
+        <a class="menuItem" role="menuitem" href="#socials">Socials<span class="menuBadge">Section</span></a>
 
-              <a class="menuItem" role="menuitem" href="https://t.me/solanaonsolana_bot" target="_blank" rel="noreferrer">
-                Bot
-                <span class="menuBadge">Bot</span>
-              </a>
+        <div class="menuSep"></div>
+        <div class="menuLabel">Tools</div>
+        <a class="menuItem" role="menuitem" href="https://solanax1.com/wallet" target="_blank" rel="noreferrer">Guardian Wallet Scanner<span class="menuBadge">Tool</span></a>
+        <a class="menuItem" role="menuitem" href="https://solanax1.com/contract" target="_blank" rel="noreferrer">Guardian Contract Scanner<span class="menuBadge">Tool</span></a>
 
-            </div>
-          </div>
-
-          <!-- Mobile: one clean button -->
-          <button class="btn ghost icon mToggle" id="mOpen" aria-label="Open menu">☰</button>
-        </div>
+        <div class="menuSep"></div>
+        <div class="menuLabel">Social</div>
+        <a class="menuItem" role="menuitem" href="https://x.com/Solana_X1" target="_blank" rel="noreferrer">X<span class="menuBadge">Social</span></a>
+        <a class="menuItem" role="menuitem" href="https://t.me/Solana_X1" target="_blank" rel="noreferrer">Telegram<span class="menuBadge">Social</span></a>
+        <a class="menuItem" role="menuitem" href="https://t.me/solanaonsolana_bot" target="_blank" rel="noreferrer">Bot<span class="menuBadge">Bot</span></a>
 
       </div>
     </div>
   </div>
 
   <!-- HERO -->
-  <main id="top" class="wrap">
+<main id="top" class="wrap">
     <section class="hero">
       <div class="card heroCard">
         <h1 class="heroTitle"><span class="gradText">$SOS</span></h1>
@@ -1801,18 +1837,33 @@
           <h2 class="h2">Tokenomics</h2>
           <div class="grid3">
             <div class="stat">
-              <div class="k">Supply</div>
-              <div class="v"><span class="grad">1,000,000,000</span> SOS</div>
+              <div class="statHead">
+                <div class="statIcon" aria-hidden="true"><svg class="ico sm"><use href="#ico-stack" xlink:href="#ico-stack"></use></svg></div>
+                <div>
+                  <div class="k">Supply</div>
+                  <div class="v"><span class="grad">1,000,000,000</span> SOS</div>
+                </div>
+              </div>
             </div>
             <div class="stat">
-              <div class="k">Tax</div>
-              <div class="v">0%</div>
+              <div class="statHead">
+                <div class="statIcon" aria-hidden="true"><svg class="ico sm"><use href="#ico-percent" xlink:href="#ico-percent"></use></svg></div>
+                <div>
+                  <div class="k">Tax</div>
+                  <div class="v">0%</div>
+                </div>
+              </div>
             </div>
             <div class="stat">
-              <div class="k">Supply</div>
-              <div class="v">Burned</div>
+              <div class="statHead">
+                <div class="statIcon" aria-hidden="true"><svg class="ico sm"><use href="#ico-fire" xlink:href="#ico-fire"></use></svg></div>
+                <div>
+                  <div class="k">Supply</div>
+                  <div class="v">Burned</div>
+                </div>
+              </div>
             </div>
-          </div>
+</div>
 
           <div style="height:14px"></div>
 
@@ -1943,26 +1994,38 @@
           <h2 class="h2">How to Buy</h2>
           <div class="steps">
             <div class="step">
-              <div class="num">1</div>
+              <div class="stepTop">
+                <div class="stepIcon" aria-hidden="true"><svg class="ico"><use href="#ico-vault" xlink:href="#ico-vault"></use></svg></div>
+                <div class="num">1</div>
+              </div>
               <h4>Get a Wallet</h4>
               <p>Use a Solana wallet (Phantom, Solflare, Backpack) and set it up securely.</p>
             </div>
             <div class="step">
-              <div class="num">2</div>
+              <div class="stepTop">
+                <div class="stepIcon" aria-hidden="true"><svg class="ico"><use href="#ico-arrows" xlink:href="#ico-arrows"></use></svg></div>
+                <div class="num">2</div>
+              </div>
               <h4>Fund with SOL</h4>
               <p>Buy SOL on an exchange and send it to your Solana wallet address.</p>
             </div>
             <div class="step">
-              <div class="num">3</div>
+              <div class="stepTop">
+                <div class="stepIcon" aria-hidden="true"><svg class="ico"><use href="#ico-swap" xlink:href="#ico-swap"></use></svg></div>
+                <div class="num">3</div>
+              </div>
               <h4>Swap for $SOS</h4>
               <p>Use a Solana DEX and swap SOL → $SOS using the official contract address.</p>
             </div>
             <div class="step">
-              <div class="num">4</div>
+              <div class="stepTop">
+                <div class="stepIcon" aria-hidden="true"><svg class="ico"><use href="#ico-community" xlink:href="#ico-community"></use></svg></div>
+                <div class="num">4</div>
+              </div>
               <h4>Join the Community</h4>
               <p>Follow updates, memes, and announcements via Telegram and X.</p>
             </div>
-          </div>
+</div>
         </div>
       </div>
     </section>
@@ -2099,7 +2162,12 @@
       menuPop.classList.remove("open");
       if(menuBtn) menuBtn.setAttribute("aria-expanded","false");
     }
-    function toggleMenu(){
+    
+  // Close menu when a link is clicked
+  if(menuPop){
+    menuPop.querySelectorAll('a').forEach(a=>a.addEventListener('click', closeMenu));
+  }
+function toggleMenu(){
       const open = menuPop.classList.toggle("open");
       menuBtn.setAttribute("aria-expanded", open ? "true" : "false");
     }
@@ -2149,7 +2217,7 @@
     const mDrawer = document.getElementById("mDrawer");
     const mOverlay = document.getElementById("mOverlay");
 
-    function openDrawer(){
+    function openDrawer(){ if(!mDrawer) return;
       mDrawer.classList.add("open");
       mOverlay.classList.add("open");
       mDrawer.setAttribute("aria-hidden","false");
@@ -2157,7 +2225,7 @@
       document.body.style.overflow = "hidden";
     }
 
-    function closeDrawer(){
+    function closeDrawer(){ if(!mDrawer) return;
       mDrawer.classList.remove("open");
       mOverlay.classList.remove("open");
       mDrawer.setAttribute("aria-hidden","true");
@@ -2166,9 +2234,9 @@
     }
 
     if(mOpen && mClose && mDrawer && mOverlay){
-      mOpen.addEventListener("click", (e) => { e.preventDefault(); openDrawer(); });
-      mClose.addEventListener("click", (e) => { e.preventDefault(); closeDrawer(); });
-      mOverlay.addEventListener("click", () => closeDrawer());
+      mOpen && mOpen.addEventListener("click", (e) => { e.preventDefault(); openDrawer(); });
+      mClose && mClose.addEventListener("click", (e) => { e.preventDefault(); closeDrawer(); });
+      mOverlay && mOverlay.addEventListener("click", () => closeDrawer());
       document.addEventListener("keydown", (e) => { if(e.key === "Escape") closeDrawer(); });
 
       // close drawer on link click
