@@ -3744,7 +3744,7 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
       const p = BigInt(partBI);
       const t = BigInt(totalBI);
       if(t <= 0n) return null;
-      const bp = (p * 10000n) / t; // basis points
+      const bp = (p * 10000n + (t/2n)) / t; // rounded basis points
       return Number(bp) / 100;
     }catch{
       return null;
@@ -3768,9 +3768,8 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
 
       let pct = null;
       if(supplyBI !== null && supplyBI !== undefined && supplyBI > 0n && balBI !== null){
-        // keep 2 decimals, avoid float overflow
-        const p = Number((balBI * 1000000n) / supplyBI) / 10000;
-        pct = Number.isFinite(p) ? p : null;
+        const p = pctFromBI(balBI, supplyBI);
+        pct = (p === null || p === undefined || Number.isNaN(p)) ? null : p;
       }else{
         const p2 = Number(h?.percentage ?? h?.pct ?? h?.share ?? h?.holding ?? NaN);
         pct = Number.isFinite(p2) ? p2 : null;
