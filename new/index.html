@@ -2073,6 +2073,22 @@ renderHoldersEmpty();
     }catch{
       return null;
     }
+
+  async function tryResolveSolMintFromAccount(addr){
+    // If user pastes a token *account* instead of a mint, resolve its mint.
+    try{
+      const r = await solRpc("getAccountInfo", [addr, {encoding:"jsonParsed", commitment:"confirmed"}]);
+      const info = r?.value?.data?.parsed?.info;
+      const t = r?.value?.data?.parsed?.type;
+      const mint = info?.mint || null;
+      if(mint && typeof mint === "string" && looksBase58(mint) && (t === "account" || t === "mint" || t === "multisig" || t)){
+        return mint;
+      }
+      return null;
+    }catch{
+      return null;
+    }
+  }
   }
 
   async function poolMap(items, worker, concurrency=6){
@@ -3871,7 +3887,19 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
         if(!looksBase58(addr)) throw new Error("Invalid Solana mint. (Base58, 32–52 chars)");
         setStatus("Connecting to Solana RPC…");
 
-        const mintParsed = await getMintParsed(addr);
+        let mintAddr = addr;
+
+        let mintParsed = await getMintParsed(mintAddr);
+        if(!mintParsed || !mintParsed.info){
+          // Fallback: user may have pasted a token account. Try resolving to its mint.
+          const resolvedMint = await tryResolveSolMintFromAccount(mintAddr);
+          if(resolvedMint && resolvedMint !== mintAddr){
+            mintAddr = resolvedMint;
+            // Update displayed short address
+            setText("mintShort", shortAddr(mintAddr));
+            mintParsed = await getMintParsed(mintAddr);
+          }
+        }
         if(!mintParsed || !mintParsed.info) throw new Error("Mint not found or not parsable.");
 
         const ownerProg = mintParsed.owner || "";
@@ -3881,14 +3909,14 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
           : "UNKNOWN";
 
         setStatus("Fetching supply…");
-        const supply = await getTokenSupply(addr);
+        const supply = await getTokenSupply(mintAddr);
         const uiSupply = Number(supply?.uiAmount ?? NaN);
 
         setStatus("Fetching largest holders…");
-        const largest = await getLargest(addr);
+        const largest = await getLargest(mintAddr);
 
         setStatus("Fetching metadata (getAsset)…");
-        const asset = await getAsset(addr);
+        const asset = await getAsset(mintAddr);
         const meta = pickTokenMetaFromAsset(asset);
 
         const mintAuth = mintParsed.info?.mintAuthority ?? null;
@@ -3903,7 +3931,7 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
         }
 
         setStatus("Fetching live market data (DexScreener)…");
-        const dex = await fetchDexScreener(addr).catch(()=> null);
+        const dex = await fetchDexScreener(mintAddr).catch(()=> null);
         if(dex && !meta?.image){
           const img = (dex?.info?.imageUrl || dex?.info?.image || dex?.baseToken?.logoURI || "");
           if(img) meta.image = String(img);
@@ -3923,7 +3951,7 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
           meta
         };
 
-        applyTokenHeader(meta, addr);
+        applyTokenHeader(meta, mintAddr);
 
         const {score, checks, critical} = scoreSol(sig);
         const verdict = verdictFrom(score, critical);
@@ -3970,7 +3998,7 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
         renderHoldersWallets(holderWallets);
 
         setStatus("Analyzing recent flows (clusters/bundles)…");
-        const flow = await solComputeFlowsAndBundles(addr, 30).catch(() => ({edges:new Map(), bundles:[], seenSigs:[]}));
+        const flow = await solComputeFlowsAndBundles(mintAddr, 30).catch(() => ({edges:new Map(), bundles:[], seenSigs:[]}));
         const bubbleModel = buildBubbleModelSol(holderWallets, flow);
         drawBubbleMap(bubbleModel);
         renderClustersFromModel(bubbleModel);
@@ -3980,7 +4008,7 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
         LAST_SCAN = {
           time: Date.now(),
           chain: activeChain,
-          address: addr,
+          address: mintAddr,
           score,
           verdict,
           checks,
