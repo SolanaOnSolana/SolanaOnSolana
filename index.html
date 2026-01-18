@@ -1285,7 +1285,85 @@
       }
     }
 
-  </style>
+  
+
+    /* ROADMAP TIMELINE (NEXT LEVEL) */
+    #roadmap .sub{ color: var(--muted); margin-top: 6px; max-width: 70ch; }
+    .roadHeader{ display:flex; align-items:flex-end; justify-content:space-between; gap:16px; }
+    .roadLegend{ display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end; }
+    .badge{ font-size:12px; font-weight:950; padding:7px 10px; border-radius:999px; border:1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.06); }
+    .badge.done{ border-color: rgba(20,241,149,.35); box-shadow: 0 0 0 1px rgba(20,241,149,.12) inset; }
+    .badge.next{ border-color: rgba(0,209,255,.35); box-shadow: 0 0 0 1px rgba(0,209,255,.12) inset; }
+    .badge.planned{ border-color: rgba(153,69,255,.35); box-shadow: 0 0 0 1px rgba(153,69,255,.12) inset; }
+
+    .timeline{ position:relative; margin-top: 18px; padding: 10px 0 6px; }
+    .timeline:before{
+      content:"";
+      position:absolute;
+      left:50%;
+      top:0;
+      bottom:0;
+      width:2px;
+      background: linear-gradient(to bottom, rgba(20,241,149,.0), rgba(255,255,255,.14), rgba(153,69,255,.0));
+      transform: translateX(-50%);
+    }
+
+    .tlItem{ display:grid; grid-template-columns: 1fr 56px 1fr; gap: 18px; align-items: stretch; margin: 14px 0; opacity:0; filter: blur(2px); }
+    .tlItem.left{ transform: translateX(-34px); }
+    .tlItem.right{ transform: translateX(34px); }
+    .tlItem.in{ opacity:1; transform: translateX(0); filter: blur(0); transition: .55s cubic-bezier(.2,.8,.2,1); }
+
+    .tlCol.mid{ display:flex; justify-content:center; position:relative; }
+    .tlNode{
+      width: 14px; height: 14px; border-radius: 999px;
+      background: rgba(255,255,255,.85);
+      box-shadow: 0 0 0 6px rgba(153,69,255,.10), 0 0 0 1px rgba(255,255,255,.12) inset, 0 16px 40px rgba(0,0,0,.55);
+      margin-top: 22px;
+    }
+    .tlCard{
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 18px;
+      padding: 14px 14px 12px;
+      box-shadow: 0 18px 60px rgba(0,0,0,.35);
+      backdrop-filter: blur(10px);
+      position: relative;
+      overflow: hidden;
+    }
+    .tlCard:before{
+      content:"";
+      position:absolute; inset:-2px;
+      background: radial-gradient(900px 300px at 10% 0%, rgba(20,241,149,.18), transparent 55%),
+                  radial-gradient(900px 300px at 90% 100%, rgba(153,69,255,.16), transparent 55%);
+      pointer-events:none;
+    }
+    .tlMeta{ position:relative; z-index:1; }
+    .tlPhase{ font-weight:1000; letter-spacing:-.2px; }
+    .tlMonths{ color: var(--muted); font-weight:850; margin-top: 2px; font-size: 13px; }
+    .tlTitle{ font-size: 18px; font-weight:1050; letter-spacing:-.3px; margin-top: 6px; }
+    .tlTag{ color: var(--muted); margin-top: 3px; font-size: 13px; }
+
+    .tlList{ position:relative; z-index:1; margin: 10px 0 0; padding: 0; list-style: none; display:flex; flex-direction:column; gap: 8px; }
+    .tlList li{ display:flex; gap: 10px; align-items:flex-start; color: rgba(255,255,255,.88); }
+    .tlList li:before{ content:""; width:8px; height:8px; border-radius:999px; margin-top: 7px; flex: 0 0 8px; background: rgba(255,255,255,.35); box-shadow: 0 0 0 3px rgba(255,255,255,.06); }
+    .tlList li.done{ color: rgba(255,255,255,.70); text-decoration: line-through; text-decoration-thickness: 2px; text-decoration-color: rgba(20,241,149,.55); }
+    .tlList li.done:before{ background: rgba(20,241,149,.95); box-shadow: 0 0 0 3px rgba(20,241,149,.12); }
+    .tlList li.next:before{ background: rgba(0,209,255,.95); box-shadow: 0 0 0 3px rgba(0,209,255,.12); }
+    .tlList li.planned:before{ background: rgba(153,69,255,.95); box-shadow: 0 0 0 3px rgba(153,69,255,.12); }
+
+    /* Mobile timeline: single column, left rail */
+    @media (max-width: 880px){
+      .roadHeader{ flex-direction:column; align-items:flex-start; }
+      .roadLegend{ justify-content:flex-start; }
+      .timeline:before{ left: 16px; transform:none; }
+      .tlItem{ grid-template-columns: 34px 1fr; gap: 14px; }
+      .tlCol.a, .tlCol.b{ grid-column: 2; }
+      .tlCol.mid{ grid-column: 1; justify-content:flex-start; }
+      .tlNode{ margin-top: 18px; }
+      .tlItem.left, .tlItem.right{ transform: translateY(22px); }
+      .tlItem.in{ transform: translateY(0); }
+    }
+</style>
 </head>
 
 <body>
@@ -1303,6 +1381,7 @@
         <a class="btn" href="#what">What is $SOS?</a>
         <a class="btn" href="#tools">Tools</a>
         <a class="btn" href="#tokenomics">Tokenomics</a>
+        <a class="btn" href="#roadmap">Roadmap</a>
         <a class="btn" href="#buy">How to Buy</a>
         <a class="btn" href="#faq">FAQ</a>
         <a class="btn" href="#socials">Socials</a>
@@ -1344,6 +1423,7 @@
           <a class="btn" href="#what">What is $SOS?</a>
           <a class="btn" href="#tools">Tools</a>
           <a class="btn" href="#tokenomics">Tokenomics</a>
+          <a class="btn" href="#roadmap">Roadmap</a>
           <a class="btn" href="#buy">How to Buy</a>
           <a class="btn" href="#faq">FAQ</a>
           <a class="btn" href="#socials">Socials</a>
@@ -1485,6 +1565,10 @@
           </div>
 
 
+
+        </div>
+      </div>
+    </section>
 
     <!-- TOOLS (UPGRADED • OBVIOUS • MOBILE-FIRST) -->
     <section id="tools">
@@ -1731,181 +1815,117 @@
 
           <div style="height:18px"></div>
 
-          <div class="roadmap" aria-label="12 Month Roadmap">
-            <div class="roadmapInner">
-              <div class="roadmapHead">
-                <div>
-                  <h3>12-Month Roadmap — <span class="gradText">Solana ($SOS)</span></h3>
-                  <p>
-                    A product-first roadmap: ship real tooling, expand into intelligence, then scale into a platform.
-                    Built to earn trust through utility — not hype.
-                  </p>
-                </div>
-                <div class="roadChips" aria-label="Roadmap highlights">
-                  <span class="pill">Tools</span>
-                  <span class="pill">AI Agents</span>
-                  <span class="pill">Launchpad</span>
-                  <span class="pill">Ecosystem</span>
-                </div>
-              </div>
-
-              <div class="roadGrid" id="roadGrid">
-
-                <article class="roadItem" data-i="0">
-                  <div class="roadTop">
-                    <div class="phase">
-                      <div class="pnum">Phase I — Months 1–3</div>
-                      <div class="ptitle">Foundation & Signal</div>
-                    </div>
-                    <div class="theme"><span class="dot"></span> Establish Authority, Not Noise</div>
-                  </div>
-
-                  <div class="roadCols">
-                    <div class="roadBlock">
-                      <div class="roadLabel">Objectives</div>
-                      <div class="roadText">
-                        <ul>
-                          <li>Lock narrative, character canon, and technical legitimacy.</li>
-                          <li>Ship useful tooling early: signal beats speculation.</li>
-                        </ul>
-                      </div>
-                    </div>
-
-                    <div class="roadBlock">
-                      <div class="roadLabel">Milestones</div>
-                      <div class="roadText">
-                        <ul>
-                          <li>Guardian Tools v1: Wallet Scanner + Multi-chain Contract Scanner go live.</li>
-                          <li>Dex-style bubble map, top holders %, clusters, export reports.</li>
-                          <li>Public lore canon + consistent brand kit (website, bot, templates).</li>
-                          <li>Community formation: narrative-first comms, anti-farm culture.</li>
-                        </ul>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div class="roadOutcome"><b>Outcome:</b> Solana is introduced as a protector intelligence — not just a meme.</div>
-                </article>
-
-                <article class="roadItem" data-i="1">
-                  <div class="roadTop">
-                    <div class="phase">
-                      <div class="pnum">Phase II — Months 4–6</div>
-                      <div class="ptitle">Intelligence Becomes Product</div>
-                    </div>
-                    <div class="theme"><span class="dot"></span> Trust Is Earned Through Utility</div>
-                  </div>
-
-                  <div class="roadCols">
-                    <div class="roadBlock">
-                      <div class="roadLabel">Objectives</div>
-                      <div class="roadText">
-                        <ul>
-                          <li>Turn scanning into actionable decisions and early warnings.</li>
-                          <li>Make $SOS utility feel like membership: access, tiers, perks.</li>
-                        </ul>
-                      </div>
-                    </div>
-
-                    <div class="roadBlock">
-                      <div class="roadLabel">Milestones</div>
-                      <div class="roadText">
-                        <ul>
-                          <li>Solana Scout (AI Agent v1): monitors new launches, flags scam vectors, produces “Guardian Score”.</li>
-                          <li>DNA Scan v2: on-chain + social correlation, insider-flow patterns, anomaly alerts.</li>
-                          <li>Public intelligence reports: “why this failed / why this survived”.</li>
-                          <li>Animation pipeline: short episodes that expand lore without shilling.</li>
-                        </ul>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div class="roadOutcome"><b>Outcome:</b> Solana starts watching the ecosystem — and people listen.</div>
-                </article>
-
-                <article class="roadItem" data-i="2">
-                  <div class="roadTop">
-                    <div class="phase">
-                      <div class="pnum">Phase III — Months 7–9</div>
-                      <div class="ptitle">Expansion & Ecosystem</div>
-                    </div>
-                    <div class="theme"><span class="dot"></span> From Tool to Network</div>
-                  </div>
-
-                  <div class="roadCols">
-                    <div class="roadBlock">
-                      <div class="roadLabel">Objectives</div>
-                      <div class="roadText">
-                        <ul>
-                          <li>Let others build on Solana’s intelligence layer.</li>
-                          <li>Expand reach beyond crypto natives via content + product loops.</li>
-                        </ul>
-                      </div>
-                    </div>
-
-                    <div class="roadBlock">
-                      <div class="roadLabel">Milestones</div>
-                      <div class="roadText">
-                        <ul>
-                          <li>SOS Creator Launchpad (v1): safer presets, branded report, creator dashboards.</li>
-                          <li>Agent Marketplace: specialized modules (memes, DeFi, NFTs, infra) with tiers for holders.</li>
-                          <li>Partner integrations: analytics, launch tooling, security protocols.</li>
-                          <li>Community campaigns: Raid-to-Earn command center + leaderboards.</li>
-                        </ul>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div class="roadOutcome"><b>Outcome:</b> Solana becomes a standard layer for discernment, launches, and growth.</div>
-                </article>
-
-                <article class="roadItem" data-i="3">
-                  <div class="roadTop">
-                    <div class="phase">
-                      <div class="pnum">Phase IV — Months 10–12</div>
-                      <div class="ptitle">Scale & Permanence</div>
-                    </div>
-                    <div class="theme"><span class="dot"></span> Make It Impossible to Ignore</div>
-                  </div>
-
-                  <div class="roadCols">
-                    <div class="roadBlock">
-                      <div class="roadLabel">Objectives</div>
-                      <div class="roadText">
-                        <ul>
-                          <li>Cement Solana as a cultural and technical asset.</li>
-                          <li>Transition from project to platform with compounding network effects.</li>
-                        </ul>
-                      </div>
-                    </div>
-
-                    <div class="roadBlock">
-                      <div class="roadLabel">Milestones</div>
-                      <div class="roadText">
-                        <ul>
-                          <li>Autonomous Agents (v2): predictive risk mapping + live ecosystem watchlists.</li>
-                          <li>Launchpad v2: advanced anti-bot launch modes and stricter safety enforcement.</li>
-                          <li>Governance layer: signal-weighted proposals backed by intelligence reports.</li>
-                          <li>Long-term protection fund: ecosystem clean-up initiatives and verified incident reports.</li>
-                        </ul>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div class="roadOutcome"><b>Outcome:</b> $SOS evolves into institutional memory + protection infrastructure.</div>
-                </article>
-
-              </div>
-
-              <div class="roadFoot">
-                <div class="mini">All milestones are staged. Shipping useful iterations is prioritized over empty promises.</div>
-                <a class="btn grad" href="#tools">Open the Tools</a>
-              </div>
-            </div>
-          </div>
+          
         </div>
       </div>
     </section>
+
+    <!-- ROADMAP (SEPARATE SECTION • SCROLL TIMELINE) -->
+    <section id="roadmap">
+      <div class="card">
+        <div class="cardInner">
+          <div class="roadHeader">
+            <div>
+              <div class="kicker"><span class="dot"></span> Roadmap</div>
+              <h2 class="h2">12‑Month Roadmap</h2>
+              <p class="sub">A product‑first path from tools → intelligence → platform. Built to ship, not to promise.</p>
+            </div>
+            <div class="roadLegend" aria-label="Roadmap legend">
+              <span class="badge done">Done</span>
+              <span class="badge next">In progress</span>
+              <span class="badge planned">Planned</span>
+            </div>
+          </div>
+
+          <div class="timeline" aria-label="Roadmap timeline">
+
+            <div class="tlItem left" data-i="0">
+              <div class="tlCol a">
+                <div class="tlCard">
+                  <div class="tlMeta">
+                    <div class="tlPhase">Phase I</div>
+                    <div class="tlMonths">Months 1–3</div>
+                    <div class="tlTitle">Foundation & Signal</div>
+                    <div class="tlTag">Establish authority, not noise</div>
+                  </div>
+                  <ul class="tlList">
+                    <li class="done">Core site launched + lore canon locked</li>
+                    <li class="done">Guardian Wallet Scanner v1 shipped</li>
+                    <li class="done">Multi‑chain Guardian Contract Scanner shipped (Solana / ETH / BNB / Base)</li>
+                    <li class="done">Top holders % + Dex‑style BubbleMap + clusters/bundles + branded export</li>
+                    <li class="next">Listings pipeline + liquidity expansion</li>
+                    <li class="next">Partner network + verified community onboarding</li>
+                  </ul>
+                </div>
+              </div>
+              <div class="tlCol mid"><div class="tlNode" aria-hidden="true"></div></div>
+              <div class="tlCol b"></div>
+            </div>
+
+            <div class="tlItem right" data-i="1">
+              <div class="tlCol a"></div>
+              <div class="tlCol mid"><div class="tlNode" aria-hidden="true"></div></div>
+              <div class="tlCol b">
+                <div class="tlCard">
+                  <div class="tlMeta">
+                    <div class="tlPhase">Phase II</div>
+                    <div class="tlMonths">Months 4–6</div>
+                    <div class="tlTitle">Intelligence Becomes Product</div>
+                    <div class="tlTag">Trust is earned through utility</div>
+                  </div>
+                  <ul class="tlList">
+                    <li class="planned">Solana Scout (AI Agent): live monitoring for new launches + scam vectors</li>
+                    <li class="planned">DNA Scan v2: social + on‑chain correlation, insider flow detection, early alerts</li>
+                    <li class="planned">Public intelligence reports: why it failed / why it survived</li>
+                    <li class="planned">Holder tiers: membership access, perks, rate limits, premium features</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <div class="tlItem left" data-i="2">
+              <div class="tlCol a">
+                <div class="tlCard">
+                  <div class="tlMeta">
+                    <div class="tlPhase">Phase III</div>
+                    <div class="tlMonths">Months 7–9</div>
+                    <div class="tlTitle">Expansion & Ecosystem</div>
+                    <div class="tlTag">From tool to network</div>
+                  </div>
+                  <ul class="tlList">
+                    <li class="planned">$SOS Creator Launchpad v1: safer presets, enforced locks, transparent creator profiles</li>
+                    <li class="planned">Agent Marketplace: specialized agents (memes, DeFi, infra) as modules</li>
+                    <li class="planned">Growth OS: raids, bounties, leaderboards, share cards, partner campaigns</li>
+                    <li class="planned">Strategic integrations: launchpads, analytics, security partners</li>
+                  </ul>
+                </div>
+              </div>
+              <div class="tlCol mid"><div class="tlNode" aria-hidden="true"></div></div>
+              <div class="tlCol b"></div>
+            </div>
+
+            <div class="tlItem right" data-i="3">
+              <div class="tlCol a"></div>
+              <div class="tlCol mid"><div class="tlNode" aria-hidden="true"></div></div>
+              <div class="tlCol b">
+                <div class="tlCard">
+                  <div class="tlMeta">
+                    <div class="tlPhase">Phase IV</div>
+                    <div class="tlMonths">Months 10–12</div>
+                    <div class="tlTitle">Scale & Permanence</div>
+                    <div class="tlTag">Make it impossible to ignore</div>
+                  </div>
+                  <ul class="tlList">
+                    <li class="planned">Autonomous agents v2: predictive mapping + ecosystem watchlists</li>
+                    <li class="planned">Launchpad v2: stricter anti‑bot modes + verified creator reputation</li>
+                    <li class="planned">Governance layer: signal‑weighted proposals backed by intelligence</li>
+                    <li class="planned">Protection fund: ecosystem clean‑up initiatives + verified incident response</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+          </div>
         </div>
       </div>
     </section>
@@ -2152,17 +2172,14 @@
     }
 
 
-
-
     // Roadmap reveal on scroll
     (function(){
-      const items = Array.from(document.querySelectorAll('.roadItem'));
+      const items = Array.from(document.querySelectorAll('.tlItem'));
       if(!items.length) return;
 
-      // Stagger via transition-delay
       items.forEach((el) => {
         const i = parseInt(el.getAttribute('data-i') || '0', 10);
-        el.style.transitionDelay = (i * 90) + 'ms';
+        el.style.transitionDelay = (i * 110) + 'ms';
       });
 
       const io = new IntersectionObserver((entries) => {
@@ -2172,7 +2189,7 @@
             io.unobserve(e.target);
           }
         });
-      }, { threshold: 0.18, rootMargin: '0px 0px -10% 0px' });
+      }, { threshold: 0.14, rootMargin: '0px 0px -12% 0px' });
 
       items.forEach(el => io.observe(el));
     })();
