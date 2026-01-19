@@ -1054,6 +1054,26 @@
     return x === '0x0000000000000000000000000000000000000000' || x === '0x000000000000000000000000000000000000dead' || x === '0x0000000000000000000000000000000000000001';
   }
 
+  // Normalize percentages from various providers:
+  // - 0..1 => fraction => *100
+  // - 0..100 => percent
+  // - 0..10000 => basis points => /100
+  function normalizePctAny(v){
+    if(v === null || v === undefined) return null;
+    try{
+      const n = Number(v);
+      if(!Number.isFinite(n)) return null;
+      if(n < 0) return null;
+      if(n <= 1) return n * 100;
+      if(n <= 100) return n;
+      if(n <= 10000) return n / 100;
+      if(n <= 1000000) return n / 10000;
+      return n;
+    }catch{
+      return null;
+    }
+  }
+
   function encodeAddrParam(addr){
     const a = normalizeAddr(addr).replace(/^0x/,'');
     return a.padStart(64,'0');
@@ -1392,7 +1412,53 @@ function pillLabel(sev){ return (sev==="ok" ? "PASS" : (sev==="bad" ? "FAIL" : "
     return {name:"Explorer", base:"#"};
   }
 
-  function renderHoldersEmpty(){
+  
+  function renderHolders(items, supplyUse, decUse){
+    const el = qs("holdersList");
+    if(!el) return;
+    el.innerHTML = '';
+    const ex = explorerBase(activeChain);
+
+    // Header pill (supply)
+    const head = document.createElement('li');
+    head.className = 'li';
+    const supplyTxt = (supplyUse && supplyUse > 0n) ? compactNumberFromString(formatUnits(supplyUse, decUse)) : '—';
+    const infoId = registerInfo(explain('Top holders', [
+      'Meaning: Distribution shows whale risk.',
+      'EVM: holder addresses come from indexer; balances are confirmed on-chain via balanceOf().',
+      'Solana: via RPC largest accounts.',
+      'Tip: Always cross-check on the explorer for the full holders list.'
+    ]));
+    head.innerHTML = `
+      <div class="left">
+        <div class="t">Top Holders</div>
+        <div class="d">Supply basis: <b>${supplyTxt}</b></div>
+      </div>
+      <div class="right">
+        <button class="miniBtn" data-info="${infoId}">i</button>
+      </div>
+    `;
+    el.appendChild(head);
+
+    for(const it of (items||[])){
+      const li = document.createElement('li');
+      li.className = 'li';
+      const a = it.addr;
+      const href = ex.base + a;
+      li.innerHTML = `
+        <div class="left">
+          <div class="t"><a href="${href}" target="_blank" rel="noreferrer">${shortAddr(a)}</a></div>
+          <div class="d">${it.balance || '—'} tokens</div>
+        </div>
+        <div class="right">
+          <div class="pct">${it.pct || '—'}</div>
+        </div>
+      `;
+      el.appendChild(li);
+    }
+  }
+
+function renderHoldersEmpty(){
     const el = qs("holdersList");
     if(!el) return;
 
@@ -3278,7 +3344,7 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
 
     const top = holders.slice(0,80).map(h => ({
       addr: String(h?.address||'').toLowerCase(),
-      pct:  Number(h?.percentage ?? h?.pct ?? h?.share ?? NaN)
+      pct:  (normalizePctAny(h?.percentage ?? h?.pct ?? h?.share ?? null) ?? NaN)
     })).filter(h => h.addr.startsWith('0x'));
 
     const nodes = [];
@@ -3580,12 +3646,12 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
     // Owner check
     const zero = "0x0000000000000000000000000000000000000000";
     if(sig.owner){
-      if(sig.owner.toLowerCase() === zero){
+      if(isBurnAddr(sig.owner) || sig.owner.toLowerCase() === zero){
         checks.push({
           t:"Owner / Admin",
           sev:"ok",
-          d:"Owner is renounced (0x0).",
-          why:"owner() == zero address.",
+          d:"Owner is renounced (burn/zero).",
+          why:"owner() points to a burn/zero address.",
           infoHtml: explain("Owner / Admin", [
             "Meaning: Owner often has special rights (fees/blacklist/etc).",
             "Why PASS: owner is 0x0 (renounced)."
@@ -4006,7 +4072,7 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
 
   async function renderHoldersEvm(chainId, tokenAddr, metaOnChain){
   const supplyBI = metaOnChain?.totalSupply ?? null;
-  const decimals = metaOnChain?.decimals ?? 18;
+  const decMeta = metaOnChain?.decimals ?? null;
 
   // Holder display formatting (commas like Solana list)
   function commaTokenStr(numStr){
@@ -4021,248 +4087,153 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
     return (neg?'-':'') + withCommas + (frac=='.'?'':frac);
   }
 
-  // Percent with 2 decimals from BigInt parts (best-effort)
-  function pctFromBI(partBI, totalBI){
+  function safeBigIntFromStr(x){
+    if(x === null || x === undefined) return null;
     try{
-      if(partBI === null || partBI === undefined) return null;
-      if(totalBI === null || totalBI === undefined) return null;
-      const p = BigInt(partBI);
-      const t = BigInt(totalBI);
-      if(t <= 0n) return null;
-      const bp = (p * 10000n + (t/2n)) / t; // rounded basis points
-      return Number(bp) / 100;
+      if(typeof x === 'bigint') return x;
+      let s = String(x).trim();
+      if(!s) return null;
+      if(s.startsWith('0x')) return BigInt(s);
+      // strip commas
+      s = s.replace(/,/g,'');
+      // if decimal string, keep integer part
+      if(s.includes('.')) s = s.split('.')[0];
+      if(!/^[0-9]+$/.test(s)) return null;
+      return BigInt(s);
     }catch{
       return null;
     }
   }
 
-
-  // Normalize indexer percentage formats (fraction vs percent vs basispoints).
-  function normalizeIndexerPct(x){
+  function pctFromBI(bal, supply){
     try{
-      if(x === null || x === undefined) return null;
-      let v = x;
-      if(typeof v === 'string'){
-        v = v.trim().replace(/%/g, '');
-        if(!v) return null;
-      }
-      const n = Number(v);
-      if(!Number.isFinite(n) || n < 0) return null;
-      if(n <= 1) return n * 100;           // fraction (0-1)
-      if(n <= 100) return n;               // percent already
-      if(n <= 10000) return n / 100;       // basispoints
-      if(n <= 1000000) return n / 10000;   // ppm-ish fallback
-      return n;
+      if(bal === null || supply === null) return null;
+      if(supply <= 0n) return null;
+      // basis points with 2 decimals (0.01%)
+      const bp = (bal * 10000n) / supply;
+      const num = Number(bp) / 100;
+      return (Number.isFinite(num) ? num : null);
     }catch{
       return null;
     }
   }
 
-  // 1) Prefer GoldRush holders if available (best-effort)
+  // 1) Prefer GoldRush holders list for the *addresses* (best-effort),
+  //    but confirm balances on-chain via balanceOf() so % is accurate even when the indexer returns shifted units.
   const raw = await goldrushHolders(chainId, tokenAddr);
 
-  const pickAddr = (h) => (h?.address || h?.wallet_address || h?.holder_address || h?.owner_address || h?.wallet || h?.holder || '').trim();
+  const pickAddr = (h) => (h?.address || h?.wallet_address || h?.walletAddress || h?.owner_address || h?.wallet || h?.holder || '').trim();
 
-  // GoldRush / indexers can return balances in *raw base units* (wei) OR in human token units.
-  // We normalize to raw BigInt so holder % stays correct on all EVM chains.
-  const pickBalObj = (h) => {
-    if(h?.token_balance_wei !== undefined && h?.token_balance_wei !== null) return {v:h.token_balance_wei, kind:'raw'};
-    if(h?.balance_wei !== undefined && h?.balance_wei !== null) return {v:h.balance_wei, kind:'raw'};
-    if(h?.token_balance_raw !== undefined && h?.token_balance_raw !== null) return {v:h.token_balance_raw, kind:'raw'};
-    if(h?.balance_raw !== undefined && h?.balance_raw !== null) return {v:h.balance_raw, kind:'raw'};
-    if(h?.raw_token_balance !== undefined && h?.raw_token_balance !== null) return {v:h.raw_token_balance, kind:'raw'};
-    if(h?.raw_balance !== undefined && h?.raw_balance !== null) return {v:h.raw_balance, kind:'raw'};
-
-    if(h?.token_balance !== undefined && h?.token_balance !== null) return {v:h.token_balance, kind:'human'};
-    if(h?.balance !== undefined && h?.balance !== null) return {v:h.balance, kind:'human'};
-    return {v:null, kind:null};
-  };
-
-  function parseTokenAmountToRaw(x, dec){
-    try{
-      if(x === null || x === undefined) return null;
-      let s = String(x).trim().replace(/,/g,'');
-      if(!s) return null;
-      const neg = s.startsWith('-');
-      if(neg) s = s.slice(1);
-
-      const d = Number.isFinite(Number(dec)) ? Math.max(0, Math.min(36, Number(dec))) : 18;
-
-      // Hex / already raw
-      if(s.startsWith('0x') || s.startsWith('0X')){
-        const bi = BigInt(s);
-        return neg ? -bi : bi;
-      }
-
-      // NOTE:
-      // Some indexers return holder balances as raw base-units, others return human token units.
-      // We intentionally do NOT guess here. The caller disambiguates by comparing against
-      // totalSupply and/or the indexer-provided percentage when available.
-
-      const base = 10n ** BigInt(d);
-      if(s.includes('.')){
-        const parts = s.split('.');
-        const wholeStr = parts[0] || '0';
-        const fracStr  = (parts[1] || '').slice(0, d).padEnd(d, '0');
-        const whole = wholeStr ? BigInt(wholeStr) : 0n;
-        const frac  = fracStr  ? BigInt(fracStr)  : 0n;
-        const bi = whole * base + frac;
-        return neg ? -bi : bi;
-      }
-
-      // Integer token amount -> scale to raw
-      if(!/^[0-9]+$/.test(s)) return null;
-      const bi = BigInt(s) * base;
-      return neg ? -bi : bi;
-    }catch{
-      return null;
+  // Determine supply for %:
+  // - Prefer on-chain totalSupply()
+  // - Fall back to indexer "total_supply" if on-chain isn't readable
+  let supplyUse = (supplyBI !== null && supplyBI !== undefined && supplyBI > 0n) ? supplyBI : null;
+  if(!supplyUse && Array.isArray(raw)){
+    for(const it of raw){
+      const s = safeBigIntFromStr(it?.total_supply ?? it?.totalSupply ?? it?.token_total_supply ?? it?.token_supply ?? null);
+      if(s !== null && s > 0n){ supplyUse = s; break; }
     }
   }
+  if(!supplyUse){
+    // last-chance: call totalSupply directly
+    try{
+      const r = await ethCall(chainId, tokenAddr, SEL.totalSupply).catch(()=>null);
+      const s = safeBigIntFromStr(r);
+      if(s !== null && s > 0n) supplyUse = s;
+    }catch{}
+  }
+
+  // Decimals for display (doesn't affect % if we use raw values)
+  const decUse = pickBestDecimals(supplyUse, decMeta, null);
 
   const holders = [];
+
+  // Helper: run many eth_call with concurrency limit
+  async function pMapLimit(list, limit, fn){
+    const out = new Array(list.length);
+    let i = 0;
+    const workers = new Array(Math.min(limit, list.length)).fill(0).map(async()=>{
+      while(i < list.length){
+        const idx = i++;
+        try{ out[idx] = await fn(list[idx], idx); }
+        catch(e){ out[idx] = null; }
+      }
+    });
+    await Promise.all(workers);
+    return out;
+  }
+
   if(Array.isArray(raw) && raw.length){
+    // unique addresses (keep order) + map raw item by address
+    const uniq = [];
+    const seen = new Set();
+    const rawByAddr = new Map();
     for(const h of raw){
-      const addr = String(pickAddr(h) || '').toLowerCase();
-      if(!addr.startsWith('0x') || addr.length !== 42) continue;
+      const a = String(pickAddr(h) || '').toLowerCase();
+      if(!a.startsWith('0x') || a.length !== 42) continue;
+      if(!rawByAddr.has(a)) rawByAddr.set(a, h);
+      if(seen.has(a)) continue;
+      seen.add(a);
+      uniq.push(a);
+      if(uniq.length >= 80) break;
+    }
 
-      // Prefer indexer-provided percentage (if present), but we still compute from balance/supply when possible.
-      const pIdxRaw = (h?.percentage_relative_to_total_supply ?? h?.percentage ?? h?.pct ?? h?.share ?? h?.holding ?? null);
-      const pctIdx = normalizeIndexerPct(pIdxRaw);
+    // If we have a supply, we can compute accurate percentages via on-chain balanceOf().
+    // If we don't have supply, we still render the address list (pct will be null).
+    const balanceSel = "70a08231"; // balanceOf(address)
+    const wantN = Math.min(48, uniq.length);
 
-      // Use supply from holder item if provided, otherwise fall back to on-chain totalSupply()
-      const supplyItem = safeBigIntFromStr(h?.total_supply ?? h?.totalSupply ?? h?.token_total_supply ?? h?.token_supply ?? null);
-      // IMPORTANT: Always prefer on-chain totalSupply() for % calculations.
-      // Some indexers return incorrect/shifted total_supply values (often off by 10x), which would make % wrong.
-      const supplyUse = (supplyBI !== null && supplyBI !== undefined && supplyBI > 0n)
-        ? supplyBI
-        : ((supplyItem !== null && supplyItem !== undefined && supplyItem > 0n) ? supplyItem : null);
+    let onchainBalances = null;
+    if(wantN && supplyUse){
+      onchainBalances = await pMapLimit(uniq.slice(0, wantN), 10, async(addr)=>{
+        const r = await ethCall(chainId, tokenAddr, encAbiCall(balanceSel, [addr]));
+        return safeBigIntFromStr(r);
+      });
+    }
 
-      // IMPORTANT: Prefer on-chain decimals() over indexer decimals (indexers are sometimes off by 1/10x).
-      const decUse = (Number.isFinite(Number(decimals)) ? Number(decimals)
-                    : (Number.isFinite(Number(h?.contract_decimals)) ? Number(h.contract_decimals)
-                    : (Number.isFinite(Number(h?.token_decimals)) ? Number(h.token_decimals)
-                    : 18)));
+    for(let k=0;k<uniq.length;k++){
+      const addr = uniq[k];
 
-      const balPick = pickBalObj(h);
       let balBI = null;
-
-      // Balance normalization:
-      // - If API gives explicit "*_wei/raw" fields => treat as raw
-      // - Otherwise it can be either raw OR human token units depending on provider.
-      //   We try both and pick the one that best matches the provided percentage (if any),
-      //   otherwise we fall back to totalSupply bounds.
-      if(balPick && balPick.v !== null && balPick.v !== undefined){
-        const rawCand   = safeBigIntFromStr(balPick.v);
-        const humanCand = parseTokenAmountToRaw(balPick.v, decUse); // interprets as token units
-
-        if(balPick.kind === 'raw'){
-          balBI = rawCand;
-        }else{
-          // If we have pct from indexer + supply, choose the candidate whose computed % is closest.
-          if(pctIdx !== null && pctIdx !== undefined && supplyUse !== null && supplyUse !== undefined && supplyUse > 0n){
-            const pRaw   = (rawCand   !== null) ? pctFromBI(rawCand, supplyUse)   : null;
-            const pHuman = (humanCand !== null) ? pctFromBI(humanCand, supplyUse) : null;
-
-            const dRaw   = (pRaw   !== null && Number.isFinite(pRaw))   ? Math.abs(pRaw   - pctIdx) : Infinity;
-            const dHuman = (pHuman !== null && Number.isFinite(pHuman)) ? Math.abs(pHuman - pctIdx) : Infinity;
-
-            if(dHuman < dRaw) balBI = humanCand;
-            else if(dRaw < Infinity) balBI = rawCand;
-            else balBI = (humanCand !== null ? humanCand : rawCand);
-          }else if(supplyUse !== null && supplyUse !== undefined && supplyUse > 0n){
-            // Use totalSupply bounds as a fallback signal.
-            if(rawCand !== null && rawCand > supplyUse && humanCand !== null && humanCand <= supplyUse) balBI = humanCand;
-            else if(humanCand !== null && humanCand > supplyUse && rawCand !== null && rawCand <= supplyUse) balBI = rawCand;
-            else balBI = (humanCand !== null ? humanCand : rawCand);
-          }else{
-            balBI = (humanCand !== null ? humanCand : rawCand);
-          }
-        }
+      if(onchainBalances && k < onchainBalances.length){
+        balBI = onchainBalances[k];
       }
 
-      // Compute % from raw balance and raw supply (most reliable)
-      let pct = null;
-      if(balBI !== null && supplyUse !== null && supplyUse !== undefined && supplyUse > 0n){
-        const p = pctFromBI(balBI, supplyUse);
-        pct = (p === null || p === undefined || Number.isNaN(p)) ? null : p;
+      // Fallback to indexer-provided balance when on-chain balanceOf isn't available
+      if(balBI === null){
+        const h = rawByAddr.get(addr) || null;
+        const balPick = (h?.token_balance_wei ?? h?.balance_wei ?? h?.token_balance_raw ?? h?.balance_raw ?? h?.raw_token_balance ?? h?.raw_balance ?? h?.token_balance ?? h?.balance ?? null);
+        balBI = safeBigIntFromStr(balPick);
       }
-      if(pct === null) pct = pctIdx;
+
+      const pct = (balBI !== null && supplyUse) ? pctFromBI(balBI, supplyUse) : normalizePctAny(h?.percentage_relative_to_total_supply ?? h?.percentage ?? h?.pct ?? h?.share ?? null);
 
       holders.push({
         address: addr,
-        balance: (balBI !== null) ? balBI.toString() : (balPick?.v !== null && balPick?.v !== undefined ? String(balPick.v) : null),
+        balance: (balBI !== null) ? balBI.toString() : null,
         percentage: pct
       });
     }
 
-    // Sort by percentage if present (fallback stable)
+    // Sort by % (fallback: keep order)
     holders.sort((a,b) => (Number(b.percentage ?? -1) - Number(a.percentage ?? -1)));
 
-    const items = holders.slice(0,10).map((h,i) => {
+    const items = holders.slice(0,10).map((h) => {
       const addr = h.address;
       const balBI2 = safeBigIntFromStr(h.balance);
-      const balFmtRaw = (balBI2 !== null) ? formatUnits(balBI2, decimals) : (h.balance ? String(h.balance) : '—');
+      const balFmtRaw = (balBI2 !== null) ? formatUnits(balBI2, decUse) : (h.balance ? String(h.balance) : '—');
       const balFmt = commaTokenStr(balFmtRaw);
-      const pctStr = (h.percentage === null || h.percentage === undefined) ? '—' : (Number(h.percentage).toFixed(2) + '%');
-      return {
-        t:`#${i+1} ${shortAddr(addr)}`,
-        d:`${balFmt} tokens • ${pctStr}`,
-        addr,
-        infoHtml: explain('Top holders (EVM)', [
-          'Source: GoldRush indexer (best-effort).',
-          'Why it matters: whale concentration can impact price.',
-          'Tip: verify in explorer holders tab.'
-        ])
-      };
+      const pct = (Number.isFinite(h.percentage) && h.percentage !== null) ? `${h.percentage.toFixed(h.percentage>=10?2: (h.percentage>=1?3:4))}%` : '—';
+      return { addr, balance: balFmt, pct };
     });
 
-    renderHoldersWithExplorer(items, activeChain);
+    renderHolders(items, supplyUse, decUse);
     return holders;
-  }
-
-  // 2) Fallback: derive "top wallets" from a recent transfer sample (NOT true balances)
-  const transfers = await evmTokenTransfersSample(chainId, tokenAddr, 2000);
-  if(transfers && transfers.length){
-    // net flow approximation: inflow - outflow in the sample window
-    const net = new Map();
-    for(const t of transfers){
-      const fa = String(t?.from_address||"").toLowerCase();
-      const ta = String(t?.to_address||"").toLowerCase();
-      const vBI = safeBigIntFromStr(t?.value);
-      if(vBI === null) continue;
-      if(fa.startsWith('0x')) net.set(fa, (net.get(fa)||0n) - vBI);
-      if(ta.startsWith('0x')) net.set(ta, (net.get(ta)||0n) + vBI);
-    }
-
-    const top = [...net.entries()]
-      .filter(([a,v]) => a.startsWith('0x') && v > 0n)
-      .sort((a,b) => (b[1] > a[1] ? 1 : (b[1] < a[1] ? -1 : 0)))
-      .slice(0,10);
-    const items = top.map(([addr, v], i) => {
-      const amtRaw = formatUnits(v, decimals);
-      const amt = commaTokenStr(amtRaw);
-      const pct = pctFromBI(v, supplyBI);
-      const pctStr = (pct === null || pct === undefined || Number.isNaN(pct)) ? '—' : pct.toFixed(2) + '%';
-      return {
-        t:`#${i+1} ${shortAddr(addr)}`,
-        d:`${amt} tokens • ${pctStr}`,
-        addr,
-        infoHtml: explain('Fallback top wallets (sample)', [
-          'This is NOT a holder snapshot.',
-          'We approximate using a recent on-chain transfer sample when no indexer holder list is available.'
-        ])
-      };
-    });
-
-
-    renderHoldersWithExplorer(items, activeChain);
-    return [];
   }
 
   renderHoldersEmpty();
   return [];
 }
-
 
 
   /* ===================== MAIN SCAN FLOW (same, just calls updated display) ===================== */
