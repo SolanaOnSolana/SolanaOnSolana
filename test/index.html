@@ -1489,7 +1489,8 @@ body.menuOpen .toolsDock{ display:none !important; }
 :root{
   /* will be set by JS to the actual fixed top bar height */
   --topBarTotal: 0px;
-  --tickerSpeed: 3.6s;
+  /* Desktop ticker speed (mobile overrides below). Slightly slower for readability on big screens. */
+  --tickerSpeed: 4.6s;
   /* distance the marquee should travel for one full cycle (set by JS) */
   --tickerDistance: 50%;
 
@@ -1508,7 +1509,8 @@ body.net-eth{ --netColor: var(--ethColor); --netGlow: rgba(98,126,234,.22); }
 body.net-bnb{ --netColor: var(--bnbColor); --netGlow: rgba(243,186,47,.22); }
 body.net-base{ --netColor: var(--baseColor); --netGlow: rgba(0,82,255,.22); }
 
-body{ padding-top: var(--topBarTotal); }
+body{ padding-top: var(--topBarTotal); transition: padding-top .28s cubic-bezier(.2,.8,.2,1); }
+body.topbarHidden{ padding-top: 0px; }
 
 .topBar{
   position: fixed;
@@ -1518,13 +1520,15 @@ body{ padding-top: var(--topBarTotal); }
   border-bottom: 1px solid rgba(255,255,255,.10);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  transition: transform .22s ease, opacity .22s ease;
+  transition: transform .32s cubic-bezier(.2,.8,.2,1), opacity .22s ease, filter .32s cubic-bezier(.2,.8,.2,1);
   will-change: transform;
 }
 
 .topBar.isHidden{
-  transform: translateY(-120%);
+  /* slide out exactly by its own height so it never looks “cut” */
+  transform: translateY(calc(-1 * var(--topBarTotal)));
   opacity: 0;
+  filter: blur(2px);
   pointer-events: none;
 }
 
@@ -1834,31 +1838,49 @@ body.topbarHidden .menuFloat{ top: 14px; }
 
 /* mobile: stack + keep everything clickable */
 @media (max-width: 860px){
-  :root{ --tickerSpeed: 5.2s; }
+  :root{ --tickerSpeed: 5.2s; } /* ✅ mobile speed stays exactly as-is */
 
-  /* tighter + cleaner mobile topbar */
-  .topBarInner{ padding: calc(8px + env(safe-area-inset-top)) 10px 8px; gap: 8px; }
-  .topRow{ flex-wrap: nowrap; align-items: center; gap: 10px; }
-  .hotLabel{ padding: 8px 11px; font-size: 12px; letter-spacing: .45px; }
+  /* Mobile topbar: ultra clean, no horizontal scrolling, no cramped UI */
+  .topBarInner{ padding: calc(10px + env(safe-area-inset-top)) 12px 10px; gap: 10px; }
+
+  /* Row 1: label + chain selector (wraps nicely) */
+  .topRow{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap: 10px;
+    flex-wrap:wrap;
+  }
+  .hotBlock{ width:100%; display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  .hotLabel{ padding: 9px 12px; font-size: 12px; letter-spacing: .5px; }
   .hotFire{ width: 16px; height: 16px; }
 
-  /* chain toggle becomes a compact horizontal segment */
+  /* Chain selector: 4 equal buttons, always visible (no scrolling) */
   .chainToggle{
-    width: auto;
-    flex: 1;
-    justify-content: flex-end;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
+    width: 100%;
+    display:grid;
+    grid-template-columns: repeat(4, 1fr);
     gap: 6px;
-    padding: 5px;
+    padding: 6px;
+    overflow: visible;
+    justify-content: stretch;
   }
-  .chainToggle::-webkit-scrollbar{ height: 0; }
-  .chainBtn{ padding: 7px 9px; font-size: 12px; }
+  .chainBtn{ width:100%; padding: 8px 0; font-size: 12px; }
 
+  /* Row 2: ticker */
+  .tickerWrap{ width: 100%; padding: 9px 10px; }
+  .tickerItem{ font-size: 12.5px; padding: 7px 9px; gap: 8px; }
+  .tickerItem .rank{ min-width: 26px; height: 21px; font-size: 11px; }
+
+  /* Row 3: search */
   .bottomRow{ flex-direction: column; align-items: stretch; gap: 10px; }
   .dexSearch{ width: 100%; max-width: 100%; }
-  .dexSearchInner{ padding: 9px 9px; }
-  .tickerWrap{ width: 100%; padding: 9px 10px; }
+  .dexSearchInner{ padding: 10px 10px; }
+  .dexMiniBtn{ padding: 8px 10px; }
+}
+
+@media (max-width: 380px){
+  .chainBtn{ font-size: 11.5px; padding: 7px 0; }
 }
 
 
