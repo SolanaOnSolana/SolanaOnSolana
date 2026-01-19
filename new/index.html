@@ -657,6 +657,16 @@
     .bubbleActions .btn.ghost{background:rgba(255,255,255,.06)}
     .bubbleActions .btn.ghost:hover{background:rgba(255,255,255,.10)}
 
+
+    /* Bubble map collapsible */
+    #bubbleBody{margin-top:10px;}
+    #bubbleBody.isHidden{display:none;}
+    #bubbleActions .btn{min-width:140px}
+    @media (max-width: 680px){
+      #bubbleActions{justify-content:flex-start}
+      #bubbleActions .btn{min-width:auto}
+    }
+
 </style>
 </head>
 
@@ -803,11 +813,13 @@
               <div class="miniNote" id="bubbleHint">—</div>
               <div class="bubbleLegend" id="bubbleLegend"></div>
               <div class="bubbleActions" id="bubbleActions">
-                <button class="btn ghost" id="bubbleOpenExternal" type="button" onclick="openBubblemapsModal()">Open BubbleMap (DexScreener style)</button>
+                <button class="btn ghost" id="bubbleToggleBtn" type="button">Show Bubble Map</button>
+                <button class="btn ghost" id="bubbleResetBtn" type="button">Reset View</button>
               </div>
             </div>
+            <div id="bubbleBody" class="isHidden">
             <canvas id="bubbleCanvas" width="1100" height="420"></canvas>
-            <div class="miniNote" id="bubbleNote" style="margin-top:10px;">Drag nodes • Click opens explorer • Size = holder % (or sample share if no holder list). Links = sampled recent transfers.</div>
+            <div class="miniNote" id="bubbleNote" style="margin-top:10px;">Drag nodes • Tap opens explorer • Drag will NOT open explorer • Pinch/scroll zoom • Drag background to pan.</div>
           </div>
         </div>
 
@@ -1314,22 +1326,7 @@ function startLiveStampTime(){
     return `https://app.bubblemaps.io/${slug}/token/${a}`;
   }
 
-  function openBubblemapsModal(){
-    const chain = activeChain || 'solana';
-    const addr = (LAST_SCAN && LAST_SCAN.address) ? LAST_SCAN.address : el('addr').value.trim();
-    if(!addr){ toast('Paste an address first'); return; }
-    const url = bubblemapsUrl(chain, addr);
-    const title = `Bubblemaps • ${chain.toUpperCase()} • ${short(addr)}`;
-    const body = `
-      <div style="display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-bottom:10px">
-        <div class="muted">Tip: use the toolbar inside Bubblemaps to show labels, magic nodes and address list.</div>
-        <a class="btn ghost" href="${url}" target="_blank" rel="noreferrer">Open in new tab</a>
-      </div>
-      <div style="height:70vh;min-height:520px;border:1px solid rgba(255,255,255,.12);border-radius:16px;overflow:hidden;background:#000">
-        <iframe src="${url}" style="width:100%;height:100%;border:0" loading="lazy" referrerpolicy="no-referrer"></iframe>
-      </div>`;
-    openModal(title, body);
-  }
+  /* openBubblemapsModal removed: bubble map is embedded + toggle-based */
 
   function showToast(title){
     const t = qs("toast");
@@ -1724,6 +1721,9 @@ function renderHoldersEmpty(){
     let view = { ox: c.width/2, oy: c.height/2, s: 1 };
     let autoCenterFrames = 140;
     let panning = false;
+    let clickBlockUntil = 0;
+    let downPt = null;
+
     let panStart = {x:0,y:0,ox:0,oy:0};
 
     function hitTest(mx, my){
@@ -1745,6 +1745,7 @@ function renderHoldersEmpty(){
     }
 
     c.onpointerdown = (evt)=>{
+      downPt = {x: evt.clientX, y: evt.clientY};
       const {mx,my,wx,wy} = getMouse(evt);
       const n = hitTest(wx,wy);
       if(n){
@@ -1797,6 +1798,7 @@ function renderHoldersEmpty(){
     };
 
     c.onclick = (evt)=>{
+      if(Date.now() < clickBlockUntil) return;
       const {mx,my,wx,wy} = getMouse(evt);
       const n = hitTest(wx,wy);
       if(n && n.addr){
@@ -3426,10 +3428,15 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
     const holders = Array.isArray(holdersRaw) ? holdersRaw : [];
     const transfers = Array.isArray(transfersRaw) ? transfersRaw : [];
 
-    const top = holders.slice(0,80).map(h => ({
-      addr: String(h?.address||'').toLowerCase(),
-      pct:  (normalizePctAny(h?.percentage ?? h?.pct ?? h?.share ?? null) ?? NaN)
-    })).filter(h => h.addr.startsWith('0x'));
+    const top = holders.slice(0,80).map(h => {
+      const addr = String(h?.address || '').toLowerCase();
+      let pct = Number(h?.percentage);
+      if(!Number.isFinite(pct)){
+        pct = normalizePctAny(h?.pct ?? h?.share ?? null);
+      }
+      return { addr, pct: (Number.isFinite(pct) ? pct : NaN) };
+    }).filter(h => h.addr.startsWith('0x'));
+    (h => h.addr.startsWith('0x'));
     const hasHolders = top.length > 0;
 
     const nodes = [];
@@ -3520,7 +3527,7 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
       const id = n.id;
       const neigh = (adj.get(id)||[]).slice().sort((a,b)=> (b.w||0)-(a.w||0));
       const isHub = hubSet.has(id);
-      const k = (n.kind==='holder') ? (isHub ? 3 : 7) : (isHub ? 2 : 5);
+      const k = (n.kind==='holder') ? (isHub ? 2 : 5) : (isHub ? 2 : 4);
       topNbrs.set(id, new Set(neigh.slice(0,k).map(x=>x.to)));
     }
 
@@ -3620,7 +3627,7 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
       nodes,
       edges: cut,
       bundles,
-      hint: (top.length ? 'Size = holder % (indexer). Links = recent token transfers (sampled). Drag to explore.' : 'Size = activity (no holder list). Links = recent token transfers (sampled). For a professional view, click “Open BubbleMap”.')
+      hint: (top.length ? 'Size = holder %. Links = recent token transfers (sampled). Drag to explore.' : 'Size = activity (no holder list). Links = recent token transfers (sampled). For a deeper view, use the holder list + explorer links.')
     };
   }
 
@@ -4486,6 +4493,7 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
         setStatus("Analyzing recent flows (clusters/bundles)…");
         const flow = await solComputeFlowsAndBundles(mintAddr, 30).catch(() => ({edges:new Map(), bundles:[], seenSigs:[]}));
         const bubbleModel = buildBubbleModelSol(holderWallets, flow);
+        setBubbleOpen(true);
         drawBubbleMap(bubbleModel);
         renderClustersFromModel(bubbleModel);
         renderBundles(flow?.bundles || []);
@@ -4675,6 +4683,7 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
           const hasHolders = (holdersRaw && holdersRaw.length);
           setText('bubbleStamp', activeChain.name + (hasHolders ? ' • TOP HOLDERS + FLOWS' : ' • TRANSFER FLOWS'));
           setText('bubbleHint', hasHolders ? (model.hint || 'Bubble map generated.') : 'Size = activity (no holder list). Links = recent transfers (sampled). Drag to explore.');
+          setBubbleOpen(true);
           drawBubbleMap(model);
           renderClustersFromModel(model);
           renderBundles(model.bundles || []);
@@ -5389,3 +5398,39 @@ init();
 
 </body>
 </html>
+  // Bubble map controls (toggle + reset)
+  function setBubbleOpen(open){
+    const body = qs('bubbleBody');
+    const btn = qs('bubbleToggleBtn');
+    if(!body || !btn) return;
+    body.classList.toggle('isHidden', !open);
+    btn.textContent = open ? 'Hide Bubble Map' : 'Show Bubble Map';
+  }
+
+  function bubbleResetView(){
+    if(typeof window.__bubbleResetView === 'function'){
+      window.__bubbleResetView();
+      return;
+    }
+    // fallback: scroll into view
+    const p = qs('bubblePanel');
+    if(p) p.scrollIntoView({behavior:'smooth', block:'start'});
+  }
+
+  document.addEventListener('click', (e)=>{
+    const t = e.target;
+    if(!t) return;
+    if(t.id === 'bubbleToggleBtn'){
+      const body = qs('bubbleBody');
+      const open = body ? body.classList.contains('isHidden') : true;
+      setBubbleOpen(open);
+      if(open){
+        const p = qs('bubblePanel');
+        if(p) p.scrollIntoView({behavior:'smooth', block:'start'});
+      }
+    }
+    if(t.id === 'bubbleResetBtn'){
+      bubbleResetView();
+    }
+  });
+
