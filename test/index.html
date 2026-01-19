@@ -1489,7 +1489,7 @@ body.menuOpen .toolsDock{ display:none !important; }
 :root{
   /* will be set by JS to the actual fixed top bar height */
   --topBarTotal: 0px;
-  --tickerSpeed: 9s;
+  --tickerSpeed: 3.6s;
 
   /* chain colors */
   --solColor: #9945FF;
@@ -1516,7 +1516,16 @@ body{ padding-top: var(--topBarTotal); }
   border-bottom: 1px solid rgba(255,255,255,.10);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
+  transition: transform .22s ease, opacity .22s ease;
+  will-change: transform;
 }
+
+.topBar.isHidden{
+  transform: translateY(-120%);
+  opacity: 0;
+  pointer-events: none;
+}
+
 
 .topBarInner{
   max-width: var(--max);
@@ -1819,17 +1828,37 @@ body{ padding-top: var(--topBarTotal); }
 
 /* keep floating ⋯ menu below the new top bar */
 .menuFloat{ top: calc(14px + var(--topBarTotal)); }
+body.topbarHidden .menuFloat{ top: 14px; }
 
 /* mobile: stack + keep everything clickable */
 @media (max-width: 860px){
-  :root{ --tickerSpeed: 12s; }
-  .topBarInner{ padding: calc(10px + env(safe-area-inset-top)) 12px 10px; }
-  .topRow{ justify-content:space-between; }
-  .chainToggle{ width: 100%; justify-content:space-between; }
-  .bottomRow{ flex-direction: column; align-items: stretch; }
+  :root{ --tickerSpeed: 5.2s; }
+
+  /* tighter + cleaner mobile topbar */
+  .topBarInner{ padding: calc(8px + env(safe-area-inset-top)) 10px 8px; gap: 8px; }
+  .topRow{ flex-wrap: nowrap; align-items: center; gap: 10px; }
+  .hotLabel{ padding: 8px 11px; font-size: 12px; letter-spacing: .45px; }
+  .hotFire{ width: 16px; height: 16px; }
+
+  /* chain toggle becomes a compact horizontal segment */
+  .chainToggle{
+    width: auto;
+    flex: 1;
+    justify-content: flex-end;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    gap: 6px;
+    padding: 5px;
+  }
+  .chainToggle::-webkit-scrollbar{ height: 0; }
+  .chainBtn{ padding: 7px 9px; font-size: 12px; }
+
+  .bottomRow{ flex-direction: column; align-items: stretch; gap: 10px; }
   .dexSearch{ width: 100%; max-width: 100%; }
-  .tickerWrap{ width: 100%; }
+  .dexSearchInner{ padding: 9px 9px; }
+  .tickerWrap{ width: 100%; padding: 9px 10px; }
 }
+
 
 /* reduced motion */
 @media (prefers-reduced-motion: reduce){
@@ -2773,8 +2802,40 @@ function toggleMenu(){
    // initial
    syncTopBarHeight();
 
+   // Hide the top bar when users scroll down (shows again on scroll up / near top)
+   const topBarEl = document.getElementById('topBar');
+   (function(){
+     if(!topBarEl) return;
+     let lastY = window.scrollY || 0;
+     let raf = false;
+
+     function update(y){
+       const down = y > lastY;
+       if(y < 40){
+         topBarEl.classList.remove('isHidden');
+         document.body.classList.remove('topbarHidden');
+       }else if(down && y > 140){
+         topBarEl.classList.add('isHidden');
+         document.body.classList.add('topbarHidden');
+       }else if(!down){
+         topBarEl.classList.remove('isHidden');
+         document.body.classList.remove('topbarHidden');
+       }
+       lastY = y;
+     }
+
+     window.addEventListener('scroll', ()=>{
+       if(raf) return;
+       raf = true;
+       requestAnimationFrame(()=>{
+         update(window.scrollY || 0);
+         raf = false;
+       });
+     }, {passive:true});
+   })();
 
    // Chain toggle events
+
    const toggleEl = document.getElementById('chainToggle');
    if(toggleEl){
      toggleEl.addEventListener('click', (e)=>{
