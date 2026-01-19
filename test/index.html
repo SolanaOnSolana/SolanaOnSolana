@@ -1667,9 +1667,9 @@ body.net-base .chainBtn.active{ background: linear-gradient(90deg, rgba(0,82,255
 
 /* Tiny logo inside the trending ticker */
 .tickerLogoWrap{
-  width:24px;
-  height:24px;
-  flex:0 0 24px;
+  width:28px;
+  height:28px;
+  flex:0 0 28px;
   border-radius: 6px;
   overflow:hidden;
   display:grid;
@@ -1967,7 +1967,7 @@ body.net-base .chainBtn.active{ background: linear-gradient(90deg, rgba(0,82,255
   /* Row 2: ticker */
   .tickerWrap{ width: 100%; padding: 9px 10px; }
   .tickerItem{ font-size: 12.5px; padding: 7px 9px; gap: 8px; }
-  .tickerLogoWrap{ width:20px; height:20px; flex:0 0 20px; border-radius:6px; }
+  .tickerLogoWrap{ width:22px; height:22px; flex:0 0 22px; border-radius:6px; }
   .tickerLogoFallback{ font-size: 11px; }
   .tickerItem .rank{ min-width: 26px; height: 21px; font-size: 11px; }
 
@@ -2142,7 +2142,7 @@ body.net-base .chainBtn.active{ background: linear-gradient(90deg, rgba(0,82,255
      <div class="bottomRow">
        <div class="tickerWrap" aria-label="Trending tokens">
          <div class="tickerTrack" id="trendTrack">
-           <span class="tickerItem" style="opacity:.75"><span class="rank">…</span><span class="sym">Loading trending…</span><span class="chain"></span></span><span class="tickerItem" style="opacity:.75"><span class="rank">…</span><span class="sym">Loading trending…</span><span class="chain"></span></span><span class="tickerItem" style="opacity:.75"><span class="rank">…</span><span class="sym">Loading trending…</span><span class="chain"></span></span><span class="tickerItem" style="opacity:.75"><span class="rank">…</span><span class="sym">Loading trending…</span><span class="chain"></span></span><span class="tickerItem" style="opacity:.75"><span class="rank">…</span><span class="sym">Loading trending…</span><span class="chain"></span></span><span class="tickerItem" style="opacity:.75"><span class="rank">…</span><span class="sym">Loading trending…</span><span class="chain"></span></span><span class="tickerItem" style="opacity:.75"><span class="rank">…</span><span class="sym">Loading trending…</span><span class="chain"></span></span><span class="tickerItem" style="opacity:.75"><span class="rank">…</span><span class="sym">Loading trending…</span><span class="chain"></span></span>
+           <span class="tickerItem" style="opacity:.75"><span class="rank">…</span><span class="tickerLogoWrap"><span class="tickerLogoFallback">•</span></span><span class="sym">Trending</span></span><span class="tickerItem" style="opacity:.75"><span class="rank">…</span><span class="tickerLogoWrap"><span class="tickerLogoFallback">•</span></span><span class="sym">Trending</span></span><span class="tickerItem" style="opacity:.75"><span class="rank">…</span><span class="tickerLogoWrap"><span class="tickerLogoFallback">•</span></span><span class="sym">Trending</span></span><span class="tickerItem" style="opacity:.75"><span class="rank">…</span><span class="tickerLogoWrap"><span class="tickerLogoFallback">•</span></span><span class="sym">Trending</span></span><span class="tickerItem" style="opacity:.75"><span class="rank">…</span><span class="tickerLogoWrap"><span class="tickerLogoFallback">•</span></span><span class="sym">Trending</span></span><span class="tickerItem" style="opacity:.75"><span class="rank">…</span><span class="tickerLogoWrap"><span class="tickerLogoFallback">•</span></span><span class="sym">Trending</span></span><span class="tickerItem" style="opacity:.75"><span class="rank">…</span><span class="tickerLogoWrap"><span class="tickerLogoFallback">•</span></span><span class="sym">Trending</span></span><span class="tickerItem" style="opacity:.75"><span class="rank">…</span><span class="tickerLogoWrap"><span class="tickerLogoFallback">•</span></span><span class="sym">Trending</span></span>
          </div>
        </div>
 
@@ -3152,14 +3152,13 @@ function toggleMenu(){
          const cls = `tickerItem${top1?' top1':''}`;
          const rankTxt = top1 ? `🔥 #1` : `#${n+1}`;
         const logo = logoUrl
-          ? `<span class="tickerLogoWrap"><img class="tickerLogo" src="${esc(logoUrl)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove(); this.closest('.tickerLogoWrap').innerHTML='<span class=\"tickerLogoFallback\">${esc(first)}<\/span>';">
+          ? `<span class="tickerLogoWrap"><img class="tickerLogo" src="${esc(logoUrl)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove(); var w=this.closest('.tickerLogoWrap'); if(w){w.innerHTML='<span class=tickerLogoFallback>${esc(first)}</span>';}">
             </span>`
           : `<span class="tickerLogoWrap"><span class="tickerLogoFallback">${esc(first)}</span></span>`;
          return `<a class="${cls}" href="${esc(href)}" target="_blank" rel="noreferrer">
            <span class="rank">${esc(rankTxt)}</span>
           ${logo}
            <span class="sym">${esc(symClean)}</span>
-           <span class="chain">${esc((NETWORKS[net]?.label||net).toUpperCase())}</span>
          </a>`;
        }).join('');
 
@@ -3178,7 +3177,7 @@ function toggleMenu(){
         trendTrack.innerHTML = cached2.items + cached2.items;
         toast('Trending temporarily unavailable');
       }else if(!keepExisting){
-        trendTrack.innerHTML = `<span class="tickerItem" style="opacity:.75"><span class="rank">!</span><span class="sym">Trending unavailable</span><span class="chain">${esc(net)}</span></span>`;
+        trendTrack.innerHTML = `<span class="tickerItem" style="opacity:.75"><span class="rank">!</span><span class="sym">Trending unavailable</span><span class="chain" style="display:none">${esc(net)}</span></span>`;
       }else{
         toast('Trending temporarily unavailable');
       }
@@ -3405,10 +3404,6 @@ function toggleMenu(){
        resEl.hidden = true;
      }
    });
-
-   // initial load + refresh every 90s
-   loadTrending();
-   setInterval(loadTrending, 90000);
  })();
 
 </script>
