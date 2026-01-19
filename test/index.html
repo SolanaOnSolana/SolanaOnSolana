@@ -2093,7 +2093,7 @@ body{ padding-top: var(--topBarTotal); }
  It returns a clean verdict + score with <b>color coded</b> risk flags (mint/freeze/owner,
  mintable, blacklist/whitelist controls, trading limits) plus a live <b>DEX snapshot</b>.
  <br><br>
- You also get <b>Top Holders</b> with accurate supply %, a <b>DexScreener style Bubble Map</b>
+ You also get <b>Top Holders</b> with accurate supply %, a <b>Market API style Bubble Map</b>
  (wallet connections + clusters/bundles), explorer deep links, and a <b>branded downloadable report</b>
  with the token logo + $SOS watermark.
  </div>
@@ -2132,7 +2132,7 @@ body{ padding-top: var(--topBarTotal); }
  <li>Solana + ETH + BNB + Base scanning</li>
  <li>Verdict + score with color coded security flags</li>
  <li>Top holders with accurate supply %</li>
- <li>DexScreener style bubble map (connections + clusters)</li>
+ <li>Market API style bubble map (connections + clusters)</li>
  <li>Bundles + explorer deep-links + branded report export</li>
  </ul>
  </div>
@@ -2592,7 +2592,7 @@ function toggleMenu(){
  })();
  
 
- // ===== DexScreener: Trending ticker + Search dropdown =====
+ // ===== Market API: Trending ticker + Search dropdown =====
  (function(){
    const $ = (sel, root=document) => root.querySelector(sel);
    const trendTrack = $("#trendTrack");
@@ -2808,17 +2808,6 @@ async function runSearch(q){
   q = (q || "").trim();
   lastQ = q;
 
-  // cooldown after 429/403
-  if(nowMs() < cooldownUntil){
-    const secs = Math.max(1, Math.ceil((cooldownUntil - nowMs())/1000));
-    resEl.innerHTML = `<div class="dexResRow" style="opacity:.75"><div class="dexResLeft">
-      <div class="dexResTitle">Rate limited</div>
-      <div class="dexResMeta">Please wait ${secs}s, then try again.</div>
-    </div></div>`;
-    resEl.hidden = false;
-    return;
-  }
-
   if(!q){
     resEl.hidden = true;
     resEl.innerHTML = "";
@@ -2832,13 +2821,13 @@ async function runSearch(q){
   searchAbort = new AbortController();
 
   // small cache (session)
-  const cacheKey = "ds:" + q;
+  const cacheKey = "gt:" + activeNet + ":" + q.toLowerCase();
   try{
     const cached = sessionStorage.getItem(cacheKey);
     if(cached){
       const j = JSON.parse(cached);
-      if(j && (nowMs() - (j.t||0)) < 45000 && Array.isArray(j.pairs)){
-        renderDexResults(j.pairs, q);
+      if(j && (nowMs() - (j.t||0)) < 45000 && Array.isArray(j.data) && Array.isArray(j.included)){
+        renderGeoResults(j.data, j.included, q);
         return;
       }
     }
@@ -2847,24 +2836,22 @@ async function runSearch(q){
   try{
     setSearchDisabled(true);
 
-    const url = `https://api.dexscreener.com/latest/dex/search?q=${encodeURIComponent(q)}`;
-    const data = await safeJson(url, {retries:2, baseDelay:800});
-    const pairs = data?.pairs || [];
-    lastResults = pairs.slice(0, 10);
+    // GeckoTerminal public search (CORS-friendly)
+    // Docs: https://apiguide.geckoterminal.com/ (search pools)
+    const url = `https://api.geckoterminal.com/api/v2/search/pools?query=${encodeURIComponent(q)}&network=${encodeURIComponent(activeNet)}&include=base_token,quote_token,dex`;
+    const data = await safeJson(url, {retries:1, baseDelay:600});
+    const pools = Array.isArray(data?.data) ? data.data.slice(0, 12) : [];
+    const included = Array.isArray(data?.included) ? data.included : [];
 
     // cache
-    try{ sessionStorage.setItem(cacheKey, JSON.stringify({t: nowMs(), pairs: lastResults})); }catch(_e){}
+    try{ sessionStorage.setItem(cacheKey, JSON.stringify({t: nowMs(), data: pools, included})); }catch(_e){}
 
-    renderDexResults(lastResults, q);
+    renderGeoResults(pools, included, q);
   }catch(e){
-    // If rate-limited, enforce cooldown to stop spam
     const msg = String(e && e.message ? e.message : e);
-    if(msg.includes("429") || msg.includes("403")){
-      cooldownUntil = nowMs() + 18000; // 18s cooldown
-    }
     resEl.innerHTML = `<div class="dexResRow" style="opacity:.75"><div class="dexResLeft">
       <div class="dexResTitle">Search error</div>
-      <div class="dexResMeta">DexScreener may be rate-limiting. Try again.</div>
+      <div class="dexResMeta">${esc(msg || "Request failed")}.</div>
     </div></div>`;
     resEl.hidden = false;
   }finally{
@@ -2872,64 +2859,92 @@ async function runSearch(q){
   }
 }
 
-function renderDexResults(pairs, q){
-  const top = Array.isArray(pairs) ? pairs.slice(0,10) : [];
+function renderGeoResults(pools, included, q){
+  const list = Array.isArray(pools) ? pools.slice(0,12) : [];
+  const inc = Array.isArray(included) ? included : [];
 
-  if(!top.length){
+  const byId = new Map();
+  for(const x of inc){
+    if(x && x.id) byId.set(String(x.id), x);
+  }
+
+  if(!list.length){
     resEl.innerHTML = `<div class="dexResRow" style="opacity:.75"><div class="dexResLeft">
       <div class="dexResTitle">No results</div>
-      <div class="dexResMeta">Try symbol, name, or paste a contract.</div>
+      <div class="dexResMeta">Try symbol, name, or paste a contract address.</div>
     </div></div>`;
     resEl.hidden = false;
     lastTop = null;
+    lastResults = [];
     return;
   }
 
-  // Store "top result" for the Scan button fallback
-  try{
-    const p0 = top[0];
-    const rawChainId = (p0.chainId || "").toLowerCase();
-    const scanChain = mapChainToScanner(rawChainId);
-    const ca = p0.baseToken?.address || "";
-    lastTop = (scanChain && ca) ? {chain: scanChain, addr: ca} : null;
-  }catch(_e){ lastTop = null; }
+  // Map Gecko pools -> our UI rows
+  const rows = list.map((pool) => {
+    const a = pool?.attributes || {};
+    const rel = pool?.relationships || {};
 
-  resEl.innerHTML = top.map(p=>{
-    const rawChainId = (p.chainId || "").toLowerCase();
-    const chain = rawChainId.toUpperCase();
-    const scanChain = mapChainToScanner(rawChainId);
-    const dex = (p.dexId || "").toUpperCase();
-    const baseSym = p.baseToken?.symbol || "TOKEN";
-    const quoteSym = p.quoteToken?.symbol || "";
-    const title = quoteSym ? `${baseSym}/${quoteSym}` : `${baseSym}`;
-    const price = p.priceUsd ? `$${Number(p.priceUsd).toLocaleString(undefined,{maximumFractionDigits:6})}` : "—";
-    const ch24 = p.priceChange?.h24;
-    const chTxt = (typeof ch24 === "number") ? `${ch24>0?"+":""}${ch24.toFixed(2)}%` : "—";
-    const liq = p.liquidity?.usd ? `$${Number(p.liquidity.usd).toLocaleString(undefined,{maximumFractionDigits:0})}` : "—";
-    const ca = p.baseToken?.address || "";
-    const href = p.url || `https://dexscreener.com/${p.chainId}/${p.pairAddress || ""}`;
+    const dexId = rel?.dex?.data?.id ? String(rel.dex.data.id) : "";
+    const dex = dexId ? dexId.replace(/_/g," ").toUpperCase() : "DEX";
+
+    const poolAddr = (a?.address || "").trim();
+    const poolName = (a?.name || "").trim() || "POOL";
+
+    // Base token info (for CA + label)
+    const baseId = rel?.base_token?.data?.id ? String(rel.base_token.data.id) : "";
+    const base = baseId ? (byId.get(baseId)?.attributes || {}) : {};
+    const baseAddr = (base?.address || "").trim(); // token contract / mint
+    const baseSym = (base?.symbol || "").trim();
+    const baseName = (base?.name || "").trim();
+
+    // Quote token symbol
+    const quoteId = rel?.quote_token?.data?.id ? String(rel.quote_token.data.id) : "";
+    const quote = quoteId ? (byId.get(quoteId)?.attributes || {}) : {};
+    const quoteSym = (quote?.symbol || "").trim();
+
+    const title = (baseSym && quoteSym) ? `${baseSym}/${quoteSym}` : (poolName || baseName || baseSym || "POOL");
+
+    // Market data
+    const priceUsd = a?.base_token_price_usd ? `$${Number(a.base_token_price_usd).toLocaleString(undefined,{maximumFractionDigits:8})}` : "—";
+    const ch24 = a?.price_change_percentage?.h24;
+    const chTxt = (ch24 !== null && ch24 !== undefined && ch24 !== "") ? `${Number(ch24)>0?"+":""}${Number(ch24).toFixed(2)}%` : "—";
+    const liq = a?.reserve_in_usd ? `$${Number(a.reserve_in_usd).toLocaleString(undefined,{maximumFractionDigits:0})}` : "—";
+
+    const href = poolAddr ? `https://www.geckoterminal.com/${encodeURIComponent(activeNet)}/pools/${encodeURIComponent(poolAddr)}` : "#";
+    const scanChain = mapChainToScanner(activeNet); // activeNet is already chain-specific
+    const ca = baseAddr || "";
 
     return `<div class="dexResRow">
-        <div class="dexResLeft">
-          <div class="dexResTitle">${esc(title)}</div>
-          <div class="dexResMeta">
-            <span class="dexPill">${esc(chain)}</span>
-            <span class="dexPill">${esc(dex || "DEX")}</span>
-            <span class="dexPill">Price ${esc(price)}</span>
-            <span class="dexPill">24h ${esc(chTxt)}</span>
-            <span class="dexPill">Liq ${esc(liq)}</span>
-            <span class="dexPill" title="${esc(ca)}">CA ${esc(shortAddr(ca))}</span>
-          </div>
+      <div class="dexResLeft">
+        <div class="dexResTitle">${esc(title)}</div>
+        <div class="dexResMeta">
+          <span class="dexPill">${esc((NETWORKS[activeNet]?.label||activeNet).toUpperCase())}</span>
+          <span class="dexPill">${esc(dex)}</span>
+          <span class="dexPill">Price ${esc(priceUsd)}</span>
+          <span class="dexPill">24h ${esc(chTxt)}</span>
+          <span class="dexPill">Liq ${esc(liq)}</span>
+          <span class="dexPill" title="${esc(ca)}">CA ${esc(shortAddr(ca))}</span>
         </div>
-        <div class="dexResActions">
-          <a class="btn grad dexMiniBtn dexA" href="${esc(href)}" target="_blank" rel="noreferrer">Chart</a>
-          <button class="btn ghost dexMiniBtn" type="button" data-copy="${esc(ca)}">Copy CA</button>
-          ${buildScanBtn(scanChain, ca)}
-        </div>
-      </div>`;
+      </div>
+      <div class="dexResActions">
+        <a class="btn grad dexMiniBtn dexA" href="${esc(href)}" target="_blank" rel="noreferrer">Chart</a>
+        ${buildScanBtn(scanChain, ca)}
+      </div>
+    </div>`;
   }).join("");
 
+  resEl.innerHTML = rows;
   resEl.hidden = false;
+
+  // store for "Scan" button (top result)
+  const firstPool = list[0];
+  const firstRel = firstPool?.relationships || {};
+  const firstBaseId = firstRel?.base_token?.data?.id ? String(firstRel.base_token.data.id) : "";
+  const firstBase = firstBaseId ? (byId.get(firstBaseId)?.attributes || {}) : {};
+  const firstAddr = (firstBase?.address || "").trim();
+
+  lastTop = firstAddr ? { chain: activeNet, addr: firstAddr } : null;
+  lastResults = list;
 }
 
 // Typing does NOT call the API anymore (prevents rate-limits)
