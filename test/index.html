@@ -2601,6 +2601,35 @@ function toggleMenu(){
    const btnGo = $("#dexSearchGo");
    const btnCopy = $("#dexSearchCopy");
 
+   // Where to send users for the Contract Scanner.
+   // Your page already links to https://solanax1.com/contract, so we default to "/contract".
+   const SCANNER_PAGE = (window.SOS_SCANNER_URL && String(window.SOS_SCANNER_URL)) || (location.origin + "/contract");
+
+   const NET_TO_DEX_CHAIN = { solana: "solana", eth: "ethereum", bsc: "bsc", base: "base" };
+   const DEX_TO_SCANNER_CHAIN = { solana: "sol", ethereum: "eth", bsc: "bnb", base: "base" };
+
+   function looksEvmAddress(x){
+     const s = String(x||"").trim();
+     return /^0x[a-fA-F0-9]{40}$/.test(s);
+   }
+   function looksSolAddress(x){
+     const s = String(x||"").trim();
+     // quick base58-ish (no 0,O,I,l) + typical length range
+     return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(s);
+   }
+   function looksAddressForNet(net, x){
+     if(net === "solana") return looksSolAddress(x);
+     if(net === "eth" || net === "bsc" || net === "base") return looksEvmAddress(x);
+     // fallback: accept either
+     return looksEvmAddress(x) || looksSolAddress(x);
+   }
+   function openScanner(addr, dexChainId){
+     const dc = String(dexChainId||"").toLowerCase();
+     const scannerChain = DEX_TO_SCANNER_CHAIN[dc] || DEX_TO_SCANNER_CHAIN[NET_TO_DEX_CHAIN[activeNet]||""] || "sol";
+     const url = `${SCANNER_PAGE}?chain=${encodeURIComponent(scannerChain)}&addr=${encodeURIComponent(String(addr||"").trim())}`;
+     window.location.href = url;
+   }
+
    if(!trendTrack || !inEl || !resEl || !btnGo || !btnCopy) return;
 
    // Keep body padding synced with the fixed top bar height (supports 2-row layout)
@@ -2746,6 +2775,8 @@ function toggleMenu(){
      if(!q){
        resEl.hidden = true;
        resEl.innerHTML = "";
+       resEl.dataset.bestCa = "";
+       resEl.dataset.bestChain = "";
        return;
      }
      try{
@@ -2759,8 +2790,16 @@ function toggleMenu(){
            <div class="dexResMeta">Try symbol, name, or paste a contract.</div>
          </div></div>`;
          resEl.hidden = false;
+         resEl.dataset.bestCa = "";
+         resEl.dataset.bestChain = "";
          return;
        }
+
+       // store a "best" candidate for the top-right Scan button
+       const want = (NET_TO_DEX_CHAIN[activeNet] || "solana").toLowerCase();
+       const best = top.find(p => String(p?.chainId||"").toLowerCase() === want) || top[0];
+       resEl.dataset.bestCa = best?.baseToken?.address || "";
+       resEl.dataset.bestChain = best?.chainId || "";
 
        resEl.innerHTML = top.map(p=>{
          const chain = (p.chainId || "").toUpperCase();
@@ -2790,7 +2829,7 @@ function toggleMenu(){
            <div class="dexResActions">
              <button class="btn ghost dexMiniBtn" type="button" data-copy="${esc(ca)}">Copy CA</button>
              <a class="btn ghost dexMiniBtn dexA" href="${esc(href)}" target="_blank" rel="noreferrer">Chart</a>
-             <button class="btn grad dexMiniBtn" type="button" data-scan="${esc(ca)}">Scanner</button>
+            <button class="btn grad dexMiniBtn" type="button" data-scan="${esc(ca)}" data-chain="${esc(p.chainId || '')}">Scanner</button>
            </div>
          </div>`;
        }).join("");
@@ -2819,12 +2858,41 @@ function toggleMenu(){
    });
 
    btnCopy.addEventListener("click", () => {
-     const q = (inEl.value || "").trim();
-     if(!q) return;
-     try{
-       localStorage.setItem("sos_pending_scan", JSON.stringify({ q, ts: Date.now() }));
-     }catch(_e){}
-     toast("Scanner coming soon");
+     // Scan: redirects to the Contract Scanner and auto-runs with the selected CA.
+     // If user typed a real CA, we use it. Otherwise we use the best dropdown match.
+     (async () => {
+       const q = (inEl.value || "").trim();
+       if(!q) return;
+
+       // 1) If input already looks like a CA for the active network, use it.
+       if(looksAddressForNet(activeNet, q) || looksEvmAddress(q) || looksSolAddress(q)){
+         openScanner(q, NET_TO_DEX_CHAIN[activeNet] || "solana");
+         return;
+       }
+
+       // 2) If dropdown already has a best candidate, use it.
+       const bestCa = (resEl.dataset.bestCa || "").trim();
+       const bestChain = (resEl.dataset.bestChain || "").trim();
+       if(bestCa){
+         openScanner(bestCa, bestChain || (NET_TO_DEX_CHAIN[activeNet] || "solana"));
+         return;
+       }
+
+       // 3) Fallback: query DexScreener once and pick a best result.
+       try{
+         const data = await safeJson(`https://api.dexscreener.com/latest/dex/search?q=${encodeURIComponent(q)}`);
+         const pairs = Array.isArray(data?.pairs) ? data.pairs : [];
+         const want = (NET_TO_DEX_CHAIN[activeNet] || "solana").toLowerCase();
+         const pick = pairs.find(p => String(p?.chainId||"").toLowerCase() === want) || pairs[0];
+         const ca = pick?.baseToken?.address || "";
+         if(ca){
+           openScanner(ca, pick?.chainId || want);
+           return;
+         }
+       }catch(_e){}
+
+       toast("No scan target");
+     })();
    });
 
    // action buttons in dropdown (copy + scanner)
@@ -2847,13 +2915,9 @@ function toggleMenu(){
      const scanBtn = e.target.closest("button[data-scan]");
      if(scanBtn){
        const ca = scanBtn.getAttribute("data-scan") || "";
+       const chainId = scanBtn.getAttribute("data-chain") || "";
        if(!ca) return;
-       try{
-         localStorage.setItem("sos_pending_scan", JSON.stringify({ ca, ts: Date.now() }));
-       }catch(_e){}
-       scanBtn.textContent = "Queued";
-       setTimeout(()=> scanBtn.textContent="Scanner", 900);
-       toast("Scanner coming soon");
+       openScanner(ca, chainId);
        return;
      }
    });
