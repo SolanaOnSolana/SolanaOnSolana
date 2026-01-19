@@ -1505,26 +1505,20 @@ body.net-eth{ --netColor: var(--ethColor); --netGlow: rgba(98,126,234,.22); }
 body.net-bnb{ --netColor: var(--bnbColor); --netGlow: rgba(243,186,47,.22); }
 body.net-base{ --netColor: var(--baseColor); --netGlow: rgba(0,82,255,.22); }
 
-body{ padding-top: var(--topBarTotal); }
+body{ padding-top: 0; }
 .topBar{
-  position: fixed;
+  position: relative;
   top: 0; left: 0; right: 0;
   z-index: 85;
   background: rgba(7,7,17,.62);
   border-bottom: 1px solid rgba(255,255,255,.10);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  transition: transform .32s cubic-bezier(.2,.8,.2,1), opacity .22s ease, filter .32s cubic-bezier(.2,.8,.2,1);
-  will-change: transform;
+  transition: none;
+  will-change: auto;
 }
 
-.topBar.isHidden{
-  /* slide out exactly by its own height so it never looks “cut” */
-  transform: translateY(calc(-1 * var(--topBarTotal)));
-  opacity: 0;
-  filter: blur(2px);
-  pointer-events: none;
-}
+
 
 .topBarInner{
   max-width: var(--max);
@@ -1673,9 +1667,9 @@ body.net-base .chainBtn.active{ background: linear-gradient(90deg, rgba(0,82,255
 
 /* Tiny logo inside the trending ticker */
 .tickerLogoWrap{
-  width:16px;
-  height:16px;
-  flex:0 0 16px;
+  width:22px;
+  height:22px;
+  flex:0 0 22px;
   border-radius: 6px;
   overflow:hidden;
   display:grid;
@@ -1691,7 +1685,7 @@ body.net-base .chainBtn.active{ background: linear-gradient(90deg, rgba(0,82,255
   display:block;
 }
 .tickerLogoFallback{
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 1100;
   color: rgba(255,255,255,.90);
   line-height: 1;
@@ -1973,9 +1967,9 @@ body.net-base .chainBtn.active{ background: linear-gradient(90deg, rgba(0,82,255
   /* Row 2: ticker */
   .tickerWrap{ width: 100%; padding: 9px 10px; }
   .tickerItem{ font-size: 12.5px; padding: 7px 9px; gap: 8px; }
+  .tickerLogoWrap{ width:19px; height:19px; flex:0 0 19px; border-radius:6px; }
+  .tickerLogoFallback{ font-size: 11px; }
   .tickerItem .rank{ min-width: 26px; height: 21px; font-size: 11px; }
-  .tickerLogoWrap{ width:14px; height:14px; flex-basis:14px; border-radius:5px; }
-  .tickerLogoFallback{ font-size: 9px; }
 
   /* Row 3: search */
   .bottomRow{ flex-direction: column; align-items: stretch; gap: 10px; }
@@ -2971,54 +2965,6 @@ function toggleMenu(){
    }
 
    if(!trendTrack || !inEl || !resEl || !btnGo || !btnCopy) return;
-
-   // Keep body padding synced with the fixed top bar height (supports 2-row layout)
-   function syncTopBarHeight(){
-     const tb = document.getElementById('topBar');
-     if(!tb) return;
-     const h = Math.ceil(tb.getBoundingClientRect().height || 0);
-     document.documentElement.style.setProperty('--topBarTotal', h + 'px');
-   }
-   let _tbTmr = null;
-   window.addEventListener('resize', ()=>{
-     clearTimeout(_tbTmr);
-     _tbTmr = setTimeout(syncTopBarHeight, 120);
-   });
-   // initial
-   syncTopBarHeight();
-
-   // Hide the top bar when users scroll down (shows again on scroll up / near top)
-   const topBarEl = document.getElementById('topBar');
-   (function(){
-     if(!topBarEl) return;
-     let lastY = window.scrollY || 0;
-     let raf = false;
-
-     function update(y){
-       const down = y > lastY;
-       if(y < 40){
-         topBarEl.classList.remove('isHidden');
-         
-       }else if(down && y > 140){
-         topBarEl.classList.add('isHidden');
-         
-       }else if(!down){
-         topBarEl.classList.remove('isHidden');
-         
-       }
-       lastY = y;
-     }
-
-     window.addEventListener('scroll', ()=>{
-       if(raf) return;
-       raf = true;
-       requestAnimationFrame(()=>{
-         update(window.scrollY || 0);
-         raf = false;
-       });
-     }, {passive:true});
-   })();
-
    // Chain toggle events
 
    const toggleEl = document.getElementById('chainToggle');
@@ -3162,7 +3108,7 @@ function toggleMenu(){
         syncTickerMarquee();
       }
 
-      const url = `https://api.geckoterminal.com/api/v2/networks/${encodeURIComponent(net)}/trending_pools`;
+      const url = `https://api.geckoterminal.com/api/v2/networks/${encodeURIComponent(net)}/trending_pools?include=base_token,quote_token`;
       const data = await safeJson(url, {timeoutMs: 12000, retries: 2, retryBaseMs: 900});
       if(myReq !== trendReqId) return; // stale response
        const pools = Array.isArray(data?.data) ? data.data.slice(0,10) : [];
@@ -3181,10 +3127,11 @@ function toggleMenu(){
          const baseId = rel?.base_token?.data?.id ? String(rel.base_token.data.id) : '';
          const base = baseId ? (byId.get(baseId)?.attributes || {}) : {};
          const sym = (base?.symbol || base?.name || '').trim() || (a?.name ? String(a.name).split('/')[0].trim() : '') || 'TOKEN';
+         const symClean = String(sym||'TOKEN').replace(/[^a-zA-Z0-9_$\.\-]/g,'').slice(0,24) || 'TOKEN';
         const logoUrlRaw = String(base?.image_url || base?.imageUrl || base?.image || base?.logo_url || base?.logoUrl || a?.image_url || a?.imageUrl || a?.base_token_image_url || a?.base_token_imageUrl || a?.token_image_url || a?.token_imageUrl || "").trim();
         let logoUrl = logoUrlRaw;
         if(logoUrl && logoUrl.startsWith('/')) logoUrl = 'https://www.geckoterminal.com' + logoUrl;
-        const first = (sym || 'T').slice(0,1).toUpperCase();
+        const first = (symClean || 'T').slice(0,1).toUpperCase();
          const addr = (a?.address || '').trim();
          const href = addr ? `https://www.geckoterminal.com/${encodeURIComponent(net)}/pools/${encodeURIComponent(addr)}` : '#';
          const top1 = (n===0);
@@ -3197,7 +3144,7 @@ function toggleMenu(){
          return `<a class="${cls}" href="${esc(href)}" target="_blank" rel="noreferrer">
            <span class="rank">${esc(rankTxt)}</span>
           ${logo}
-           <span class="sym">${esc(sym)}</span>
+           <span class="sym">${esc(symClean)}</span>
            <span class="chain">${esc((NETWORKS[net]?.label||net).toUpperCase())}</span>
          </a>`;
        }).join('');
@@ -3208,8 +3155,7 @@ function toggleMenu(){
        // ✅ ensure it runs through the full list before looping (no "cut" mid-way)
        syncTickerMarquee();
 
-       // ensure layout/padding stays correct if fonts wrap
-       try{ syncTopBarHeight && syncTopBarHeight(); }catch(_e){}
+
     }catch(e){
       if(myReq !== trendReqId) return;
       const keepExisting = !!(trendTrack && trendTrack.children && trendTrack.children.length > 0);
@@ -3223,8 +3169,7 @@ function toggleMenu(){
         toast('Trending temporarily unavailable');
       }
       syncTickerMarquee();
-      try{ syncTopBarHeight && syncTopBarHeight(); }catch(_e){}
-      // quick self-heal retry (no reload needed)
+            // quick self-heal retry (no reload needed)
       setTimeout(()=>{ if(activeNet===net) loadTrending(net); }, 4500);
     }
   }
