@@ -1667,9 +1667,9 @@ body.net-base .chainBtn.active{ background: linear-gradient(90deg, rgba(0,82,255
 
 /* Tiny logo inside the trending ticker */
 .tickerLogoWrap{
-  width:22px;
-  height:22px;
-  flex:0 0 22px;
+  width:24px;
+  height:24px;
+  flex:0 0 24px;
   border-radius: 6px;
   overflow:hidden;
   display:grid;
@@ -1967,7 +1967,7 @@ body.net-base .chainBtn.active{ background: linear-gradient(90deg, rgba(0,82,255
   /* Row 2: ticker */
   .tickerWrap{ width: 100%; padding: 9px 10px; }
   .tickerItem{ font-size: 12.5px; padding: 7px 9px; gap: 8px; }
-  .tickerLogoWrap{ width:19px; height:19px; flex:0 0 19px; border-radius:6px; }
+  .tickerLogoWrap{ width:20px; height:20px; flex:0 0 20px; border-radius:6px; }
   .tickerLogoFallback{ font-size: 11px; }
   .tickerItem .rank{ min-width: 26px; height: 21px; font-size: 11px; }
 
@@ -3051,7 +3051,7 @@ function toggleMenu(){
   let trendReqId = 0;
   const TREND_CACHE_TTL = 20 * 60 * 1000; // 20 min
 
-  function trendCacheKey(net){ return `sos_trending_cache_${net}`; }
+  function trendCacheKey(net){ return `sos_trending_cache_v2_${net}`; }
 
   function readTrendCache(net){
     try{
@@ -3114,9 +3114,12 @@ function toggleMenu(){
        const pools = Array.isArray(data?.data) ? data.data.slice(0,10) : [];
        const included = Array.isArray(data?.included) ? data.included : [];
 
-       const byId = new Map();
+       const byKey = new Map();
        for(const inc of included){
-         if(inc && inc.id) byId.set(String(inc.id), inc);
+         if(!inc || !inc.id) continue;
+         const id = String(inc.id);
+         byKey.set(id, inc);
+         if(inc.type) byKey.set(String(inc.type)+':' + id, inc);
        }
 
        if(!pools.length) throw new Error('No data');
@@ -3124,11 +3127,22 @@ function toggleMenu(){
       const items = pools.map((pool, n) => {
          const a = pool?.attributes || {};
          const rel = pool?.relationships || {};
-         const baseId = rel?.base_token?.data?.id ? String(rel.base_token.data.id) : '';
-         const base = baseId ? (byId.get(baseId)?.attributes || {}) : {};
-         const sym = (base?.symbol || base?.name || '').trim() || (a?.name ? String(a.name).split('/')[0].trim() : '') || 'TOKEN';
+         const baseRef = rel?.base_token?.data || null;
+         const quoteRef = rel?.quote_token?.data || null;
+         const baseId = baseRef?.id ? String(baseRef.id) : '';
+         const baseType = baseRef?.type ? String(baseRef.type) : '';
+         const quoteId = quoteRef?.id ? String(quoteRef.id) : '';
+         const quoteType = quoteRef?.type ? String(quoteRef.type) : '';
+         const baseT = baseId ? ((byKey.get(baseType+':' + baseId) || byKey.get(baseId))?.attributes || {}) : {};
+         const quoteT = quoteId ? ((byKey.get(quoteType+':' + quoteId) || byKey.get(quoteId))?.attributes || {}) : {};
+         const sym = (baseT?.symbol || baseT?.name || '').trim() || (a?.name ? String(a.name).split('/')[0].trim() : '') || 'TOKEN';
          const symClean = String(sym||'TOKEN').replace(/[^a-zA-Z0-9_$\.\-]/g,'').slice(0,24) || 'TOKEN';
-        const logoUrlRaw = String(base?.image_url || base?.imageUrl || base?.image || base?.logo_url || base?.logoUrl || a?.image_url || a?.imageUrl || a?.base_token_image_url || a?.base_token_imageUrl || a?.token_image_url || a?.token_imageUrl || "").trim();
+        const logoUrlRaw = String(
+          baseT?.image_url || baseT?.imageUrl || baseT?.image || baseT?.logo_url || baseT?.logoUrl ||
+          quoteT?.image_url || quoteT?.imageUrl || quoteT?.image || quoteT?.logo_url || quoteT?.logoUrl ||
+          a?.image_url || a?.imageUrl || a?.base_token_image_url || a?.base_token_imageUrl || a?.token_image_url || a?.token_imageUrl ||
+          ''
+        ).trim();
         let logoUrl = logoUrlRaw;
         if(logoUrl && logoUrl.startsWith('/')) logoUrl = 'https://www.geckoterminal.com' + logoUrl;
         const first = (symClean || 'T').slice(0,1).toUpperCase();
