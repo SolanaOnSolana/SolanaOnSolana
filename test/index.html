@@ -1783,16 +1783,73 @@ body.net-base .chainBtn.active{ background: linear-gradient(90deg, rgba(0,82,255
   letter-spacing: -.2px;
   color: rgba(255,255,255,.95);
 }
+
+/* ✅ Search result title row with token logo */
+.dexResTitleRow{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  min-width:0;
+}
+.dexLogoWrap{
+  width:28px;
+  height:28px;
+  border-radius: 10px;
+  overflow:hidden;
+  flex:0 0 28px;
+  display:grid;
+  place-items:center;
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.10);
+  box-shadow: 0 10px 24px rgba(0,0,0,.25);
+  position:relative;
+}
+.dexLogo{
+  width:100%;
+  height:100%;
+  object-fit: cover;
+  display:block;
+}
+.dexLogoFallback{
+  position:absolute;
+  inset:0;
+  display:grid;
+  place-items:center;
+  font-weight: 1100;
+  font-size: 12px;
+  color: rgba(255,255,255,.92);
+  letter-spacing: .2px;
+}
+.dexLogoWrap:not(.noimg) .dexLogoFallback{
+  opacity: 0;
+}
+
+/* ✅ Search meta layout: always 24h left, then MCap/FDV, CA below */
 .dexResMeta{
   margin-top: 7px;
-  display:flex;
-  flex-wrap:wrap;
+  display:grid;
   gap: 6px;
   color: rgba(255,255,255,.70);
   font-size: 12px;
   line-height: 1.25;
   font-weight: 720;
 }
+.dexMetaRow{
+  display:flex;
+  flex-wrap:wrap;
+  gap: 6px;
+  align-items:center;
+}
+.dexMetaRow.stats{
+  flex-wrap:nowrap;
+}
+.dexMetaRow.ca .dexPill{
+  max-width: 100%;
+}
+@media (max-width: 420px){
+  .dexMetaRow.stats{ flex-wrap:wrap; }
+}
+
 .dexPill{
   display:inline-flex;
   align-items:center;
@@ -3120,7 +3177,7 @@ function toggleMenu(){
          const baseSym = p.baseToken?.symbol || "TOKEN";
          const quoteSym = p.quoteToken?.symbol || "";
          const title = quoteSym ? `${baseSym}/${quoteSym}` : `${baseSym}`;
-         const price = p.priceUsd ? `$${Number(p.priceUsd).toLocaleString(undefined,{maximumFractionDigits:6})}` : "—";
+         const logoUrl = (p?.info?.imageUrl || p?.info?.image || p?.baseToken?.logoURI || p?.baseToken?.logo || p?.baseToken?.image || "");
          const ch24 = p.priceChange?.h24;
          const chClass = (typeof ch24 === 'number') ? (ch24>0?'up':(ch24<0?'down':'')) : '';
          const chTxt = (typeof ch24 === "number") ? `${ch24>0?"+":""}${ch24.toFixed(2)}%` : "—";
@@ -3132,14 +3189,25 @@ function toggleMenu(){
          const href = p.url || `https://dexscreener.com/${p.chainId}/${p.pairAddress || ""}`;
          return `<div class="dexResRow">
            <div class="dexResLeft">
-             <div class="dexResTitle">${esc(title)}</div>
+             <div class="dexResTitleRow">
+               <div class="dexLogoWrap ${logoUrl?"":"noimg"}">
+                 ${logoUrl ? `<img class="dexLogo" src="${esc(logoUrl)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.style.display='none'; this.closest('.dexLogoWrap').classList.add('noimg');">` : ``}
+                 <span class="dexLogoFallback">${esc((baseSym||"T").slice(0,1).toUpperCase())}</span>
+               </div>
+               <div class="dexResTitle">${esc(title)}</div>
+             </div>
              <div class="dexResMeta">
-               <span class="dexPill ${esc(chainClass)}">${esc(chain)}</span>
-               <span class="dexPill">${esc(dex || "DEX")}</span>
-               <span class="dexPill">Price ${esc(price)}</span>
-               <span class="dexPill ${esc(chClass)}">24h ${esc(chTxt)}</span>
-               <span class="dexPill">${esc(mcapLabel)} ${esc(mcap)}</span>
-               <span class="dexPill" title="${esc(ca)}">CA ${esc(shortAddr(ca))}</span>
+               <div class="dexMetaRow">
+                 <span class="dexPill ${esc(chainClass)}">${esc(chain)}</span>
+                 <span class="dexPill">${esc(dex || "DEX")}</span>
+               </div>
+               <div class="dexMetaRow stats">
+                 <span class="dexPill ${esc(chClass)}">24h ${esc(chTxt)}</span>
+                 <span class="dexPill">${esc(mcapLabel)} ${esc(mcap)}</span>
+               </div>
+               <div class="dexMetaRow ca">
+                 <span class="dexPill" title="${esc(ca)}">CA ${esc(shortAddr(ca))}</span>
+               </div>
              </div>
            </div>
            <div class="dexResActions">
