@@ -5192,7 +5192,34 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
     activeChain = CFG.CHAINS.find(c => c.id === chainParam);
   }
 
+  // Auto-fill + auto-scan when arriving from the main site.
+  // Supported params: ?addr=...  (also accepts ?ca=... or ?address=...)
+  const addrParam = (url.searchParams.get("addr") || url.searchParams.get("ca") || url.searchParams.get("address") || "").trim();
+  let autoAddr = addrParam;
+
+  // Backward-compat: if older main page stored a pending scan in localStorage.
+  if(!autoAddr){
+    try{
+      const raw = localStorage.getItem("sos_pending_scan");
+      if(raw){
+        const j = JSON.parse(raw);
+        autoAddr = String(j?.ca || j?.addr || j?.q || "").trim();
+        // consume it
+        localStorage.removeItem("sos_pending_scan");
+      }
+    }catch(_e){}
+  }
+
   setActiveChain(activeChain.id, false);
+
+  if(autoAddr){
+    const mintEl = qs("mint");
+    if(mintEl) mintEl.value = autoAddr;
+    // Give UI a tick to render before scanning.
+    setTimeout(()=>{
+      try{ runScan(); }catch(_e){}
+    }, 120);
+  }
   startLiveStampTime();
   wireGlobalClick();
 }
