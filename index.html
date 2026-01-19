@@ -2148,7 +2148,7 @@ body.net-base .chainBtn.active{ background: linear-gradient(90deg, rgba(0,82,255
      <div class="bottomRow">
        <div class="tickerWrap" aria-label="Trending tokens">
          <div class="tickerTrack" id="trendTrack">
-           <span class="tickerItem" style="opacity:.75"><span class="rank">…</span><span class="sym">Loading trending…</span><span class="chain"></span></span>
+           <span class="tickerItem" style="opacity:.75"><span class="rank">…</span><span class="sym">Loading trending…</span><span class="chain"></span></span><span class="tickerItem" style="opacity:.75"><span class="rank">…</span><span class="sym">Loading trending…</span><span class="chain"></span></span><span class="tickerItem" style="opacity:.75"><span class="rank">…</span><span class="sym">Loading trending…</span><span class="chain"></span></span><span class="tickerItem" style="opacity:.75"><span class="rank">…</span><span class="sym">Loading trending…</span><span class="chain"></span></span><span class="tickerItem" style="opacity:.75"><span class="rank">…</span><span class="sym">Loading trending…</span><span class="chain"></span></span><span class="tickerItem" style="opacity:.75"><span class="rank">…</span><span class="sym">Loading trending…</span><span class="chain"></span></span><span class="tickerItem" style="opacity:.75"><span class="rank">…</span><span class="sym">Loading trending…</span><span class="chain"></span></span><span class="tickerItem" style="opacity:.75"><span class="rank">…</span><span class="sym">Loading trending…</span><span class="chain"></span></span>
          </div>
        </div>
 
@@ -2438,7 +2438,7 @@ body.net-base .chainBtn.active{ background: linear-gradient(90deg, rgba(0,82,255
  It returns a clean verdict + score with <b>color coded</b> risk flags (mint/freeze/owner,
  mintable, blacklist/whitelist controls, trading limits) plus a live <b>DEX snapshot</b>.
  <br><br>
- You also get <b>Top Holders</b> with accurate supply %, a <b>DexScreener style Bubble Map</b>
+ You also get <b>Top Holders</b> with accurate supply %, a <b>Bubble Map</b>
  (wallet connections + clusters/bundles), explorer deep links, and a <b>branded downloadable report</b>
  with the token logo + $SOS watermark.
  </div>
@@ -2477,7 +2477,7 @@ body.net-base .chainBtn.active{ background: linear-gradient(90deg, rgba(0,82,255
  <li>Solana + ETH + BNB + Base scanning</li>
  <li>Verdict + score with color coded security flags</li>
  <li>Top holders with accurate supply %</li>
- <li>DexScreener style bubble map (connections + clusters)</li>
+ <li>Bubble map (connections + clusters)</li>
  <li>Bundles + explorer deep-links + branded report export</li>
  </ul>
  </div>
@@ -3157,7 +3157,7 @@ function toggleMenu(){
     // show cached immediately (prevents blank/unavailable flashes)
     const cached = readTrendCache(net);
     try{
-      if(cached && trendTrack && (!trendTrack.innerHTML || /Trending unavailable/i.test(trendTrack.textContent||""))){
+      if(cached && trendTrack && (!trendTrack.innerHTML || /(Trending unavailable|Loading trending)/i.test(trendTrack.textContent||""))){
         trendTrack.innerHTML = cached.items + cached.items;
         syncTickerMarquee();
       }
@@ -3181,7 +3181,9 @@ function toggleMenu(){
          const baseId = rel?.base_token?.data?.id ? String(rel.base_token.data.id) : '';
          const base = baseId ? (byId.get(baseId)?.attributes || {}) : {};
          const sym = (base?.symbol || base?.name || '').trim() || (a?.name ? String(a.name).split('/')[0].trim() : '') || 'TOKEN';
-        const logoUrl = String(base?.image_url || base?.imageUrl || base?.image || base?.logo_url || base?.logoUrl || "").trim();
+        const logoUrlRaw = String(base?.image_url || base?.imageUrl || base?.image || base?.logo_url || base?.logoUrl || a?.image_url || a?.imageUrl || a?.base_token_image_url || a?.base_token_imageUrl || a?.token_image_url || a?.token_imageUrl || "").trim();
+        let logoUrl = logoUrlRaw;
+        if(logoUrl && logoUrl.startsWith('/')) logoUrl = 'https://www.geckoterminal.com' + logoUrl;
         const first = (sym || 'T').slice(0,1).toUpperCase();
          const addr = (a?.address || '').trim();
          const href = addr ? `https://www.geckoterminal.com/${encodeURIComponent(net)}/pools/${encodeURIComponent(addr)}` : '#';
@@ -3341,8 +3343,8 @@ function toggleMenu(){
        resEl.hidden = false;
      }catch(e){
        resEl.innerHTML = `<div class="dexResRow" style="opacity:.75"><div class="dexResLeft">
-         <div class="dexResTitle">Search error</div>
-         <div class="dexResMeta">DexScreener may be rate-limiting. Try again.</div>
+         <div class="dexResTitle">Not found</div>
+         <div class="dexResMeta">Try again.</div>
        </div></div>`;
        resEl.hidden = false;
      }
