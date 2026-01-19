@@ -4493,7 +4493,7 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
         setStatus("Analyzing recent flows (clusters/bundles)…");
         const flow = await solComputeFlowsAndBundles(mintAddr, 30).catch(() => ({edges:new Map(), bundles:[], seenSigs:[]}));
         const bubbleModel = buildBubbleModelSol(holderWallets, flow);
-        setBubbleOpen(true);
+        if(typeof setBubbleOpen==='function') setBubbleOpen(true);
         drawBubbleMap(bubbleModel);
         renderClustersFromModel(bubbleModel);
         renderBundles(flow?.bundles || []);
@@ -4683,7 +4683,7 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
           const hasHolders = (holdersRaw && holdersRaw.length);
           setText('bubbleStamp', activeChain.name + (hasHolders ? ' • TOP HOLDERS + FLOWS' : ' • TRANSFER FLOWS'));
           setText('bubbleHint', hasHolders ? (model.hint || 'Bubble map generated.') : 'Size = activity (no holder list). Links = recent transfers (sampled). Drag to explore.');
-          setBubbleOpen(true);
+          if(typeof setBubbleOpen==='function') setBubbleOpen(true);
           drawBubbleMap(model);
           renderClustersFromModel(model);
           renderBundles(model.bundles || []);
@@ -5391,14 +5391,8 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
 
 
 
-init();
-
-
-  </script>
-
-</body>
-</html>
-  // Bubble map controls (toggle + reset)
+  /* ===================== BUBBLE MAP CONTROLS (UI) ===================== */
+// Bubble map controls (toggle + reset)
   function setBubbleOpen(open){
     const body = qs('bubbleBody');
     const btn = qs('bubbleToggleBtn');
@@ -5406,6 +5400,7 @@ init();
     body.classList.toggle('isHidden', !open);
     btn.textContent = open ? 'Hide Bubble Map' : 'Show Bubble Map';
   }
+  window.setBubbleOpen = setBubbleOpen;
 
   function bubbleResetView(){
     if(typeof window.__bubbleResetView === 'function'){
@@ -5423,7 +5418,7 @@ init();
     if(t.id === 'bubbleToggleBtn'){
       const body = qs('bubbleBody');
       const open = body ? body.classList.contains('isHidden') : true;
-      setBubbleOpen(open);
+      if(typeof setBubbleOpen==='function') setBubbleOpen(open);
       if(open){
         const p = qs('bubblePanel');
         if(p) p.scrollIntoView({behavior:'smooth', block:'start'});
@@ -5434,3 +5429,11 @@ init();
     }
   });
 
+
+init();
+
+
+  </script>
+
+</body>
+</html>
