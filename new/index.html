@@ -1157,6 +1157,69 @@
       if(b !== null) burned += b;
     }
 
+
+  // Best-effort V2 LP "locked" heuristic:
+  // checks LP token balances held by popular locker contracts (chain-specific).
+  // NOTE: lockers change over time; if none match, returns pct:null.
+  function knownLpLockers(chainId){
+    // These are common LP lockers seen in the wild (best-effort).
+    // If you have your preferred locker list, we can add/adjust.
+    if(chainId === 1){
+      return [
+        {name:"Unicrypt",  addr:"0x663a5c229c09b049e36dcc11a9b0d4a8eb9db214"},
+        {name:"PinkLock",  addr:"0x71b5759d73262fbb223956913ecf4ecc51057641"}
+      ];
+    }
+    if(chainId === 56){
+      return [
+        {name:"PinkLock",  addr:"0x71b5759d73262fbb223956913ecf4ecc51057641"},
+        {name:"Mudra",     addr:"0x1d9f43ce8d53b3b206b7b932f1d6b0b5a2d9f8f0"}
+      ];
+    }
+    if(chainId === 8453){
+      return [
+        {name:"PinkLock",  addr:"0x71b5759d73262fbb223956913ecf4ecc51057641"}
+      ];
+    }
+    return [
+      {name:"PinkLock", addr:"0x71b5759d73262fbb223956913ecf4ecc51057641"}
+    ];
+  }
+
+  async function lpLockedPercentV2(chainId, pairAddr){
+    try{
+      if(!pairAddr || !String(pairAddr).toLowerCase().startsWith("0x")) return {pct:null, note:"No pair"};
+      // Ensure it's V2 by checking getReserves()
+      const reservesSel = "0x0902f1ac";
+      const rsv = await ethCall(chainId, pairAddr, reservesSel).catch(()=>null);
+      if(!rsv) return {pct:null, note:"Not V2 pool (no reserves)"};
+
+      const total = await ethCall(chainId, pairAddr, "0x18160ddd"); // totalSupply()
+      const totalBI = safeBigIntFromStr(total);
+      if(totalBI === null || totalBI === 0n) return {pct:null, note:"No LP supply"};
+
+      const lockers = knownLpLockers(chainId);
+      let locked = 0n;
+      const hits = [];
+      for(const L of lockers){
+        const a = String(L.addr||'').toLowerCase();
+        if(!a.startsWith('0x') || a.length !== 42) continue;
+        const bal = await ethCall(chainId, pairAddr, encAbiCall("70a08231", [a])).catch(()=>null);
+        const b = safeBigIntFromStr(bal);
+        if(b !== null && b > 0n){
+          locked += b;
+          hits.push(L.name);
+        }
+      }
+
+      if(locked <= 0n) return {pct:null, note:"No known locker balance detected"};
+      const pct = Number((locked * 10000n) / totalBI) / 100;
+      return {pct, note: hits.length ? ("Lockers: " + hits.join(', ')) : "Locked in known lockers"};
+    }catch{
+      return {pct:null, note:"Lock check failed"};
+    }
+  }
+
     const pct = Number((burned * 10000n) / totalBI) / 100;
     return {pct: Math.max(0, Math.min(100, pct)), burned, total: totalBI, note:"dead+0x0+0x1"};
   }catch{
@@ -1463,7 +1526,7 @@ function renderHoldersEmpty(){
     if(!el) return;
 
     const ex = explorerBase(activeChain);
-    const addr = (qs('addrInput')?.value || '').trim();
+    const addr = (qs('mint')?.value || '').trim();
     const hasAddr = addr && (activeChain.kind==='evm' ? /^0x[0-9a-fA-F]{40}$/.test(addr) : addr.length>10);
 
     el.innerHTML = '';
@@ -3346,6 +3409,7 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
       addr: String(h?.address||'').toLowerCase(),
       pct:  (normalizePctAny(h?.percentage ?? h?.pct ?? h?.share ?? null) ?? NaN)
     })).filter(h => h.addr.startsWith('0x'));
+    const hasHolders = top.length > 0;
 
     const nodes = [];
     const nodeMap = new Map();
@@ -3435,7 +3499,7 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
       const id = n.id;
       const neigh = (adj.get(id)||[]).slice().sort((a,b)=> (b.w||0)-(a.w||0));
       const isHub = hubSet.has(id);
-      const k = (n.kind==='holder') ? (isHub ? 4 : 8) : (isHub ? 3 : 6);
+      const k = (n.kind==='holder') ? (isHub ? 3 : 7) : (isHub ? 2 : 5);
       topNbrs.set(id, new Set(neigh.slice(0,k).map(x=>x.to)));
     }
 
@@ -3451,9 +3515,14 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
       const isHolderEdge = (aNode?.kind==='holder' || bNode?.kind==='holder');
 
       let keep = false;
-      if(aTop && bTop) keep = true;
-      else if(isHolderEdge && (aTop || bTop) && wgt >= minWStrong) keep = true;
-      else if((aTop || bTop) && wgt >= Math.max(3, minWStrong+1)) keep = true;
+      if(!hasHolders){
+        // No reliable holders list -> show only strong mutual relationships to avoid "everything connects to the hub".
+        keep = (aTop && bTop && wgt >= 2);
+      }else{
+        if(aTop && bTop) keep = true;
+        else if(isHolderEdge && (aTop || bTop) && wgt >= minWStrong) keep = true;
+        else if((aTop || bTop) && wgt >= Math.max(3, minWStrong+1)) keep = true;
+      }
 
       if(!keep) continue;
       const k = (e.a < e.b) ? (e.a + '|' + e.b) : (e.b + '|' + e.a);
@@ -4122,6 +4191,33 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
   //    but confirm balances on-chain via balanceOf() so % is accurate even when the indexer returns shifted units.
   const raw = await goldrushHolders(chainId, tokenAddr);
 
+  // If indexer returns no holders (rate-limit/coverage), fall back to a transfer-sample-derived wallet list:
+  // We discover active addresses from recent Transfer logs, then confirm their balances on-chain.
+  let rawUse = raw;
+  if(!Array.isArray(rawUse) || !rawUse.length){
+    try{
+      const txs = await goldrushTransfersV2(chainId, tokenAddr, 900);
+      const freq = new Map();
+      const addF = (a)=>{
+        const x = String(a||'').toLowerCase();
+        if(!x.startsWith('0x') || x.length!==42) return;
+        if(x === '0x0000000000000000000000000000000000000000') return;
+        if(x === '0x000000000000000000000000000000000000dead') return;
+        freq.set(x, (freq.get(x)||0)+1);
+      };
+      if(Array.isArray(txs)){
+        for(const t of txs){
+          addF(t?.from_address || t?.from || t?.sender);
+          addF(t?.to_address || t?.to || t?.receiver);
+        }
+      }
+      const ranked = Array.from(freq.entries()).sort((a,b)=>b[1]-a[1]).slice(0, 120).map(x=>x[0]);
+      rawUse = ranked.map(a => ({address:a}));
+    }catch{
+      rawUse = [];
+    }
+  }
+
   const pickAddr = (h) => (h?.address || h?.wallet_address || h?.walletAddress || h?.owner_address || h?.wallet || h?.holder || '').trim();
 
   // Determine supply for %:
@@ -4163,12 +4259,12 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
     return out;
   }
 
-  if(Array.isArray(raw) && raw.length){
+  if(Array.isArray(rawUse) && rawUse.length){
     // unique addresses (keep order) + map raw item by address
     const uniq = [];
     const seen = new Set();
     const rawByAddr = new Map();
-    for(const h of raw){
+    for(const h of rawUse){
       const a = String(pickAddr(h) || '').toLowerCase();
       if(!a.startsWith('0x') || a.length !== 42) continue;
       if(!rawByAddr.has(a)) rawByAddr.set(a, h);
@@ -4438,6 +4534,22 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
           }
         }
 
+        // best-effort LP lock check (V2 lockers, best-effort)
+        let lpLock = {pct:null, note:'No lock data.'};
+        if(dex){
+          let pairForLock = dex.pairAddress || null;
+          if(dex.pairsAll && dex.pairsAll.length){
+            const v2 = await pickV2PairAddress(chainId, dex.pairsAll).catch(()=>null);
+            if(v2) pairForLock = v2;
+          }
+          if(pairForLock){
+            lpLock = await lpLockedPercentV2(chainId, pairForLock);
+            if(lpLock && lpLock.pct === null && typeof lpLock.note==='string' && lpLock.note.toLowerCase().includes('not v2')){
+              lpLock.note = 'V3 pool / no LP token (or non-V2 pool)';
+            }
+          }
+        }
+
         setStatus("Checking owner/proxy/controls…");
         const [owner, proxy, paused] = await Promise.all([
           getOwner(chainId, addr),
@@ -4469,6 +4581,7 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
           { label:"Market Cap", value: (dex?.marketCap != null ? money(dex.marketCap) : (dex?.fdv != null ? money(dex.fdv) : "—")), badge: dex?.marketCap != null ? "MCAP" : (dex?.fdv != null ? "FDV" : "—"), mini:"" },
           { label:"Price", value: dex?.priceUsd != null ? priceUsdFmt(dex.priceUsd) : "—", badge: "USD", mini:"" },
           { label:"LP Burned", value: lpBurn?.pct != null ? `${lpBurn.pct.toFixed(2)}%` : "UNKNOWN", badge: lpBurn?.pct != null ? (lpBurn.pct>=90?"PASS":"WATCH") : "UNKNOWN", sev: lpBurn?.pct != null ? (lpBurn.pct>=90?"ok":"warn") : "warn", mini:""},
+          { label:"LP Locked", value: lpLock?.pct != null ? `${lpLock.pct.toFixed(2)}%` : "UNKNOWN", badge: lpLock?.pct != null ? "INFO" : "WATCH", sev: lpLock?.pct != null ? "ok" : "warn", mini: lpLock?.note ? String(lpLock.note) : ""},
           { label:"Proxy", value: proxy?.isProxy ? "Upgradeable" : "No signal", badge: proxy?.isProxy ? "WATCH" : "PASS", sev: proxy?.isProxy ? "warn" : "ok", mini:"" },
           { label:"Total Supply", value: supplyText ? (supplyText + (supplyNice.approx ? " (assumed)" : "")) : "—", badge: supplyReadable ? "On-chain" : "Unknown", mini:"" }
         ];
