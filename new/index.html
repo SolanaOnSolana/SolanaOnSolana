@@ -1515,6 +1515,67 @@ body{
   align-items: center;
 }
 
+.hotBlock{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  white-space:nowrap;
+}
+.hotLabel{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding: 10px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,70,70,.28);
+  background: rgba(255,70,70,.10);
+  color: rgba(255,235,235,.96);
+  font-weight: 1000;
+  font-size: 12px;
+  letter-spacing: .10em;
+  text-transform: uppercase;
+  box-shadow: 0 10px 30px rgba(0,0,0,.20);
+}
+.hotFire{
+  width:18px;
+  height:18px;
+  display:block;
+  filter: drop-shadow(0 8px 18px rgba(255,70,70,.22));
+}
+.hotLabel .hotFire *{
+  stroke: rgba(255,90,90,.95) !important;
+  fill: none !important;
+}
+.chainToggle{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding: 6px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.10);
+  background: rgba(255,255,255,.04);
+}
+.chainBtn{
+  appearance:none;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(255,255,255,.06);
+  color: rgba(255,255,255,.88);
+  font-weight: 1000;
+  font-size: 12px;
+  padding: 8px 10px;
+  border-radius: 999px;
+  cursor:pointer;
+  transition: transform .15s ease, background .15s ease, border-color .15s ease;
+}
+.chainBtn:hover{ background: rgba(255,255,255,.10); transform: translateY(-1px); }
+.chainBtn:active{ transform: translateY(0px) scale(.99); }
+.chainBtn.active{
+  border: 0;
+  color: #061012;
+  background: linear-gradient(90deg, var(--g), var(--c), var(--p));
+  box-shadow: 0 14px 28px rgba(0,0,0,.20);
+}
+
 .tickerWrap{
   flex: 1;
   min-width: 0;
@@ -1690,6 +1751,8 @@ body{
 @media (max-width: 860px){
   :root{ --topBarTotal: calc(84px + env(safe-area-inset-top)); }
   .topBarInner{ flex-direction: column; align-items: stretch; gap: 10px; }
+  .hotBlock{ flex-wrap:wrap; justify-content:space-between; width:100%; }
+  .chainToggle{ width:100%; justify-content:space-between; }
   .dexSearch{ width: 100%; max-width: 100%; }
   .tickerWrap{ width: 100%; }
   .tickerTrack{ animation-duration: 34s; }
@@ -1772,6 +1835,19 @@ body{
  <!-- TOP TRENDING BAR + SEARCH (Dex-style) -->
  <div class="topBar" id="topBar">
    <div class="topBarInner">
+     <div class="hotBlock" aria-label="Hot trending live">
+       <div class="hotLabel" title="Live trending">
+         <svg class="hotFire" aria-hidden="true"><use href="#ico-fire"></use></svg>
+         <span>HOT TRENDING LIVE</span>
+       </div>
+       <div class="chainToggle" id="chainToggle" role="tablist" aria-label="Choose chain">
+         <button class="chainBtn active" type="button" data-net="solana" aria-pressed="true">SOL</button>
+         <button class="chainBtn" type="button" data-net="ethereum" aria-pressed="false">ETH</button>
+         <button class="chainBtn" type="button" data-net="bsc" aria-pressed="false">BNB</button>
+         <button class="chainBtn" type="button" data-net="base" aria-pressed="false">BASE</button>
+       </div>
+     </div>
+
      <div class="tickerWrap" aria-label="Trending tokens">
        <div class="tickerTrack" id="trendTrack">
          <span class="tickerItem" style="opacity:.75"><span class="rank">…</span><span class="sym">Loading trending…</span><span class="chain"></span></span>
@@ -2575,6 +2651,17 @@ function toggleMenu(){
 
    if(!trendTrack || !inEl || !resEl || !btnGo || !btnCopy) return;
 
+   // Chain toggle events
+   const toggleEl = document.getElementById('chainToggle');
+   if(toggleEl){
+     toggleEl.addEventListener('click', (e)=>{
+       const btn = e.target.closest('.chainBtn');
+       if(!btn) return;
+       const net = btn.getAttribute('data-net');
+       setActiveNet(net);
+     });
+   }
+
    const esc = (s="") => String(s)
      .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
      .replace(/"/g,"&quot;").replace(/'/g,"&#39;");
@@ -2608,45 +2695,75 @@ function toggleMenu(){
      }
    }
 
-   async function loadTrending(){
+   const NETWORKS = {
+     solana: { label: 'SOL' },
+     ethereum: { label: 'ETH' },
+     bsc: { label: 'BNB' },
+     base: { label: 'BASE' }
+   };
+
+   let activeNet = 'solana';
+   let trendTimer = null;
+
+   async function loadTrending(net){
      try{
-       const arr = await safeJson("https://api.dexscreener.com/token-boosts/top/v1");
-       const top = Array.isArray(arr) ? arr.slice(0,10) : [];
-       if(!top.length) throw new Error("No data");
+       const url = `https://api.geckoterminal.com/api/v2/networks/${encodeURIComponent(net)}/trending_pools`;
+       const data = await safeJson(url);
+       const pools = Array.isArray(data?.data) ? data.data.slice(0,10) : [];
+       const included = Array.isArray(data?.included) ? data.included : [];
 
-       // fetch symbols with limited concurrency
-       const out = [];
-       let i = 0;
-       const workers = new Array(4).fill(0).map(async () => {
-         while(i < top.length){
-           const idx = i++;
-           const t = top[idx] || {};
-           const chainId = t.chainId || "";
-           const tokenAddress = t.tokenAddress || "";
-           const url = t.url || "";
-           const info = await fetchTokenSymbol(chainId, tokenAddress);
-           const sym = (info.sym || "").trim() || shortAddr(tokenAddress) || "TOKEN";
-           out[idx] = { idx, chainId, tokenAddress, url: (info.pairUrl || url || ""), sym };
-         }
-       });
-       await Promise.all(workers);
+       const byId = new Map();
+       for(const inc of included){
+         if(inc && inc.id) byId.set(String(inc.id), inc);
+       }
 
-       // Build ticker items (duplicate once for seamless marquee)
-       const items = out.filter(Boolean).map((t, n) => {
-         const href = t.url || `https://dexscreener.com/${t.chainId}/${t.tokenAddress}`;
+       if(!pools.length) throw new Error('No data');
+
+       const items = pools.map((pool, n) => {
+         const a = pool?.attributes || {};
+         const rel = pool?.relationships || {};
+         const baseId = rel?.base_token?.data?.id ? String(rel.base_token.data.id) : '';
+         const base = baseId ? (byId.get(baseId)?.attributes || {}) : {};
+         const sym = (base?.symbol || base?.name || '').trim() || (a?.name ? String(a.name).split('/')[0].trim() : '') || 'TOKEN';
+         const addr = (a?.address || '').trim();
+         const href = addr ? `https://www.geckoterminal.com/${encodeURIComponent(net)}/pools/${encodeURIComponent(addr)}` : '#';
          return `<a class="tickerItem" href="${esc(href)}" target="_blank" rel="noreferrer">
            <span class="rank">#${n+1}</span>
-           <span class="sym">${esc(t.sym)}</span>
-           <span class="chain">${esc((t.chainId||"").toUpperCase())}</span>
+           <span class="sym">${esc(sym)}</span>
+           <span class="chain">${esc((NETWORKS[net]?.label||net).toUpperCase())}</span>
          </a>`;
-       }).join("");
+       }).join('');
 
-       trendTrack.innerHTML = items + items; // duplicate for marquee loop
+       trendTrack.innerHTML = items + items;
      }catch(e){
-       trendTrack.innerHTML =
-         `<span class="tickerItem" style="opacity:.75"><span class="rank">!</span><span class="sym">Trending unavailable</span><span class="chain">try later</span></span>`;
+       trendTrack.innerHTML = `<span class="tickerItem" style="opacity:.75"><span class="rank">!</span><span class="sym">Trending unavailable</span><span class="chain">${esc(net)}</span></span>`;
      }
    }
+
+   function setActiveNet(net){
+     if(!net || !NETWORKS[net]) net = 'solana';
+     activeNet = net;
+
+     // buttons
+     const wrap = document.getElementById('chainToggle');
+     if(wrap){
+       wrap.querySelectorAll('.chainBtn').forEach(b=>{
+         const on = (b.getAttribute('data-net') === net);
+         b.classList.toggle('active', on);
+         b.setAttribute('aria-pressed', on ? 'true' : 'false');
+       });
+     }
+
+     // load now + refresh
+     clearInterval(trendTimer);
+     loadTrending(net);
+     trendTimer = setInterval(()=>loadTrending(net), 30000);
+   }
+
+
+   // Start with Solana trending
+   setActiveNet('solana');
+
 
    // Search dropdown
    let tmr = null;
