@@ -713,7 +713,10 @@
 
     function trendCacheKey(net){ return `sos_trend_${net}_v3`; }
 
+    let lastTrending = [];
+
     function renderTrending(items){
+      lastTrending = Array.isArray(items)?items:[];
       if(!items || !items.length){
         trendTrack.innerHTML = `<span class="tickerItem" style="opacity:.75"><span class="rank">!</span><span class="sym">Not found</span></span>`;
         return;
@@ -961,40 +964,30 @@
     }
 
     async function resolveBestPool(net, tokenAddr){
-      // Get pools list (prefer OLDEST pool by creation time so ALL history is visible)
+      // Get pools list
       const url = `https://api.geckoterminal.com/api/v2/networks/${encodeURIComponent(net)}/tokens/${encodeURIComponent(tokenAddr)}/pools?page=1`;
-      const j = await safeFetchJson(url);
-      const pools = (j && j.data) ? j.data : [];
-      if(!pools.length) return null;
+      const j = await safeJson(url);
+      const pools = (j?.data || []).slice(0, 15);
+      if(!pools.length) return { best:null, pools:[] };
 
-      // Populate pool dropdown (oldest → newest)
-      const items = pools.map(pp=>({
-        addr: pp?.id ? String(pp.id).split('/').pop() : '',
-        liq: poolLiqUsd(pp),
-        created: poolCreatedMs(pp),
-        name: pp?.attributes?.name || pp?.attributes?.address || ''
-      })).filter(x=>x.addr);
-
-      items.sort((a,b)=>{
-        const ac = Number.isFinite(a.created) ? a.created : Infinity;
-        const bc = Number.isFinite(b.created) ? b.created : Infinity;
-        if(ac != bc) return ac - bc; // oldest first
-        return (b.liq||0) - (a.liq||0); // fallback by liquidity
-      });
-
-      // Build select options
-      poolSel.innerHTML = '';
-      for(const it of items){
-        const opt = document.createElement('option');
-        opt.value = it.addr;
-        const age = Number.isFinite(it.created) ? fmtAge(Date.now()-it.created) : 'unknown';
-        opt.textContent = `${short(it.addr,6,4)} • ${fmtMoney(it.liq)} • ${age}`;
-        poolSel.appendChild(opt);
+      // Score: prefer liquidity, but also value age to avoid truncating history.
+      // Users can override via the Pool dropdown.
+      let best = pools[0];
+      let bestScore = -Infinity;
+      for(const p of pools){
+        const liq = poolLiqUsd(p);
+        const created = poolCreatedMs(p);
+        const ageDays = Number.isFinite(created) ? (Date.now()-created)/86400000 : 0;
+        const liqScore = Math.log10(Math.max(1, liq));
+        const ageScore = Math.log10(Math.max(1, ageDays+1));
+        const score = (1.25*liqScore) + (0.85*ageScore);
+        if(score > bestScore){ bestScore = score; best = p; }
       }
 
-      // Choose oldest by default
-      return items[0].addr;
+      const bestAddr = poolAddr(best) || null;
+      return { best: bestAddr, pools };
     }
+
 
     async function getPool(net, poolAddr){
       const url = `https://api.geckoterminal.com/api/v2/networks/${encodeURIComponent(net)}/pools/${encodeURIComponent(poolAddr)}?include=base_token,quote_token`;
@@ -1253,16 +1246,60 @@
     syncLinks();
     startTrending(activeNet);
 
+    // If no addr is provided, auto-load SOL (top trending) so /chart always shows something on first visit.
     if(!addr){
-      pairNameEl.textContent = 'Not found';
-      pairMetaEl.textContent = 'Missing address';
-      statusEl.textContent = 'Not found';
-      tradesEl.innerHTML = emptyTrades('Not found');
-      toast('Enter a contract in search');
-      return;
-    }
+      activeNet = 'solana';
+      syncLinks();
+      startTrending(activeNet);
+      pairNameEl.textContent = 'Loading…';
+      pairMetaEl.textContent = 'SOLANA • trending';
+      statusEl.textContent = 'Loading…';
+      tradesEl.innerHTML = emptyTrades('Loading…');
 
-    boot();
+      (async()=>{
+        try{
+          // Use cache first (instant), then network.
+          let pick = (lastTrending && lastTrending[0] && lastTrending[0].addr) ? lastTrending[0].addr : '';
+          if(!pick){
+            try{
+              const cached = JSON.parse(localStorage.getItem(trendCacheKey(activeNet)) || 'null');
+              if(cached && Array.isArray(cached.items) && cached.items.length) pick = cached.items[0].addr || '';
+            }catch(e){}
+          }
+          if(!pick){
+            // force one fetch
+            await loadTrending(activeNet, true);
+            pick = (lastTrending && lastTrending[0] && lastTrending[0].addr) ? lastTrending[0].addr : '';
+          }
+          if(!pick){
+            statusEl.textContent = 'Not found';
+            pairNameEl.textContent = 'Not found';
+            pairMetaEl.textContent = 'SOLANA';
+            tradesEl.innerHTML = emptyTrades('Not found');
+            return;
+          }
+          addr = String(pick).trim();
+          // Update URL without a hard reload
+          try{
+            const u = new URL(location.href);
+            u.pathname = '/chart';
+            u.searchParams.set('chain', activeNet);
+            u.searchParams.set('addr', addr);
+            history.replaceState({}, '', u.toString());
+          }catch(e){}
+          syncLinks();
+          boot();
+        }catch(e){
+          statusEl.textContent = 'Not found';
+          pairNameEl.textContent = 'Not found';
+          pairMetaEl.textContent = 'SOLANA';
+          tradesEl.innerHTML = emptyTrades('Not found');
+        }
+      })();
+
+    } else {
+      boot();
+    }
 
     async function boot(){
       try{
