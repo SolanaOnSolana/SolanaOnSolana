@@ -2636,6 +2636,23 @@ function toggleMenu(){
 
    const shortAddr = (a="") => a && a.length > 12 ? (a.slice(0,6)+"…"+a.slice(-4)) : a;
 
+   // Scanner deep-link (auto-fill + auto-scan)
+   const SCANNER_PATH = "/contract";
+   const CHAIN_TO_SCANNER = {
+     solana: "sol",
+     sol: "sol",
+     ethereum: "eth",
+     eth: "eth",
+     bsc: "bnb",
+     bnb: "bnb",
+     base: "base"
+   };
+   function mapChainToScanner(chainId){
+     const k = String(chainId || "").toLowerCase().trim();
+     return CHAIN_TO_SCANNER[k] || null;
+   }
+
+
    function toast(msg){
      // lightweight reuse of status if exists, otherwise subtle title flash
      try{
@@ -2763,7 +2780,9 @@ function toggleMenu(){
        }
 
        resEl.innerHTML = top.map(p=>{
-         const chain = (p.chainId || "").toUpperCase();
+         const rawChainId = (p.chainId || "").toLowerCase();
+         const chain = rawChainId.toUpperCase();
+         const scanChain = mapChainToScanner(rawChainId);
          const dex = (p.dexId || "").toUpperCase();
          const baseSym = p.baseToken?.symbol || "TOKEN";
          const quoteSym = p.quoteToken?.symbol || "";
@@ -2788,8 +2807,9 @@ function toggleMenu(){
              </div>
            </div>
            <div class="dexResActions">
-             <button class="btn ghost dexMiniBtn" type="button" data-copy="${esc(ca)}">Copy</button>
-             <a class="btn grad dexMiniBtn dexA" href="${esc(href)}" target="_blank" rel="noreferrer">Open</a>
+             <a class="btn grad dexMiniBtn dexA" href="${esc(href)}" target="_blank" rel="noreferrer">Chart</a>
+             <button class="btn ghost dexMiniBtn" type="button" data-copy="${esc(ca)}">Copy CA</button>
+             ${scanChain ? '<button class="btn ghost dexMiniBtn" type="button" data-scan="1" data-chain="' + esc(scanChain) + '" data-addr="' + esc(ca) + '">Scan</button>' : '<button class="btn ghost dexMiniBtn" type="button" disabled title="Unsupported chain for scanner">Scan</button>'}
            </div>
          </div>`;
        }).join("");
@@ -2836,23 +2856,38 @@ function toggleMenu(){
      }
    });
 
-   // copy buttons in dropdown
-   resEl.addEventListener("click", async (e) => {
-     const btn = e.target.closest("button[data-copy]");
-     if(!btn) return;
-     const val = btn.getAttribute("data-copy") || "";
-     if(!val) return;
-     try{
-       await navigator.clipboard.writeText(val);
-       btn.textContent = "Copied";
-       setTimeout(()=> btn.textContent="Copy", 900);
-     }catch(err){
-       btn.textContent = "Error";
-       setTimeout(()=> btn.textContent="Copy", 900);
-     }
-   });
+   // buttons in dropdown (Copy CA / Scan)
+resEl.addEventListener("click", async (e) => {
+  const scanBtn = e.target.closest("button[data-scan]");
+  if(scanBtn && !scanBtn.disabled){
+    const chain = scanBtn.getAttribute("data-chain") || "";
+    const addr  = scanBtn.getAttribute("data-addr") || "";
+    if(!chain || !addr) return;
+    try{
+      const u = new URL(SCANNER_PATH, window.location.origin);
+      u.searchParams.set("chain", chain);
+      u.searchParams.set("addr", addr);
+      u.searchParams.set("auto", "1");
+      // same-tab redirect (feels instant)
+      window.location.href = u.toString();
+    }catch(_e){}
+    return;
+  }
 
-   // close dropdown when clicking outside
+  const btn = e.target.closest("button[data-copy]");
+  if(!btn) return;
+  const val = btn.getAttribute("data-copy") || "";
+  if(!val) return;
+  try{
+    await navigator.clipboard.writeText(val);
+    btn.textContent = "Copied";
+    setTimeout(()=> btn.textContent="Copy CA", 900);
+  }catch(err){
+    btn.textContent = "Error";
+    setTimeout(()=> btn.textContent="Copy CA", 900);
+  }
+});
+// close dropdown when clicking outside
    document.addEventListener("click", (e) => {
      const inside = e.target.closest(".dexSearch");
      if(!inside && !resEl.hidden){
