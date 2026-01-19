@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
  <meta charset="utf-8" />
- <meta name="viewport" content="width=device-width, initial-scale=1" />
+ <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
  <meta name="theme-color" content="#070711" />
 
  <title>$SOS Solana on Solana</title>
@@ -173,7 +173,6 @@ img{max-width:100%; height:auto}
 
  /* Desktop menu (⋯) */
  .menu{ position:relative; display:inline-flex; }
- 
 
  /* Floating menu only (header removed) */
  .menuFloat{
@@ -1350,7 +1349,6 @@ img{max-width:100%; height:auto}
  /* Mobile bottom tool dock (super obvious) */
  .toolsDock{ display:none; }
 
- 
 body.menuOpen .toolsDock{ display:none !important; }
 @media (max-width: 860px){
  body{ padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
@@ -1406,8 +1404,6 @@ body.menuOpen .toolsDock{ display:none !important; }
  font-weight: 1100;
  }
  }
-
- 
 
  /* ROADMAP TIMELINE (NEXT LEVEL) */
  #roadmap .sub{ color: var(--muted); margin-top: 6px; max-width: 70ch; }
@@ -1490,7 +1486,7 @@ body.menuOpen .toolsDock{ display:none !important; }
   /* will be set by JS to the actual fixed top bar height */
   --topBarTotal: 0px;
   /* Desktop ticker speed (mobile overrides below). Slightly slower for readability on big screens. */
-  --tickerSpeed: 4.6s;
+  --tickerSpeed: 5.8s;
   /* distance the marquee should travel for one full cycle (set by JS) */
   --tickerDistance: 50%;
 
@@ -1509,9 +1505,7 @@ body.net-eth{ --netColor: var(--ethColor); --netGlow: rgba(98,126,234,.22); }
 body.net-bnb{ --netColor: var(--bnbColor); --netGlow: rgba(243,186,47,.22); }
 body.net-base{ --netColor: var(--baseColor); --netGlow: rgba(0,82,255,.22); }
 
-body{ padding-top: var(--topBarTotal); transition: padding-top .28s cubic-bezier(.2,.8,.2,1); }
-body.topbarHidden{ padding-top: 0px; }
-
+body{ padding-top: var(--topBarTotal); }
 .topBar{
   position: fixed;
   top: 0; left: 0; right: 0;
@@ -1531,7 +1525,6 @@ body.topbarHidden{ padding-top: 0px; }
   filter: blur(2px);
   pointer-events: none;
 }
-
 
 .topBarInner{
   max-width: var(--max);
@@ -1596,11 +1589,22 @@ body.topbarHidden{ padding-top: 0px; }
 .chainBtn:hover{ background: rgba(255,255,255,.10); transform: translateY(-1px); }
 .chainBtn:active{ transform: translateY(0px) scale(.99); }
 .chainBtn.active{
-  border: 0;
+  border: 1px solid rgba(255,255,255,.14);
   color: #061012;
-  background: linear-gradient(90deg, var(--g), var(--c), var(--p));
+  background: linear-gradient(90deg, rgba(255,255,255,.18), rgba(255,255,255,.10));
   box-shadow: 0 14px 28px rgba(0,0,0,.20);
 }
+/* per-chain tint (inactive) */
+.chainBtn[data-net="solana"]{ border-color: rgba(153,69,255,.32); color: rgba(153,69,255,.92); }
+.chainBtn[data-net="eth"]{ border-color: rgba(98,126,234,.32); color: rgba(98,126,234,.92); }
+.chainBtn[data-net="bsc"]{ border-color: rgba(243,186,47,.32); color: rgba(243,186,47,.92); }
+.chainBtn[data-net="base"]{ border-color: rgba(0,82,255,.32); color: rgba(0,82,255,.92); }
+
+/* per-chain active fill */
+body.net-sol .chainBtn.active{ background: linear-gradient(90deg, rgba(153,69,255,.95), rgba(153,69,255,.68)); border-color: rgba(153,69,255,.42); box-shadow: 0 0 0 1px rgba(153,69,255,.18) inset, 0 14px 30px rgba(0,0,0,.32); }
+body.net-eth .chainBtn.active{ background: linear-gradient(90deg, rgba(98,126,234,.95), rgba(98,126,234,.68)); border-color: rgba(98,126,234,.42); box-shadow: 0 0 0 1px rgba(98,126,234,.18) inset, 0 14px 30px rgba(0,0,0,.32); }
+body.net-bnb .chainBtn.active{ background: linear-gradient(90deg, rgba(243,186,47,.96), rgba(243,186,47,.70)); border-color: rgba(243,186,47,.45); box-shadow: 0 0 0 1px rgba(243,186,47,.18) inset, 0 14px 30px rgba(0,0,0,.32); }
+body.net-base .chainBtn.active{ background: linear-gradient(90deg, rgba(0,82,255,.95), rgba(0,82,255,.70)); border-color: rgba(0,82,255,.45); box-shadow: 0 0 0 1px rgba(0,82,255,.18) inset, 0 14px 30px rgba(0,0,0,.32); }
 
 .tickerWrap{
   flex: 1;
@@ -1691,7 +1695,6 @@ body.topbarHidden{ padding-top: 0px; }
   font-weight: 1100;
 }
 .tickerItem.top1 .chain{ color: rgba(255,215,0,.92); }
-
 
 .dexSearch{ position: relative; width: 360px; max-width: 44vw; }
 .dexSearchInner{
@@ -1834,7 +1837,6 @@ body.topbarHidden{ padding-top: 0px; }
 
 /* keep floating ⋯ menu below the new top bar */
 .menuFloat{ top: calc(14px + var(--topBarTotal)); }
-body.topbarHidden .menuFloat{ top: 14px; }
 
 /* mobile: stack + keep everything clickable */
 @media (max-width: 860px){
@@ -1876,13 +1878,14 @@ body.topbarHidden .menuFloat{ top: 14px; }
   .bottomRow{ flex-direction: column; align-items: stretch; gap: 10px; }
   .dexSearch{ width: 100%; max-width: 100%; }
   .dexSearchInner{ padding: 10px 10px; }
+  /* prevent iOS input zoom */
+  .dexInput{ font-size: 16px; }
   .dexMiniBtn{ padding: 8px 10px; }
 }
 
 @media (max-width: 380px){
   .chainBtn{ font-size: 11.5px; padding: 7px 0; }
 }
-
 
 /* reduced motion */
 @media (prefers-reduced-motion: reduce){
@@ -1956,8 +1959,6 @@ body.topbarHidden .menuFloat{ top: 14px; }
  </symbol>
  </svg>
 
-
- 
  <!-- TOP TRENDING BAR + SEARCH (Dex-style) -->
  <div class="topBar" id="topBar">
    <div class="topBarInner">
@@ -2106,8 +2107,6 @@ body.topbarHidden .menuFloat{ top: 14px; }
  </div>
 
  </div>
-
-
 
  </div>
  </div>
@@ -2377,7 +2376,6 @@ body.topbarHidden .menuFloat{ top: 14px; }
 
  <div style="height:18px"></div>
 
- 
  </div>
  </div>
  </section>
@@ -2686,8 +2684,6 @@ function toggleMenu(){
  menuPop.addEventListener("click", (e) => e.stopPropagation());
  }
 
-
-
  // Tool cards: make the entire card clickable (but don’t hijack real links/buttons)
  function isInteractive(el){
  if(!el) return false;
@@ -2747,7 +2743,6 @@ function toggleMenu(){
  });
  }
 
-
  // Roadmap reveal on scroll
  (function(){
  const items = Array.from(document.querySelectorAll('.tlItem'));
@@ -2769,7 +2764,6 @@ function toggleMenu(){
 
  items.forEach(el => io.observe(el));
  })();
- 
 
  // ===== DexScreener: Trending ticker + Search dropdown =====
  (function(){
@@ -2837,13 +2831,13 @@ function toggleMenu(){
        const down = y > lastY;
        if(y < 40){
          topBarEl.classList.remove('isHidden');
-         document.body.classList.remove('topbarHidden');
+         
        }else if(down && y > 140){
          topBarEl.classList.add('isHidden');
-         document.body.classList.add('topbarHidden');
+         
        }else if(!down){
          topBarEl.classList.remove('isHidden');
-         document.body.classList.remove('topbarHidden');
+         
        }
        lastY = y;
      }
@@ -2920,7 +2914,7 @@ function toggleMenu(){
        const isMobile = window.matchMedia('(max-width: 860px)').matches;
        // Readable-but-fast speed: adapt to the real width so the loop is seamless on all screens.
        // (Higher px/s = faster. We intentionally keep this conservative so you can actually read.)
-       const pxPerSec = isMobile ? 120 : 180;
+       const pxPerSec = isMobile ? 120 : 155;
 
        requestAnimationFrame(()=>{
          // We render the items twice (A+B). One full cycle should travel exactly A.
@@ -3013,10 +3007,8 @@ function toggleMenu(){
      trendTimer = setInterval(()=>loadTrending(net), 30000);
    }
 
-
    // Start with Solana trending
    setActiveNet('solana');
-
 
    // Search dropdown
    let tmr = null;
@@ -3202,7 +3194,6 @@ function toggleMenu(){
    loadTrending();
    setInterval(loadTrending, 90000);
  })();
-
 
 </script>
 </body>
