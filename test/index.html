@@ -3008,6 +3008,31 @@ function toggleMenu(){
 
    const shortAddr = (a="") => a && a.length > 12 ? (a.slice(0,6)+"…"+a.slice(-4)) : a;
 
+   function formatCompact(n){
+     const num = Number(n);
+     if(!Number.isFinite(num)) return '—';
+     const abs = Math.abs(num);
+     const sign = num < 0 ? '-' : '';
+     const units = [
+       {v: 1e12, s: 'T'},
+       {v: 1e9,  s: 'B'},
+       {v: 1e6,  s: 'M'},
+       {v: 1e3,  s: 'K'},
+     ];
+     for(const u of units){
+       if(abs >= u.v){
+         const v = abs / u.v;
+         const dec = v < 10 ? 2 : (v < 100 ? 1 : 0);
+         let out = v.toFixed(dec);
+         // trim trailing zeros
+         out = out.replace(/\.0+$/,'').replace(/(\.[0-9]*?)0+$/,'$1');
+         return sign + out + u.s;
+       }
+     }
+     // < 1K
+     return sign + String(Math.round(abs));
+   }
+
    function toast(msg){
      // lightweight reuse of status if exists, otherwise subtle title flash
      try{
@@ -3296,7 +3321,7 @@ function toggleMenu(){
          const chClass = (typeof ch24 === 'number') ? (ch24>0?'up':(ch24<0?'down':'')) : '';
          const chTxt = (typeof ch24 === "number") ? `${ch24>0?"+":""}${ch24.toFixed(2)}%` : "—";
          const mcapVal = (p.marketCap != null ? Number(p.marketCap) : (p.fdv != null ? Number(p.fdv) : null));
-         const mcap = (typeof mcapVal === 'number' && Number.isFinite(mcapVal)) ? `$${Number(mcapVal).toLocaleString(undefined,{maximumFractionDigits:0})}` : "—";
+         const mcap = (typeof mcapVal === 'number' && Number.isFinite(mcapVal)) ? `$${formatCompact(mcapVal)}` : "—";
          const mcapLabel = (p.marketCap != null ? "MCap" : (p.fdv != null ? "FDV" : "MCap"));
          const ca = p.baseToken?.address || "";
 
