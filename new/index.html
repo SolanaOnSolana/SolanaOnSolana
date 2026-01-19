@@ -5186,15 +5186,46 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
     downloadHtml(htmlName, html);
   });
 
-  const url = new URL(location.href);
+    const url = new URL(location.href);
   const chainParam = url.searchParams.get("chain");
   if(chainParam && CFG.CHAINS.some(c => c.id === chainParam)){
     activeChain = CFG.CHAINS.find(c => c.id === chainParam);
   }
 
+  // Deep-link: /contract?chain=sol&addr=<token>&auto=1
+  const addrParam =
+    (
+    url.searchParams.get("addr") ||
+    url.searchParams.get("mint") ||
+    url.searchParams.get("address") ||
+    url.searchParams.get("ca") ||
+    url.searchParams.get("token") ||
+    ""
+  ).trim();
+
+  const autoParam = (url.searchParams.get("auto") || "1").toLowerCase();
+  const shouldAuto = !(autoParam === "0" || autoParam === "false" || autoParam === "no");
+
   setActiveChain(activeChain.id, false);
+
+  if(addrParam){
+    const mintEl = qs("mint");
+    if(mintEl) mintEl.value = addrParam;
+  }
+
   startLiveStampTime();
   wireGlobalClick();
+
+  if(addrParam && shouldAuto){
+    // small delay so UI + chain state are ready
+    setTimeout(()=>{
+      try{
+        const mintEl = qs("mint");
+        if(mintEl && addrParam && !mintEl.value) mintEl.value = addrParam;
+        runScan();
+      }catch(_e){}
+    }, 260);
+  }
 }
 
   // Safety: expose runScan globally for inline onclick fallback
