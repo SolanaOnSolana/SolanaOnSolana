@@ -1091,21 +1091,6 @@ img{max-width:100%; height:auto}
  .brandText .name{ font-size:13px; }
 
  .heroCard{padding:34px 16px}
-
- /* ✅ HERO buttons: always one clean row on mobile */
- .heroActions{
-   display:grid;
-   grid-template-columns: repeat(3, 1fr);
-   gap: 10px;
-   justify-items: stretch;
- }
- .heroActions .btn{
-   width:100%;
-   justify-content:center;
-   padding: 10px 10px;
-   font-size: 12px;
-   border-radius: 16px;
- }
  .heroCard::before{
  background-position: 50% 28%;
  background-size: min(700px, 132%);
@@ -1148,11 +1133,6 @@ img{max-width:100%; height:auto}
  .btn{padding:9px 11px}
  .cardInner{padding:20px}
  }
-
-@media (max-width: 380px){
-  .heroActions{ gap: 8px; }
-  .heroActions .btn{ padding: 9px 8px; font-size: 11px; }
-}
 
  /* ===== TOOLS UPGRADE (MAKE IT FEEL LIKE REAL APPS) ===== */
  .toolsIntro{
@@ -1564,7 +1544,7 @@ body{ padding-top: 0; }
   min-width: 0;
 }
 
-.hotBlock{ display:flex; align-items:center; gap: 12px; flex-wrap:wrap; flex: 1 1 560px; min-width: 0; }
+.hotBlock{ display:flex; align-items:center; gap: 12px; flex-wrap:wrap; }
 .hotLabel{
   display:inline-flex;
   align-items:center;
@@ -1579,81 +1559,51 @@ body{ padding-top: 0; }
 }
 .hotFire{ width: 18px; height: 18px; opacity: .95; }
 
-/* ===== LIVE TRENDING + DEXGUARD ===== */
-.hotPromo{
-  display:flex;
-  align-items:center;
-  gap: 12px;
-  flex-wrap: nowrap;
+/* DexGuard brand (top-left, next to Live Trending) */
+.dexguardLogo{
+  height: 34px;
+  width: auto;
+  display:block;
+  filter: drop-shadow(0 10px 22px rgba(0,0,0,.38));
 }
-
-.livePill{
-  display:inline-flex;
-  align-items:center;
-  gap: 10px;
-  padding: 9px 14px;
-  border-radius: 999px;
-  background: rgba(255,65,65,.10);
-  border: 1px solid rgba(255,65,65,.20);
-  box-shadow: 0 12px 32px rgba(0,0,0,.24);
-  font-weight: 1100;
-  letter-spacing: .6px;
-  white-space: nowrap;
-}
-.liveFire{ width: 18px; height: 18px; opacity: .98; filter: drop-shadow(0 10px 20px rgba(0,0,0,.35)); transform-origin: 50% 70%; animation: flameFlicker .95s ease-in-out infinite alternate; }
-@keyframes flameFlicker{
-  0%{ transform: translateY(0) scale(1) rotate(-2deg); opacity:.90; }
-  100%{ transform: translateY(-1px) scale(1.06) rotate(2deg); opacity:1; }
-}
-
-.dexguardBanner{
-  width: 300px;
-  height: 68px;
-  object-fit: contain;
-  border: 0;
-  background: transparent;
-  border-radius: 0;
-  box-shadow: none;
-  flex: 0 0 auto;
-  filter: drop-shadow(0 18px 40px rgba(0,0,0,.48));
-}
-
-.dexguardCta{
+.dexguardBtn{
   border: 0;
   padding: 10px 14px;
-  font-size: 12.5px;
+  gap: 10px;
   font-weight: 1100;
-  border-radius: 999px;
-  color: #061012;
-  background: linear-gradient(90deg, var(--g), var(--c), var(--p));
-  box-shadow: 0 16px 34px rgba(0,0,0,.34);
-  transition: transform .15s ease, filter .15s ease, box-shadow .15s ease;
+  letter-spacing: .25px;
+  color: rgba(7,7,17,.92);
+  background: linear-gradient(90deg, rgba(255,184,0,.98), rgba(255,77,77,.96), rgba(153,69,255,.92));
+  box-shadow:
+    0 16px 34px rgba(0,0,0,.34),
+    0 0 0 1px rgba(255,184,0,.26) inset,
+    0 0 30px rgba(255,184,0,.16);
+  position: relative;
+  overflow: hidden;
 }
-.dexguardCta:hover{ transform: translateY(-1px); filter: saturate(1.08); box-shadow: 0 20px 44px rgba(0,0,0,.42); }
-.dexguardCta:active{ transform: translateY(0px) scale(.99); }
-
-@media (max-width: 900px){
-  /* Keep it clean: avoid shrinking the Dexguard banner */
-  .hotPromo{ flex-wrap: wrap; justify-content: space-between; }
-  .livePill{ order: 1; }
-  .dexguardCta{ order: 2; }
-  .dexguardBanner{
-    order: 3;
-    flex-basis: 100%;
-    width: min(420px, 100%);
-    height: auto;
-    margin: 6px auto 0;
-  }
+.dexguardBtn::before{
+  content:"";
+  position:absolute;
+  inset:-40px;
+  background:
+    radial-gradient(220px 120px at 20% 30%, rgba(255,255,255,.26), transparent 60%),
+    radial-gradient(240px 140px at 80% 70%, rgba(255,255,255,.14), transparent 62%);
+  opacity: .55;
+  filter: blur(10px);
+  transform: translateZ(0);
+  pointer-events:none;
 }
-
-@media (max-width: 520px){
-  .dexguardBanner{ width: min(360px, 100%); }
-  .dexguardCta{ padding: 11px 14px; font-size: 13px; }
+.dexguardBtn > *{ position: relative; z-index: 1; }
+.dexguardBtn:hover{
+  transform: translateY(-1px);
+  background: linear-gradient(90deg, rgba(255,184,0,.98), rgba(255,77,77,.96), rgba(153,69,255,.92));
+  box-shadow:
+    0 18px 40px rgba(0,0,0,.38),
+    0 0 0 1px rgba(255,184,0,.30) inset,
+    0 0 44px rgba(255,184,0,.20);
 }
-
-@media (max-width: 380px){
-  .dexguardCta{ width:100%; }
-}
+.dexguardBtn:active{ transform: translateY(0) scale(.99); }
+.dgIco{ width: 18px; height: 18px; display:block; }
 
 .chainToggle{
   display:inline-flex;
@@ -2068,9 +2018,11 @@ body.net-base .chainBtn.active{ background: linear-gradient(90deg, rgba(0,82,255
     gap: 10px;
     flex-wrap:wrap;
   }
-  .hotBlock{ width:100%; display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  .hotBlock{ width:100%; display:flex; align-items:center; justify-content:flex-start; gap:10px; flex-wrap:wrap; }
   .hotLabel{ padding: 9px 12px; font-size: 12px; letter-spacing: .5px; }
   .hotFire{ width: 16px; height: 16px; }
+  .dexguardLogo{ height: 28px; }
+  .dexguardBtn{ padding: 10px 12px; }
 
   /* Chain selector: 4 equal buttons, always visible (no scrolling) */
   .chainToggle{
@@ -2239,21 +2191,33 @@ body.net-base .chainBtn.active{ background: linear-gradient(90deg, rgba(0,82,255
  <path d="M12 4l9 5-9 5-9-5 9-5Z" fill="none" stroke="url(#gradBrand)" stroke-width="2" stroke-linejoin="round"/>
  <path d="M21 9v6l-9 5-9-5V9" fill="none" stroke="url(#gradBrand)" stroke-width="2" stroke-linejoin="round" opacity=".8"/>
  </symbol>
+
+ <symbol id="ico-chart" viewBox="0 0 24 24">
+ <path d="M4 19.5H20" fill="none" stroke="url(#gradBrand)" stroke-width="2" stroke-linecap="round"/>
+ <path d="M6 17v-4" fill="none" stroke="url(#gradBrand)" stroke-width="2" stroke-linecap="round"/>
+ <path d="M10 17v-7" fill="none" stroke="url(#gradBrand)" stroke-width="2" stroke-linecap="round"/>
+ <path d="M14 17v-10" fill="none" stroke="url(#gradBrand)" stroke-width="2" stroke-linecap="round"/>
+ <path d="M18 17v-6" fill="none" stroke="url(#gradBrand)" stroke-width="2" stroke-linecap="round"/>
+ <path d="M6 11l4-2l4-3l4 2" fill="none" stroke="url(#gradBrand)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity=".75"/>
+ </symbol>
  </svg>
 
  <!-- TOP TRENDING BAR + SEARCH (Dex-style) -->
  <div class="topBar" id="topBar">
    <div class="topBarInner">
      <div class="topRow">
-       <div class="hotBlock" aria-label="Hot trending live">
-         <div class="hotPromo" aria-label="Live trending">
-  <div class="livePill" title="Live trending">
-    <svg class="liveFire" aria-hidden="true"><use href="#ico-fire"></use></svg>
-    <span>Live Trending</span>
-  </div>
-  <img class="dexguardBanner" src="dexguard.png" alt="Dexguard" loading="eager" decoding="async" />
-  <button class="dexguardCta" id="dexguardBtn" type="button">Dexguard</button>
-</div>
+       <div class="hotBlock" aria-label="Live trending">
+         <div class="hotLabel" title="Live trending">
+           <svg class="hotFire" aria-hidden="true"><use href="#ico-fire"></use></svg>
+           <span>LIVE TRENDING</span>
+         </div>
+
+         <!-- DexGuard brand + CTA -->
+         <img class="dexguardLogo" src="dexguard.png" alt="DexGuard" loading="eager" decoding="async" />
+         <a class="btn dexguardBtn" id="dexguardBtn" href="/dexguard" target="_blank" rel="noreferrer" title="Open DexGuard">
+           <svg class="dgIco" aria-hidden="true"><use href="#ico-chart"></use></svg>
+           Dexguard
+         </a>
        </div>
 
        <div class="chainToggle" id="chainToggle" role="tablist" aria-label="Choose chain">
@@ -2878,16 +2842,6 @@ body.net-base .chainBtn.active{ background: linear-gradient(90deg, rgba(0,82,255
  // Year
  document.getElementById("y").textContent = new Date().getFullYear();
 
- // Dexguard button
- const dexguardBtn = document.getElementById('dexguardBtn');
- if(dexguardBtn){
-   dexguardBtn.addEventListener('click', () => {
-     // Change this target if you want a different destination
-     window.location.href = 'dexguard.html';
-   });
- }
-
-
  // Copy helpers
  function setHint(el, ok){
  if(!el) return;
@@ -3434,7 +3388,8 @@ function toggleMenu(){
          const mcapLabel = (p.marketCap != null ? "MCap" : (p.fdv != null ? "FDV" : "MCap"));
          const ca = p.baseToken?.address || "";
 
-         const href = p.url || `https://dexscreener.com/${p.chainId}/${p.pairAddress || ""}`;
+         // Route to our internal chart page (no external redirect)
+         const href = `/chart?chain=${encodeURIComponent(String(p.chainId||''))}&addr=${encodeURIComponent(String(ca||''))}`;
          return `<div class="dexResRow">
            <div class="dexResLeft">
              <div class="dexResTitleRow">
@@ -3460,7 +3415,7 @@ function toggleMenu(){
            </div>
            <div class="dexResActions">
              <button class="btn ghost dexMiniBtn copyBtn" type="button" data-copy="${esc(ca)}">Copy CA</button>
-             <a class="btn ghost dexMiniBtn chartBtn dexA" href="${esc(href)}" target="_blank" rel="noreferrer">Chart</a>
+             <a class="btn ghost dexMiniBtn chartBtn dexA" href="${esc(href)}">Chart</a>
             <button class="btn grad dexMiniBtn" type="button" data-scan="${esc(ca)}" data-chain="${esc(p.chainId || '')}">Scanner</button>
            </div>
          </div>`;
