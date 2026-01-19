@@ -116,11 +116,11 @@
     .net .dot{width:10px; height:10px; border-radius:50%; background: rgba(255,255,255,.18); box-shadow: 0 0 18px rgba(255,255,255,.12)}
     .net.active{box-shadow: 0 0 0 1px rgba(255,255,255,.06), 0 12px 28px rgba(0,0,0,.25)}
     .net.active[data-net="solana"]{border-color: rgba(153,69,255,.50); background: rgba(153,69,255,.14)}
-    .net.active[data-net="ethereum"]{border-color: rgba(98,126,234,.55); background: rgba(98,126,234,.12)}
+    .net.active[data-net="eth"]{border-color: rgba(98,126,234,.55); background: rgba(98,126,234,.12)}
     .net.active[data-net="bsc"]{border-color: rgba(243,186,47,.55); background: rgba(243,186,47,.12)}
     .net.active[data-net="base"]{border-color: rgba(0,82,255,.55); background: rgba(0,82,255,.12)}
     .net.active[data-net="solana"] .dot{background: var(--sol); box-shadow: 0 0 16px rgba(153,69,255,.45)}
-    .net.active[data-net="ethereum"] .dot{background: var(--eth); box-shadow: 0 0 16px rgba(98,126,234,.45)}
+    .net.active[data-net="eth"] .dot{background: var(--eth); box-shadow: 0 0 16px rgba(98,126,234,.45)}
     .net.active[data-net="bsc"] .dot{background: var(--bnb); box-shadow: 0 0 16px rgba(243,186,47,.45)}
     .net.active[data-net="base"] .dot{background: var(--base); box-shadow: 0 0 16px rgba(0,82,255,.45)}
 
@@ -234,6 +234,10 @@
     #chartWrap{height:560px;}
     #chart{height:100%;}
 
+    
+    .viewRow{display:flex;gap:8px;align-items:center}
+    .btn.tiny{padding:8px 10px;border-radius:999px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;opacity:.85}
+    .btn.tiny.active{opacity:1;box-shadow:0 0 0 1px rgba(255,255,255,.18) inset, 0 10px 24px rgba(0,0,0,.28)}
     .controls{
       display:flex; gap:8px; flex-wrap:wrap;
       padding:12px 14px;
@@ -352,6 +356,10 @@
         <div id="chartWrap"><div id="chart"></div></div>
         <div class="controls">
           <div class="tfRow" id="tfRow"></div>
+          <div class="viewRow" id="viewRow">
+            <button class="btn tiny active" data-view="price" id="viewPrice">Price</button>
+            <button class="btn tiny" data-view="mcap" id="viewMcap">MCap</button>
+          </div>
           <div class="rightCtl">
             <button class="btn" id="btnFit">Fit</button>
             <button class="btn" id="btnRefresh">Refresh</button>
@@ -392,7 +400,7 @@
     function normalizeChain(x){
       const s = String(x||'').toLowerCase().trim();
       if(['sol','solana'].includes(s)) return 'solana';
-      if(['eth','ethereum'].includes(s)) return 'ethereum';
+      if(['eth','ethereum'].includes(s)) return 'eth';
       if(['bnb','bsc','binance','binancesmartchain'].includes(s)) return 'bsc';
       if(['base'].includes(s)) return 'base';
       return 'solana';
@@ -431,12 +439,25 @@
       return sign+fmt(abs,2);
     }
 
+    function calcPricePrecision(x){
+      x = Math.abs(Number(x)||0);
+      if(!isFinite(x) || x===0) return 6;
+      if(x >= 1000) return 2;
+      if(x >= 1) return 6;
+      // enough decimals to show ~3 significant digits
+      const d = Math.ceil(-Math.log10(x)) + 3;
+      return Math.min(Math.max(d, 6), 12);
+    }
+
     function formatPrice(p){
-      const x=Number(p);
-      if(!Number.isFinite(x)) return '—';
-      if(x>=1) return x.toFixed(6).replace(/0+$/,'').replace(/\.$/,'');
-      if(x>=0.01) return x.toFixed(8).replace(/0+$/,'').replace(/\.$/,'');
-      return x.toPrecision(6);
+      const x = Number(p);
+      if(!isFinite(x)) return '—';
+      if(x===0) return '0';
+      const prec = calcPricePrecision(x);
+      let s = x.toFixed(prec);
+      // trim trailing zeros
+      s = s.replace(/0+$/,'').replace(/\.$/,'');
+      return s;
     }
 
     function timeAgo(ms){
@@ -470,7 +491,7 @@
     function explorerTx(chain, tx){
       if(!tx) return null;
       if(chain==='solana') return 'https://solscan.io/tx/'+tx;
-      if(chain==='ethereum') return 'https://etherscan.io/tx/'+tx;
+      if(chain==='eth') return 'https://etherscan.io/tx/'+tx;
       if(chain==='bsc') return 'https://bscscan.com/tx/'+tx;
       if(chain==='base') return 'https://basescan.org/tx/'+tx;
       return null;
@@ -534,7 +555,7 @@
     // Net pills
     const NETS = [
       {k:'solana', label:'SOL', dot:'sol'},
-      {k:'ethereum', label:'ETH', dot:'eth'},
+      {k:'eth', label:'ETH', dot:'eth'},
       {k:'bsc', label:'BNB', dot:'bnb'},
       {k:'base', label:'BASE', dot:'base'},
     ];
@@ -568,6 +589,7 @@
     });
 
     const candleSeries = chart.addCandlestickSeries({
+      priceFormat:{type:'price', precision: 10, minMove: 1e-10},
       upColor: 'rgba(20,241,149,.95)', downColor: 'rgba(255,77,109,.95)',
       wickUpColor: 'rgba(20,241,149,.95)', wickDownColor: 'rgba(255,77,109,.95)',
       borderVisible: false,
@@ -629,6 +651,24 @@
       tfRow.appendChild(b);
     });
 
+    // View toggle (Price vs MarketCap)
+    const viewRow = $('viewRow');
+    const viewButtons = viewRow ? Array.from(viewRow.querySelectorAll('button')) : [];
+    function setViewMode(mode){
+      viewMode = mode;
+      viewButtons.forEach(btn=>btn.classList.toggle('active', btn.dataset.view===mode));
+      applyChartData(true);
+      // update header pill text to match view
+      // header stays the same; only chart y-axis changes
+    }
+    if(viewRow){
+      viewRow.addEventListener('click', (e)=>{
+        const b = e.target.closest('button');
+        if(!b) return;
+        setViewMode(b.dataset.view);
+      });
+    }
+
     btnFit.onclick = ()=>chart.timeScale().fitContent();
     btnRefresh.onclick = ()=>{ loadCandles(true); loadTrades(true); };
 
@@ -638,6 +678,10 @@
     let poolChoices = [];
     let tradesSeen = new Set();
     let searchReqId = 0;
+    let viewMode = 'price';
+    let supplyFactor = null;
+    let rawCandleData = [];
+
 
     // -------------------- Buttons
     btnCopy.onclick = async ()=>{
@@ -822,7 +866,7 @@
       const chainId = String(p?.chainId||'').toLowerCase();
       let net = null;
       if(chainId==='solana') net='solana';
-      else if(chainId==='ethereum') net='ethereum';
+      else if(chainId==='ethereum') net='eth';
       else if(chainId==='bsc' || chainId==='binance') net='bsc';
       else if(chainId==='base') net='base';
       else return null;
@@ -834,7 +878,7 @@
       const addr = base?.address || '';
       if(!addr) return null;
 
-      const img = base?.logoURI || base?.icon || base?.image || '';
+      const img = p?.info?.imageUrl || p?.info?.image_url || base?.logoURI || base?.icon || base?.image || '';
       const ch24 = num(p?.priceChange?.h24);
       const mcap = num(p?.marketCap);
       const fdv = num(p?.fdv);
@@ -917,28 +961,39 @@
     }
 
     async function resolveBestPool(net, tokenAddr){
-      // Get pools list
+      // Get pools list (prefer OLDEST pool by creation time so ALL history is visible)
       const url = `https://api.geckoterminal.com/api/v2/networks/${encodeURIComponent(net)}/tokens/${encodeURIComponent(tokenAddr)}/pools?page=1`;
-      const j = await safeJson(url);
-      const pools = (j?.data || []).slice(0, 15);
-      if(!pools.length) return { best:null, pools:[] };
+      const j = await safeFetchJson(url);
+      const pools = (j && j.data) ? j.data : [];
+      if(!pools.length) return null;
 
-      // Score: prefer liquidity, but avoid selecting a brand-new pool that truncates history.
-      // Users can override via the Pool dropdown.
-      let best = pools[0];
-      let bestScore = -Infinity;
-      for(const p of pools){
-        const liq = poolLiqUsd(p);
-        const created = poolCreatedMs(p);
-        const ageDays = Number.isFinite(created) ? (Date.now()-created)/86400000 : 0;
-        const liqScore = Math.log10(Math.max(1, liq));
-        const ageScore = Math.log10(Math.max(1, ageDays+1));
-        const score = (1.25*liqScore) + (0.85*ageScore);
-        if(score > bestScore){ bestScore = score; best = p; }
+      // Populate pool dropdown (oldest → newest)
+      const items = pools.map(pp=>({
+        addr: pp?.id ? String(pp.id).split('/').pop() : '',
+        liq: poolLiqUsd(pp),
+        created: poolCreatedMs(pp),
+        name: pp?.attributes?.name || pp?.attributes?.address || ''
+      })).filter(x=>x.addr);
+
+      items.sort((a,b)=>{
+        const ac = Number.isFinite(a.created) ? a.created : Infinity;
+        const bc = Number.isFinite(b.created) ? b.created : Infinity;
+        if(ac != bc) return ac - bc; // oldest first
+        return (b.liq||0) - (a.liq||0); // fallback by liquidity
+      });
+
+      // Build select options
+      poolSel.innerHTML = '';
+      for(const it of items){
+        const opt = document.createElement('option');
+        opt.value = it.addr;
+        const age = Number.isFinite(it.created) ? fmtAge(Date.now()-it.created) : 'unknown';
+        opt.textContent = `${short(it.addr,6,4)} • ${fmtMoney(it.liq)} • ${age}`;
+        poolSel.appendChild(opt);
       }
 
-      const bestAddr = poolAddr(best) || null;
-      return { best: bestAddr, pools };
+      // Choose oldest by default
+      return items[0].addr;
     }
 
     async function getPool(net, poolAddr){
@@ -1104,7 +1159,7 @@
       const baseAmt = num(t?.base_token_amount);
 
       const tx = t?.tx_hash || t?.txHash || t?.transaction_hash || '';
-      const who = t?.tx_from_address || t?.maker_address || t?.taker_address || t?.wallet_address || '';
+      const who = t?.tx_from_address || t?.from_address || t?.wallet || t?.wallet_address || t?.user_address || t?.trader_address || t?.trader || t?.maker_address || t?.taker_address || (t?.attributes&& (t.attributes.tx_from_address||t.attributes.from_address||t.attributes.trader_address||t.attributes.wallet_address)) || '';
       const txUrl = explorerTx(activeNet, tx);
 
       return `<div class="trade">
