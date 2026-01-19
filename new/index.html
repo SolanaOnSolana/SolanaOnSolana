@@ -1688,7 +1688,7 @@ function renderHoldersEmpty(){
       if(topList.length){
         const rows = topList.map(n => {
           const a = n.addr || n.id || '';
-          const pct = (Number.isFinite(n.pct) && n.pct>0) ? (n.pct>=10 ? n.pct.toFixed(1) : n.pct.toFixed(2))+'%' : '—';
+          const pct = (Number.isFinite(n.pct) && n.pct>0) ? (n.pct<0.01 ? '<0.01%' : ((n.pct>=10 ? n.pct.toFixed(1) : n.pct.toFixed(2))+'%')) : '—';
           const label = (n.label && String(n.label).trim()) ? String(n.label).trim() : (a ? shortAddr(a) : 'Wallet');
           const href = a ? (ex.base + a) : '#';
           return `<a class="explorerBtn" style="width:100%; display:flex; justify-content:space-between; gap:10px;" href="${esc(href)}" target="_blank" rel="noreferrer"><span>${esc(label)}</span><span class="muted">${esc(pct)}</span></a>`;
@@ -1724,6 +1724,10 @@ function renderHoldersEmpty(){
     let clickBlockUntil = 0;
     let downPt = null;
 
+    let didDrag = false;
+    let dragStartPt = null;
+
+
     let panStart = {x:0,y:0,ox:0,oy:0};
 
     function hitTest(mx, my){
@@ -1746,6 +1750,8 @@ function renderHoldersEmpty(){
 
     c.onpointerdown = (evt)=>{
       downPt = {x: evt.clientX, y: evt.clientY};
+      didDrag = false;
+      dragStartPt = {x: evt.clientX, y: evt.clientY};
       const {mx,my,wx,wy} = getMouse(evt);
       const n = hitTest(wx,wy);
       if(n){
@@ -1760,6 +1766,14 @@ function renderHoldersEmpty(){
       }
     };
     c.onpointermove = (evt)=>{
+      if(dragStartPt && !didDrag){
+        const dx0 = evt.clientX - dragStartPt.x;
+        const dy0 = evt.clientY - dragStartPt.y;
+        if(Math.hypot(dx0, dy0) > 6){
+          didDrag = true;
+          clickBlockUntil = Date.now() + 800;
+        }
+      }
       if(panning){
         const {mx,my} = getMouse(evt);
         view.ox = panStart.ox + (mx - panStart.x);
@@ -1774,12 +1788,22 @@ function renderHoldersEmpty(){
       dragging.vy = 0;
     };
     c.onpointerup = (evt)=>{
+      if(didDrag){
+        clickBlockUntil = Math.max(clickBlockUntil, Date.now() + 800);
+      }
       if(dragging){
+        if(didDrag){
+          // Pin on drag-release so nodes don't snap back
+          dragging.pinned = true;
+          dragging.vx = 0;
+          dragging.vy = 0;
+        }
         dragging = null;
       }
       if(panning){
         panning = false;
       }
+      dragStartPt = null;
       try{ c.releasePointerCapture(evt.pointerId);}catch{};
     };
     c.onwheel = (evt)=>{
@@ -1848,8 +1872,8 @@ function renderHoldersEmpty(){
           if(f > 3.2) f = 3.2;
           const fx = (dx / dist) * f;
           const fy = (dy / dist) * f;
-          if(a !== dragging){ a.vx += fx; a.vy += fy; }
-          if(b !== dragging){ b.vx -= fx; b.vy -= fy; }
+          if(a !== dragging && !a.pinned){ a.vx += fx; a.vy += fy; }
+          if(b !== dragging && !b.pinned){ b.vx -= fx; b.vy -= fy; }
         }
       }
 
@@ -1866,14 +1890,14 @@ function renderHoldersEmpty(){
         const k = (dist - target) * 0.0026 * wgt;
         const fx = (dx / dist) * k;
         const fy = (dy / dist) * k;
-        if(a !== dragging){ a.vx += fx; a.vy += fy; }
-        if(b !== dragging){ b.vx -= fx; b.vy -= fy; }
+        if(a !== dragging && !a.pinned){ a.vx += fx; a.vy += fy; }
+        if(b !== dragging && !b.pinned){ b.vx -= fx; b.vy -= fy; }
       }
 
       // collision (prevents overlap) + center gravity (keeps cluster centered)
       for(let i=0;i<nodes.length;i++){
         const a = nodes[i];
-        if(a !== dragging){
+        if(a !== dragging && !a.pinned){
           // slightly stronger pull to origin
           a.vx += (-a.x) * 0.0016;
           a.vy += (-a.y) * 0.0016;
@@ -1890,12 +1914,12 @@ function renderHoldersEmpty(){
             const overlap = (minD - dist);
             // position correction (prevents "stacking")
             const corr = overlap * 0.55;
-            if(a !== dragging){ a.x -= nx * (corr*0.5); a.y -= ny * (corr*0.5); }
-            if(b !== dragging){ b.x += nx * (corr*0.5); b.y += ny * (corr*0.5); }
+            if(a !== dragging && !a.pinned){ a.x -= nx * (corr*0.5); a.y -= ny * (corr*0.5); }
+            if(b !== dragging && !b.pinned){ b.x += nx * (corr*0.5); b.y += ny * (corr*0.5); }
             // velocity push
             const push = overlap * 0.09;
-            if(a !== dragging){ a.vx -= nx * push; a.vy -= ny * push; }
-            if(b !== dragging){ b.vx += nx * push; b.vy += ny * push; }
+            if(a !== dragging && !a.pinned){ a.vx -= nx * push; a.vy -= ny * push; }
+            if(b !== dragging && !b.pinned){ b.vx += nx * push; b.vy += ny * push; }
           }
         }
       }
@@ -1903,6 +1927,7 @@ function renderHoldersEmpty(){
 // integrate (DexScreener-ish: no hard screen clamp)
       const softBound = Math.min(worldW, worldH) * 0.45; // world units (keeps cluster on-screen)
       for(const n of nodes){
+        if(n.pinned && n !== dragging){ n.vx = 0; n.vy = 0; continue; }
         if(n !== dragging){
           // damping
           n.vx *= 0.78;
@@ -1978,7 +2003,7 @@ function renderHoldersEmpty(){
         const bp = (Number.isFinite(b.pct)?b.pct:0);
         if(bp!==ap) return bp-ap;
         return (b.r||0)-(a.r||0);
-      }).slice(0, 18);
+      }).slice(0, 10);
 
       ctx.save();
       ctx.textAlign = 'center';
@@ -1994,7 +2019,7 @@ function renderHoldersEmpty(){
         if(!name) continue;
 
         const pct = (Number.isFinite(n.pct) && n.pct > 0) ? n.pct : null;
-        const pctTxt = pct === null ? '' : (pct >= 10 ? pct.toFixed(1) : pct.toFixed(2)) + '%';
+        const pctTxt = pct === null ? '' : (pct < 0.01 ? '<0.01%' : ((pct >= 10 ? pct.toFixed(1) : pct.toFixed(2)) + '%'));
 
         // Font sizes scale with bubble radius
         const fsPct  = Math.max(11, Math.min(18, (n.r||12) * 0.62));
@@ -3435,9 +3460,7 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
         pct = normalizePctAny(h?.pct ?? h?.share ?? null);
       }
       return { addr, pct: (Number.isFinite(pct) ? pct : NaN) };
-    }).filter(h => h.addr.startsWith('0x'));
-    (h => h.addr.startsWith('0x'));
-    const hasHolders = top.length > 0;
+    }).filter        const hasHolders = top.length > 0;
 
     const nodes = [];
     const nodeMap = new Map();
@@ -3476,7 +3499,7 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
     const extras = Array.from(deg.entries())
       .filter(([a,c]) => c>=3 && !allow.has(a))
       .sort((x,y)=> (y[1]-x[1]))
-      .slice(0, 18)
+      .slice(0, 10)
       .map(([a])=>a);
 
     for(const a of extras){ addNode(a, null, false); }
@@ -4610,18 +4633,17 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
           { label:"Liquidity", value: dex?.liquidityUsd != null ? money(dex.liquidityUsd) : "—", badge: dex?.dexId ? dex.dexId.toUpperCase() : "DEX", mini:""},
           { label:"Market Cap", value: (dex?.marketCap != null ? money(dex.marketCap) : (dex?.fdv != null ? money(dex.fdv) : "—")), badge: dex?.marketCap != null ? "MCAP" : (dex?.fdv != null ? "FDV" : "—"), mini:"" },
           { label:"Price", value: dex?.priceUsd != null ? priceUsdFmt(dex.priceUsd) : "—", badge: "USD", mini:"" },
-          { label:"LP Burned", value: lpBurn?.pct != null ? `${lpBurn.pct.toFixed(2)}%` : "UNKNOWN", badge: lpBurn?.pct != null ? (lpBurn.pct>=90?"PASS":"WATCH") : "UNKNOWN", sev: lpBurn?.pct != null ? (lpBurn.pct>=90?"ok":"warn") : "warn", mini:""},
+          { label:"LP Burned",
+            value: (lpBurn?.pct != null) ? `${lpBurn.pct.toFixed(2)}%` : ((/v3 pool|no lp token/i.test(String(lpBurn?.note||''))) ? 'V3 POOL' : 'UNKNOWN'),
+            badge: (lpBurn?.pct != null) ? (lpBurn.pct>=90?'PASS':'WATCH') : ((/v3 pool|no lp token/i.test(String(lpBurn?.note||''))) ? 'INFO' : 'UNKNOWN'),
+            sev: (lpBurn?.pct != null) ? (lpBurn.pct>=90?'ok':'warn') : ((/v3 pool|no lp token/i.test(String(lpBurn?.note||''))) ? 'ok' : 'warn'),
+            mini: lpBurn?.note ? String(lpBurn.note) : ''
+          },
           { label:"LP Locked",
-            value: (lpBurn?.pct != null && lpBurn.pct >= 90)
-              ? (lpLock?.pct != null ? `${lpLock.pct.toFixed(2)}%` : "N/A")
-              : (lpLock?.pct != null ? `${lpLock.pct.toFixed(2)}%` : "UNKNOWN"),
-            badge: (lpBurn?.pct != null && lpBurn.pct >= 90)
-              ? (lpLock?.pct != null ? "INFO" : "PASS")
-              : (lpLock?.pct != null ? "INFO" : "WATCH"),
-            sev: (lpBurn?.pct != null && lpBurn.pct >= 90) ? "ok" : (lpLock?.pct != null ? "ok" : "warn"),
-            mini: (lpBurn?.pct != null && lpBurn.pct >= 90)
-              ? (lpLock?.pct != null ? (lpLock?.note ? String(lpLock.note) : "") : "Liquidity is burned (lock not required).")
-              : (lpLock?.note ? String(lpLock.note) : "")
+            value: ((lpBurn?.pct != null && lpBurn.pct >= 90) ? (lpLock?.pct != null ? `${lpLock.pct.toFixed(2)}%` : 'N/A') : (lpLock?.pct != null ? `${lpLock.pct.toFixed(2)}%` : ((/v3 pool|no lp token/i.test(String(lpBurn?.note||lpLock?.note||''))) ? 'N/A' : 'UNKNOWN'))),
+            badge: ((/v3 pool|no lp token/i.test(String(lpBurn?.note||lpLock?.note||''))) ? 'PASS' : ((lpBurn?.pct != null && lpBurn.pct >= 90) ? (lpLock?.pct != null ? 'INFO' : 'PASS') : (lpLock?.pct != null ? 'INFO' : 'WATCH'))),
+            sev: ((/v3 pool|no lp token/i.test(String(lpBurn?.note||lpLock?.note||''))) ? 'ok' : ((lpBurn?.pct != null && lpBurn.pct >= 90) ? 'ok' : (lpLock?.pct != null ? 'ok' : 'warn'))),
+            mini: ((/v3 pool|no lp token/i.test(String(lpBurn?.note||lpLock?.note||''))) ? 'V3 pool (LP lock not applicable).' : ((lpBurn?.pct != null && lpBurn.pct >= 90) ? (lpLock?.pct != null ? (lpLock?.note ? String(lpLock.note) : '') : 'Liquidity is burned (lock not required).') : (lpLock?.note ? String(lpLock.note) : '')))
           },
           { label:"Proxy", value: proxy?.isProxy ? "Upgradeable" : "No signal", badge: proxy?.isProxy ? "WATCH" : "PASS", sev: proxy?.isProxy ? "warn" : "ok", mini:"" },
           { label:"Total Supply", value: supplyText ? (supplyText + (supplyNice.approx ? " (assumed)" : "")) : "—", badge: supplyReadable ? "On-chain" : "Unknown", mini:"" }
