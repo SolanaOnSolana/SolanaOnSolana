@@ -2659,6 +2659,15 @@ function toggleMenu(){
        document.title = msg;
        setTimeout(()=>{ document.title = document.title.replace(msg,"").trim() || "$SOS — Solana on Solana"; }, 700);
      }catch(e){}
+
+
+function buildScanBtn(scanChain, ca){
+  if(!scanChain){
+    return '<button class="btn ghost dexMiniBtn" type="button" disabled title="Unsupported chain for scanner">Scan</button>';
+  }
+  // return real HTML with attributes (no truncation)
+  return `<button class="btn ghost dexMiniBtn" type="button" data-scan="1" data-chain="${esc(scanChain)}" data-addr="${esc(ca)}">Scan</button>`;
+}
    }
 
    async function safeJson(url){
@@ -2809,7 +2818,7 @@ function toggleMenu(){
            <div class="dexResActions">
              <a class="btn grad dexMiniBtn dexA" href="${esc(href)}" target="_blank" rel="noreferrer">Chart</a>
              <button class="btn ghost dexMiniBtn" type="button" data-copy="${esc(ca)}">Copy CA</button>
-             ${scanChain ? '<button class="btn ghost dexMiniBtn" type="button" data-scan="1" data-chain="' + esc(scanChain) + '" data-addr="' + esc(ca) + '">Scan</button>' : '<button class="btn ghost dexMiniBtn" type="button" disabled title="Unsupported chain for scanner">Scan</button>'}
+             ${buildScanBtn(scanChain, ca)}
            </div>
          </div>`;
        }).join("");
