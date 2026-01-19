@@ -232,6 +232,7 @@ img{max-width:100%; height:auto}
  max-width: calc(100vw - 28px);
  max-height: calc(100vh - 96px);
  padding: 10px;
+ padding-bottom: calc(10px + 120px + env(safe-area-inset-bottom)); /* ✅ allow scroll past bottom dock on iOS */
  border-radius: 18px;
  border: 1px solid rgba(255,255,255,.12);
  background:
@@ -1349,7 +1350,9 @@ img{max-width:100%; height:auto}
  /* Mobile bottom tool dock (super obvious) */
  .toolsDock{ display:none; }
 
- @media (max-width: 860px){
+ 
+body.menuOpen .toolsDock{ display:none !important; }
+@media (max-width: 860px){
  body{ padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
 
  .toolsIntroInner{ grid-template-columns: 1fr; }
@@ -2214,6 +2217,7 @@ img{max-width:100%; height:auto}
  if(!menuPop) return;
  menuPop.classList.remove("open");
  if(menuBtn) menuBtn.setAttribute("aria-expanded","false");
+ document.body.classList.remove("menuOpen");
  }
  
  // Close menu when a link is clicked
@@ -2223,6 +2227,7 @@ img{max-width:100%; height:auto}
 function toggleMenu(){
  const open = menuPop.classList.toggle("open");
  menuBtn.setAttribute("aria-expanded", open ? "true" : "false");
+ document.body.classList.toggle("menuOpen", open);
  }
 
  if(menuBtn && menuPop){
