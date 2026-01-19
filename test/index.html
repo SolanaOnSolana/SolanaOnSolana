@@ -3287,7 +3287,6 @@ function toggleMenu(){
      }
      try{
        const data = await safeJson(`https://api.dexscreener.com/latest/dex/search?q=${encodeURIComponent(q)}`);
-       if(mySReq !== searchReqId || q !== lastQ) return;
        const pairs = data?.pairs || [];
        const top = pairs.slice(0, 10);
 
@@ -3359,7 +3358,6 @@ function toggleMenu(){
 
        resEl.hidden = false;
      }catch(e){
-       if(mySReq !== searchReqId || q !== lastQ) return;
        const hasResults = !!(resEl && !resEl.hidden && resEl.querySelector('.dexResRow'));
        if(hasResults){
          toast('Try again');
@@ -3380,10 +3378,13 @@ function toggleMenu(){
    });
 
    btnGo.addEventListener("click", () => {
+     // Search button should NOT navigate away. It simply forces an immediate local search.
      const q = (inEl.value || "").trim();
-     if(!q) return;
-     // open DexScreener search page in new tab (always works)
-     window.open(`https://dexscreener.com/search?q=${encodeURIComponent(q)}`, "_blank", "noopener");
+     if(!q) { inEl.focus(); return; }
+     clearTimeout(tmr);
+     runSearch(q);
+     resEl.hidden = false;
+     inEl.focus();
    });
 
    btnCopy.addEventListener("click", () => {
@@ -3410,7 +3411,6 @@ function toggleMenu(){
        // 3) Fallback: query DexScreener once and pick a best result.
        try{
          const data = await safeJson(`https://api.dexscreener.com/latest/dex/search?q=${encodeURIComponent(q)}`);
-       if(mySReq !== searchReqId || q !== lastQ) return;
          const pairs = Array.isArray(data?.pairs) ? data.pairs : [];
          const want = (NET_TO_DEX_CHAIN[activeNet] || "solana").toLowerCase();
          const pick = pairs.find(p => String(p?.chainId||"").toLowerCase() === want) || pairs[0];
