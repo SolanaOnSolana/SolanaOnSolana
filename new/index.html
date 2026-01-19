@@ -1489,7 +1489,7 @@ body.menuOpen .toolsDock{ display:none !important; }
 :root{
   /* will be set by JS to the actual fixed top bar height */
   --topBarTotal: 0px;
-  --tickerSpeed: 14s;
+  --tickerSpeed: 9s;
 }
 
 body{ padding-top: var(--topBarTotal); }
@@ -1608,6 +1608,7 @@ body{ padding-top: var(--topBarTotal); }
   gap: 10px;
   align-items:center;
   white-space: nowrap;
+  padding-left: 44px;
   will-change: transform;
   animation: tickerMarquee var(--tickerSpeed) linear infinite;
 }
@@ -1691,12 +1692,85 @@ body{ padding-top: var(--topBarTotal); }
   z-index: 120;
 }
 
+.dexResRow{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap: 12px;
+  padding: 10px 10px;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,.10);
+  background: rgba(255,255,255,.04);
+  margin-bottom: 8px;
+}
+.dexResRow:last-child{ margin-bottom: 0; }
+
+.dexResLeft{
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  gap: 6px;
+}
+
+.dexResTitleRow{
+  display:flex;
+  align-items:center;
+  gap: 10px;
+  min-width:0;
+}
+.dexLogo{
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  flex: 0 0 auto;
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.12);
+  object-fit: cover;
+}
+.dexResTitle{
+  font-weight: 1050;
+  letter-spacing:-.2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dexResMeta{
+  font-size: 12px;
+  color: rgba(255,255,255,.70);
+  display:flex;
+  gap: 10px;
+  flex-wrap:wrap;
+}
+.dexPill{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.10);
+  font-weight: 900;
+}
+.dexResActions{
+  display:flex;
+  gap: 8px;
+  align-items:center;
+  flex-shrink:0;
+}
+.dexA{
+  text-decoration:none;
+  display:inline-flex;
+  align-items:center;
+  gap: 8px;
+}
+
 /* keep floating ⋯ menu below the new top bar */
 .menuFloat{ top: calc(14px + var(--topBarTotal)); }
 
 /* mobile: stack + keep everything clickable */
 @media (max-width: 860px){
-  :root{ --tickerSpeed: 18s; }
+  :root{ --tickerSpeed: 7s; }
   .topBarInner{ padding: calc(10px + env(safe-area-inset-top)) 12px 10px; }
   .topRow{ justify-content:space-between; }
   .chainToggle{ width: 100%; justify-content:space-between; }
@@ -2774,22 +2848,28 @@ function toggleMenu(){
          const liq = p.liquidity?.usd ? `$${Number(p.liquidity.usd).toLocaleString(undefined,{maximumFractionDigits:0})}` : "—";
          const ca = p.baseToken?.address || "";
 
-         const href = p.url || `https://dexscreener.com/${p.chainId}/${p.pairAddress || ""}`;
-         return `<div class="dexResRow">
-           <div class="dexResLeft">
-             <div class="dexResTitle">${esc(title)}</div>
-             <div class="dexResMeta">
-               <span class="dexPill">${esc(chain)}</span>
-               <span class="dexPill">${esc(dex || "DEX")}</span>
-               <span class="dexPill">Price ${esc(price)}</span>
-               <span class="dexPill">24h ${esc(chTxt)}</span>
-               <span class="dexPill">Liq ${esc(liq)}</span>
-               <span class="dexPill" title="${esc(ca)}">CA ${esc(shortAddr(ca))}</span>
+         const href = p.url || `https://dexscreener.com/${p.chainId}/${p.pairAddress || \"\"}`;
+         const logo = (p.info && (p.info.imageUrl || p.info.imageURL || p.info.logoUrl || p.info.logoURL)) || (p.baseToken && (p.baseToken.logoURI || p.baseToken.logoUrl)) || \"\";
+         const scanKey = `${p.chainId||''}|${ca||''}`;
+         return `<div class=\"dexResRow\">
+           <div class=\"dexResLeft\">
+             <div class=\"dexResTitleRow\">
+               ${logo ? `<img class=\"dexLogo\" src=\"${esc(logo)}\" alt=\"\" loading=\"lazy\" referrerpolicy=\"no-referrer\" onerror=\"this.style.display='none'\">` : ``}
+               <div class=\"dexResTitle\">${esc(title)}</div>
+             </div>
+             <div class=\"dexResMeta\">
+               <span class=\"dexPill\">${esc(chain)}</span>
+               <span class=\"dexPill\">${esc(dex || \"DEX\")}</span>
+               <span class=\"dexPill\">Price ${esc(price)}</span>
+               <span class=\"dexPill\">24h ${esc(chTxt)}</span>
+               <span class=\"dexPill\">Liq ${esc(liq)}</span>
+               <span class=\"dexPill\" title=\"${esc(ca)}\">CA ${esc(shortAddr(ca))}</span>
              </div>
            </div>
-           <div class="dexResActions">
-             <button class="btn ghost dexMiniBtn" type="button" data-copy="${esc(ca)}">Copy</button>
-             <a class="btn grad dexMiniBtn dexA" href="${esc(href)}" target="_blank" rel="noreferrer">Open</a>
+           <div class=\"dexResActions\">
+             <button class=\"btn ghost dexMiniBtn\" type=\"button\" data-copy=\"${esc(ca)}\">Copy</button>
+             <a class=\"btn ghost dexMiniBtn dexA\" href=\"${esc(href)}\" target=\"_blank\" rel=\"noreferrer\">Chart</a>
+             <button class=\"btn grad dexMiniBtn\" type=\"button\" data-scan=\"${esc(scanKey)}\">Scan</button>
            </div>
          </div>`;
        }).join("");
@@ -2838,6 +2918,34 @@ function toggleMenu(){
 
    // copy buttons in dropdown
    resEl.addEventListener("click", async (e) => {
+     const scanBtn = e.target.closest("button[data-scan]");
+     if(scanBtn){
+       const payload = scanBtn.getAttribute("data-scan") || "";
+       const parts = payload.split("|");
+       let chainId = (parts[0] || "").trim().toLowerCase();
+       const addr = (parts[1] || "").trim();
+       if(!addr) return;
+
+       // normalize (scanner supports SOL / ETH / BNB / BASE)
+       const normMap = {
+         solana: 'solana',
+         eth: 'ethereum',
+         ethereum: 'ethereum',
+         bsc: 'bsc',
+         bnb: 'bsc',
+         base: 'base'
+       };
+       const norm = normMap[chainId] || chainId || 'solana';
+
+       try{
+         localStorage.setItem("sos_autoscan", JSON.stringify({ chain: norm, rawChain: chainId, address: addr, ts: Date.now() }));
+       }catch(_e){}
+
+       const url = `/contract?chain=${encodeURIComponent(norm)}&address=${encodeURIComponent(addr)}&autostart=1`;
+       window.open(url, "_blank", "noopener");
+       return;
+     }
+
      const btn = e.target.closest("button[data-copy]");
      if(!btn) return;
      const val = btn.getAttribute("data-copy") || "";
