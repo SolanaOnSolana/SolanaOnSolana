@@ -1,1 +1,620 @@
-demo demo 
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
+  <meta name="theme-color" content="#070711" />
+  <title>$SOS — Chart</title>
+  <style>
+    :root{
+      --bg:#070711;
+      --panel: rgba(255,255,255,.06);
+      --panel2: rgba(255,255,255,.085);
+      --stroke: rgba(255,255,255,.12);
+      --text: rgba(255,255,255,.92);
+      --muted: rgba(255,255,255,.68);
+      --g:#14F195;
+      --r:#ff4d6d;
+      --c:#00D1FF;
+      --p:#9945FF;
+      --radius:22px;
+      --shadow:0 12px 32px rgba(0,0,0,.45);
+      --max:1180px;
+
+      --sol:#9945FF;
+      --eth:#627EEA;
+      --bnb:#F3BA2F;
+      --base:#0052FF;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      background: radial-gradient(1200px 600px at 50% -10%, rgba(153,69,255,.12), transparent 60%),
+                  radial-gradient(1200px 600px at 10% 20%, rgba(0,209,255,.10), transparent 55%),
+                  var(--bg);
+      color:var(--text);
+      font:15.5px/1.55 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;
+      overflow-x: hidden;
+    }
+    a{color:inherit; text-decoration:none}
+
+    .wrap{max-width:var(--max); margin:0 auto; padding:18px 16px 36px;}
+    .top{
+      display:flex; align-items:center; justify-content:space-between; gap:12px;
+      position:sticky; top:0; z-index:10;
+      padding:14px 12px;
+      margin:-18px -16px 18px;
+      background: linear-gradient(to bottom, rgba(7,7,17,.92), rgba(7,7,17,.65), rgba(7,7,17,0));
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+    .brand{
+      display:flex; align-items:center; gap:10px;
+      font-weight:800; letter-spacing:.2px;
+    }
+    .logo{
+      width:34px; height:34px; border-radius:12px;
+      background: linear-gradient(135deg, rgba(153,69,255,.75), rgba(0,209,255,.65));
+      box-shadow: 0 0 0 1px rgba(255,255,255,.10), 0 10px 26px rgba(153,69,255,.18);
+      display:grid; place-items:center;
+    }
+    .logo span{font-size:14px; opacity:.95}
+
+    .btns{display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end}
+    .btn{
+      border:1px solid var(--stroke);
+      background: rgba(255,255,255,.04);
+      color:var(--text);
+      padding:10px 12px;
+      border-radius:14px;
+      font-weight:700;
+      cursor:pointer;
+      user-select:none;
+      transition:.15s transform, .15s background, .15s border-color, .15s box-shadow;
+      display:inline-flex; align-items:center; gap:8px;
+      white-space:nowrap;
+    }
+    .btn:hover{transform: translateY(-1px); background: rgba(255,255,255,.06)}
+    .btn:active{transform: translateY(0px)}
+    .btn.grad{
+      border-color: rgba(153,69,255,.35);
+      background: linear-gradient(135deg, rgba(153,69,255,.34), rgba(0,209,255,.20));
+      box-shadow: 0 10px 26px rgba(0,0,0,.25);
+    }
+    .btn.buy{
+      border-color: rgba(20,241,149,.30);
+      background: linear-gradient(135deg, rgba(20,241,149,.26), rgba(0,209,255,.14));
+    }
+
+    .grid{
+      display:grid;
+      grid-template-columns: 1.55fr .85fr;
+      gap:14px;
+      align-items:start;
+    }
+
+    .card{
+      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.045));
+      border:1px solid var(--stroke);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+    }
+    .cardHd{
+      display:flex; align-items:center; justify-content:space-between; gap:12px;
+      padding:14px 14px;
+      border-bottom:1px solid rgba(255,255,255,.08);
+      background: rgba(255,255,255,.02);
+    }
+    .pair{
+      display:flex; align-items:center; gap:10px; min-width:0;
+    }
+    .pair .tlogo{
+      width:38px; height:38px; border-radius:14px; background: rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.12);
+      display:grid; place-items:center;
+      overflow:hidden;
+      flex:0 0 auto;
+    }
+    .pair .tlogo img{width:100%; height:100%; object-fit:cover; display:block}
+    .pair .tlogo .fb{font-weight:900; opacity:.9}
+
+    .pairTxt{min-width:0}
+    .pairName{font-weight:900; font-size:16px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+    .pairMeta{font-size:12.5px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+
+    .stats{
+      display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end;
+    }
+    .pill{
+      padding:7px 10px;
+      border-radius:999px;
+      font-size:12.5px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.04);
+      color: rgba(255,255,255,.86);
+    }
+    .pill.up{border-color: rgba(20,241,149,.25); background: rgba(20,241,149,.10); color: rgba(20,241,149,.95)}
+    .pill.down{border-color: rgba(255,77,109,.25); background: rgba(255,77,109,.10); color: rgba(255,77,109,.95)}
+
+    #chartWrap{height:520px;}
+    #chart{height:100%;}
+
+    .controls{
+      display:flex; gap:8px; flex-wrap:wrap;
+      padding:12px 14px;
+      border-top:1px solid rgba(255,255,255,.08);
+      background: rgba(255,255,255,.02);
+    }
+    .tf{
+      padding:8px 10px;
+      border-radius: 12px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.04);
+      font-weight:800;
+      font-size:12.5px;
+      cursor:pointer;
+      color: rgba(255,255,255,.86);
+    }
+    .tf.active{
+      border-color: rgba(153,69,255,.35);
+      background: linear-gradient(135deg, rgba(153,69,255,.26), rgba(0,209,255,.14));
+      box-shadow: 0 0 0 1px rgba(153,69,255,.18);
+    }
+
+    .side{
+      display:flex; flex-direction:column; gap:14px;
+    }
+
+    .tableHd{
+      padding:12px 14px;
+      border-bottom:1px solid rgba(255,255,255,.08);
+      background: rgba(255,255,255,.02);
+      display:flex; align-items:center; justify-content:space-between; gap:10px;
+    }
+    .tableHd .ttl{font-weight:900}
+    .tableHd .sub{font-size:12.5px; color:var(--muted)}
+
+    .trades{max-height: 640px; overflow:auto;}
+    .trade{
+      display:flex; align-items:center; justify-content:space-between; gap:10px;
+      padding:10px 14px;
+      border-bottom:1px solid rgba(255,255,255,.06);
+    }
+    .trade:last-child{border-bottom:none}
+    .tL{min-width:0}
+    .tType{font-weight:900; font-size:12.5px; letter-spacing:.2px}
+    .tType.buy{color:rgba(20,241,149,.95)}
+    .tType.sell{color:rgba(255,77,109,.95)}
+    .tTime{font-size:12px; color:var(--muted)}
+    .tR{text-align:right}
+    .tAmt{font-weight:900; font-size:12.5px}
+    .tUsd{font-size:12px; color:var(--muted)}
+
+    .foot{margin-top:14px; color:rgba(255,255,255,.62); font-size:12.5px}
+
+    @media (max-width: 980px){
+      .grid{grid-template-columns: 1fr;}
+      #chartWrap{height:460px;}
+      .trades{max-height: 420px;}
+      .top{position:sticky;}
+    }
+
+    /* Prevent accidental horizontal scroll on some Android browsers */
+    .wrap, .top, .card, #chartWrap, #chart{max-width:100%;}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="top">
+      <div class="brand" onclick="location.href='/'" style="cursor:pointer">
+        <div class="logo"><span>⚡</span></div>
+        <div>
+          <div style="font-size:13px; color:rgba(255,255,255,.75); font-weight:800; line-height:1">$SOS</div>
+          <div style="font-size:18px; font-weight:900; line-height:1.05">Chart</div>
+        </div>
+      </div>
+      <div class="btns">
+        <button class="btn" id="btnCopy">Copy CA</button>
+        <a class="btn" id="btnScanner" href="#">Scanner</a>
+        <a class="btn buy" id="btnBuy" href="#" target="_blank" rel="noreferrer">Buy</a>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <div class="cardHd">
+          <div class="pair">
+            <div class="tlogo" id="tokenLogo"><span class="fb" id="tokenLogoFb">$</span></div>
+            <div class="pairTxt">
+              <div class="pairName" id="pairName">Loading…</div>
+              <div class="pairMeta" id="pairMeta">Not found</div>
+            </div>
+          </div>
+          <div class="stats" id="stats"></div>
+        </div>
+
+        <div id="chartWrap"><div id="chart"></div></div>
+
+        <div class="controls" id="tfRow"></div>
+      </div>
+
+      <div class="side">
+        <div class="card">
+          <div class="tableHd">
+            <div>
+              <div class="ttl">Live Trades</div>
+              <div class="sub" id="tradesSub">Last 24h</div>
+            </div>
+            <div class="sub" id="status">Loading…</div>
+          </div>
+          <div class="trades" id="trades"></div>
+        </div>
+
+        <div class="foot" id="foot"> </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/lightweight-charts@4.2.1/dist/lightweight-charts.standalone.production.js"></script>
+  <script>
+  (function(){
+    const qs = new URLSearchParams(location.search);
+    const rawChain = (qs.get('chain') || qs.get('net') || 'solana').trim();
+    const addr = (qs.get('addr') || qs.get('address') || qs.get('ca') || '').trim();
+
+    // Allow overriding where scanner lives (same pattern as main page)
+    const SCANNER_PAGE = (window.SOS_SCANNER_URL && String(window.SOS_SCANNER_URL)) || (location.origin + "/new");
+
+    const chain = normalizeChain(rawChain);
+    const network = chain;
+
+    // Buttons
+    const btnCopy = document.getElementById('btnCopy');
+    const btnScanner = document.getElementById('btnScanner');
+    const btnBuy = document.getElementById('btnBuy');
+
+    btnCopy.onclick = async () => {
+      if(!addr) return toast('Not found');
+      try{ await navigator.clipboard.writeText(addr); toast('Copied'); }catch(e){ toast('Copy failed'); }
+    };
+
+    btnScanner.href = `${SCANNER_PAGE}?chain=${encodeURIComponent(chain.toUpperCase())}&addr=${encodeURIComponent(addr)}`;
+
+    btnBuy.href = buildBuyUrl(chain, addr);
+
+    // UI
+    const pairNameEl = document.getElementById('pairName');
+    const pairMetaEl = document.getElementById('pairMeta');
+    const statsEl = document.getElementById('stats');
+    const logoWrap = document.getElementById('tokenLogo');
+    const logoFb = document.getElementById('tokenLogoFb');
+    const statusEl = document.getElementById('status');
+    const tradesEl = document.getElementById('trades');
+    const footEl = document.getElementById('foot');
+
+    // Timeframes
+    const TF = [
+      {k:'1m', tf:'minute', agg:1, limit:200},
+      {k:'5m', tf:'minute', agg:5, limit:200},
+      {k:'15m', tf:'minute', agg:15, limit:200},
+      {k:'1h', tf:'hour', agg:1, limit:200},
+      {k:'4h', tf:'hour', agg:4, limit:200},
+      {k:'1d', tf:'day', agg:1, limit:200},
+    ];
+    let activeTF = TF[2];
+
+    const tfRow = document.getElementById('tfRow');
+    TF.forEach(t=>{
+      const b = document.createElement('button');
+      b.className = 'tf' + (t.k===activeTF.k ? ' active' : '');
+      b.textContent = t.k;
+      b.onclick = ()=>{
+        activeTF = t;
+        [...tfRow.children].forEach(x=>x.classList.toggle('active', x.textContent===t.k));
+        loadCandles(true);
+      };
+      tfRow.appendChild(b);
+    });
+
+    // Chart
+    const chart = LightweightCharts.createChart(document.getElementById('chart'), {
+      layout: { background: { type: 'solid', color: 'rgba(0,0,0,0)' }, textColor: 'rgba(255,255,255,.86)' },
+      grid: { vertLines: { color: 'rgba(255,255,255,.06)' }, horzLines: { color: 'rgba(255,255,255,.06)' } },
+      rightPriceScale: { borderColor: 'rgba(255,255,255,.12)' },
+      timeScale: { borderColor: 'rgba(255,255,255,.12)', timeVisible: true, secondsVisible: false },
+      crosshair: { mode: 1 },
+      handleScroll: { mouseWheel: true, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: true },
+      handleScale: { axisPressedMouseMove: true, mouseWheel: true, pinch: true },
+    });
+    const candleSeries = chart.addCandlestickSeries({
+      upColor: 'rgba(20,241,149,.95)', downColor: 'rgba(255,77,109,.95)',
+      wickUpColor: 'rgba(20,241,149,.95)', wickDownColor: 'rgba(255,77,109,.95)',
+      borderVisible: false,
+    });
+
+    window.addEventListener('resize', ()=>{ chart.applyOptions({ width: document.getElementById('chart').clientWidth }); });
+
+    let poolAddress = null;
+    let poolInfo = null;
+    let lastTradeSeen = null;
+
+    if(!addr){
+      pairNameEl.textContent = 'Not found';
+      pairMetaEl.textContent = 'Missing address';
+      statusEl.textContent = 'Not found';
+      tradesEl.innerHTML = emptyTrades('Not found');
+      return;
+    }
+
+    init();
+
+    async function init(){
+      statusEl.textContent = 'Loading…';
+      try{
+        poolAddress = await resolveTopPool(network, addr);
+        if(!poolAddress) throw new Error('Not found');
+
+        poolInfo = await getPool(network, poolAddress);
+        renderHeader(poolInfo);
+
+        await loadCandles(true);
+        await loadTrades(true);
+
+        // Polls (keep light for rate limit)
+        setInterval(()=>loadCandles(false), 20000);
+        setInterval(()=>loadTrades(false), 6000);
+
+        statusEl.textContent = 'Live';
+      }catch(e){
+        pairNameEl.textContent = 'Not found';
+        pairMetaEl.textContent = `${network.toUpperCase()} • ${shortAddr(addr)}`;
+        statusEl.textContent = 'Not found';
+        tradesEl.innerHTML = emptyTrades('Not found');
+      }
+    }
+
+    async function loadCandles(full){
+      if(!poolAddress) return;
+      try{
+        const before = Math.floor(Date.now()/1000);
+        const url = `https://api.geckoterminal.com/api/v2/networks/${encodeURIComponent(network)}/pools/${encodeURIComponent(poolAddress)}/ohlcv/${encodeURIComponent(activeTF.tf)}?aggregate=${activeTF.agg}&before_timestamp=${before}&limit=${activeTF.limit}&currency=usd&token=base`;
+        const j = await safeJson(url);
+        const arr = j?.data?.attributes?.ohlcv_list || [];
+        // ohlcv_list: [timestamp, open, high, low, close, volume]
+        const candles = arr.map(x=>({
+          time: Number(x[0]),
+          open: Number(x[1]),
+          high: Number(x[2]),
+          low: Number(x[3]),
+          close: Number(x[4]),
+        })).filter(c=>Number.isFinite(c.time) && Number.isFinite(c.open));
+        candles.sort((a,b)=>a.time-b.time);
+        if(candles.length){
+          candleSeries.setData(candles);
+          if(full) chart.timeScale().fitContent();
+        }
+      }catch(e){
+        // keep silent; don't disrupt UI
+      }
+    }
+
+    async function loadTrades(full){
+      if(!poolAddress) return;
+      try{
+        const url = `https://api.geckoterminal.com/api/v2/networks/${encodeURIComponent(network)}/pools/${encodeURIComponent(poolAddress)}/trades?limit=60`;
+        const j = await safeJson(url);
+        const trades = (j?.data || []).map(x=>x?.attributes).filter(Boolean);
+        if(!trades.length){
+          if(full) tradesEl.innerHTML = emptyTrades('Not found');
+          return;
+        }
+
+        // Show latest first
+        trades.sort((a,b)=>Number(b.block_timestamp||0)-Number(a.block_timestamp||0));
+
+        // Soft-dedupe so we don't spam
+        const newest = trades[0]?.tx_hash || trades[0]?.tx_hash || null;
+        if(!full && newest && newest === lastTradeSeen) return;
+        lastTradeSeen = newest;
+
+        tradesEl.innerHTML = trades.slice(0, 40).map(t=>renderTrade(t)).join('');
+        const baseName = poolInfo?.included?.find(i=>i.type==='token' && i.id===poolInfo?.data?.relationships?.base_token?.data?.id)?.attributes?.symbol;
+        document.getElementById('tradesSub').textContent = baseName ? `${baseName} trades (24h)` : 'Last 24h';
+      }catch(e){
+        if(full) tradesEl.innerHTML = emptyTrades('Not found');
+      }
+    }
+
+    function renderHeader(pool){
+      const a = pool?.data?.attributes || {};
+      const base = pickToken(pool, 'base_token');
+      const quote = pickToken(pool, 'quote_token');
+
+      const baseSym = (base?.symbol || '').trim() || 'TOKEN';
+      const quoteSym = (quote?.symbol || '').trim() || '';
+      const title = quoteSym ? `$${baseSym}/${quoteSym}` : `$${baseSym}`;
+      pairNameEl.textContent = title;
+      pairMetaEl.textContent = `${network.toUpperCase()} • ${shortAddr(addr)} • Pool ${shortAddr(poolAddress)}`;
+
+      const img = base?.image_url || base?.logo_uri || base?.logoURI || base?.image || '';
+      if(img){
+        logoWrap.innerHTML = `<img src="${esc(img)}" alt="" referrerpolicy="no-referrer" onerror="this.remove();">`;
+      }else{
+        logoFb.textContent = (baseSym||'T').slice(0,1).toUpperCase();
+      }
+
+      // Stats
+      const ch24 = num(a?.price_change_percentage?.h24);
+      const price = num(a?.base_token_price_usd || a?.token_price_usd || a?.price_usd);
+      const vol24 = num(a?.volume_usd?.h24);
+      const mcap = num(a?.market_cap_usd);
+      const fdv = num(a?.fdv_usd);
+
+      const pills = [];
+      if(Number.isFinite(ch24)) pills.push(`<span class="pill ${ch24>0?'up':(ch24<0?'down':'')}">24h ${ch24>0?'+':''}${ch24.toFixed(2)}%</span>`);
+      if(Number.isFinite(price)) pills.push(`<span class="pill">Price $${formatPrice(price)}</span>`);
+      if(Number.isFinite(vol24)) pills.push(`<span class="pill">Vol $${formatCompact(vol24)}</span>`);
+      if(Number.isFinite(mcap)) pills.push(`<span class="pill">MCap $${formatCompact(mcap)}</span>`);
+      else if(Number.isFinite(fdv)) pills.push(`<span class="pill">FDV $${formatCompact(fdv)}</span>`);
+
+      statsEl.innerHTML = pills.join('') || `<span class="pill">Not found</span>`;
+
+      footEl.textContent = '';
+    }
+
+    // Gecko helpers
+    async function resolveTopPool(network, tokenAddr){
+      // Token pools endpoint (top pools ranked by liquidity/activity per FAQ)
+      const url = `https://api.geckoterminal.com/api/v2/networks/${encodeURIComponent(network)}/tokens/${encodeURIComponent(tokenAddr)}/pools?include=base_token,quote_token&page=1`;
+      const j = await safeJson(url);
+      const pools = j?.data || [];
+      if(!pools.length) return null;
+      // pick the first (already ranked); fall back to best volume
+      const best = pools[0];
+      const addr = best?.attributes?.address || (String(best?.id||'').split('_').pop());
+      return addr || null;
+    }
+
+    async function getPool(network, poolAddr){
+      const url = `https://api.geckoterminal.com/api/v2/networks/${encodeURIComponent(network)}/pools/${encodeURIComponent(poolAddr)}?include=base_token,quote_token`;
+      return await safeJson(url);
+    }
+
+    function pickToken(pool, rel){
+      const relId = pool?.data?.relationships?.[rel]?.data?.id;
+      if(!relId) return null;
+      const inc = pool?.included || [];
+      const tok = inc.find(x=>x.type==='token' && x.id===relId);
+      return tok?.attributes || null;
+    }
+
+    // Trades
+    function renderTrade(t){
+      // type: buy/sell in attributes.kind
+      const kind = String(t?.kind||'').toLowerCase();
+      const isBuy = kind==='buy';
+      const isSell = kind==='sell';
+      const css = isBuy?'buy':(isSell?'sell':'');
+      const ts = num(t?.block_timestamp);
+      const when = Number.isFinite(ts) ? timeAgo(ts*1000) : '—';
+
+      const amountUsd = num(t?.volume_in_usd);
+      const baseAmt = num(t?.base_token_amount);
+
+      return `<div class="trade">
+        <div class="tL">
+          <div class="tType ${css}">${isBuy?'BUY':(isSell?'SELL':'TRADE')}</div>
+          <div class="tTime">${esc(when)}</div>
+        </div>
+        <div class="tR">
+          <div class="tAmt">${Number.isFinite(baseAmt)?formatAmount(baseAmt):'—'}</div>
+          <div class="tUsd">${Number.isFinite(amountUsd)?`$${formatCompact(amountUsd)}`:'—'}</div>
+        </div>
+      </div>`;
+    }
+
+    function emptyTrades(txt){
+      return `<div style="padding:16px 14px; color:rgba(255,255,255,.70)">${esc(txt)}</div>`;
+    }
+
+    // Utils
+    function normalizeChain(x){
+      const s = String(x||'').toLowerCase();
+      if(s==='sol' || s==='solana') return 'solana';
+      if(s==='eth' || s==='ethereum') return 'eth';
+      if(s==='bsc' || s==='bnb' || s==='binance' || s==='binance-smart-chain') return 'bsc';
+      if(s==='base') return 'base';
+      // DexScreener sometimes passes these exact ids
+      if(['solana','eth','bsc','base','ethereum'].includes(s)) return (s==='ethereum'?'eth':s);
+      return 'solana';
+    }
+
+    function buildBuyUrl(chain, addr){
+      if(!addr) return '#';
+      if(chain==='solana'){
+        // Jupiter swap (Phantom can open/confirm)
+        return `https://jup.ag/swap/SOL-${encodeURIComponent(addr)}`;
+      }
+      if(chain==='bsc'){
+        return `https://pancakeswap.finance/swap?outputCurrency=${encodeURIComponent(addr)}`;
+      }
+      if(chain==='base'){
+        return `https://app.uniswap.org/swap?chain=base&outputCurrency=${encodeURIComponent(addr)}`;
+      }
+      // eth
+      return `https://app.uniswap.org/swap?outputCurrency=${encodeURIComponent(addr)}`;
+    }
+
+    async function safeJson(url){
+      const r = await fetch(url, { headers: { 'accept': 'application/json' } });
+      if(!r.ok) throw new Error('Not found');
+      return await r.json();
+    }
+
+    function esc(s){
+      return String(s==null?'':s).replace(/[&<>"']/g, m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m]));
+    }
+
+    function shortAddr(a){
+      const s = String(a||'');
+      if(s.length<=12) return s;
+      return s.slice(0,6)+'…'+s.slice(-4);
+    }
+
+    function num(x){
+      const n = Number(x);
+      return Number.isFinite(n) ? n : NaN;
+    }
+
+    function formatCompact(n){
+      const abs = Math.abs(n);
+      const sign = n<0?'-':'';
+      const fmt = (v, suf) => sign + (v>=100? v.toFixed(0) : v>=10? v.toFixed(1) : v.toFixed(2)) + suf;
+      if(abs>=1e12) return fmt(abs/1e12,'T');
+      if(abs>=1e9) return fmt(abs/1e9,'B');
+      if(abs>=1e6) return fmt(abs/1e6,'M');
+      if(abs>=1e3) return fmt(abs/1e3,'K');
+      return sign + abs.toFixed(2);
+    }
+
+    function formatPrice(n){
+      if(n>=1) return n.toFixed(6).replace(/0+$/,'').replace(/\.$/,'');
+      if(n>=0.01) return n.toFixed(8).replace(/0+$/,'').replace(/\.$/,'');
+      return n.toPrecision(6);
+    }
+
+    function formatAmount(n){
+      const abs = Math.abs(n);
+      if(abs>=1000) return formatCompact(n);
+      if(abs>=10) return n.toFixed(2);
+      return n.toFixed(4);
+    }
+
+    function timeAgo(ms){
+      const d = Date.now() - ms;
+      const s = Math.max(0, Math.floor(d/1000));
+      if(s<10) return 'now';
+      if(s<60) return `${s}s ago`;
+      const m = Math.floor(s/60);
+      if(m<60) return `${m}m ago`;
+      const h = Math.floor(m/60);
+      if(h<48) return `${h}h ago`;
+      const days = Math.floor(h/24);
+      return `${days}d ago`;
+    }
+
+    function toast(msg){
+      const d = document.createElement('div');
+      d.textContent = msg;
+      d.style.cssText = `position:fixed; left:50%; bottom:18px; transform:translateX(-50%); padding:10px 12px; border-radius:14px; background:rgba(0,0,0,.65); color:rgba(255,255,255,.92); border:1px solid rgba(255,255,255,.14); backdrop-filter: blur(10px); z-index:9999; font-weight:800;`;
+      document.body.appendChild(d);
+      setTimeout(()=>{ d.style.opacity='0'; d.style.transition='opacity .25s'; }, 1200);
+      setTimeout(()=>d.remove(), 1600);
+    }
+
+  })();
+  </script>
+</body>
+</html>
