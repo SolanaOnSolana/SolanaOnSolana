@@ -2934,23 +2934,42 @@ function renderDexResults(pairs, q){
 
 // Typing does NOT call the API anymore (prevents rate-limits)
 inEl.addEventListener("input", () => {
-  // hide stale results while typing
-  if(!resEl.hidden) resEl.hidden = true;
+  const q = (inEl.value || "").trim();
+
+  clearTimeout(tmr);
+
+  if(!q){
+    // cleared
+    resEl.hidden = true;
+    resEl.innerHTML = "";
+    lastTop = null;
+    lastResults = [];
+    return;
+  }
+
+  // Auto-search (heavy debounce to avoid rate-limit)
+  if(q.length < 2) return;
+
+  tmr = setTimeout(()=> runSearch(q), 750);
 });
 
-// Search button triggers API call
+// Search button triggers API call immediately
 btnGo.addEventListener("click", () => {
   const q = (inEl.value || "").trim();
   runSearch(q);
 });
 
-// "Scan" button (formerly Copy): scans pasted CA, otherwise scans top result
-btnCopy.addEventListener("click", () => {
+// "Scan" button: scans pasted CA, otherwise scans top result from the latest search
+btnCopy.addEventListener("click", async () => {
   const q = (inEl.value || "").trim();
 
   // 1) if user pasted an address, scan it on the selected chain
   if(q && (isEvmAddress(q) || isSolAddress(q))){
-    const scanChain = (activeNet==="solana") ? "sol" : (activeNet==="ethereum") ? "eth" : (activeNet==="bsc") ? "bnb" : (activeNet==="base") ? "base" : "";
+    const scanChain =
+      (activeNet==="solana") ? "sol" :
+      (activeNet==="ethereum") ? "eth" :
+      (activeNet==="bsc") ? "bnb" :
+      (activeNet==="base") ? "base" : "";
     if(!scanChain){ toast("Unsupported chain"); return; }
 
     const u = new URL(SCANNER_PATH, window.location.origin);
@@ -2963,7 +2982,7 @@ btnCopy.addEventListener("click", () => {
     return;
   }
 
-  // 2) otherwise scan top result (if any)
+  // 2) if we already have a top result from the last search -> scan it
   if(lastTop && lastTop.chain && lastTop.addr){
     const u = new URL(SCANNER_PATH, window.location.origin);
     u.searchParams.set("chain", lastTop.chain);
@@ -2975,19 +2994,32 @@ btnCopy.addEventListener("click", () => {
     return;
   }
 
-  toast("Paste a contract address or search first");
+  // 3) otherwise: search once, then scan top result
+  if(!q){ toast("Type a token name or paste a CA"); return; }
+  await runSearch(q);
+  if(lastTop && lastTop.chain && lastTop.addr){
+    const u = new URL(SCANNER_PATH, window.location.origin);
+    u.searchParams.set("chain", lastTop.chain);
+    u.searchParams.set("addr", lastTop.addr);
+    u.searchParams.set("mint", lastTop.addr);
+    u.searchParams.set("address", lastTop.addr);
+    u.searchParams.set("auto", "1");
+    window.location.href = u.toString();
+  }else{
+    toast("No result to scan");
+  }
 });
 
-// keyboard: Enter triggers Search
 inEl.addEventListener("keydown", (e) => {
   if(e.key === "Enter"){
     e.preventDefault();
-    btnGo.click();
-  }
-  if(e.key === "Escape"){
+    const q = (inEl.value || "").trim();
+    runSearch(q);
+  }else if(e.key === "Escape"){
     resEl.hidden = true;
   }
-});// buttons in dropdown (Copy CA / Scan)
+});
+// buttons in dropdown (Copy CA / Scan)
 resEl.addEventListener("click", async (e) => {
   const scanBtn = e.target.closest("button[data-scan]");
   if(scanBtn && !scanBtn.disabled){
