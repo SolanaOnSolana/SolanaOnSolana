@@ -1711,6 +1711,31 @@ body.net-base .chainBtn.active{ background: linear-gradient(90deg, rgba(0,82,255
 .tickerItem .sym{ font-weight: 950; }
 .tickerItem .chain{ font-weight: 1000; color: var(--netColor); font-size: 12px; letter-spacing:.2px; }
 
+.tickerPct{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.10);
+  font-size: 12px;
+  font-weight: 950;
+  color: rgba(255,255,255,.90);
+}
+.tickerPct.up{
+  color: rgba(20,241,149,.98);
+  background: rgba(20,241,149,.10);
+  border-color: rgba(20,241,149,.22);
+}
+.tickerPct.down{
+  color: rgba(255,90,90,.96);
+  background: rgba(255,90,90,.10);
+  border-color: rgba(255,90,90,.22);
+}
+
+
 .tickerItem.top1{
   background: rgba(255,215,0,.10);
   border-color: rgba(255,215,0,.32);
@@ -3137,6 +3162,11 @@ function toggleMenu(){
          const quoteT = quoteId ? ((byKey.get(quoteType+':' + quoteId) || byKey.get(quoteId))?.attributes || {}) : {};
          const sym = (baseT?.symbol || baseT?.name || '').trim() || (a?.name ? String(a.name).split('/')[0].trim() : '') || 'TOKEN';
          const symClean = String(sym||'TOKEN').replace(/[^a-zA-Z0-9_$\.\-]/g,'').slice(0,24) || 'TOKEN';
+         const symDisp = symClean.startsWith('$') ? symClean : ('$' + symClean.replace(/^\$/,''));
+         const pctRaw = ((a?.price_change_percentage && (a.price_change_percentage.h24 ?? a.price_change_percentage['h24'] ?? a.price_change_percentage['24h'])) ?? a?.price_change_percentage_24h ?? a?.price_change_percentage_h24 ?? a?.price_change_percentage_24h_in_percent ?? null);
+         const pctNum = (pctRaw===null || pctRaw===undefined || pctRaw==='') ? NaN : Number(pctRaw);
+         const pctTxt = Number.isFinite(pctNum) ? `${pctNum>0?'+':''}${pctNum.toFixed(2)}%` : '';
+         const pctCls = Number.isFinite(pctNum) ? (pctNum>0?'up':(pctNum<0?'down':'')) : '';
         const logoUrlRaw = String(
           baseT?.image_url || baseT?.imageUrl || baseT?.image || baseT?.logo_url || baseT?.logoUrl ||
           quoteT?.image_url || quoteT?.imageUrl || quoteT?.image || quoteT?.logo_url || quoteT?.logoUrl ||
@@ -3158,7 +3188,8 @@ function toggleMenu(){
          return `<a class="${cls}" href="${esc(href)}" target="_blank" rel="noreferrer">
            <span class="rank">${esc(rankTxt)}</span>
           ${logo}
-           <span class="sym">${esc(symClean)}</span>
+           <span class="sym">${esc(symDisp)}</span>
+           ${pctTxt ? `<span class="tickerPct ${esc(pctCls)}">${esc(pctTxt)}</span>` : ''}
          </a>`;
        }).join('');
 
@@ -3217,9 +3248,11 @@ function toggleMenu(){
    // Search dropdown
    let tmr = null;
    let lastQ = "";
+   let searchReqId = 0;
    async function runSearch(q){
      q = (q || "").trim();
      lastQ = q;
+     const mySReq = ++searchReqId;
      if(!q){
        resEl.hidden = true;
        resEl.innerHTML = "";
@@ -3229,6 +3262,7 @@ function toggleMenu(){
      }
      try{
        const data = await safeJson(`https://api.dexscreener.com/latest/dex/search?q=${encodeURIComponent(q)}`);
+       if(mySReq !== searchReqId || q !== lastQ) return;
        const pairs = data?.pairs || [];
        const top = pairs.slice(0, 10);
 
@@ -3300,6 +3334,12 @@ function toggleMenu(){
 
        resEl.hidden = false;
      }catch(e){
+       if(mySReq !== searchReqId || q !== lastQ) return;
+       const hasResults = !!(resEl && !resEl.hidden && resEl.querySelector('.dexResRow'));
+       if(hasResults){
+         toast('Try again');
+         return;
+       }
        resEl.innerHTML = `<div class="dexResRow" style="opacity:.75"><div class="dexResLeft">
          <div class="dexResTitle">Not found</div>
          <div class="dexResMeta">Try again.</div>
@@ -3345,6 +3385,7 @@ function toggleMenu(){
        // 3) Fallback: query DexScreener once and pick a best result.
        try{
          const data = await safeJson(`https://api.dexscreener.com/latest/dex/search?q=${encodeURIComponent(q)}`);
+       if(mySReq !== searchReqId || q !== lastQ) return;
          const pairs = Array.isArray(data?.pairs) ? data.pairs : [];
          const want = (NET_TO_DEX_CHAIN[activeNet] || "solana").toLowerCase();
          const pick = pairs.find(p => String(p?.chainId||"").toLowerCase() === want) || pairs[0];
