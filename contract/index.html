@@ -90,7 +90,7 @@
     .tokenBadge{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:999px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);margin-top:8px}
     .tokenImgWrap{position:relative;width:34px;height:34px;flex:0 0 auto}
     .tokenImg{width:34px;height:34px;border-radius:12px;object-fit:cover;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.10);display:block}
-    .tokenFallback{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-weight:1000;letter-spacing:.04em;color:rgba(255,255,255,.92);background:rgba(255,255,255,.08)}
+    .tokenFallback{display:none !important}
     .tokenTxt{display:flex;flex-direction:column;line-height:1.1}
     .tokenSym{font-weight:1000;letter-spacing:.02em;font-size:12.5px}
     .tokenNm{font-size:12px;color:rgba(255,255,255,.70);max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -4819,6 +4819,22 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
     return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg.trim());
   }
 
+  function svgPlaceholderDataUrl(){
+    const svg = `
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#14F195"/>
+      <stop offset="0.5" stop-color="#00D1FF"/>
+      <stop offset="1" stop-color="#9945FF"/>
+    </linearGradient>
+  </defs>
+  <rect rx="22" ry="22" x="0" y="0" width="96" height="96" fill="rgba(255,255,255,0.10)"/>
+  <circle cx="48" cy="48" r="34" fill="url(#g)" opacity="0.25"/>
+</svg>`;
+    return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg.trim());
+  }
+
   async function proxyFetchDataUrl(u, timeoutMs){
     // CORS-friendly image proxy fallback (helps on many token logo hosts)
     try{
@@ -4875,7 +4891,7 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
 
     return {
       brandLogo: brandData || svgFallbackDataUrl("SOS"),
-      tokenLogo: tokenData || svgFallbackDataUrl(tokenInit)
+      tokenLogo: tokenData || svgPlaceholderDataUrl()
     };
   }
 
@@ -4899,7 +4915,7 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
     // Always provide a safe token image (embedded or SVG fallback)
     const tokenImage = (assets?.tokenLogo && String(assets.tokenLogo).trim())
       ? String(assets.tokenLogo).trim()
-      : svgFallbackDataUrl(tokenInit);
+      : svgPlaceholderDataUrl();
 
     const metricsHtml = (Array.isArray(scan.metrics) ? scan.metrics : []).map(m => `
       <div class="metric">
@@ -5037,7 +5053,7 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
     .tokenBadge{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:999px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);margin-top:8px}
     .tokenImgWrap{position:relative;width:34px;height:34px;flex:0 0 auto}
     .tokenImg{width:34px;height:34px;border-radius:12px;object-fit:cover;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.10);display:block}
-    .tokenFallback{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-weight:1000;letter-spacing:.04em;color:rgba(255,255,255,.92);background:rgba(255,255,255,.08)}
+    .tokenFallback{display:none !important}
     .tokenTxt{display:flex;flex-direction:column;line-height:1.1}
     .tokenSym{font-weight:1000;letter-spacing:.02em;font-size:12.5px}
     .tokenNm{font-size:12px;color:rgba(255,255,255,.70);max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -5298,20 +5314,6 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
             </div>
           </div>
 
-          <div class="panel">
-            <div class="sectionTitle">
-              <div class="l">Notes</div>
-              <div class="l">$SOS Guardian System</div>
-            </div>
-            <div style="color: rgba(255,255,255,.74); font-weight:850; font-size:12.5px; line-height:1.45;">
-              <div style="margin:6px 0;">• This report is heuristic and best-effort. Always verify liquidity, official links, and contract code.</div>
-              <div style="margin:6px 0;">• PASS/WATCH/FAIL applies per-check only. It is not a guarantee of safety.</div>
-              <div style="margin:6px 0;">• Tip: Use your browser “Print” → “Save as PDF” for a clean PDF export.</div>
-            </div>
-          </div>
-        </div>
-
-        <div class="printHint">Tip: Press Ctrl+P / Cmd+P → Save as PDF (keeps this design).</div>
         <div class="footer">© ${new Date().getFullYear()} $SOS • Guardian Scan</div>
       </div>
     </div>
@@ -5369,12 +5371,6 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
     for(const t of scan.todos){
       L.push(`- [${pillLabel(t.sev)}] ${t.t}: ${t.d}`);
     }
-
-    L.push("");
-    L.push("Notes");
-    L.push("----------------------------------------");
-    L.push("- This report is heuristic and best-effort. Always verify liquidity, official links, and contract code.");
-    L.push("- PASS/WATCH/FAIL applies per-check only. It is not a guarantee of safety.");
     return L.join("\n");
   }
 
