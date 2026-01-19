@@ -1489,8 +1489,22 @@ body.menuOpen .toolsDock{ display:none !important; }
 :root{
   /* will be set by JS to the actual fixed top bar height */
   --topBarTotal: 0px;
-  --tickerSpeed: 14s;
+  --tickerSpeed: 9s;
+
+  /* chain colors */
+  --solColor: #9945FF;
+  --ethColor: #627EEA;
+  --bnbColor: #F3BA2F;
+  --baseColor:#0052FF;
+
+  --netColor: var(--solColor);
+  --netGlow: rgba(153,69,255,.22);
 }
+
+body.net-sol{ --netColor: var(--solColor); --netGlow: rgba(153,69,255,.22); }
+body.net-eth{ --netColor: var(--ethColor); --netGlow: rgba(98,126,234,.22); }
+body.net-bnb{ --netColor: var(--bnbColor); --netGlow: rgba(243,186,47,.22); }
+body.net-base{ --netColor: var(--baseColor); --netGlow: rgba(0,82,255,.22); }
 
 body{ padding-top: var(--topBarTotal); }
 
@@ -1627,6 +1641,7 @@ body{ padding-top: var(--topBarTotal); }
   border-radius: 999px;
   background: rgba(255,255,255,.06);
   border: 1px solid rgba(255,255,255,.10);
+  box-shadow: 0 0 0 1px var(--netGlow) inset;
   color: rgba(255,255,255,.92);
   font-weight: 900;
   font-size: 13px;
@@ -1644,10 +1659,24 @@ body{ padding-top: var(--topBarTotal); }
   border: 1px solid rgba(255,255,255,.10);
   font-size: 12px;
   font-weight: 1000;
-  color: rgba(255,255,255,.88);
+  color: var(--netColor);
 }
-.tickerItem .sym{ font-weight: 1050; }
-.tickerItem .chain{ font-weight: 900; color: rgba(255,255,255,.70); font-size: 12px; }
+.tickerItem .sym{ font-weight: 950; }
+.tickerItem .chain{ font-weight: 1000; color: var(--netColor); font-size: 12px; letter-spacing:.2px; }
+
+.tickerItem.top1{
+  background: rgba(255,215,0,.10);
+  border-color: rgba(255,215,0,.32);
+  box-shadow: 0 0 0 1px rgba(255,215,0,.18) inset, 0 12px 30px rgba(0,0,0,.26);
+}
+.tickerItem.top1 .rank{
+  background: linear-gradient(90deg, #F3BA2F, #FFD700, #FFF2B0);
+  color: rgba(10,10,22,.92);
+  border: 0;
+  font-weight: 1100;
+}
+.tickerItem.top1 .chain{ color: rgba(255,215,0,.92); }
+
 
 .dexSearch{ position: relative; width: 360px; max-width: 44vw; }
 .dexSearchInner{
@@ -1691,12 +1720,89 @@ body{ padding-top: var(--topBarTotal); }
   z-index: 120;
 }
 
+/* Search result rows (clean + mobile-first) */
+.dexResRow{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap: 12px;
+  padding: 12px 12px;
+  border-radius: 18px;
+  border: 1px solid rgba(255,255,255,.10);
+  background: radial-gradient(900px 240px at 10% 0%, rgba(20,241,149,.10), transparent 55%),
+              radial-gradient(900px 240px at 90% 100%, rgba(153,69,255,.10), transparent 55%),
+              rgba(255,255,255,.03);
+}
+.dexResLeft{ flex:1; min-width:0; }
+.dexResTitle{
+  font-size: 15px;
+  line-height: 1.15;
+  font-weight: 980;
+  letter-spacing: -.2px;
+  color: rgba(255,255,255,.95);
+}
+.dexResMeta{
+  margin-top: 7px;
+  display:flex;
+  flex-wrap:wrap;
+  gap: 6px;
+  color: rgba(255,255,255,.70);
+  font-size: 12px;
+  line-height: 1.25;
+  font-weight: 720;
+}
+.dexPill{
+  display:inline-flex;
+  align-items:center;
+  gap: 6px;
+  padding: 5px 9px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.10);
+  background: rgba(255,255,255,.06);
+}
+.dexPill.up{ color: rgba(20,241,149,.95); border-color: rgba(20,241,149,.22); }
+.dexPill.down{ color: rgba(255,93,93,.95); border-color: rgba(255,93,93,.22); }
+.dexPill.chain-solana{ color: rgba(153,69,255,.95); border-color: rgba(153,69,255,.22); }
+.dexPill.chain-eth{ color: rgba(98,126,234,.95); border-color: rgba(98,126,234,.22); }
+.dexPill.chain-bsc{ color: rgba(243,186,47,.95); border-color: rgba(243,186,47,.22); }
+.dexPill.chain-base{ color: rgba(0,82,255,.95); border-color: rgba(0,82,255,.22); }
+.dexResActions{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap: 8px;
+  flex-shrink:0;
+}
+.dexMiniBtn{
+  padding: 8px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 950;
+}
+
+@media (max-width: 860px){
+  .dexResRow{ padding: 12px 10px; }
+}
+@media (max-width: 560px){
+  .dexResRow{
+    flex-direction:column;
+    align-items:stretch;
+    gap: 10px;
+  }
+  .dexResActions{
+    justify-content:flex-start;
+    width:100%;
+    flex-wrap:wrap;
+  }
+  .dexResActions .dexMiniBtn{ flex: 1 1 calc(33% - 6px); min-width: 120px; text-align:center; }
+}
+
 /* keep floating ⋯ menu below the new top bar */
 .menuFloat{ top: calc(14px + var(--topBarTotal)); }
 
 /* mobile: stack + keep everything clickable */
 @media (max-width: 860px){
-  :root{ --tickerSpeed: 18s; }
+  :root{ --tickerSpeed: 12s; }
   .topBarInner{ padding: calc(10px + env(safe-area-inset-top)) 12px 10px; }
   .topRow{ justify-content:space-between; }
   .chainToggle{ width: 100%; justify-content:space-between; }
@@ -2603,7 +2709,7 @@ function toggleMenu(){
 
    // Where to send users for the Contract Scanner.
    // Your page already links to https://solanax1.com/contract, so we default to "/contract".
-   const SCANNER_PAGE = (window.SOS_SCANNER_URL && String(window.SOS_SCANNER_URL)) || (location.origin + "/new");
+   const SCANNER_PAGE = (window.SOS_SCANNER_URL && String(window.SOS_SCANNER_URL)) || (location.origin + "/contract");
 
    const NET_TO_DEX_CHAIN = { solana: "solana", eth: "ethereum", bsc: "bsc", base: "base" };
    const DEX_TO_SCANNER_CHAIN = { solana: "sol", ethereum: "eth", bsc: "bnb", base: "base" };
@@ -2724,8 +2830,11 @@ function toggleMenu(){
          const sym = (base?.symbol || base?.name || '').trim() || (a?.name ? String(a.name).split('/')[0].trim() : '') || 'TOKEN';
          const addr = (a?.address || '').trim();
          const href = addr ? `https://www.geckoterminal.com/${encodeURIComponent(net)}/pools/${encodeURIComponent(addr)}` : '#';
-         return `<a class="tickerItem" href="${esc(href)}" target="_blank" rel="noreferrer">
-           <span class="rank">#${n+1}</span>
+         const top1 = (n===0);
+         const cls = `tickerItem${top1?' top1':''}`;
+         const rankTxt = top1 ? `🔥 #1` : `#${n+1}`;
+         return `<a class="${cls}" href="${esc(href)}" target="_blank" rel="noreferrer">
+           <span class="rank">${esc(rankTxt)}</span>
            <span class="sym">${esc(sym)}</span>
            <span class="chain">${esc((NETWORKS[net]?.label||net).toUpperCase())}</span>
          </a>`;
@@ -2744,6 +2853,10 @@ function toggleMenu(){
    function setActiveNet(net){
      if(!net || !NETWORKS[net]) net = 'solana';
      activeNet = net;
+
+     // theme class for chain-colored UI
+     document.body.classList.remove('net-sol','net-eth','net-bnb','net-base');
+     document.body.classList.add(net==='solana'?'net-sol':net==='eth'?'net-eth':net==='bsc'?'net-bnb':'net-base');
 
      // buttons
      const wrap = document.getElementById('chainToggle');
@@ -2802,13 +2915,16 @@ function toggleMenu(){
        resEl.dataset.bestChain = best?.chainId || "";
 
        resEl.innerHTML = top.map(p=>{
-         const chain = (p.chainId || "").toUpperCase();
+         const chainIdRaw = (p.chainId || '');
+         const chain = String(chainIdRaw).toUpperCase();
+         const chainClass = 'chain-' + String(chainIdRaw).toLowerCase();
          const dex = (p.dexId || "").toUpperCase();
          const baseSym = p.baseToken?.symbol || "TOKEN";
          const quoteSym = p.quoteToken?.symbol || "";
          const title = quoteSym ? `${baseSym}/${quoteSym}` : `${baseSym}`;
          const price = p.priceUsd ? `$${Number(p.priceUsd).toLocaleString(undefined,{maximumFractionDigits:6})}` : "—";
          const ch24 = p.priceChange?.h24;
+         const chClass = (typeof ch24 === 'number') ? (ch24>0?'up':(ch24<0?'down':'')) : '';
          const chTxt = (typeof ch24 === "number") ? `${ch24>0?"+":""}${ch24.toFixed(2)}%` : "—";
          const liq = p.liquidity?.usd ? `$${Number(p.liquidity.usd).toLocaleString(undefined,{maximumFractionDigits:0})}` : "—";
          const ca = p.baseToken?.address || "";
@@ -2818,10 +2934,10 @@ function toggleMenu(){
            <div class="dexResLeft">
              <div class="dexResTitle">${esc(title)}</div>
              <div class="dexResMeta">
-               <span class="dexPill">${esc(chain)}</span>
+               <span class="dexPill ${esc(chainClass)}">${esc(chain)}</span>
                <span class="dexPill">${esc(dex || "DEX")}</span>
                <span class="dexPill">Price ${esc(price)}</span>
-               <span class="dexPill">24h ${esc(chTxt)}</span>
+               <span class="dexPill ${esc(chClass)}">24h ${esc(chTxt)}</span>
                <span class="dexPill">Liq ${esc(liq)}</span>
                <span class="dexPill" title="${esc(ca)}">CA ${esc(shortAddr(ca))}</span>
              </div>
