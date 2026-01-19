@@ -1487,17 +1487,16 @@ body.menuOpen .toolsDock{ display:none !important; }
 
 /* ===== Dex-style Top Trending Bar + Search (Main Page) ===== */
 :root{
-  --topBarTotal: calc(64px + env(safe-area-inset-top));
+  /* will be set by JS to the actual fixed top bar height */
+  --topBarTotal: 0px;
+  --tickerSpeed: 14s;
 }
 
-body{
-  padding-top: var(--topBarTotal);
-}
+body{ padding-top: var(--topBarTotal); }
 
 .topBar{
   position: fixed;
   top: 0; left: 0; right: 0;
-  height: var(--topBarTotal);
   z-index: 85;
   background: rgba(7,7,17,.62);
   border-bottom: 1px solid rgba(255,255,255,.10);
@@ -1506,46 +1505,44 @@ body{
 }
 
 .topBarInner{
-  height: 100%;
   max-width: var(--max);
   margin: 0 auto;
   padding: calc(10px + env(safe-area-inset-top)) 14px 10px;
   display: flex;
-  gap: 12px;
-  align-items: center;
+  flex-direction: column;
+  gap: 10px;
 }
 
-.hotBlock{
+.topRow{
   display:flex;
   align-items:center;
-  gap:10px;
-  white-space:nowrap;
+  justify-content:space-between;
+  gap: 12px;
+  flex-wrap:wrap;
 }
+
+.bottomRow{
+  display:flex;
+  align-items:center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.hotBlock{ display:flex; align-items:center; gap: 12px; flex-wrap:wrap; }
 .hotLabel{
   display:inline-flex;
   align-items:center;
-  gap:8px;
-  padding: 10px 12px;
+  gap: 10px;
+  padding: 9px 14px;
   border-radius: 999px;
-  border: 1px solid rgba(255,70,70,.28);
-  background: rgba(255,70,70,.10);
-  color: rgba(255,235,235,.96);
-  font-weight: 1000;
-  font-size: 12px;
-  letter-spacing: .10em;
-  text-transform: uppercase;
-  box-shadow: 0 10px 30px rgba(0,0,0,.20);
+  background: rgba(255,65,65,.10);
+  border: 1px solid rgba(255,65,65,.20);
+  box-shadow: 0 12px 32px rgba(0,0,0,.24);
+  font-weight: 1100;
+  letter-spacing: .6px;
 }
-.hotFire{
-  width:18px;
-  height:18px;
-  display:block;
-  filter: drop-shadow(0 8px 18px rgba(255,70,70,.22));
-}
-.hotLabel .hotFire *{
-  stroke: rgba(255,90,90,.95) !important;
-  fill: none !important;
-}
+.hotFire{ width: 18px; height: 18px; opacity: .95; }
+
 .chainToggle{
   display:inline-flex;
   align-items:center;
@@ -1612,12 +1609,10 @@ body{
   align-items:center;
   white-space: nowrap;
   will-change: transform;
-  animation: tickerMarquee 26s linear infinite;
+  animation: tickerMarquee var(--tickerSpeed) linear infinite;
 }
 
-.tickerWrap:hover .tickerTrack{
-  animation-play-state: paused;
-}
+.tickerWrap:hover .tickerTrack{ animation-play-state: paused; }
 
 @keyframes tickerMarquee{
   0%{ transform: translateX(0); }
@@ -1651,20 +1646,10 @@ body{
   font-weight: 1000;
   color: rgba(255,255,255,.88);
 }
-.tickerItem .sym{
-  font-weight: 1050;
-}
-.tickerItem .chain{
-  font-weight: 900;
-  color: rgba(255,255,255,.70);
-  font-size: 12px;
-}
+.tickerItem .sym{ font-weight: 1050; }
+.tickerItem .chain{ font-weight: 900; color: rgba(255,255,255,.70); font-size: 12px; }
 
-.dexSearch{
-  position: relative;
-  width: 360px;
-  max-width: 44vw;
-}
+.dexSearch{ position: relative; width: 360px; max-width: 44vw; }
 .dexSearchInner{
   display:flex;
   gap: 8px;
@@ -1685,17 +1670,9 @@ body{
   font-weight: 850;
   font-size: 13px;
 }
-.dexInput::placeholder{
-  color: rgba(255,255,255,.55);
-  font-weight: 800;
-}
+.dexInput::placeholder{ color: rgba(255,255,255,.55); font-weight: 800; }
 
-.dexMiniBtn{
-  padding: 8px 10px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 1000;
-}
+.dexMiniBtn{ padding: 8px 10px; border-radius: 999px; font-size: 12px; font-weight: 1000; }
 
 .dexResults{
   position:absolute;
@@ -1713,49 +1690,19 @@ body{
   -webkit-backdrop-filter: blur(18px);
   z-index: 120;
 }
-.dexResRow{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap: 10px;
-  padding: 10px;
-  border-radius: 14px;
-  border: 1px solid rgba(255,255,255,.10);
-  background: rgba(255,255,255,.04);
-  margin-bottom: 8px;
-}
-.dexResRow:last-child{ margin-bottom: 0; }
-.dexResLeft{ min-width:0; display:flex; flex-direction:column; gap: 2px; }
-.dexResTitle{ font-weight: 1050; letter-spacing:-.2px; }
-.dexResMeta{ font-size: 12px; color: rgba(255,255,255,.70); display:flex; gap: 10px; flex-wrap:wrap; }
-.dexPill{
-  display:inline-flex; align-items:center; gap:6px;
-  padding: 3px 8px;
-  border-radius: 999px;
-  background: rgba(255,255,255,.06);
-  border: 1px solid rgba(255,255,255,.10);
-  font-weight: 900;
-}
-.dexResActions{ display:flex; gap: 8px; align-items:center; flex-shrink:0; }
-.dexA{
-  text-decoration:none;
-  display:inline-flex;
-  align-items:center;
-  gap: 8px;
-}
 
 /* keep floating ⋯ menu below the new top bar */
 .menuFloat{ top: calc(14px + var(--topBarTotal)); }
 
 /* mobile: stack + keep everything clickable */
 @media (max-width: 860px){
-  :root{ --topBarTotal: calc(84px + env(safe-area-inset-top)); }
-  .topBarInner{ flex-direction: column; align-items: stretch; gap: 10px; }
-  .hotBlock{ flex-wrap:wrap; justify-content:space-between; width:100%; }
-  .chainToggle{ width:100%; justify-content:space-between; }
+  :root{ --tickerSpeed: 18s; }
+  .topBarInner{ padding: calc(10px + env(safe-area-inset-top)) 12px 10px; }
+  .topRow{ justify-content:space-between; }
+  .chainToggle{ width: 100%; justify-content:space-between; }
+  .bottomRow{ flex-direction: column; align-items: stretch; }
   .dexSearch{ width: 100%; max-width: 100%; }
   .tickerWrap{ width: 100%; }
-  .tickerTrack{ animation-duration: 34s; }
 }
 
 /* reduced motion */
@@ -1835,32 +1782,37 @@ body{
  <!-- TOP TRENDING BAR + SEARCH (Dex-style) -->
  <div class="topBar" id="topBar">
    <div class="topBarInner">
-     <div class="hotBlock" aria-label="Hot trending live">
-       <div class="hotLabel" title="Live trending">
-         <svg class="hotFire" aria-hidden="true"><use href="#ico-fire"></use></svg>
-         <span>HOT TRENDING LIVE</span>
+     <div class="topRow">
+       <div class="hotBlock" aria-label="Hot trending live">
+         <div class="hotLabel" title="Live trending">
+           <svg class="hotFire" aria-hidden="true"><use href="#ico-fire"></use></svg>
+           <span>HOT TRENDING LIVE</span>
+         </div>
        </div>
+
        <div class="chainToggle" id="chainToggle" role="tablist" aria-label="Choose chain">
          <button class="chainBtn active" type="button" data-net="solana" aria-pressed="true">SOL</button>
-         <button class="chainBtn" type="button" data-net="ethereum" aria-pressed="false">ETH</button>
+         <button class="chainBtn" type="button" data-net="eth" aria-pressed="false">ETH</button>
          <button class="chainBtn" type="button" data-net="bsc" aria-pressed="false">BNB</button>
          <button class="chainBtn" type="button" data-net="base" aria-pressed="false">BASE</button>
        </div>
      </div>
 
-     <div class="tickerWrap" aria-label="Trending tokens">
-       <div class="tickerTrack" id="trendTrack">
-         <span class="tickerItem" style="opacity:.75"><span class="rank">…</span><span class="sym">Loading trending…</span><span class="chain"></span></span>
+     <div class="bottomRow">
+       <div class="tickerWrap" aria-label="Trending tokens">
+         <div class="tickerTrack" id="trendTrack">
+           <span class="tickerItem" style="opacity:.75"><span class="rank">…</span><span class="sym">Loading trending…</span><span class="chain"></span></span>
+         </div>
        </div>
-     </div>
 
-     <div class="dexSearch" role="search" aria-label="Search token by name or contract">
-       <div class="dexSearchInner">
-         <input class="dexInput" id="dexSearchInput" autocomplete="off" spellcheck="false" placeholder="Search token / paste contract…" />
-         <button class="btn ghost dexMiniBtn" id="dexSearchGo" type="button">Search</button>
-         <button class="btn ghost dexMiniBtn" id="dexSearchCopy" type="button" title="Copy input">Copy</button>
+       <div class="dexSearch" role="search" aria-label="Search token by name or contract">
+         <div class="dexSearchInner">
+           <input class="dexInput" id="dexSearchInput" autocomplete="off" spellcheck="false" placeholder="Search token / paste contract…" />
+           <button class="btn ghost dexMiniBtn" id="dexSearchGo" type="button">Search</button>
+           <button class="btn ghost dexMiniBtn" id="dexSearchCopy" type="button" title="Copy input">Copy</button>
+         </div>
+         <div class="dexResults" id="dexResults" hidden></div>
        </div>
-       <div class="dexResults" id="dexResults" hidden></div>
      </div>
    </div>
  </div>
@@ -2651,6 +2603,22 @@ function toggleMenu(){
 
    if(!trendTrack || !inEl || !resEl || !btnGo || !btnCopy) return;
 
+   // Keep body padding synced with the fixed top bar height (supports 2-row layout)
+   function syncTopBarHeight(){
+     const tb = document.getElementById('topBar');
+     if(!tb) return;
+     const h = Math.ceil(tb.getBoundingClientRect().height || 0);
+     document.documentElement.style.setProperty('--topBarTotal', h + 'px');
+   }
+   let _tbTmr = null;
+   window.addEventListener('resize', ()=>{
+     clearTimeout(_tbTmr);
+     _tbTmr = setTimeout(syncTopBarHeight, 120);
+   });
+   // initial
+   syncTopBarHeight();
+
+
    // Chain toggle events
    const toggleEl = document.getElementById('chainToggle');
    if(toggleEl){
@@ -2697,7 +2665,7 @@ function toggleMenu(){
 
    const NETWORKS = {
      solana: { label: 'SOL' },
-     ethereum: { label: 'ETH' },
+     eth: { label: 'ETH' },
      bsc: { label: 'BNB' },
      base: { label: 'BASE' }
    };
@@ -2735,8 +2703,12 @@ function toggleMenu(){
        }).join('');
 
        trendTrack.innerHTML = items + items;
+
+       // ensure layout/padding stays correct if fonts wrap
+       try{ syncTopBarHeight && syncTopBarHeight(); }catch(_e){}
      }catch(e){
        trendTrack.innerHTML = `<span class="tickerItem" style="opacity:.75"><span class="rank">!</span><span class="sym">Trending unavailable</span><span class="chain">${esc(net)}</span></span>`;
+       try{ syncTopBarHeight && syncTopBarHeight(); }catch(_e){}
      }
    }
 
