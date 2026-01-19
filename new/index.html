@@ -974,6 +974,22 @@
     if (n === null || n === undefined || Number.isNaN(n)) return "—";
     return `${Number(n).toFixed(2)}%`;
   }
+  function commaTokenStr(numStr, maxFrac=6){
+    if(numStr === null || numStr === undefined) return "—";
+    const s0 = String(numStr);
+    if(!s0) return "—";
+    const neg = s0.startsWith("-");
+    const parts = s0.replace("-","").split(".");
+    const intp = parts[0] || "0";
+    const withCommas = intp.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    let frac = "";
+    if(parts[1]){
+      const f = parts[1].slice(0, Math.max(0, maxFrac)).replace(/0+$/,"");
+      if(f) frac = "." + f;
+    }
+    return (neg? "-" : "") + withCommas + frac;
+  }
+
   
   // ===================== LIVE MARKET DATA (DexScreener) =====================
   function safeNum(x){
@@ -1487,7 +1503,10 @@ function pillLabel(sev){ return (sev==="ok" ? "PASS" : (sev==="bad" ? "FAIL" : "
     // Header pill (supply)
     const head = document.createElement('li');
     head.className = 'li';
-    const supplyTxt = (supplyUse && supplyUse > 0n) ? compactNumberFromString(formatUnits(supplyUse, decUse)) : '—';
+    const supplyRaw = (supplyUse && supplyUse > 0n) ? formatUnits(supplyUse, decUse) : null;
+    const supplyExact = supplyRaw ? commaTokenStr(supplyRaw, 6) : '—';
+    const supplyCompact = supplyRaw ? compactNumberFromString(supplyRaw) : '—';
+    const supplyTxt = supplyRaw ? `${supplyExact} <span style="opacity:.7;font-weight:600">(≈ ${supplyCompact})</span>` : '—';
     const infoId = registerInfo(explain('Top holders', [
       'Meaning: Distribution shows whale risk.',
       'EVM: holder addresses come from indexer; balances are confirmed on-chain via balanceOf().',
@@ -4180,9 +4199,9 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
     try{
       if(bal === null || supply === null) return null;
       if(supply <= 0n) return null;
-      // basis points with 2 decimals (0.01%)
-      const bp = (bal * 10000n) / supply;
-      const num = Number(bp) / 100;
+      // percent with 4 decimals, rounded (0.0001%)
+      const scaled = (bal * 1000000n + (supply/2n)) / supply; // percent * 10000
+      const num = Number(scaled) / 10000;
       return (Number.isFinite(num) ? num : null);
     }catch{
       return null;
@@ -4584,7 +4603,18 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
           { label:"Market Cap", value: (dex?.marketCap != null ? money(dex.marketCap) : (dex?.fdv != null ? money(dex.fdv) : "—")), badge: dex?.marketCap != null ? "MCAP" : (dex?.fdv != null ? "FDV" : "—"), mini:"" },
           { label:"Price", value: dex?.priceUsd != null ? priceUsdFmt(dex.priceUsd) : "—", badge: "USD", mini:"" },
           { label:"LP Burned", value: lpBurn?.pct != null ? `${lpBurn.pct.toFixed(2)}%` : "UNKNOWN", badge: lpBurn?.pct != null ? (lpBurn.pct>=90?"PASS":"WATCH") : "UNKNOWN", sev: lpBurn?.pct != null ? (lpBurn.pct>=90?"ok":"warn") : "warn", mini:""},
-          { label:"LP Locked", value: lpLock?.pct != null ? `${lpLock.pct.toFixed(2)}%` : "UNKNOWN", badge: lpLock?.pct != null ? "INFO" : "WATCH", sev: lpLock?.pct != null ? "ok" : "warn", mini: lpLock?.note ? String(lpLock.note) : ""},
+          { label:"LP Locked",
+            value: (lpBurn?.pct != null && lpBurn.pct >= 90)
+              ? (lpLock?.pct != null ? `${lpLock.pct.toFixed(2)}%` : "N/A")
+              : (lpLock?.pct != null ? `${lpLock.pct.toFixed(2)}%` : "UNKNOWN"),
+            badge: (lpBurn?.pct != null && lpBurn.pct >= 90)
+              ? (lpLock?.pct != null ? "INFO" : "PASS")
+              : (lpLock?.pct != null ? "INFO" : "WATCH"),
+            sev: (lpBurn?.pct != null && lpBurn.pct >= 90) ? "ok" : (lpLock?.pct != null ? "ok" : "warn"),
+            mini: (lpBurn?.pct != null && lpBurn.pct >= 90)
+              ? (lpLock?.pct != null ? (lpLock?.note ? String(lpLock.note) : "") : "Liquidity is burned (lock not required).")
+              : (lpLock?.note ? String(lpLock.note) : "")
+          },
           { label:"Proxy", value: proxy?.isProxy ? "Upgradeable" : "No signal", badge: proxy?.isProxy ? "WATCH" : "PASS", sev: proxy?.isProxy ? "warn" : "ok", mini:"" },
           { label:"Total Supply", value: supplyText ? (supplyText + (supplyNice.approx ? " (assumed)" : "")) : "—", badge: supplyReadable ? "On-chain" : "Unknown", mini:"" }
         ];
