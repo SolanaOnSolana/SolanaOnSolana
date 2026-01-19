@@ -2896,7 +2896,9 @@ function toggleMenu(){
      try{
        if(!trendTrack) return;
        const isMobile = window.matchMedia('(max-width: 860px)').matches;
-       const pxPerSec = isMobile ? 210 : 400; // tuned to feel fast but still shows the full list
+       // Readable-but-fast speed: adapt to the real width so the loop is seamless on all screens.
+       // (Higher px/s = faster. We intentionally keep this conservative so you can actually read.)
+       const pxPerSec = isMobile ? 120 : 180;
 
        requestAnimationFrame(()=>{
          // We render the items twice (A+B). One full cycle should travel exactly A.
@@ -2905,7 +2907,8 @@ function toggleMenu(){
          const one = Math.max(1, Math.round(total / 2));
          document.documentElement.style.setProperty('--tickerDistance', one + 'px');
 
-         const dur = Math.min(16, Math.max(2.2, one / pxPerSec));
+         // Keep the animation within a readable band.
+         const dur = Math.min(22, Math.max(6.5, one / pxPerSec));
          document.documentElement.style.setProperty('--tickerSpeed', dur.toFixed(2) + 's');
        });
      }catch(_e){}
