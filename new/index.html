@@ -1158,6 +1158,14 @@
     }
 
 
+  const pct = Number((burned * 10000n) / totalBI) / 100;
+    return {pct: Math.max(0, Math.min(100, pct)), burned, total: totalBI, note:"dead+0x0+0x1"};
+  }catch{
+    return {pct:null, note:"Error"};
+  }
+}
+
+
   // Best-effort V2 LP "locked" heuristic:
   // checks LP token balances held by popular locker contracts (chain-specific).
   // NOTE: lockers change over time; if none match, returns pct:null.
@@ -1220,12 +1228,6 @@
     }
   }
 
-    const pct = Number((burned * 10000n) / totalBI) / 100;
-    return {pct: Math.max(0, Math.min(100, pct)), burned, total: totalBI, note:"dead+0x0+0x1"};
-  }catch{
-    return {pct:null, note:"Error"};
-  }
-}
 
 
 function setStatus(msg){ setText("status", msg || ""); }
