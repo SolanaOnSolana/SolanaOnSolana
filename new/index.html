@@ -1559,44 +1559,6 @@ body{ padding-top: 0; }
 }
 .hotFire{ width: 18px; height: 18px; opacity: .95; }
 
-/* ===== HOT TRENDING + DEXGUARD BANNER ===== */
-.hotPromo{
-  display:inline-flex;
-  align-items:center;
-  gap: 10px;
-  flex-wrap: nowrap;
-}
-.hotBanner{
-  width: 140px;
-  height: 38px;
-  object-fit: cover;
-  border-radius: 16px;
-  border: 1px solid rgba(255,255,255,.14);
-  background: rgba(255,255,255,.04);
-  box-shadow: 0 10px 24px rgba(0,0,0,.28);
-}
-.hotText{
-  font-weight: 1100;
-  letter-spacing: .6px;
-  white-space: nowrap;
-}
-.hotDexBtn{
-  padding: 8px 12px;
-  font-size: 12px;
-  font-weight: 1000;
-  border-radius: 999px;
-}
-@media (max-width: 520px){
-  .hotPromo{ width:100%; justify-content:space-between; }
-  .hotBanner{ width: 124px; height: 34px; }
-}
-@media (max-width: 420px){
-  .hotPromo{ flex-wrap:wrap; justify-content:center; }
-  .hotText{ width:100%; text-align:center; }
-  .hotDexBtn{ width:100%; }
-}
-
-
 .chainToggle{
   display:inline-flex;
   align-items:center;
@@ -2188,11 +2150,10 @@ body.net-base .chainBtn.active{ background: linear-gradient(90deg, rgba(0,82,255
    <div class="topBarInner">
      <div class="topRow">
        <div class="hotBlock" aria-label="Hot trending live">
-         <div class="hotLabel hotPromo" title="Live trending">
-  <img class="hotBanner" src="dexguard.png" alt="Dexguard" loading="eager" decoding="async" />
-  <span class="hotText">HOT TRENDING LIVE</span>
-  <button class="btn ghost hotDexBtn" id="dexguardBtn" type="button">Dexguard</button>
-</div>
+         <div class="hotLabel" title="Live trending">
+           <svg class="hotFire" aria-hidden="true"><use href="#ico-fire"></use></svg>
+           <span>HOT TRENDING LIVE</span>
+         </div>
        </div>
 
        <div class="chainToggle" id="chainToggle" role="tablist" aria-label="Choose chain">
@@ -2817,16 +2778,6 @@ body.net-base .chainBtn.active{ background: linear-gradient(90deg, rgba(0,82,255
  // Year
  document.getElementById("y").textContent = new Date().getFullYear();
 
- // Dexguard button
- const dexguardBtn = document.getElementById('dexguardBtn');
- if(dexguardBtn){
-   dexguardBtn.addEventListener('click', () => {
-     // Change this target if you want a different destination
-     window.location.href = 'dexguard.html';
-   });
- }
-
-
  // Copy helpers
  function setHint(el, ok){
  if(!el) return;
@@ -3373,7 +3324,8 @@ function toggleMenu(){
          const mcapLabel = (p.marketCap != null ? "MCap" : (p.fdv != null ? "FDV" : "MCap"));
          const ca = p.baseToken?.address || "";
 
-         const href = p.url || `https://dexscreener.com/${p.chainId}/${p.pairAddress || ""}`;
+         // Route to our internal chart page (no external redirect)
+         const href = `/chart?chain=${encodeURIComponent(String(p.chainId||''))}&addr=${encodeURIComponent(String(ca||''))}`;
          return `<div class="dexResRow">
            <div class="dexResLeft">
              <div class="dexResTitleRow">
@@ -3399,7 +3351,7 @@ function toggleMenu(){
            </div>
            <div class="dexResActions">
              <button class="btn ghost dexMiniBtn copyBtn" type="button" data-copy="${esc(ca)}">Copy CA</button>
-             <a class="btn ghost dexMiniBtn chartBtn dexA" href="${esc(href)}" target="_blank" rel="noreferrer">Chart</a>
+             <a class="btn ghost dexMiniBtn chartBtn dexA" href="${esc(href)}">Chart</a>
             <button class="btn grad dexMiniBtn" type="button" data-scan="${esc(ca)}" data-chain="${esc(p.chainId || '')}">Scanner</button>
            </div>
          </div>`;
