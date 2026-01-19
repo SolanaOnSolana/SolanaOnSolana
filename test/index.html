@@ -1490,6 +1490,8 @@ body.menuOpen .toolsDock{ display:none !important; }
   /* will be set by JS to the actual fixed top bar height */
   --topBarTotal: 0px;
   --tickerSpeed: 3.6s;
+  /* distance the marquee should travel for one full cycle (set by JS) */
+  --tickerDistance: 50%;
 
   /* chain colors */
   --solColor: #9945FF;
@@ -1639,7 +1641,7 @@ body{ padding-top: var(--topBarTotal); }
 
 @keyframes tickerMarquee{
   0%{ transform: translateX(0); }
-  100%{ transform: translateX(-50%); }
+  100%{ transform: translateX(calc(-1 * var(--tickerDistance))); }
 }
 
 .tickerItem{
@@ -2889,6 +2891,33 @@ function toggleMenu(){
    let activeNet = 'solana';
    let trendTimer = null;
 
+   // Make the marquee a true endless loop: distance + duration scale with content width.
+   function syncTickerMarquee(){
+     try{
+       if(!trendTrack) return;
+       const isMobile = window.matchMedia('(max-width: 860px)').matches;
+       const pxPerSec = isMobile ? 210 : 400; // tuned to feel fast but still shows the full list
+
+       requestAnimationFrame(()=>{
+         // We render the items twice (A+B). One full cycle should travel exactly A.
+         const total = trendTrack.scrollWidth || 0;
+         if(total < 20) return;
+         const one = Math.max(1, Math.round(total / 2));
+         document.documentElement.style.setProperty('--tickerDistance', one + 'px');
+
+         const dur = Math.min(16, Math.max(2.2, one / pxPerSec));
+         document.documentElement.style.setProperty('--tickerSpeed', dur.toFixed(2) + 's');
+       });
+     }catch(_e){}
+   }
+
+   // Re-sync on resize (debounced)
+   let _tickerResizeT = null;
+   window.addEventListener('resize', ()=>{
+     clearTimeout(_tickerResizeT);
+     _tickerResizeT = setTimeout(syncTickerMarquee, 120);
+   }, {passive:true});
+
    async function loadTrending(net){
      try{
        const url = `https://api.geckoterminal.com/api/v2/networks/${encodeURIComponent(net)}/trending_pools`;
@@ -2923,10 +2952,14 @@ function toggleMenu(){
 
        trendTrack.innerHTML = items + items;
 
+       // ✅ ensure it runs through the full list before looping (no "cut" mid-way)
+       syncTickerMarquee();
+
        // ensure layout/padding stays correct if fonts wrap
        try{ syncTopBarHeight && syncTopBarHeight(); }catch(_e){}
      }catch(e){
        trendTrack.innerHTML = `<span class="tickerItem" style="opacity:.75"><span class="rank">!</span><span class="sym">Trending unavailable</span><span class="chain">${esc(net)}</span></span>`;
+       syncTickerMarquee();
        try{ syncTopBarHeight && syncTopBarHeight(); }catch(_e){}
      }
    }
