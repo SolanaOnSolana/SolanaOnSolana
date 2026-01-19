@@ -1484,6 +1484,232 @@ body.menuOpen .toolsDock{ display:none !important; }
  .tlItem.left, .tlItem.right{ transform: translateY(22px); }
  .tlItem.in{ transform: translateY(0); }
  }
+
+/* ===== Dex-style Top Trending Bar + Search (Main Page) ===== */
+:root{
+  /* will be set by JS to the actual fixed top bar height */
+  --topBarTotal: 0px;
+  --tickerSpeed: 14s;
+}
+
+body{ padding-top: var(--topBarTotal); }
+
+.topBar{
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 85;
+  background: rgba(7,7,17,.62);
+  border-bottom: 1px solid rgba(255,255,255,.10);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.topBarInner{
+  max-width: var(--max);
+  margin: 0 auto;
+  padding: calc(10px + env(safe-area-inset-top)) 14px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.topRow{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap: 12px;
+  flex-wrap:wrap;
+}
+
+.bottomRow{
+  display:flex;
+  align-items:center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.hotBlock{ display:flex; align-items:center; gap: 12px; flex-wrap:wrap; }
+.hotLabel{
+  display:inline-flex;
+  align-items:center;
+  gap: 10px;
+  padding: 9px 14px;
+  border-radius: 999px;
+  background: rgba(255,65,65,.10);
+  border: 1px solid rgba(255,65,65,.20);
+  box-shadow: 0 12px 32px rgba(0,0,0,.24);
+  font-weight: 1100;
+  letter-spacing: .6px;
+}
+.hotFire{ width: 18px; height: 18px; opacity: .95; }
+
+.chainToggle{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding: 6px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.10);
+  background: rgba(255,255,255,.04);
+}
+.chainBtn{
+  appearance:none;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(255,255,255,.06);
+  color: rgba(255,255,255,.88);
+  font-weight: 1000;
+  font-size: 12px;
+  padding: 8px 10px;
+  border-radius: 999px;
+  cursor:pointer;
+  transition: transform .15s ease, background .15s ease, border-color .15s ease;
+}
+.chainBtn:hover{ background: rgba(255,255,255,.10); transform: translateY(-1px); }
+.chainBtn:active{ transform: translateY(0px) scale(.99); }
+.chainBtn.active{
+  border: 0;
+  color: #061012;
+  background: linear-gradient(90deg, var(--g), var(--c), var(--p));
+  box-shadow: 0 14px 28px rgba(0,0,0,.20);
+}
+
+.tickerWrap{
+  flex: 1;
+  min-width: 0;
+  position: relative;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255,255,255,.05);
+  border: 1px solid rgba(255,255,255,.10);
+  box-shadow: 0 10px 30px rgba(0,0,0,.22);
+  padding: 10px 12px;
+}
+
+.tickerWrap:before,
+.tickerWrap:after{
+  content:"";
+  position:absolute;
+  top:0; bottom:0;
+  width: 44px;
+  pointer-events:none;
+  z-index: 2;
+}
+.tickerWrap:before{
+  left:0;
+  background: linear-gradient(90deg, rgba(7,7,17,.95), rgba(7,7,17,0));
+}
+.tickerWrap:after{
+  right:0;
+  background: linear-gradient(270deg, rgba(7,7,17,.95), rgba(7,7,17,0));
+}
+
+.tickerTrack{
+  display:flex;
+  gap: 10px;
+  align-items:center;
+  white-space: nowrap;
+  will-change: transform;
+  animation: tickerMarquee var(--tickerSpeed) linear infinite;
+}
+
+.tickerWrap:hover .tickerTrack{ animation-play-state: paused; }
+
+@keyframes tickerMarquee{
+  0%{ transform: translateX(0); }
+  100%{ transform: translateX(-50%); }
+}
+
+.tickerItem{
+  display:inline-flex;
+  align-items:center;
+  gap: 10px;
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.10);
+  color: rgba(255,255,255,.92);
+  font-weight: 900;
+  font-size: 13px;
+  letter-spacing: .1px;
+}
+.tickerItem .rank{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width: 28px;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.10);
+  font-size: 12px;
+  font-weight: 1000;
+  color: rgba(255,255,255,.88);
+}
+.tickerItem .sym{ font-weight: 1050; }
+.tickerItem .chain{ font-weight: 900; color: rgba(255,255,255,.70); font-size: 12px; }
+
+.dexSearch{ position: relative; width: 360px; max-width: 44vw; }
+.dexSearchInner{
+  display:flex;
+  gap: 8px;
+  align-items:center;
+  padding: 10px 10px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.05);
+  border: 1px solid rgba(255,255,255,.10);
+  box-shadow: 0 10px 30px rgba(0,0,0,.22);
+}
+.dexInput{
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: 0;
+  outline: none;
+  color: rgba(255,255,255,.92);
+  font-weight: 850;
+  font-size: 13px;
+}
+.dexInput::placeholder{ color: rgba(255,255,255,.55); font-weight: 800; }
+
+.dexMiniBtn{ padding: 8px 10px; border-radius: 999px; font-size: 12px; font-weight: 1000; }
+
+.dexResults{
+  position:absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: min(560px, calc(100vw - 28px));
+  max-height: 60vh;
+  overflow:auto;
+  padding: 10px;
+  border-radius: 18px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(10,10,22,.92);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  z-index: 120;
+}
+
+/* keep floating ⋯ menu below the new top bar */
+.menuFloat{ top: calc(14px + var(--topBarTotal)); }
+
+/* mobile: stack + keep everything clickable */
+@media (max-width: 860px){
+  :root{ --tickerSpeed: 18s; }
+  .topBarInner{ padding: calc(10px + env(safe-area-inset-top)) 12px 10px; }
+  .topRow{ justify-content:space-between; }
+  .chainToggle{ width: 100%; justify-content:space-between; }
+  .bottomRow{ flex-direction: column; align-items: stretch; }
+  .dexSearch{ width: 100%; max-width: 100%; }
+  .tickerWrap{ width: 100%; }
+}
+
+/* reduced motion */
+@media (prefers-reduced-motion: reduce){
+  .tickerTrack{ animation: none !important; }
+}
+
 </style>
 </head>
 
@@ -1552,7 +1778,46 @@ body.menuOpen .toolsDock{ display:none !important; }
  </svg>
 
 
- <!-- FLOATING MENU (ALL NAV INSIDE) -->
+ 
+ <!-- TOP TRENDING BAR + SEARCH (Dex-style) -->
+ <div class="topBar" id="topBar">
+   <div class="topBarInner">
+     <div class="topRow">
+       <div class="hotBlock" aria-label="Hot trending live">
+         <div class="hotLabel" title="Live trending">
+           <svg class="hotFire" aria-hidden="true"><use href="#ico-fire"></use></svg>
+           <span>HOT TRENDING LIVE</span>
+         </div>
+       </div>
+
+       <div class="chainToggle" id="chainToggle" role="tablist" aria-label="Choose chain">
+         <button class="chainBtn active" type="button" data-net="solana" aria-pressed="true">SOL</button>
+         <button class="chainBtn" type="button" data-net="eth" aria-pressed="false">ETH</button>
+         <button class="chainBtn" type="button" data-net="bsc" aria-pressed="false">BNB</button>
+         <button class="chainBtn" type="button" data-net="base" aria-pressed="false">BASE</button>
+       </div>
+     </div>
+
+     <div class="bottomRow">
+       <div class="tickerWrap" aria-label="Trending tokens">
+         <div class="tickerTrack" id="trendTrack">
+           <span class="tickerItem" style="opacity:.75"><span class="rank">…</span><span class="sym">Loading trending…</span><span class="chain"></span></span>
+         </div>
+       </div>
+
+       <div class="dexSearch" role="search" aria-label="Search token by name or contract">
+         <div class="dexSearchInner">
+           <input class="dexInput" id="dexSearchInput" autocomplete="off" spellcheck="false" placeholder="Search token / paste contract…" />
+           <button class="btn ghost dexMiniBtn" id="dexSearchGo" type="button">Search</button>
+           <button class="btn ghost dexMiniBtn" id="dexSearchCopy" type="button" title="Scan (coming soon)">Scan</button>
+         </div>
+         <div class="dexResults" id="dexResults" hidden></div>
+       </div>
+     </div>
+   </div>
+ </div>
+
+<!-- FLOATING MENU (ALL NAV INSIDE) -->
  <div class="menuFloat" id="menuFloat">
  <div class="menu" id="menu">
  <button
@@ -2325,6 +2590,363 @@ function toggleMenu(){
 
  items.forEach(el => io.observe(el));
  })();
- </script>
+ 
+
+ // ===== DexScreener: Trending ticker + Search dropdown =====
+ (function(){
+   const $ = (sel, root=document) => root.querySelector(sel);
+   const trendTrack = $("#trendTrack");
+   const inEl = $("#dexSearchInput");
+   const resEl = $("#dexResults");
+   const btnGo = $("#dexSearchGo");
+   const btnCopy = $("#dexSearchCopy");
+
+   // Where to send users for the Contract Scanner.
+   // Your page already links to https://solanax1.com/contract, so we default to "/contract".
+   const SCANNER_PAGE = (window.SOS_SCANNER_URL && String(window.SOS_SCANNER_URL)) || (location.origin + "/new");
+
+   const NET_TO_DEX_CHAIN = { solana: "solana", eth: "ethereum", bsc: "bsc", base: "base" };
+   const DEX_TO_SCANNER_CHAIN = { solana: "sol", ethereum: "eth", bsc: "bnb", base: "base" };
+
+   function looksEvmAddress(x){
+     const s = String(x||"").trim();
+     return /^0x[a-fA-F0-9]{40}$/.test(s);
+   }
+   function looksSolAddress(x){
+     const s = String(x||"").trim();
+     // quick base58-ish (no 0,O,I,l) + typical length range
+     return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(s);
+   }
+   function looksAddressForNet(net, x){
+     if(net === "solana") return looksSolAddress(x);
+     if(net === "eth" || net === "bsc" || net === "base") return looksEvmAddress(x);
+     // fallback: accept either
+     return looksEvmAddress(x) || looksSolAddress(x);
+   }
+   function openScanner(addr, dexChainId){
+     const dc = String(dexChainId||"").toLowerCase();
+     const scannerChain = DEX_TO_SCANNER_CHAIN[dc] || DEX_TO_SCANNER_CHAIN[NET_TO_DEX_CHAIN[activeNet]||""] || "sol";
+     const url = `${SCANNER_PAGE}?chain=${encodeURIComponent(scannerChain)}&addr=${encodeURIComponent(String(addr||"").trim())}`;
+     window.location.href = url;
+   }
+
+   if(!trendTrack || !inEl || !resEl || !btnGo || !btnCopy) return;
+
+   // Keep body padding synced with the fixed top bar height (supports 2-row layout)
+   function syncTopBarHeight(){
+     const tb = document.getElementById('topBar');
+     if(!tb) return;
+     const h = Math.ceil(tb.getBoundingClientRect().height || 0);
+     document.documentElement.style.setProperty('--topBarTotal', h + 'px');
+   }
+   let _tbTmr = null;
+   window.addEventListener('resize', ()=>{
+     clearTimeout(_tbTmr);
+     _tbTmr = setTimeout(syncTopBarHeight, 120);
+   });
+   // initial
+   syncTopBarHeight();
+
+
+   // Chain toggle events
+   const toggleEl = document.getElementById('chainToggle');
+   if(toggleEl){
+     toggleEl.addEventListener('click', (e)=>{
+       const btn = e.target.closest('.chainBtn');
+       if(!btn) return;
+       const net = btn.getAttribute('data-net');
+       setActiveNet(net);
+     });
+   }
+
+   const esc = (s="") => String(s)
+     .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+     .replace(/"/g,"&quot;").replace(/'/g,"&#39;");
+
+   const shortAddr = (a="") => a && a.length > 12 ? (a.slice(0,6)+"…"+a.slice(-4)) : a;
+
+   function toast(msg){
+     // lightweight reuse of status if exists, otherwise subtle title flash
+     try{
+       document.title = msg;
+       setTimeout(()=>{ document.title = document.title.replace(msg,"").trim() || "$SOS — Solana on Solana"; }, 700);
+     }catch(e){}
+   }
+
+   async function safeJson(url){
+     const r = await fetch(url, {cache:"no-store"});
+     if(!r.ok) throw new Error("HTTP "+r.status);
+     return await r.json();
+   }
+
+   async function fetchTokenSymbol(chainId, tokenAddress){
+     // Use token-pairs endpoint to infer baseToken symbol/name
+     try{
+       const pairs = await safeJson(`https://api.dexscreener.com/token-pairs/v1/${encodeURIComponent(chainId)}/${encodeURIComponent(tokenAddress)}`);
+       const p = Array.isArray(pairs) ? pairs[0] : null;
+       const sym = p?.baseToken?.symbol || p?.baseToken?.name || "";
+       const name = p?.baseToken?.name || "";
+       return { sym, name, pairUrl: p?.url || "", pairAddress: p?.pairAddress || "" };
+     }catch(e){
+       return { sym:"", name:"", pairUrl:"", pairAddress:"" };
+     }
+   }
+
+   const NETWORKS = {
+     solana: { label: 'SOL' },
+     eth: { label: 'ETH' },
+     bsc: { label: 'BNB' },
+     base: { label: 'BASE' }
+   };
+
+   let activeNet = 'solana';
+   let trendTimer = null;
+
+   async function loadTrending(net){
+     try{
+       const url = `https://api.geckoterminal.com/api/v2/networks/${encodeURIComponent(net)}/trending_pools`;
+       const data = await safeJson(url);
+       const pools = Array.isArray(data?.data) ? data.data.slice(0,10) : [];
+       const included = Array.isArray(data?.included) ? data.included : [];
+
+       const byId = new Map();
+       for(const inc of included){
+         if(inc && inc.id) byId.set(String(inc.id), inc);
+       }
+
+       if(!pools.length) throw new Error('No data');
+
+       const items = pools.map((pool, n) => {
+         const a = pool?.attributes || {};
+         const rel = pool?.relationships || {};
+         const baseId = rel?.base_token?.data?.id ? String(rel.base_token.data.id) : '';
+         const base = baseId ? (byId.get(baseId)?.attributes || {}) : {};
+         const sym = (base?.symbol || base?.name || '').trim() || (a?.name ? String(a.name).split('/')[0].trim() : '') || 'TOKEN';
+         const addr = (a?.address || '').trim();
+         const href = addr ? `https://www.geckoterminal.com/${encodeURIComponent(net)}/pools/${encodeURIComponent(addr)}` : '#';
+         return `<a class="tickerItem" href="${esc(href)}" target="_blank" rel="noreferrer">
+           <span class="rank">#${n+1}</span>
+           <span class="sym">${esc(sym)}</span>
+           <span class="chain">${esc((NETWORKS[net]?.label||net).toUpperCase())}</span>
+         </a>`;
+       }).join('');
+
+       trendTrack.innerHTML = items + items;
+
+       // ensure layout/padding stays correct if fonts wrap
+       try{ syncTopBarHeight && syncTopBarHeight(); }catch(_e){}
+     }catch(e){
+       trendTrack.innerHTML = `<span class="tickerItem" style="opacity:.75"><span class="rank">!</span><span class="sym">Trending unavailable</span><span class="chain">${esc(net)}</span></span>`;
+       try{ syncTopBarHeight && syncTopBarHeight(); }catch(_e){}
+     }
+   }
+
+   function setActiveNet(net){
+     if(!net || !NETWORKS[net]) net = 'solana';
+     activeNet = net;
+
+     // buttons
+     const wrap = document.getElementById('chainToggle');
+     if(wrap){
+       wrap.querySelectorAll('.chainBtn').forEach(b=>{
+         const on = (b.getAttribute('data-net') === net);
+         b.classList.toggle('active', on);
+         b.setAttribute('aria-pressed', on ? 'true' : 'false');
+       });
+     }
+
+     // load now + refresh
+     clearInterval(trendTimer);
+     loadTrending(net);
+     trendTimer = setInterval(()=>loadTrending(net), 30000);
+   }
+
+
+   // Start with Solana trending
+   setActiveNet('solana');
+
+
+   // Search dropdown
+   let tmr = null;
+   let lastQ = "";
+   async function runSearch(q){
+     q = (q || "").trim();
+     lastQ = q;
+     if(!q){
+       resEl.hidden = true;
+       resEl.innerHTML = "";
+       resEl.dataset.bestCa = "";
+       resEl.dataset.bestChain = "";
+       return;
+     }
+     try{
+       const data = await safeJson(`https://api.dexscreener.com/latest/dex/search?q=${encodeURIComponent(q)}`);
+       const pairs = data?.pairs || [];
+       const top = pairs.slice(0, 10);
+
+       if(!top.length){
+         resEl.innerHTML = `<div class="dexResRow" style="opacity:.75"><div class="dexResLeft">
+           <div class="dexResTitle">No results</div>
+           <div class="dexResMeta">Try symbol, name, or paste a contract.</div>
+         </div></div>`;
+         resEl.hidden = false;
+         resEl.dataset.bestCa = "";
+         resEl.dataset.bestChain = "";
+         return;
+       }
+
+       // store a "best" candidate for the top-right Scan button
+       const want = (NET_TO_DEX_CHAIN[activeNet] || "solana").toLowerCase();
+       const best = top.find(p => String(p?.chainId||"").toLowerCase() === want) || top[0];
+       resEl.dataset.bestCa = best?.baseToken?.address || "";
+       resEl.dataset.bestChain = best?.chainId || "";
+
+       resEl.innerHTML = top.map(p=>{
+         const chain = (p.chainId || "").toUpperCase();
+         const dex = (p.dexId || "").toUpperCase();
+         const baseSym = p.baseToken?.symbol || "TOKEN";
+         const quoteSym = p.quoteToken?.symbol || "";
+         const title = quoteSym ? `${baseSym}/${quoteSym}` : `${baseSym}`;
+         const price = p.priceUsd ? `$${Number(p.priceUsd).toLocaleString(undefined,{maximumFractionDigits:6})}` : "—";
+         const ch24 = p.priceChange?.h24;
+         const chTxt = (typeof ch24 === "number") ? `${ch24>0?"+":""}${ch24.toFixed(2)}%` : "—";
+         const liq = p.liquidity?.usd ? `$${Number(p.liquidity.usd).toLocaleString(undefined,{maximumFractionDigits:0})}` : "—";
+         const ca = p.baseToken?.address || "";
+
+         const href = p.url || `https://dexscreener.com/${p.chainId}/${p.pairAddress || ""}`;
+         return `<div class="dexResRow">
+           <div class="dexResLeft">
+             <div class="dexResTitle">${esc(title)}</div>
+             <div class="dexResMeta">
+               <span class="dexPill">${esc(chain)}</span>
+               <span class="dexPill">${esc(dex || "DEX")}</span>
+               <span class="dexPill">Price ${esc(price)}</span>
+               <span class="dexPill">24h ${esc(chTxt)}</span>
+               <span class="dexPill">Liq ${esc(liq)}</span>
+               <span class="dexPill" title="${esc(ca)}">CA ${esc(shortAddr(ca))}</span>
+             </div>
+           </div>
+           <div class="dexResActions">
+             <button class="btn ghost dexMiniBtn" type="button" data-copy="${esc(ca)}">Copy CA</button>
+             <a class="btn ghost dexMiniBtn dexA" href="${esc(href)}" target="_blank" rel="noreferrer">Chart</a>
+            <button class="btn grad dexMiniBtn" type="button" data-scan="${esc(ca)}" data-chain="${esc(p.chainId || '')}">Scanner</button>
+           </div>
+         </div>`;
+       }).join("");
+
+       resEl.hidden = false;
+     }catch(e){
+       resEl.innerHTML = `<div class="dexResRow" style="opacity:.75"><div class="dexResLeft">
+         <div class="dexResTitle">Search error</div>
+         <div class="dexResMeta">DexScreener may be rate-limiting. Try again.</div>
+       </div></div>`;
+       resEl.hidden = false;
+     }
+   }
+
+   inEl.addEventListener("input", () => {
+     const q = inEl.value;
+     clearTimeout(tmr);
+     tmr = setTimeout(()=> runSearch(q), 250);
+   });
+
+   btnGo.addEventListener("click", () => {
+     const q = (inEl.value || "").trim();
+     if(!q) return;
+     // open DexScreener search page in new tab (always works)
+     window.open(`https://dexscreener.com/search?q=${encodeURIComponent(q)}`, "_blank", "noopener");
+   });
+
+   btnCopy.addEventListener("click", () => {
+     // Scan: redirects to the Contract Scanner and auto-runs with the selected CA.
+     // If user typed a real CA, we use it. Otherwise we use the best dropdown match.
+     (async () => {
+       const q = (inEl.value || "").trim();
+       if(!q) return;
+
+       // 1) If input already looks like a CA for the active network, use it.
+       if(looksAddressForNet(activeNet, q) || looksEvmAddress(q) || looksSolAddress(q)){
+         openScanner(q, NET_TO_DEX_CHAIN[activeNet] || "solana");
+         return;
+       }
+
+       // 2) If dropdown already has a best candidate, use it.
+       const bestCa = (resEl.dataset.bestCa || "").trim();
+       const bestChain = (resEl.dataset.bestChain || "").trim();
+       if(bestCa){
+         openScanner(bestCa, bestChain || (NET_TO_DEX_CHAIN[activeNet] || "solana"));
+         return;
+       }
+
+       // 3) Fallback: query DexScreener once and pick a best result.
+       try{
+         const data = await safeJson(`https://api.dexscreener.com/latest/dex/search?q=${encodeURIComponent(q)}`);
+         const pairs = Array.isArray(data?.pairs) ? data.pairs : [];
+         const want = (NET_TO_DEX_CHAIN[activeNet] || "solana").toLowerCase();
+         const pick = pairs.find(p => String(p?.chainId||"").toLowerCase() === want) || pairs[0];
+         const ca = pick?.baseToken?.address || "";
+         if(ca){
+           openScanner(ca, pick?.chainId || want);
+           return;
+         }
+       }catch(_e){}
+
+       toast("No scan target");
+     })();
+   });
+
+   // action buttons in dropdown (copy + scanner)
+   resEl.addEventListener("click", async (e) => {
+     const copyBtn = e.target.closest("button[data-copy]");
+     if(copyBtn){
+       const val = copyBtn.getAttribute("data-copy") || "";
+       if(!val) return;
+       try{
+         await navigator.clipboard.writeText(val);
+         copyBtn.textContent = "Copied";
+         setTimeout(()=> copyBtn.textContent="Copy CA", 900);
+       }catch(err){
+         copyBtn.textContent = "Error";
+         setTimeout(()=> copyBtn.textContent="Copy CA", 900);
+       }
+       return;
+     }
+
+     const scanBtn = e.target.closest("button[data-scan]");
+     if(scanBtn){
+       const ca = scanBtn.getAttribute("data-scan") || "";
+       const chainId = scanBtn.getAttribute("data-chain") || "";
+       if(!ca) return;
+       openScanner(ca, chainId);
+       return;
+     }
+   });
+
+   // close dropdown when clicking outside
+   document.addEventListener("click", (e) => {
+     const inside = e.target.closest(".dexSearch");
+     if(!inside && !resEl.hidden){
+       resEl.hidden = true;
+     }
+   });
+
+   // keyboard: Enter triggers go
+   inEl.addEventListener("keydown", (e) => {
+     if(e.key === "Enter"){
+       e.preventDefault();
+       btnGo.click();
+     }
+     if(e.key === "Escape"){
+       resEl.hidden = true;
+     }
+   });
+
+   // initial load + refresh every 90s
+   loadTrending();
+   setInterval(loadTrending, 90000);
+ })();
+
+
+</script>
 </body>
 </html>
