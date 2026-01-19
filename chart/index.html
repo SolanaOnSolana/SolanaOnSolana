@@ -394,15 +394,28 @@
     const qs = new URLSearchParams(location.search);
     const SCANNER_PAGE = (window.SOS_SCANNER_URL && String(window.SOS_SCANNER_URL)) || (location.origin + "/new");
 
+    // Network labels + API slug mapping
+    const NET_LABEL = { solana:'SOL', eth:'ETH', bsc:'BNB', base:'BASE' };
+    const NET_GECKO = { solana:'solana', eth:'ethereum', bsc:'bsc', base:'base' };
+    const DEFAULT_TOKEN = {
+      solana:'So11111111111111111111111111111111111111112',
+      eth:'0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
+      bsc:'0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c',
+      base:'0x4200000000000000000000000000000000000006'
+    };
+    const geckoNet = (n)=> NET_GECKO[n] || n;
+
+
     const rawChain = (qs.get('chain') || qs.get('net') || 'solana').trim();
     let addr = (qs.get('addr') || qs.get('address') || qs.get('ca') || '').trim();
 
     function normalizeChain(x){
-      const s = String(x||'').toLowerCase().trim();
-      if(['sol','solana'].includes(s)) return 'solana';
-      if(['eth','ethereum'].includes(s)) return 'eth';
-      if(['bnb','bsc','binance','binancesmartchain'].includes(s)) return 'bsc';
-      if(['base'].includes(s)) return 'base';
+      x = (x||'').toLowerCase().trim();
+      if(!x) return 'solana';
+      if(x==='sol' || x==='solana') return 'solana';
+      if(x==='eth' || x==='ethereum') return 'eth';
+      if(x==='bnb' || x==='bsc') return 'bsc';
+      if(x==='base') return 'base';
       return 'solana';
     }
 
@@ -570,9 +583,8 @@
         [...netPills.children].forEach(x=>x.classList.toggle('active', x.dataset.net===activeNet));
         // refresh trending + if address exists, reload chart on same addr
         startTrending(activeNet);
-        if(addr){
-          navigateTo(activeNet, addr);
-        }
+        addr = DEFAULT_TOKEN[activeNet] || addr || '';
+        navigateTo(activeNet, addr);
       };
       netPills.appendChild(b);
     });
@@ -691,7 +703,7 @@
     };
 
     function syncLinks(){
-      btnScanner.href = `${SCANNER_PAGE}?chain=${encodeURIComponent(activeNet.toUpperCase())}&addr=${encodeURIComponent(addr||'')}`;
+      btnScanner.href = `${SCANNER_PAGE}?chain=${encodeURIComponent(NET_LABEL[activeNet]||activeNet.toUpperCase())}&addr=${encodeURIComponent(addr||'')}`;
       btnBuy.href = buildBuyUrl(activeNet, addr);
     }
 
@@ -769,7 +781,7 @@
       }catch(e){ /* ignore */ }
 
       try{
-        const url = `https://api.geckoterminal.com/api/v2/networks/${encodeURIComponent(net)}/trending_pools?include=base_token,quote_token&page=1`;
+        const url = `https://api.geckoterminal.com/api/v2/networks/${encodeURIComponent(geckoNet(net))}/trending_pools?include=base_token,quote_token&page=1`;
         const j = await safeJson(url);
         const pools = j?.data || [];
         const inc = j?.included || [];
@@ -965,7 +977,7 @@
 
     async function resolveBestPool(net, tokenAddr){
       // Get pools list
-      const url = `https://api.geckoterminal.com/api/v2/networks/${encodeURIComponent(net)}/tokens/${encodeURIComponent(tokenAddr)}/pools?page=1`;
+      const url = `https://api.geckoterminal.com/api/v2/networks/${encodeURIComponent(geckoNet(net))}/tokens/${encodeURIComponent(tokenAddr)}/pools?page=1`;
       const j = await safeJson(url);
       const pools = (j?.data || []).slice(0, 15);
       if(!pools.length) return { best:null, pools:[] };
@@ -990,7 +1002,7 @@
 
 
     async function getPool(net, poolAddr){
-      const url = `https://api.geckoterminal.com/api/v2/networks/${encodeURIComponent(net)}/pools/${encodeURIComponent(poolAddr)}?include=base_token,quote_token`;
+      const url = `https://api.geckoterminal.com/api/v2/networks/${encodeURIComponent(geckoNet(net))}/pools/${encodeURIComponent(poolAddr)}?include=base_token,quote_token`;
       return await safeJson(url);
     }
 
@@ -1011,7 +1023,7 @@
       while(out.length < points && guard < 10){
         guard++;
         const need = Math.min(maxPer, points - out.length);
-        const url = `https://api.geckoterminal.com/api/v2/networks/${encodeURIComponent(net)}/pools/${encodeURIComponent(poolAddr)}/ohlcv/${encodeURIComponent(tf.tf)}?aggregate=${tf.agg}&before_timestamp=${before}&limit=${need}&currency=usd&token=base`;
+        const url = `https://api.geckoterminal.com/api/v2/networks/${encodeURIComponent(geckoNet(net))}/pools/${encodeURIComponent(poolAddr)}/ohlcv/${encodeURIComponent(tf.tf)}?aggregate=${tf.agg}&before_timestamp=${before}&limit=${need}&currency=usd&token=base`;
         const j = await safeJson(url);
         const arr = j?.data?.attributes?.ohlcv_list || [];
         if(!arr.length) break;
@@ -1096,7 +1108,7 @@
     async function loadTrades(full){
       if(!poolAddress) return;
       try{
-        const url = `https://api.geckoterminal.com/api/v2/networks/${encodeURIComponent(activeNet)}/pools/${encodeURIComponent(poolAddress)}/trades?limit=80`;
+        const url = `https://api.geckoterminal.com/api/v2/networks/${encodeURIComponent(geckoNet(activeNet))}/pools/${encodeURIComponent(poolAddress)}/trades?limit=80`;
         const j = await safeJson(url);
         const rows = (j?.data || []).map(x=>({id:x?.id || (x?.attributes?.tx_hash||''), a:x?.attributes||{}})).filter(x=>x.id);
         if(!rows.length){
@@ -1243,63 +1255,22 @@
     // -------------------- Init
     activeNet = normalizeChain(rawChain);
     addr = addr.trim();
+
+    // Default: always show the real native chart for the selected chain on first visit
+    if(!addr){
+      addr = DEFAULT_TOKEN[activeNet] || DEFAULT_TOKEN.solana;
+      try{
+        const u = new URL(location.href);
+        u.pathname = '/chart';
+        u.searchParams.set('chain', activeNet);
+        u.searchParams.set('addr', addr);
+        history.replaceState({}, '', u.toString());
+      }catch(e){}
+    }
+
     syncLinks();
     startTrending(activeNet);
-
-    // If no addr is provided, auto-load SOL (top trending) so /chart always shows something on first visit.
-    if(!addr){
-      activeNet = 'solana';
-      syncLinks();
-      startTrending(activeNet);
-      pairNameEl.textContent = 'Loading…';
-      pairMetaEl.textContent = 'SOLANA • trending';
-      statusEl.textContent = 'Loading…';
-      tradesEl.innerHTML = emptyTrades('Loading…');
-
-      (async()=>{
-        try{
-          // Use cache first (instant), then network.
-          let pick = (lastTrending && lastTrending[0] && lastTrending[0].addr) ? lastTrending[0].addr : '';
-          if(!pick){
-            try{
-              const cached = JSON.parse(localStorage.getItem(trendCacheKey(activeNet)) || 'null');
-              if(cached && Array.isArray(cached.items) && cached.items.length) pick = cached.items[0].addr || '';
-            }catch(e){}
-          }
-          if(!pick){
-            // force one fetch
-            await loadTrending(activeNet, true);
-            pick = (lastTrending && lastTrending[0] && lastTrending[0].addr) ? lastTrending[0].addr : '';
-          }
-          if(!pick){
-            statusEl.textContent = 'Not found';
-            pairNameEl.textContent = 'Not found';
-            pairMetaEl.textContent = 'SOLANA';
-            tradesEl.innerHTML = emptyTrades('Not found');
-            return;
-          }
-          addr = String(pick).trim();
-          // Update URL without a hard reload
-          try{
-            const u = new URL(location.href);
-            u.pathname = '/chart';
-            u.searchParams.set('chain', activeNet);
-            u.searchParams.set('addr', addr);
-            history.replaceState({}, '', u.toString());
-          }catch(e){}
-          syncLinks();
-          boot();
-        }catch(e){
-          statusEl.textContent = 'Not found';
-          pairNameEl.textContent = 'Not found';
-          pairMetaEl.textContent = 'SOLANA';
-          tradesEl.innerHTML = emptyTrades('Not found');
-        }
-      })();
-
-    } else {
-      boot();
-    }
+    boot();
 
     async function boot(){
       try{
