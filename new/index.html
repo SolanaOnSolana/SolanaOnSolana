@@ -4292,6 +4292,8 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
     for(let k=0;k<uniq.length;k++){
       const addr = uniq[k];
 
+      const h = rawByAddr.get(addr) || null;
+
       let balBI = null;
       if(onchainBalances && k < onchainBalances.length){
         balBI = onchainBalances[k];
@@ -4299,7 +4301,6 @@ async function evmTokenTransfersSample(chainId, tokenAddr, maxEvents=1200){
 
       // Fallback to indexer-provided balance when on-chain balanceOf isn't available
       if(balBI === null){
-        const h = rawByAddr.get(addr) || null;
         const balPick = (h?.token_balance_wei ?? h?.balance_wei ?? h?.token_balance_raw ?? h?.balance_raw ?? h?.raw_token_balance ?? h?.raw_balance ?? h?.token_balance ?? h?.balance ?? null);
         balBI = safeBigIntFromStr(balPick);
       }
