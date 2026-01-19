@@ -1809,7 +1809,7 @@ body{ padding-top: var(--topBarTotal); }
          <div class="dexSearchInner">
            <input class="dexInput" id="dexSearchInput" autocomplete="off" spellcheck="false" placeholder="Search token / paste contract…" />
            <button class="btn ghost dexMiniBtn" id="dexSearchGo" type="button">Search</button>
-           <button class="btn ghost dexMiniBtn" id="dexSearchCopy" type="button" title="Copy input">Copy</button>
+           <button class="btn ghost dexMiniBtn" id="dexSearchCopy" type="button" title="Scan (coming soon)">Scan</button>
          </div>
          <div class="dexResults" id="dexResults" hidden></div>
        </div>
@@ -2788,8 +2788,9 @@ function toggleMenu(){
              </div>
            </div>
            <div class="dexResActions">
-             <button class="btn ghost dexMiniBtn" type="button" data-copy="${esc(ca)}">Copy</button>
-             <a class="btn grad dexMiniBtn dexA" href="${esc(href)}" target="_blank" rel="noreferrer">Open</a>
+             <button class="btn ghost dexMiniBtn" type="button" data-copy="${esc(ca)}">Copy CA</button>
+             <a class="btn ghost dexMiniBtn dexA" href="${esc(href)}" target="_blank" rel="noreferrer">Chart</a>
+             <button class="btn grad dexMiniBtn" type="button" data-scan="${esc(ca)}">Scanner</button>
            </div>
          </div>`;
        }).join("");
@@ -2817,38 +2818,43 @@ function toggleMenu(){
      window.open(`https://dexscreener.com/search?q=${encodeURIComponent(q)}`, "_blank", "noopener");
    });
 
-   btnCopy.addEventListener("click", async () => {
+   btnCopy.addEventListener("click", () => {
      const q = (inEl.value || "").trim();
      if(!q) return;
      try{
-       await navigator.clipboard.writeText(q);
-       toast("Copied");
-     }catch(e){
-       // fallback
-       const ta = document.createElement("textarea");
-       ta.value = q;
-       ta.style.position = "fixed";
-       ta.style.opacity = "0";
-       document.body.appendChild(ta);
-       ta.focus(); ta.select();
-       try{ document.execCommand("copy"); toast("Copied"); }catch(_e){}
-       ta.remove();
-     }
+       localStorage.setItem("sos_pending_scan", JSON.stringify({ q, ts: Date.now() }));
+     }catch(_e){}
+     toast("Scanner coming soon");
    });
 
-   // copy buttons in dropdown
+   // action buttons in dropdown (copy + scanner)
    resEl.addEventListener("click", async (e) => {
-     const btn = e.target.closest("button[data-copy]");
-     if(!btn) return;
-     const val = btn.getAttribute("data-copy") || "";
-     if(!val) return;
-     try{
-       await navigator.clipboard.writeText(val);
-       btn.textContent = "Copied";
-       setTimeout(()=> btn.textContent="Copy", 900);
-     }catch(err){
-       btn.textContent = "Error";
-       setTimeout(()=> btn.textContent="Copy", 900);
+     const copyBtn = e.target.closest("button[data-copy]");
+     if(copyBtn){
+       const val = copyBtn.getAttribute("data-copy") || "";
+       if(!val) return;
+       try{
+         await navigator.clipboard.writeText(val);
+         copyBtn.textContent = "Copied";
+         setTimeout(()=> copyBtn.textContent="Copy CA", 900);
+       }catch(err){
+         copyBtn.textContent = "Error";
+         setTimeout(()=> copyBtn.textContent="Copy CA", 900);
+       }
+       return;
+     }
+
+     const scanBtn = e.target.closest("button[data-scan]");
+     if(scanBtn){
+       const ca = scanBtn.getAttribute("data-scan") || "";
+       if(!ca) return;
+       try{
+         localStorage.setItem("sos_pending_scan", JSON.stringify({ ca, ts: Date.now() }));
+       }catch(_e){}
+       scanBtn.textContent = "Queued";
+       setTimeout(()=> scanBtn.textContent="Scanner", 900);
+       toast("Scanner coming soon");
+       return;
      }
    });
 
