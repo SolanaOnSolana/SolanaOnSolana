@@ -57,7 +57,7 @@
 a{color:inherit; text-decoration:none}
     button,input,select{font:inherit}
 
-    .wrap{max-width:var(--max); margin:0 auto; padding:18px 16px 28px}
+    .wrap{max-width:var(--max); margin:0 auto; padding:104px 16px 28px}
 
     .topbar{
       display:flex; align-items:center; justify-content:space-between;
@@ -68,7 +68,7 @@ a{color:inherit; text-decoration:none}
       border-radius: 26px;
       box-shadow: var(--shadow);
       backdrop-filter: var(--glass);
-      position:sticky; top:10px; z-index:20;
+      position:fixed; top:12px; left:50%; transform:translateX(-50%); width:min(var(--max), calc(100% - 24px)); z-index:2000;
     }
 
     
@@ -956,6 +956,7 @@ display:none;
     const DS = 'https://api.dexscreener.com/latest/dex';
 
     const NET_LABEL = { solana:'SOL', eth:'ETH', bsc:'BNB', base:'BASE' };
+    const CHAIN_TAG = { solana:'Sol', eth:'Eth', bsc:'Bnb', base:'Base' };
     const NET_DS = { solana:'solana', eth:'ethereum', bsc:'bsc', base:'base' };
     const NET_GECKO = { solana:'solana', eth:'eth', bsc:'bsc', base:'base' };
 
@@ -1625,10 +1626,12 @@ display:none;
       curTokenSymbol = sym;
       curQuoteSymbol = quote;
 
-      pairNameEl.textContent = quote ? `$${sym}/${quote}` : `$${sym}`;
+      const symClean = String(sym||'TOKEN').replace(/^\$/,'');
+      const chainTag = CHAIN_TAG[activeNet] || (NET_LABEL[activeNet]||'');
+      pairNameEl.textContent = chainTag ? `$${symClean}/${chainTag}` : `$${symClean}`;
       pairMetaEl.textContent = `${NET_LABEL[activeNet]} • ${shortAddr(addr)} • Native chart + live trades`;
 
-      const img = meta?.image || '';
+      const img = meta?.image || meta?.logo || meta?.icon || meta?.imageUrl || '';
       if(img){
         tokenLogo.innerHTML = `<img src="${esc(img)}" alt="" referrerpolicy="no-referrer" onerror="this.remove(); this.parentNode.innerHTML='<span class=\"fb\">${esc(sym.slice(0,1).toUpperCase())}</span>';" />`;
       }else{
@@ -1660,7 +1663,8 @@ display:none;
       const quoteSym = tokenSymFromPool(p,'quote') || '';
       const sym = tokenSide==='base' ? baseSym : (quoteSym || baseSym || 'TOKEN');
       const quoteShown = tokenSide==='base' ? quoteSym : baseSym;
-      const img = tokenSide==='base' ? tokenImgFromPool(p,'base') : tokenImgFromPool(p,'quote');
+      let img = tokenSide==='base' ? tokenImgFromPool(p,'base') : tokenImgFromPool(p,'quote');
+      if(!img){ img = tokenImgFromPool(p, tokenSide==='base' ? 'quote' : 'base'); }
       applyTokenHeader({symbol: sym, quoteSymbol: quoteShown, image: img});
 
       // initial stats best-effort (pick correct side price)
