@@ -1559,6 +1559,75 @@ body{ padding-top: 0; }
 }
 .hotFire{ width: 18px; height: 18px; opacity: .95; }
 
+/* Dexguard button (matches the style from your reference) */
+.dexguardBtn{
+  display:inline-flex;
+  align-items:center;
+  gap:12px;
+  padding: 9px 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.12);
+  background:
+    radial-gradient(140% 120% at 0% 0%, rgba(0,209,255,.18), rgba(0,209,255,0) 55%),
+    radial-gradient(140% 120% at 100% 100%, rgba(153,69,255,.18), rgba(153,69,255,0) 55%),
+    rgba(8,18,40,.50);
+  box-shadow: 0 12px 34px rgba(0,0,0,.28);
+  color: rgba(255,255,255,.92);
+  font-weight: 1050;
+  cursor:pointer;
+  user-select:none;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform .15s ease, background .15s ease, border-color .15s ease, box-shadow .15s ease;
+}
+.dexguardBtn:hover{
+  transform: translateY(-1px);
+  border-color: rgba(255,255,255,.18);
+  background:
+    radial-gradient(140% 120% at 0% 0%, rgba(0,209,255,.22), rgba(0,209,255,0) 60%),
+    radial-gradient(140% 120% at 100% 100%, rgba(153,69,255,.22), rgba(153,69,255,0) 60%),
+    rgba(8,18,40,.62);
+  box-shadow: 0 16px 46px rgba(0,0,0,.36);
+}
+.dexguardBtn:active{ transform: translateY(0px) scale(.995); }
+
+.dexguardChip{
+  position: relative;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding: 7px 14px;
+  border-radius: 999px;
+  background: rgba(3,12,24,.65);
+  border: 1px solid rgba(255,255,255,.10);
+  font-weight: 1100;
+  letter-spacing: .28em;
+  font-size: 13px;
+  color: rgba(255,255,255,.96);
+}
+.dexguardChip::before{
+  content:"";
+  position:absolute;
+  inset:-2px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(20,241,149,.88), rgba(0,209,255,.88), rgba(153,69,255,.88));
+  z-index:-1;
+  opacity:.9;
+}
+
+.dexguardText{
+  font-weight: 1050;
+  letter-spacing: -.2px;
+  font-size: 20px;
+  line-height: 1;
+}
+
+@media (max-width: 520px){
+  .dexguardText{ font-size: 18px; }
+  .dexguardBtn{ padding: 9px 14px; gap: 10px; }
+  .dexguardChip{ padding: 7px 12px; }
+}
+
+
 .chainToggle{
   display:inline-flex;
   align-items:center;
@@ -2152,8 +2221,13 @@ body.net-base .chainBtn.active{ background: linear-gradient(90deg, rgba(0,82,255
        <div class="hotBlock" aria-label="Hot trending live">
          <div class="hotLabel" title="Live trending">
            <svg class="hotFire" aria-hidden="true"><use href="#ico-fire"></use></svg>
-           <span>HOT TRENDING LIVE</span>
+           <span>LIVE TRENDING</span>
          </div>
+
+         <button class="dexguardBtn" id="dexguardBtn" type="button" aria-label="Dexguard">
+           <span class="dexguardChip" aria-hidden="true">DEX</span>
+           <span class="dexguardText">Dexguard</span>
+         </button>
        </div>
 
        <div class="chainToggle" id="chainToggle" role="tablist" aria-label="Choose chain">
@@ -3040,6 +3114,20 @@ function toggleMenu(){
        setTimeout(()=>{ document.title = document.title.replace(msg,"").trim() || "$SOS — Solana on Solana"; }, 700);
      }catch(e){}
    }
+
+   // Dexguard button (optional URL override: window.DEXGUARD_URL)
+   const dexguardBtn = $("#dexguardBtn");
+   if(dexguardBtn){
+     dexguardBtn.addEventListener('click', ()=>{
+       const url = (window.DEXGUARD_URL && String(window.DEXGUARD_URL).trim()) || "";
+       if(url){
+         window.open(url, '_blank', 'noopener');
+       }else{
+         toast('Dexguard coming soon');
+       }
+     });
+   }
+
 
   async function safeJson(url, opts={}){
     const timeoutMs = Number(opts.timeoutMs ?? 12000);
