@@ -119,64 +119,76 @@
       overflow:hidden;
     }
 
-    .tickerHd{
-      display:flex; align-items:center; justify-content:space-between;
-      gap:10px;
-      padding:14px 16px;
-      border-bottom:1px solid rgba(255,255,255,.08);
-    }
-    .tickerHd .left{display:flex; align-items:center; gap:10px}
-    .tag{
-      display:inline-flex; align-items:center; gap:8px;
-      padding:8px 12px;
-      border-radius:999px;
-      border:1px solid rgba(153,69,255,.35);
-      background: rgba(153,69,255,.14);
-      font-weight:800;
-    }
-    .tag small{font-weight:700; color: var(--muted)}
+    /* --- Trending ticker (match main site) --- */
+    :root{ --netColor:#9945FF; --netGlow: rgba(153,69,255,.26); --tickerSpeed: 36s; }
+    body.net-sol{ --netColor:#9945FF; --netGlow: rgba(153,69,255,.26); }
+    body.net-eth{ --netColor:#00D1FF; --netGlow: rgba(0,209,255,.22); }
+    body.net-bnb{ --netColor:#f3ba2f; --netGlow: rgba(243,186,47,.22); }
+    body.net-base{ --netColor:#2d6cff; --netGlow: rgba(45,108,255,.22); }
 
-    .ticker{
-      position:relative;
-      overflow:hidden;
-      padding:10px 0 12px;
-      border-top:1px solid rgba(255,255,255,.06);
-    }
-    .tickerTrack{
-      display:flex; gap:12px;
-      width:max-content;
-      animation: marquee 26s linear infinite;
-      padding: 0 14px;
-    }
-    @keyframes marquee{
-      from{transform: translateX(0)}
-      to{transform: translateX(-50%)}
-    }
+    .tickerHd{ padding:14px 16px; border-bottom:1px solid rgba(255,255,255,.08); }
+    .topRow{ display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
 
-    .chip{
-      display:inline-flex; align-items:center; gap:8px;
-      padding:10px 12px;
-      border-radius:999px;
-      border:1px solid rgba(255,255,255,.10);
-      background: rgba(255,255,255,.05);
-      white-space:nowrap;
-      cursor:pointer;
+    .hotBlock{ display:flex; align-items:center; gap:10px; }
+    
+    .hotBlock{ display:flex; align-items:center; gap:10px; }
+    .hotIcon{ width:34px; height:34px; border-radius:12px; display:grid; place-items:center;
+      background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.04));
+      border:1px solid rgba(255,255,255,.12);
+      box-shadow: 0 10px 30px rgba(0,0,0,.25), 0 0 0 1px rgba(255,255,255,.04) inset;
+    }
+    .hotTitle{ font-weight: 900; letter-spacing:-.02em; display:flex; align-items:center; gap:8px; }
+    .autoPill{ font-size:12px; font-weight:900; padding:4px 10px; border-radius:999px;
+      border:1px solid rgba(255,255,255,.14); background: rgba(0,0,0,.15); color: rgba(255,255,255,.72);
+    }
+    .hotSub{ font-size:13px; color: rgba(255,255,255,.68); }
+
+    .chainToggle{ display:flex; align-items:center; gap:8px; padding:6px; border-radius:999px;
+      background: rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.10);
+    }
+    .chainBtn{ border:1px solid rgba(255,255,255,.12); background: rgba(0,0,0,.12); color: rgba(255,255,255,.82);
+      padding:8px 12px; border-radius:999px; font-weight:900; cursor:pointer; transition: transform var(--t), background var(--t), border-color var(--t);
+      display:flex; align-items:center; gap:8px;
+    }
+    .chainBtn .dot{ width:10px; height:10px; border-radius:50%; background: rgba(255,255,255,.20); box-shadow: inset 0 0 0 1px rgba(255,255,255,.12); }
+    .chainBtn:hover{ transform: translateY(-1px); background: rgba(255,255,255,.07); }
+    .chainBtn.active{ border-color: color-mix(in oklab, var(--netColor) 55%, rgba(255,255,255,.12));
+      background: color-mix(in oklab, var(--netGlow) 55%, rgba(0,0,0,.18));
+      box-shadow: 0 0 0 1px rgba(255,255,255,.05) inset;
+    }
+    .chainBtn.active .dot{ background: var(--netColor); }
+
+    .clockWrap{ margin-left:auto; }
+
+    .tickerWrap{ position:relative; overflow:hidden; padding:10px 0 12px; border-top:1px solid rgba(255,255,255,.06); }
+    .tickerTrack{ display:flex; gap:12px; width:max-content; padding: 0 14px; animation: marquee var(--tickerSpeed) linear infinite; }
+    @keyframes marquee{ from{transform: translateX(0)} to{transform: translateX(-50%)} }
+
+    .tickerItem{ display:inline-flex; align-items:center; gap:10px; padding:10px 12px; border-radius:999px;
+      border:1px solid rgba(255,255,255,.10); background: rgba(255,255,255,.05); white-space:nowrap; cursor:pointer;
       transition: transform var(--t), background var(--t), border-color var(--t);
     }
-    .chip:hover{transform: translateY(-1px); background: rgba(255,255,255,.075)}
-    .chip .rank{
-      width:26px; height:26px; border-radius:999px;
-      display:grid; place-items:center;
-      background: rgba(255,255,255,.06);
-      border:1px solid rgba(255,255,255,.10);
-      font-weight:900; font-size:12px;
+    .tickerItem:hover{ transform: translateY(-1px); background: rgba(255,255,255,.075); }
+
+    .rank{ width:26px; height:26px; border-radius:999px; display:grid; place-items:center; font-weight:900; font-size:12px;
+      background: rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.10);
     }
-    .chip .img{width:22px; height:22px; border-radius:8px; overflow:hidden; display:grid; place-items:center; background: rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.10)}
-    .chip .img img{width:100%; height:100%; object-fit:cover}
-    .chip .nm{font-weight:900; letter-spacing:-.01em}
-    .chip .pct{font-weight:900}
-    .pct.up{color: rgba(20,241,149,.95)}
-    .pct.down{color: rgba(255,77,109,.95)}
+    .rank.medal{ color: rgba(0,0,0,.85); border-color: rgba(0,0,0,.12); }
+    .rank.gold{ background: linear-gradient(180deg, #ffd36b, #e7a700); }
+    .rank.silver{ background: linear-gradient(180deg, #e8eef6, #9aa6b2); }
+    .rank.bronze{ background: linear-gradient(180deg, #ffb59a, #c36a1f); }
+
+    .tLogo{ width:22px; height:22px; border-radius:8px; overflow:hidden; display:grid; place-items:center;
+      background: rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.10);
+    }
+    .tLogo img{ width:100%; height:100%; object-fit:cover; }
+    .tName{ font-weight:900; letter-spacing:-.01em; }
+    .tPct{ font-weight:900; }
+    .tPct.up{ color: rgba(20,241,149,.95); }
+    .tPct.down{ color: rgba(255,77,109,.95); }
+
+    .tickerEmpty{ padding:10px 14px; color: rgba(255,255,255,.65); }
+
 
     .searchBar{
       display:flex; align-items:center; gap:10px;
@@ -436,19 +448,30 @@
       </div>
     </div>
 
+    
     <div class="panel">
       <div class="tickerHd">
-        <div class="left">
-          <div class="tag">🔥 Live Trending <small id="trendSub">(auto)</small></div>
-          <div class="sub" id="status">Booting…</div>
+        <div class="topRow">
+          <div class="hotBlock">
+            <div class="hotIcon">🔥</div>
+            <div>
+              <div class="hotTitle">Live Trending <span class="autoPill">auto</span></div>
+              <div class="hotSub" id="status">Booting…</div>
+            </div>
+          </div>
+          <div class="chainToggle" id="trendToggle" aria-label="Trending chain">
+            <button class="chainBtn" data-net="solana" type="button"><span class="dot"></span>SOL</button>
+            <button class="chainBtn" data-net="eth" type="button"><span class="dot"></span>ETH</button>
+            <button class="chainBtn" data-net="bsc" type="button"><span class="dot"></span>BNB</button>
+            <button class="chainBtn" data-net="base" type="button"><span class="dot"></span>BASE</button>
+          </div>
+          <div class="clockWrap"><div class="sub" id="clock"></div></div>
         </div>
-        <div class="sub" id="clock"></div>
       </div>
 
-      <div class="ticker">
+      <div class="tickerWrap">
         <div class="tickerTrack" id="tickerTrack"></div>
       </div>
-
       <div class="searchBar">
         <div class="search">
           <svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z" stroke="rgba(255,255,255,.75)" stroke-width="2"/><path d="M16.5 16.5 21 21" stroke="rgba(255,255,255,.75)" stroke-width="2" stroke-linecap="round"/></svg>
@@ -559,7 +582,7 @@
 
     const NET_LABEL = { solana:'SOL', eth:'ETH', bsc:'BNB', base:'BASE' };
     const NET_DS = { solana:'solana', eth:'ethereum', bsc:'bsc', base:'base' };
-    const NET_GECKO = { solana:'solana', eth:'ethereum', bsc:'bsc', base:'base' };
+    const NET_GECKO = { solana:'solana', eth:'eth', bsc:'bsc', base:'base' };
 
     const DEFAULT_TOKEN = {
       solana: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', // USDC
@@ -1146,7 +1169,7 @@
 
     async function resolvePoolsFromGecko(tokenAddr){
       // /networks/{network}/tokens/{token}/pools?include=base_token,quote_token&page=1
-      const url = `${GECKO}/networks/${encodeURIComponent(geckoNet())}/tokens/${encodeURIComponent(tokenAddr)}/pools?include=base_token,quote_token&page[number]=1&page[size]=50`;
+      const url = `${GECKO}/networks/${encodeURIComponent(geckoNet())}/tokens/${encodeURIComponent(tokenAddr)}/pools?include=base_token,quote_token,dex&page=1`;
       const j = await fetchJson(url, {timeout:14000, retries:1});
       return Array.isArray(j?.data) ? j.data : [];
     }
@@ -1505,7 +1528,7 @@
       const base = `${GECKO}/networks/${encodeURIComponent(geckoNet())}/pools/${encodeURIComponent(poolAddr)}/trades`;
       // GeckoTerminal often uses JSON:API pagination. Try page params first, then fallback to limit.
       try{
-        const url1 = base + `?page[number]=1&page[size]=${encodeURIComponent(limit)}`;
+        const url1 = base + `?page=1&limit=${encodeURIComponent(limit)}`;
         const j1 = await fetchJson(url1, {timeout:14000, retries:1});
         if(Array.isArray(j1?.data) && j1.data.length) return j1.data;
       }catch(e){ /* ignore */ }
@@ -1655,69 +1678,93 @@
       }
     }
 
-    // -------------------- Trending
-        async function geckoTrending(){
-      // GeckoTerminal v2: Trending pools by network (cached ~1 min)
-      const url = `${GECKO}/networks/${encodeURIComponent(geckoNet())}/trending_pools?page=1&include=base_token`;
+    
+    // -------------------- Trending (match main site)
+    const TREND_CACHE = new Map();
+
+    function applyNetTheme(){
+      document.body.classList.remove('net-sol','net-eth','net-bnb','net-base');
+      if(activeNet==='solana') document.body.classList.add('net-sol');
+      else if(activeNet==='eth') document.body.classList.add('net-eth');
+      else if(activeNet==='bsc') document.body.classList.add('net-bnb');
+      else if(activeNet==='base') document.body.classList.add('net-base');
+    }
+
+    function syncTrendToggle(){
+      const wrap = $('trendToggle');
+      if(!wrap) return;
+      [...wrap.querySelectorAll('.chainBtn')].forEach(b=>{
+        b.classList.toggle('active', normalizeChain(b.dataset.net)===(activeNet));
+      });
+    }
+
+    async function fetchTrendingPools(net){
+      const key = String(net||'');
+      const cached = TREND_CACHE.get(key);
+      const now = Date.now();
+      if(cached && (now - cached.ts) < 45000) return cached.data;
+
+      const url = `${GECKO}/networks/${encodeURIComponent(net)}/trending_pools?include=base_token,quote_token,dex`;
       const j = await fetchJson(url, {timeout:14000, retries:1});
       const data = Array.isArray(j?.data) ? j.data : [];
       const inc  = Array.isArray(j?.included) ? j.included : [];
-      const incMap = {};
-      for(const it of inc){
-        if(!it?.id) continue;
-        incMap[it.id] = it;
-      }
-      return { data, incMap };
+      const incMap = new Map();
+      for(const it of inc){ if(it?.id) incMap.set(it.id, it); }
+      const out = { data, incMap };
+      TREND_CACHE.set(key, {ts: now, data: out});
+      return out;
     }
 
-    function renderTicker(pools, incMap={}){
+    function poolToTickerItem(p, i, incMap){
+      const a = p?.attributes || {};
+      const rel = p?.relationships?.base_token?.data;
+      const tid = rel?.id || '';
+      const t = tid ? incMap.get(tid) : null;
+      const ta = t?.attributes || {};
+
+      const sym = String(ta?.symbol||'').trim();
+      const nm = String(ta?.name||'').trim();
+      const imgUrl = String(ta?.image_url || ta?.image || '').trim();
+
+      const chg24 = num(a?.price_change_percentage?.h24 ?? a?.price_change_percentage_24h);
+      const pctTxt = Number.isFinite(chg24) ? (chg24>=0?`+${chg24.toFixed(2)}%`:`${chg24.toFixed(2)}%`) : '—';
+
+      const medal = (i===0?' gold':(i===1?' silver':(i===2?' bronze':'')));
+      const rankCls = 'rank'+(i<3?(' medal'+medal):'');
+      const name = sym ? `$${sym}` : (nm ? `$${nm}` : 'Token');
+
+      const addrGuess = String(ta?.address||'').trim() || tokenIdToAddr(tid) || '';
+
+      const logo = imgUrl ? `<img alt="" src="${esc(imgUrl)}" loading="lazy"/>` : `<span class="dot"></span>`;
+      const up = Number.isFinite(chg24) && chg24>=0;
+
+      return `<a class="tickerItem" href="#" data-addr="${esc(addrGuess)}" title="Open ${esc(name)}">
+        <span class="${rankCls}">${i+1}</span>
+        <span class="tLogo">${logo}</span>
+        <span class="tName">${esc(name)}</span>
+        <span class="tPct ${up?'up':'down'}">${esc(pctTxt)}</span>
+      </a>`;
+    }
+
+    function renderTrendingTicker(pools, incMap){
       const top = (pools||[]).slice(0, 10);
       if(!top.length){
         tickerTrack.innerHTML = `<div class="tickerEmpty">Trending unavailable.</div>`;
         return;
       }
-
-      function metaFromPool(p){
-        // Prefer included base_token
-        const rel = p?.relationships?.base_token?.data;
-        const tid = rel?.id || '';
-        const t = tid ? incMap[tid] : null;
-        const a = t?.attributes || {};
-        const sym = (a?.symbol || a?.name || '').toString().trim();
-        const img = (a?.image_url || a?.image || '').toString().trim();
-        // Gecko token ids often: "solana_<addr>" / "ethereum_<addr>"
-        const addr = tokenIdToAddr(tid) || '';
-        return { sym, img, addr };
-      }
-
-      const chips = top.map((p,i)=>{
-        const a = p?.attributes || {};
-        const chg24 = num(a?.price_change_percentage?.h24 ?? a?.price_change_percentage_24h ?? a?.price_change_percentage?.h24);
-        const pct = Number.isFinite(chg24) ? (chg24>=0?`+${chg24.toFixed(2)}%`:`${chg24.toFixed(2)}%`) : '—';
-        const up = Number.isFinite(chg24) ? (chg24>=0) : false;
-
-        const meta = metaFromPool(p);
-        const name = meta.sym ? `$${meta.sym}` : (a?.name ? a.name.split('/')[0].trim() : 'Token');
-        const img = meta.img ? `<img alt="" src="${esc(meta.img)}" loading="lazy" />` : `<span class="dot"></span>`;
-        const addr = meta.addr;
-
-        return `<button class="chip" data-addr="${esc(addr)}" title="Open ${esc(name)}">
-          <span class="rank">${i+1}</span>
-          <span class="ico">${img}</span>
-          <span class="nm">${esc(name)}</span>
-          <span class="pct ${up?'up':'dn'}">${esc(pct)}</span>
-        </button>`;
-      });
-
-      // seamless marquee: duplicate the list
-      tickerTrack.innerHTML = chips.join('') + chips.join('');
+      const html = top.map((p,i)=>poolToTickerItem(p,i,incMap)).join('');
+      tickerTrack.innerHTML = html + html;
     }
 
     async function startTrending(){
+      applyNetTheme();
+      syncTrendToggle();
+
       const load = async ()=>{
         try{
-          const res = await geckoTrending();
-          renderTicker(res.data, res.incMap);
+          const net = geckoNet();
+          const res = await fetchTrendingPools(net);
+          renderTrendingTicker(res.data, res.incMap);
         }catch(e){
           console.error('trending failed', e);
           tickerTrack.innerHTML = `<div class="tickerEmpty">Trending unavailable.</div>`;
@@ -1730,12 +1777,30 @@
       trendingTimer = setInterval(load, 25000);
 
       tickerTrack.onclick = (e)=>{
-        const b = e.target.closest('.chip');
-        if(!b) return;
-        const addr = b.getAttribute('data-addr') || '';
-        if(addr) openToken(addr, {skipInput:true});
+        const a = e.target.closest('.tickerItem');
+        if(!a) return;
+        e.preventDefault();
+        const tAddr = a.getAttribute('data-addr') || '';
+        if(tAddr) openToken(tAddr, {skipInput:true});
       };
+
+      const toggle = $('trendToggle');
+      if(toggle){
+        toggle.onclick = (e)=>{
+          const b = e.target.closest('.chainBtn');
+          if(!b) return;
+          const net = normalizeChain(b.dataset.net || 'solana');
+          if(net===activeNet) return;
+          activeNet = net;
+          applyNetTheme();
+          syncTrendToggle();
+          renderNetPills();
+          if(!addr) addr = DEFAULT_TOKEN[activeNet];
+          navigate(activeNet, addr);
+        };
+      }
     }
+
 
     // -------------------- Navigation + Boot
     function updateUrl(){
@@ -1750,6 +1815,7 @@
       addr = String(address||'').trim();
       updateUrl();
       renderNetPills();
+      applyNetTheme();
       startTrending();
       // if address exists, load it
       if(addr){
