@@ -57,7 +57,7 @@
 a{color:inherit; text-decoration:none}
     button,input,select{font:inherit}
 
-    .wrap{max-width:var(--max); margin:0 auto; padding:104px 16px 28px}
+    .wrap{max-width:var(--max); margin:0 auto; padding:18px 16px 28px}
 
     .topbar{
       display:flex; align-items:center; justify-content:space-between;
@@ -68,7 +68,7 @@ a{color:inherit; text-decoration:none}
       border-radius: 26px;
       box-shadow: var(--shadow);
       backdrop-filter: var(--glass);
-      position:fixed; top:12px; left:50%; transform:translateX(-50%); width:min(var(--max), calc(100% - 24px)); z-index:2000;
+      position:sticky; top:10px; z-index:20;
     }
 
     
@@ -186,15 +186,13 @@ a{color:inherit; text-decoration:none}
 
     /* Top trending bar container (inside panel) */
     .topBar{
-      z-index: 1500;
-      position: sticky;
-      top: 92px;
+      z-index: 60;
+      position: relative;
       background: rgba(11,16,51,.45);
       border-bottom: 1px solid rgba(255,255,255,.08);
       backdrop-filter: blur(16px);
       -webkit-backdrop-filter: blur(16px);
     }
-
 
     .topBarInner{
       padding: 14px 16px 12px;
@@ -535,14 +533,12 @@ display:none;
       display:none;
       position:fixed;
       inset:0;
-      background: transparent;
-      backdrop-filter: none;
-      -webkit-backdrop-filter: none;
-      pointer-events: none;
+      background: rgba(7,7,17,.72);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
       z-index: 999990;
     }
-
-    .dexSearch.open .searchScrim{ display:none; }
+    .dexSearch.open .searchScrim{ display:block; }
 
 
     /* Keep DexGuard search row markup, but make it feel like the main dropdown */
@@ -617,6 +613,7 @@ display:none;
     .tlogo .fb{font-weight:900; opacity:.9}
     .pairTxt{min-width:0}
     .pairName{font-weight:950; letter-spacing:-.02em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+    .pairNameSub{font-size:12px; font-weight:800; opacity:.72; margin-left:8px; letter-spacing:0;}
     .pairMeta{font-size:12px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
 
     .stats{display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end}
@@ -960,7 +957,6 @@ display:none;
     const DS = 'https://api.dexscreener.com/latest/dex';
 
     const NET_LABEL = { solana:'SOL', eth:'ETH', bsc:'BNB', base:'BASE' };
-    const CHAIN_TAG = { solana:'Sol', eth:'Eth', bsc:'Bnb', base:'Base' };
     const NET_DS = { solana:'solana', eth:'ethereum', bsc:'bsc', base:'base' };
     const NET_GECKO = { solana:'solana', eth:'eth', bsc:'bsc', base:'base' };
 
@@ -1008,26 +1004,6 @@ display:none;
     const statsEl = $('stats');
     const tokenLogo = $('tokenLogo');
     const tokenLogoFb = $('tokenLogoFb');
-
-    function setTokenLogo(url, fallback){
-      const letter = String(fallback||'T').slice(0,1).toUpperCase();
-      if(!tokenLogo) return;
-      tokenLogo.innerHTML = '';
-      if(url){
-        const img = document.createElement('img');
-        img.src = String(url);
-        img.alt = '';
-        img.decoding = 'async';
-        img.loading = 'lazy';
-        img.referrerPolicy = 'no-referrer';
-        img.onerror = () => { setTokenLogo(img, symClean);
-};
-        tokenLogo.appendChild(img);
-      } else {
-        setTokenLogo(img, symClean);
-}
-    }
-
 
     const poolSel = $('poolSel');
     const tfRow = $('tfRow');
@@ -1284,10 +1260,12 @@ display:none;
     let poolId = '';
     let poolAddr = '';
     let tokenSide = 'base';
-    let curTokenSymbol = 'TOKEN';
+        let curTokenSymbol = 'TOKEN';
     let curQuoteSymbol = '';
-    let curTokenImgUrl = '';
-    let seenMakers = new Set();
+    let curTokenName = '';
+    let curTokenImage = '';
+    let curTokenAddr = '';
+let seenMakers = new Set();
     let tradesSeen = new Set();
 
     let pollTradesTimer = null;
@@ -1472,6 +1450,31 @@ display:none;
     }
 
 
+    function dsExtractTokenMeta(pair, tokenAddr){
+      const tAddr = lc(tokenAddr||'');
+      const base = pair?.baseToken || {};
+      const quote = pair?.quoteToken || {};
+      const baseAddr = lc(base?.address||'');
+      const quoteAddr = lc(quote?.address||'');
+      const isQuote = !!tAddr && !!quoteAddr && tAddr===quoteAddr;
+      const tok = isQuote ? quote : base;
+      const oth = isQuote ? base : quote;
+
+      const sym = String(tok?.symbol||'TOKEN').replace(/\s+/g,'').slice(0,12) || 'TOKEN';
+      const name = String(tok?.name||'').trim();
+      const quoteSym = String(oth?.symbol||'').replace(/\s+/g,'').slice(0,12);
+
+      const img = String(
+        pair?.info?.imageUrl || pair?.info?.image_url ||
+        pair?.imageUrl || pair?.image_url ||
+        tok?.logoURI || tok?.logoUrl || tok?.logo_url || tok?.icon || tok?.image ||
+        ''
+      ).trim();
+
+      return { symbol: sym, name, quoteSymbol: quoteSym, image: img };
+    }
+
+
     function netFromDsChainId(chainId){
       const c = lc(chainId);
       if(c==='solana') return 'solana';
@@ -1646,32 +1649,35 @@ display:none;
     }
 
     function applyTokenHeader(meta){
-      const sym = meta?.symbol || 'TOKEN';
-      const quote = meta?.quoteSymbol || '';
-      curTokenSymbol = sym;
-      curQuoteSymbol = quote;
+      const symIn = String(meta?.symbol||'').trim();
+      const nameIn = String(meta?.name||'').trim();
+      const quoteIn = String(meta?.quoteSymbol||'').trim();
+      const imgIn = String(meta?.image||'').trim();
 
-      const symClean = String(sym||'TOKEN').replace(/^\$/,'');
-      const chainTag = CHAIN_TAG[activeNet] || (NET_LABEL[activeNet]||'');
-      pairNameEl.textContent = chainTag ? `$${symClean}/${chainTag}` : `$${symClean}`;
+      const sym = (symIn && symIn.toUpperCase()!=='TOKEN')
+        ? symIn
+        : ((curTokenSymbol && curTokenSymbol.toUpperCase()!=='TOKEN') ? curTokenSymbol : (symIn||'TOKEN'));
+
+      const quote = quoteIn || curQuoteSymbol || '';
+      const name = nameIn || curTokenName || '';
+      const img  = imgIn  || curTokenImage || '';
+
+      curTokenSymbol = sym || 'TOKEN';
+      curQuoteSymbol = quote || '';
+      if(name) curTokenName = name;
+      if(imgIn) curTokenImage = imgIn;
+
+      const title = quote ? `$${sym}/${quote}` : `$${sym}`;
+      const nameHtml = (name && name.toLowerCase()!==sym.toLowerCase())
+        ? `<span class="pairNameSub">${esc(name)}</span>` : '';
+      pairNameEl.innerHTML = `${esc(title)}${nameHtml ? ' ' + nameHtml : ''}`;
       pairMetaEl.textContent = `${NET_LABEL[activeNet]} • ${shortAddr(addr)} • Native chart + live trades`;
 
-      let img = meta?.image || meta?.logo || meta?.icon || meta?.imageUrl || meta?.logoURI || meta?.logoUrl || '';
-      if(!img && curTokenImgUrl) img = curTokenImgUrl;
-
-      // If we already show an image and the new meta has no image, don't downgrade to a letter
-      const existingImg = tokenLogo.querySelector('img');
-
       if(img){
-        curTokenImgUrl = String(img);
-        setTokenLogo(img, (base?.symbol||\'T\'));
-      setTokenLogo(img, symClean);
-        setTokenLogo(img, symClean);
-}else if(existingImg){
-        // keep current logo
+        tokenLogo.innerHTML = `<img src="${esc(img)}" alt="" referrerpolicy="no-referrer" onerror="this.onerror=null; this.remove(); var p=this.parentNode; if(p){p.innerHTML='<span class=\\"fb\\">${esc(sym.slice(0,1).toUpperCase())}</span>';}" />`;
       }else{
-        setTokenLogo(img, symClean);
-}
+        tokenLogo.innerHTML = `<span class="fb">${esc(sym.slice(0,1).toUpperCase())}</span>`;
+      }
     }
 
     function applyStats(st){
@@ -1698,10 +1704,12 @@ display:none;
       const quoteSym = tokenSymFromPool(p,'quote') || '';
       const sym = tokenSide==='base' ? baseSym : (quoteSym || baseSym || 'TOKEN');
       const quoteShown = tokenSide==='base' ? quoteSym : baseSym;
-      let img = tokenSide==='base' ? tokenImgFromPool(p,'base') : tokenImgFromPool(p,'quote');
-      if(!img){ img = tokenImgFromPool(p, tokenSide==='base' ? 'quote' : 'base'); }
-      if(!img && curTokenImgUrl) img = curTokenImgUrl;
-      applyTokenHeader({symbol: sym, quoteSymbol: quoteShown, image: img});
+      const img = tokenSide==='base' ? tokenImgFromPool(p,'base') : tokenImgFromPool(p,'quote');
+      const symFinal = (sym && sym.toUpperCase()!=='TOKEN') ? sym : (curTokenSymbol||'TOKEN');
+      const imgFinal = img || curTokenImage || '';
+      const nameFinal = curTokenName || '';
+      const quoteFinal = quoteShown || curQuoteSymbol || '';
+      applyTokenHeader({symbol: symFinal, name: nameFinal, quoteSymbol: quoteFinal, image: imgFinal});
 
       // initial stats best-effort (pick correct side price)
       const price = tokenSide==='base' ? tokenPriceFromPool(p,'base') : tokenPriceFromPool(p,'quote');
@@ -2387,23 +2395,11 @@ display:none;
 
       // Fill header from DexScreener meta (fast symbols/logos/stats)
       if(dsPair){
-        const base = dsPair?.baseToken || {};
-        const quote = dsPair?.quoteToken || {};
-        const title = `${(base?.symbol||'TOKEN')}/${(quote?.symbol||'')}`.replace(/\/$/,'');
-        const chainTag = (activeNet==='solana'?'Sol':(activeNet==='ethereum'?'Eth':(activeNet==='bsc'?'Bnb':(activeNet==='base'?'Base':activeNet))));
-        const sym0 = (base?.symbol||title||'TOKEN');
-        pairNameEl.textContent = `$${String(sym0).replace(/\$/g,'')}/${chainTag}`;
-pairMetaEl.textContent = `${NET_LABEL[activeNet] || activeNet} • ${shortAddr(v)} • Native chart + live trades`;
-
-        let img = base?.logoURI || base?.logoUrl || base?.logoURL || base?.icon || base?.image || base?.imageUrl || '';
-        if(img){
-          curTokenImgUrl = String(img);
-        setTokenLogo(img, (base?.symbol||\'T\'));
-      setTokenLogo(img, symClean);
-          setTokenLogo(img, symClean);
-}else{
-          setTokenLogo(img, symClean);
-}
+        const meta = dsExtractTokenMeta(dsPair, v);
+        curTokenAddr = v;
+        if(meta?.image) curTokenImage = meta.image;
+        if(meta?.name) curTokenName = meta.name;
+        applyTokenHeader(meta);
 
         applyStats({
           price: num(dsPair?.priceUsd),
@@ -2411,12 +2407,11 @@ pairMetaEl.textContent = `${NET_LABEL[activeNet] || activeNet} • ${shortAddr(v
           mcap: num(dsPair?.fdv),
           h24: num(dsPair?.priceChange?.h24),
         });
-
-        curTokenSymbol = (base?.symbol||title||'TOKEN');
-curQuoteSymbol = (quote?.symbol||'');
       }else{
-        pairNameEl.textContent = '$TOKEN';
-        pairMetaEl.textContent = `${NET_LABEL[activeNet] || activeNet} • ${shortAddr(v)} • Native chart + live trades`;
+        curTokenAddr = v;
+        curTokenName = '';
+        curTokenImage = '';
+        applyTokenHeader({symbol:'TOKEN', name:'', quoteSymbol:'', image:''});
         applyStats({});
       }
 
