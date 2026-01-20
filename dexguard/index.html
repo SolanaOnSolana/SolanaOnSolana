@@ -58,7 +58,14 @@
       position:sticky; top:10px; z-index:20;
     }
 
-    .brand{display:flex; align-items:center; gap:10px; min-width:0}
+    
+
+    /* Topbar: replace $SOS title with Dexguard button */
+    .topbar #topDexguardBtn{ padding: 9px 16px; }
+    .topbar #topDexguardBtn .dexguardText{ font-size: 18px; }
+    .topbar #topDexguardBtn .dexguardChip{ font-size: 12px; }
+
+.brand{display:flex; align-items:center; gap:10px; min-width:0}
     .logo{
       width:38px; height:38px; border-radius:14px;
       display:grid; place-items:center;
@@ -69,7 +76,15 @@
         rgba(255,255,255,.06);
       border:1px solid rgba(255,255,255,.14);
     }
-    .logo span{font-weight:900; letter-spacing:-.02em}
+    .logo span{font-weight:900; letter-spacing:-.02em
+
+    /* Top-left Dexguard button (replaces old SOS title) */
+    .topbar .dexguardBtn{ padding:9px 16px; }
+    .topbar .dexguardText{ font-size:18px; }
+    @media (max-width:520px){
+      .topbar .dexguardText{ font-size:16px; }
+    }
+}
 
     .brandTxt{min-width:0}
     .brandTxt .t1{font-weight:900; letter-spacing:-.02em; font-size:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
@@ -119,138 +134,376 @@
       overflow:hidden;
     }
 
-    /* --- Trending ticker (match main site) --- */
-    :root{ --netColor:#9945FF; --netGlow: rgba(153,69,255,.26); --tickerSpeed: 36s; }
-    body.net-sol{ --netColor:#9945FF; --netGlow: rgba(153,69,255,.26); }
-    body.net-eth{ --netColor:#00D1FF; --netGlow: rgba(0,209,255,.22); }
-    body.net-bnb{ --netColor:#f3ba2f; --netGlow: rgba(243,186,47,.22); }
-    body.net-base{ --netColor:#2d6cff; --netGlow: rgba(45,108,255,.22); }
-
-    .tickerHd{ padding:14px 16px; border-bottom:1px solid rgba(255,255,255,.08); }
-    .topRow{ display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
-
-    .hotBlock{ display:flex; align-items:center; gap:10px; }
     
-    .hotBlock{ display:flex; align-items:center; gap:10px; }
-    .hotIcon{ width:34px; height:34px; border-radius:12px; display:grid; place-items:center;
-      background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.04));
-      border:1px solid rgba(255,255,255,.12);
-      box-shadow: 0 10px 30px rgba(0,0,0,.25), 0 0 0 1px rgba(255,255,255,.04) inset;
-    }
-    .hotTitle{ font-weight: 900; letter-spacing:-.02em; display:flex; align-items:center; gap:8px; }
-    .autoPill{ font-size:12px; font-weight:900; padding:4px 10px; border-radius:999px;
-      border:1px solid rgba(255,255,255,.14); background: rgba(0,0,0,.15); color: rgba(255,255,255,.72);
-    }
-    .hotSub{ font-size:13px; color: rgba(255,255,255,.68); }
+    /* ===== Dex-style Top Trending Bar + Search (MATCH MAIN PAGE) ===== */
+    :root{
+      --tickerSpeed: 8.2s;
+      --tickerDistance: 50%;
 
-    .chainToggle{ display:flex; align-items:center; gap:8px; padding:6px; border-radius:999px;
-      background: rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.10);
-    }
-    .chainBtn{ border:1px solid rgba(255,255,255,.12); background: rgba(0,0,0,.12); color: rgba(255,255,255,.82);
-      padding:8px 12px; border-radius:999px; font-weight:900; cursor:pointer; transition: transform var(--t), background var(--t), border-color var(--t);
-      display:flex; align-items:center; gap:8px;
-    }
-    .chainBtn .dot{ width:10px; height:10px; border-radius:50%; background: rgba(255,255,255,.20); box-shadow: inset 0 0 0 1px rgba(255,255,255,.12); }
-    .chainBtn:hover{ transform: translateY(-1px); background: rgba(255,255,255,.07); }
-    .chainBtn.active{ border-color: color-mix(in oklab, var(--netColor) 55%, rgba(255,255,255,.12));
-      background: color-mix(in oklab, var(--netGlow) 55%, rgba(0,0,0,.18));
-      box-shadow: 0 0 0 1px rgba(255,255,255,.05) inset;
-    }
-    .chainBtn.active .dot{ background: var(--netColor); }
+      --solColor: #9945FF;
+      --ethColor: #627EEA;
+      --bnbColor: #F3BA2F;
+      --baseColor:#0052FF;
 
-    .clockWrap{ margin-left:auto; }
-
-    .tickerWrap{ position:relative; overflow:hidden; padding:10px 0 12px; border-top:1px solid rgba(255,255,255,.06); }
-    .tickerTrack{ display:flex; gap:12px; width:max-content; padding: 0 14px; animation: marquee var(--tickerSpeed) linear infinite; }
-    @keyframes marquee{ from{transform: translateX(0)} to{transform: translateX(-50%)} }
-
-    .tickerItem{ display:inline-flex; align-items:center; gap:10px; padding:10px 12px; border-radius:999px;
-      border:1px solid rgba(255,255,255,.10); background: rgba(255,255,255,.05); white-space:nowrap; cursor:pointer;
-      transition: transform var(--t), background var(--t), border-color var(--t);
-    }
-    .tickerItem:hover{ transform: translateY(-1px); background: rgba(255,255,255,.075); }
-
-    .rank{ width:26px; height:26px; border-radius:999px; display:grid; place-items:center; font-weight:900; font-size:12px;
-      background: rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.10);
-    }
-    .rank.medal{ color: rgba(0,0,0,.85); border-color: rgba(0,0,0,.12); }
-    .rank.gold{ background: linear-gradient(180deg, #ffd36b, #e7a700); }
-    .rank.silver{ background: linear-gradient(180deg, #e8eef6, #9aa6b2); }
-    .rank.bronze{ background: linear-gradient(180deg, #ffb59a, #c36a1f); }
-
-    .tLogo{ width:22px; height:22px; border-radius:8px; overflow:hidden; display:grid; place-items:center;
-      background: rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.10);
-    }
-    .tLogo img{ width:100%; height:100%; object-fit:cover; }
-    .tName{ font-weight:900; letter-spacing:-.01em; }
-    .tPct{ font-weight:900; }
-    .tPct.up{ color: rgba(20,241,149,.95); }
-    .tPct.down{ color: rgba(255,77,109,.95); }
-
-    .tickerEmpty{ padding:10px 14px; color: rgba(255,255,255,.65); }
-
-
-    .searchBar{
-      display:flex; align-items:center; gap:10px;
-      padding:14px 16px;
-      border-top:1px solid rgba(255,255,255,.06);
-      background: rgba(0,0,0,.10);
-    }
-    .search{
-      flex:1;
-      position:relative;
-    }
-    .search input{
-      width:100%;
-      padding:14px 44px 14px 44px;
-      border-radius: 18px;
-      border:1px solid rgba(255,255,255,.12);
-      background: rgba(255,255,255,.05);
-      color: var(--text);
-      outline:none;
-    }
-    .search input:focus{border-color: rgba(0,209,255,.35)}
-    .search .icon{
-      position:absolute; left:14px; top:50%; transform: translateY(-50%);
-      width:22px; height:22px; opacity:.75
-    }
-    .search .hint{
-      position:absolute; right:12px; top:50%; transform: translateY(-50%);
-      font-size:12px; color: var(--muted2);
-      padding:6px 10px; border-radius:999px;
-      border:1px solid rgba(255,255,255,.10);
-      background: rgba(0,0,0,.12);
+      --netColor: var(--solColor);
+      --netGlow: rgba(153,69,255,.22);
     }
 
-    .results{
-      position:absolute; left:0; right:0; top:calc(100% + 8px);
-      background: rgba(10,10,18,.92);
-      border:1px solid rgba(255,255,255,.14);
-      border-radius: 18px;
-      box-shadow: 0 20px 70px rgba(0,0,0,.65);
-      backdrop-filter: blur(14px);
-      overflow:hidden;
-      display:none;
-      z-index:30;
-      max-height: 360px;
-      overflow:auto;
+    body.net-sol{ --netColor: var(--solColor); --netGlow: rgba(153,69,255,.22); }
+    body.net-eth{ --netColor: var(--ethColor); --netGlow: rgba(98,126,234,.22); }
+    body.net-bnb{ --netColor: var(--bnbColor); --netGlow: rgba(243,186,47,.22); }
+    body.net-base{ --netColor: var(--baseColor); --netGlow: rgba(0,82,255,.22); }
+
+    /* Top trending bar container (inside panel) */
+    .topBar{
+      position: relative;
+      background: rgba(7,7,17,.45);
+      border-bottom: 1px solid rgba(255,255,255,.08);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
     }
-    .resItem{
-      display:flex; align-items:center; justify-content:space-between;
+
+    .topBarInner{
+      padding: 14px 16px 12px;
+      display:flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .topRow{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 12px;
+      flex-wrap:wrap;
+    }
+
+    .bottomRow{
+      display:flex;
+      align-items:center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .hotBlock{ display:flex; align-items:center; gap: 12px; flex-wrap:wrap; }
+    .hotLabel{
+      display:inline-flex;
+      align-items:center;
+      gap: 10px;
+      padding: 9px 14px;
+      border-radius: 999px;
+      background: rgba(255,65,65,.10);
+      border: 1px solid rgba(255,65,65,.20);
+      box-shadow: 0 12px 32px rgba(0,0,0,.24);
+      font-weight: 1100;
+      letter-spacing: .6px;
+    }
+    .hotFire{ width: 18px; height: 18px; opacity: .95; display:grid; place-items:center; }
+
+    .dexguardBtn{
+      display:inline-flex;
+      align-items:center;
       gap:12px;
-      padding:12px 12px;
-      border-bottom:1px solid rgba(255,255,255,.06);
+      padding: 9px 16px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.12);
+      background:
+        radial-gradient(140% 120% at 0% 0%, rgba(0,209,255,.18), rgba(0,209,255,0) 55%),
+        radial-gradient(140% 120% at 100% 100%, rgba(153,69,255,.18), rgba(153,69,255,0) 55%),
+        rgba(8,18,40,.50);
+      box-shadow: 0 12px 34px rgba(0,0,0,.28);
+      color: rgba(255,255,255,.92);
+      font-weight: 1050;
+      cursor:pointer;
+      user-select:none;
+      -webkit-tap-highlight-color: transparent;
+      transition: transform .15s ease, background .15s ease, border-color .15s ease, box-shadow .15s ease;
+      position:relative;
+      overflow:hidden;
+    }
+    .dexguardBtn:hover{
+      transform: translateY(-1px);
+      border-color: rgba(255,255,255,.18);
+      background:
+        radial-gradient(140% 120% at 0% 0%, rgba(0,209,255,.22), rgba(0,209,255,0) 60%),
+        radial-gradient(140% 120% at 100% 100%, rgba(153,69,255,.22), rgba(153,69,255,0) 60%),
+        rgba(8,18,40,.62);
+      box-shadow: 0 16px 46px rgba(0,0,0,.36);
+    }
+    .dexguardBtn:active{ transform: translateY(0px) scale(.995); }
+    .dexguardBtn::after{
+      content:"";
+      position:absolute;
+      inset:-60% -40%;
+      background: linear-gradient(120deg,
+        transparent 0%,
+        rgba(255,255,255,.00) 35%,
+        rgba(255,255,255,.22) 50%,
+        rgba(255,255,255,.06) 60%,
+        transparent 75%
+      );
+      transform: translateX(-170%) rotate(10deg);
+      opacity:0;
+      pointer-events:none;
+      mix-blend-mode: screen;
+      animation: dexguardShine 6.8s ease-in-out infinite;
+    }
+    @keyframes dexguardShine{
+      0%, 72%{ opacity:0; transform: translateX(-170%) rotate(10deg); }
+      78%{ opacity:.70; }
+      92%{ opacity:0; transform: translateX(170%) rotate(10deg); }
+      100%{ opacity:0; transform: translateX(170%) rotate(10deg); }
+    }
+
+    .dexguardChip{
+      position: relative;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      padding: 7px 14px;
+      border-radius: 999px;
+      background: rgba(3,12,24,.65);
+      border: 1px solid rgba(255,255,255,.10);
+      font-weight: 1100;
+      letter-spacing: .28em;
+      font-size: 13px;
+      color: rgba(255,255,255,.96);
+    }
+    .dexguardChip::before{
+      content:"";
+      position:absolute;
+      inset:-2px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, rgba(20,241,149,.88), rgba(0,209,255,.88), rgba(153,69,255,.88));
+      z-index:-1;
+      opacity:.9;
+    }
+    .dexguardText{
+      font-weight: 1050;
+      letter-spacing: -.2px;
+      font-size: 20px;
+      line-height: 1;
+    }
+
+    @media (max-width: 520px){
+      .dexguardText{ font-size: 18px; }
+      .dexguardBtn{ padding: 9px 14px; gap: 10px; }
+      .dexguardChip{ padding: 7px 12px; }
+    }
+
+    .chainToggle{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding: 6px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.04);
+    }
+
+    .chainBtn{
+      appearance:none;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.05);
+      color: rgba(255,255,255,.92);
+      font-weight: 1000;
+      font-size: 12px;
+      padding: 8px 10px;
+      border-radius: 999px;
+      cursor:pointer;
+      letter-spacing: .35px;
+      transition: transform .15s ease, background .15s ease, border-color .15s ease, box-shadow .15s ease;
+    }
+    .chainBtn:hover{ background: rgba(255,255,255,.09); transform: translateY(-1px); }
+    .chainBtn:active{ transform: translateY(0px) scale(.99); }
+
+    .chainBtn[data-net="solana"]{ border-color: rgba(153,69,255,.50); background: rgba(153,69,255,.10); box-shadow: 0 0 0 1px rgba(153,69,255,.12) inset, 0 10px 22px rgba(153,69,255,.10); }
+    .chainBtn[data-net="eth"]{ border-color: rgba(98,126,234,.50); background: rgba(98,126,234,.10); box-shadow: 0 0 0 1px rgba(98,126,234,.12) inset, 0 10px 22px rgba(98,126,234,.10); }
+    .chainBtn[data-net="bsc"]{ border-color: rgba(243,186,47,.52); background: rgba(243,186,47,.10); box-shadow: 0 0 0 1px rgba(243,186,47,.12) inset, 0 10px 22px rgba(243,186,47,.10); }
+    .chainBtn[data-net="base"]{ border-color: rgba(0,82,255,.52); background: rgba(0,82,255,.10); box-shadow: 0 0 0 1px rgba(0,82,255,.12) inset, 0 10px 22px rgba(0,82,255,.10); }
+
+    .chainBtn.active{
+      color: rgba(255,255,255,.96);
+      text-shadow: 0 1px 0 rgba(0,0,0,.35);
+      border: 1px solid rgba(255,255,255,.96);
+      box-shadow: 0 10px 26px rgba(0,0,0,.28);
+    }
+    body.net-sol .chainBtn.active{ background: linear-gradient(90deg, rgba(153,69,255,.96), rgba(153,69,255,.52)); }
+    body.net-eth .chainBtn.active{ background: linear-gradient(90deg, rgba(98,126,234,.96), rgba(98,126,234,.52)); }
+    body.net-bnb .chainBtn.active{ background: linear-gradient(90deg, rgba(243,186,47,.96), rgba(243,186,47,.50)); }
+    body.net-base .chainBtn.active{ background: linear-gradient(90deg, rgba(0,82,255,.96), rgba(0,82,255,.50)); }
+
+    .tickerWrap{
+      flex: 1;
+      min-width: 0;
+      position: relative;
+      overflow: hidden;
+      border-radius: 999px;
+      background: rgba(255,255,255,.05);
+      border: 1px solid rgba(255,255,255,.10);
+      box-shadow: 0 10px 30px rgba(0,0,0,.22);
+      padding: 10px 12px;
+    }
+
+    .tickerWrap:before,
+    .tickerWrap:after{
+      content:"";
+      position:absolute;
+      top:0; bottom:0;
+      width: 44px;
+      pointer-events:none;
+      z-index: 2;
+    }
+    .tickerWrap:before{ left:0; background: linear-gradient(90deg, rgba(7,7,17,.95), rgba(7,7,17,0)); }
+    .tickerWrap:after{ right:0; background: linear-gradient(270deg, rgba(7,7,17,.95), rgba(7,7,17,0)); }
+
+    .tickerTrack{
+      display:flex;
+      gap: 10px;
+      align-items:center;
+      white-space: nowrap;
+      will-change: transform;
+      animation: tickerMarquee var(--tickerSpeed) linear infinite;
+    }
+
+    .tickerWrap:hover .tickerTrack{ animation-play-state: paused; }
+
+    @keyframes tickerMarquee{
+      0%{ transform: translateX(0); }
+      100%{ transform: translateX(calc(-1 * var(--tickerDistance))); }
+    }
+
+    .tickerItem{
+      display:inline-flex;
+      align-items:center;
+      gap: 10px;
+      padding: 7px 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.10);
+      box-shadow: 0 0 0 1px var(--netGlow) inset;
+      color: rgba(255,255,255,.92);
+      font-weight: 900;
+      font-size: 13px;
+      letter-spacing: .1px;
       cursor:pointer;
     }
-    .resItem:hover{background: rgba(255,255,255,.06)}
-    .resL{display:flex; align-items:center; gap:10px; min-width:0}
-    .resLogo{width:34px; height:34px; border-radius:12px; overflow:hidden; background: rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.10); display:grid; place-items:center}
-    .resLogo img{width:100%; height:100%; object-fit:cover}
-    .resTxt{min-width:0}
-    .resName{font-weight:900; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
-    .resMeta{font-size:12px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
-    .resR{display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:flex-end}
 
+    .tickerLogoWrap{
+      width:28px;
+      height:28px;
+      flex:0 0 28px;
+      border-radius: 6px;
+      overflow:hidden;
+      display:grid;
+      place-items:center;
+      background: rgba(255,255,255,.07);
+      border: 1px solid rgba(255,255,255,.10);
+      box-shadow: 0 8px 18px rgba(0,0,0,.22);
+    }
+    .tickerLogo{ width:100%; height:100%; object-fit: cover; display:block; }
+    .tickerLogoFallback{ font-size: 12px; font-weight: 1100; color: rgba(255,255,255,.90); line-height: 1; }
+    .tickerItem.top1 .tickerLogoWrap{ border-color: rgba(255,215,0,.35); box-shadow: 0 0 0 1px rgba(255,215,0,.15) inset, 0 10px 22px rgba(0,0,0,.22); }
+
+    .tickerItem .rank{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      min-width: 28px;
+      height: 22px;
+      padding: 0 8px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.08);
+      border: 1px solid rgba(255,255,255,.10);
+      font-size: 12px;
+      font-weight: 1000;
+      color: var(--netColor);
+    }
+    .tickerItem .sym{ font-weight: 950; }
+
+    .tickerPct{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      height: 22px;
+      padding: 0 8px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.10);
+      font-size: 12px;
+      font-weight: 950;
+      color: rgba(255,255,255,.90);
+    }
+    .tickerPct.up{ color: rgba(20,241,149,.98); background: rgba(20,241,149,.10); border-color: rgba(20,241,149,.22); }
+    .tickerPct.down{ color: rgba(255,90,90,.96); background: rgba(255,90,90,.10); border-color: rgba(255,90,90,.22); }
+
+    .tickerItem.top1{
+      background: rgba(255,215,0,.10);
+      border-color: rgba(255,215,0,.32);
+      box-shadow: 0 0 0 1px rgba(255,215,0,.18) inset, 0 12px 30px rgba(0,0,0,.26);
+    }
+    .tickerItem.top1 .rank{
+      background: linear-gradient(90deg, #F3BA2F, #FFD700, #FFF2B0);
+      color: rgba(10,10,22,.92);
+      border: 0;
+      font-weight: 1100;
+    }
+
+    /* Search (styled like main page) */
+    .dexSearch{ position: relative; width: 360px; max-width: 44vw; }
+    .dexSearchInner{
+      display:flex;
+      gap: 8px;
+      align-items:center;
+      padding: 10px 12px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.05);
+      border: 1px solid rgba(255,255,255,.10);
+      box-shadow: 0 10px 30px rgba(0,0,0,.22);
+    }
+    .dexInput{
+      flex: 1;
+      min-width: 0;
+      background: transparent;
+      border: 0;
+      outline: none;
+      color: rgba(255,255,255,.92);
+      font-weight: 850;
+      font-size: 13px;
+    }
+    .dexInput::placeholder{ color: rgba(255,255,255,.55); font-weight: 800; }
+
+    /* Re-skin existing results dropdown to match main page style */
+    .results{
+      position:absolute;
+      top: calc(100% + 10px);
+      right: 0;
+      left: auto;
+      width: min(560px, calc(100vw - 28px));
+      max-height: 60vh;
+      overflow:auto;
+      padding: 10px;
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(10,10,22,.92);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      z-index: 120;
+    }
+
+    /* Keep DexGuard search row markup, but make it feel like the main dropdown */
+    .resItem{ border-radius: 16px; margin-bottom: 10px; border: 1px solid rgba(255,255,255,.10); background: rgba(255,255,255,.03); }
+    .resItem:last-child{ margin-bottom: 0; }
+
+    /* Hide legacy UI bits so the bar looks identical */
+    #btnGo{ display:none !important; }
+    #modeHint{ display:none !important; }
+
+    @media (max-width: 860px){
+      .dexSearch{ width: 100%; max-width: 100%; }
+      .bottomRow{ flex-direction: column; align-items: stretch; }
+    }
     .grid{
       display:grid;
       grid-template-columns: 1.8fr 1fr;
@@ -433,11 +686,10 @@
   <div class="wrap">
     <div class="topbar">
       <div class="brand">
-        <div class="logo"><span>SOS</span></div>
-        <div class="brandTxt">
-          <div class="t1">$SOS — DEX Terminal</div>
-          <div class="t2">Native chart + live trades • Multi-chain</div>
-        </div>
+        <button class="dexguardBtn" id="topDexguardBtn" type="button" aria-label="Dexguard">
+          <span class="dexguardChip" aria-hidden="true">DEX</span>
+          <span class="dexguardText">Dexguard</span>
+        </button>
       </div>
 
       <div class="actions">
@@ -447,39 +699,49 @@
         <a class="btn primary" id="btnBuy" href="#" target="_blank" rel="noreferrer">Buy</a>
       </div>
     </div>
-
-    
     <div class="panel">
-      <div class="tickerHd">
-        <div class="topRow">
-          <div class="hotBlock">
-            <div class="hotIcon">🔥</div>
-            <div>
-              <div class="hotTitle">Live Trending <span class="autoPill">auto</span></div>
-              <div class="hotSub" id="status">Booting…</div>
+      <!-- TOP TRENDING BAR + SEARCH (MATCH MAIN PAGE) -->
+      <div class="topBar" id="topBar">
+        <div class="topBarInner">
+          <div class="topRow">
+            <div class="hotBlock" aria-label="Hot trending live">
+              <div class="hotLabel" title="Live trending"><span class="hotFire">🔥</span><span>LIVE TRENDING</span></div>
+              <button class="dexguardBtn" id="dexguardBtn" type="button" aria-label="Dexguard">
+                <span class="dexguardChip" aria-hidden="true">DEX</span>
+                <span class="dexguardText">Dexguard</span>
+              </button>
+              <div id="status" style="display:none">Booting…</div>
+              <div id="clock" style="display:none"></div>
+            </div>
+
+            <div class="chainToggle" id="trendToggle" aria-label="Trending chain">
+              <button class="chainBtn active" data-net="solana" type="button">SOL</button>
+              <button class="chainBtn" data-net="eth" type="button">ETH</button>
+              <button class="chainBtn" data-net="bsc" type="button">BNB</button>
+              <button class="chainBtn" data-net="base" type="button">BASE</button>
             </div>
           </div>
-          <div class="chainToggle" id="trendToggle" aria-label="Trending chain">
-            <button class="chainBtn" data-net="solana" type="button"><span class="dot"></span>SOL</button>
-            <button class="chainBtn" data-net="eth" type="button"><span class="dot"></span>ETH</button>
-            <button class="chainBtn" data-net="bsc" type="button"><span class="dot"></span>BNB</button>
-            <button class="chainBtn" data-net="base" type="button"><span class="dot"></span>BASE</button>
-          </div>
-          <div class="clockWrap"><div class="sub" id="clock"></div></div>
-        </div>
-      </div>
 
-      <div class="tickerWrap">
-        <div class="tickerTrack" id="tickerTrack"></div>
-      </div>
-      <div class="searchBar">
-        <div class="search">
-          <svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z" stroke="rgba(255,255,255,.75)" stroke-width="2"/><path d="M16.5 16.5 21 21" stroke="rgba(255,255,255,.75)" stroke-width="2" stroke-linecap="round"/></svg>
-          <input id="q" placeholder="Search token name or paste contract (SOL / ETH / BNB / BASE)…" autocomplete="off" spellcheck="false" />
-          <div class="hint" id="modeHint">auto</div>
-          <div class="results" id="results"></div>
+          <div class="bottomRow">
+            <div class="tickerWrap" aria-label="Trending tokens">
+              <div class="tickerTrack" id="tickerTrack">
+                <span class="tickerItem" style="opacity:.75"><span class="rank">…</span><span class="tickerLogoWrap"><span class="tickerLogoFallback">•</span></span><span class="sym">Trending</span></span>
+                <span class="tickerItem" style="opacity:.75"><span class="rank">…</span><span class="tickerLogoWrap"><span class="tickerLogoFallback">•</span></span><span class="sym">Trending</span></span>
+                <span class="tickerItem" style="opacity:.75"><span class="rank">…</span><span class="tickerLogoWrap"><span class="tickerLogoFallback">•</span></span><span class="sym">Trending</span></span>
+                <span class="tickerItem" style="opacity:.75"><span class="rank">…</span><span class="tickerLogoWrap"><span class="tickerLogoFallback">•</span></span><span class="sym">Trending</span></span>
+              </div>
+            </div>
+
+            <div class="dexSearch" role="search" aria-label="Search token by name or contract">
+              <div class="dexSearchInner">
+                <input class="dexInput" id="q" placeholder="Search token / paste contract…" autocomplete="off" spellcheck="false" />
+                <div class="hint" id="modeHint">auto</div>
+                <button class="btn" id="btnGo" type="button">Open</button>
+              </div>
+              <div class="results" id="results"></div>
+            </div>
+          </div>
         </div>
-        <button class="btn" id="btnGo" type="button">Open</button>
       </div>
 
       <div class="grid">
@@ -640,6 +902,8 @@
     const btnBack = $('btnBack');
     const btnClose = $('btnClose');
     const btnBuy = $('btnBuy');
+
+    const topDexguardBtn = $('topDexguardBtn');
 
     const tabChart = $('tabChart');
     const tabTrades = $('tabTrades');
@@ -986,6 +1250,14 @@
       // if browser blocks close
       toast('Close blocked by browser');
     };
+
+    // Top-left Dexguard button -> jump to trending bar
+    if(topDexguardBtn){
+      topDexguardBtn.onclick = ()=>{
+        const tb = document.getElementById('topBar');
+        if(tb) tb.scrollIntoView({behavior:'smooth', block:'start'});
+      };
+    }
 
     btnRefresh.onclick=()=>{
       if(!poolAddr){ toast('Pick a token first'); return; }
@@ -1715,45 +1987,94 @@
       return out;
     }
 
-    function poolToTickerItem(p, i, incMap){
+    
+    // Render ticker items EXACT like main page
+    function poolToTickerItem(p, n, incMap){
       const a = p?.attributes || {};
-      const rel = p?.relationships?.base_token?.data;
-      const tid = rel?.id || '';
-      const t = tid ? incMap.get(tid) : null;
-      const ta = t?.attributes || {};
+      const rel = p?.relationships || {};
+      const baseRef = rel?.base_token?.data || null;
+      const quoteRef = rel?.quote_token?.data || null;
 
-      const sym = String(ta?.symbol||'').trim();
-      const nm = String(ta?.name||'').trim();
-      const imgUrl = String(ta?.image_url || ta?.image || '').trim();
+      const baseId = baseRef?.id ? String(baseRef.id) : '';
+      const baseType = baseRef?.type ? String(baseRef.type) : '';
+      const quoteId = quoteRef?.id ? String(quoteRef.id) : '';
+      const quoteType = quoteRef?.type ? String(quoteRef.type) : '';
 
-      const chg24 = num(a?.price_change_percentage?.h24 ?? a?.price_change_percentage_24h);
-      const pctTxt = Number.isFinite(chg24) ? (chg24>=0?`+${chg24.toFixed(2)}%`:`${chg24.toFixed(2)}%`) : '—';
+      const baseT = baseId ? ((incMap.get(baseType+':' + baseId) || incMap.get(baseId))?.attributes || {}) : {};
+      const quoteT = quoteId ? ((incMap.get(quoteType+':' + quoteId) || incMap.get(quoteId))?.attributes || {}) : {};
 
-      const medal = (i===0?' gold':(i===1?' silver':(i===2?' bronze':'')));
-      const rankCls = 'rank'+(i<3?(' medal'+medal):'');
-      const name = sym ? `$${sym}` : (nm ? `$${nm}` : 'Token');
+      const sym = String((baseT?.symbol || baseT?.name || '')).trim() || (a?.name ? String(a.name).split('/')[0].trim() : '') || 'TOKEN';
+      const symClean = String(sym||'TOKEN').replace(/[^a-zA-Z0-9_$\.\-]/g,'').slice(0,24) || 'TOKEN';
+      const symDisp = symClean.startsWith('$') ? symClean : ('$' + symClean.replace(/^\$/,''));
 
-      const addrGuess = String(ta?.address||'').trim() || tokenIdToAddr(tid) || '';
+      const pctRaw = ((a?.price_change_percentage && (a.price_change_percentage.h24 ?? a.price_change_percentage['h24'] ?? a.price_change_percentage['24h'])) ?? a?.price_change_percentage_24h ?? a?.price_change_percentage_h24 ?? null);
+      const pctNum = (pctRaw===null || pctRaw===undefined || pctRaw==='') ? NaN : Number(pctRaw);
+      const pctTxt = Number.isFinite(pctNum) ? `${pctNum>0?'+':''}${pctNum.toFixed(2)}%` : '';
+      const pctCls = Number.isFinite(pctNum) ? (pctNum>0?'up':(pctNum<0?'down':'')) : '';
 
-      const logo = imgUrl ? `<img alt="" src="${esc(imgUrl)}" loading="lazy"/>` : `<span class="dot"></span>`;
-      const up = Number.isFinite(chg24) && chg24>=0;
+      const logoUrlRaw = String(
+        baseT?.image_url || baseT?.imageUrl || baseT?.image || baseT?.logo_url || baseT?.logoUrl ||
+        quoteT?.image_url || quoteT?.imageUrl || quoteT?.image || quoteT?.logo_url || quoteT?.logoUrl ||
+        a?.image_url || a?.imageUrl || a?.base_token_image_url || a?.base_token_imageUrl || a?.token_image_url || a?.token_imageUrl ||
+        ''
+      ).trim();
+      let logoUrl = logoUrlRaw;
+      if(logoUrl && logoUrl.startsWith('/')) logoUrl = 'https://www.geckoterminal.com' + logoUrl;
+      const first = (symClean || 'T').slice(0,1).toUpperCase();
 
-      return `<a class="tickerItem" href="#" data-addr="${esc(addrGuess)}" title="Open ${esc(name)}">
-        <span class="${rankCls}">${i+1}</span>
-        <span class="tLogo">${logo}</span>
-        <span class="tName">${esc(name)}</span>
-        <span class="tPct ${up?'up':'down'}">${esc(pctTxt)}</span>
+      // Prefer token CA (GeckoTerminal base_token id is usually the token CA)
+      const tokenAddr = String((baseT?.address || baseId || '')).trim();
+
+      const top1 = (n===0);
+      const cls = `tickerItem${top1?' top1':''}`;
+      const rankTxt = top1 ? `🔥 #1` : `#${n+1}`;
+
+      const logo = logoUrl
+        ? `<span class="tickerLogoWrap"><img class="tickerLogo" src="${esc(logoUrl)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove(); var w=this.closest('.tickerLogoWrap'); if(w){w.innerHTML='<span class=tickerLogoFallback>${esc(first)}</span>';}\"></span>`
+        : `<span class="tickerLogoWrap"><span class="tickerLogoFallback">${esc(first)}</span></span>`;
+
+      return `<a class="${cls}" href="#" data-addr="${esc(tokenAddr)}" title="Open ${esc(symDisp)}">
+        <span class="rank">${esc(rankTxt)}</span>
+        ${logo}
+        <span class="sym">${esc(symDisp)}</span>
+        ${pctTxt ? `<span class="tickerPct ${esc(pctCls)}">${esc(pctTxt)}</span>` : ''}
       </a>`;
     }
+
+    // Make the marquee a true endless loop: distance + duration scale with content width.
+    function syncTickerMarquee(){
+      try{
+        if(!tickerTrack) return;
+        const isMobile = window.matchMedia('(max-width: 860px)').matches;
+        const pxPerSec = isMobile ? 120 : 95;
+        requestAnimationFrame(()=>{
+          const total = tickerTrack.scrollWidth || 0;
+          if(total < 20) return;
+          const one = Math.max(1, Math.round(total / 2));
+          document.documentElement.style.setProperty('--tickerDistance', one + 'px');
+          const dur = Math.min(22, Math.max(6.5, one / pxPerSec));
+          document.documentElement.style.setProperty('--tickerSpeed', dur.toFixed(2) + 's');
+        });
+      }catch(_e){}
+    }
+
+    let _tickerResizeT = null;
+    window.addEventListener('resize', ()=>{
+      clearTimeout(_tickerResizeT);
+      _tickerResizeT = setTimeout(syncTickerMarquee, 120);
+    }, {passive:true});
 
     function renderTrendingTicker(pools, incMap){
       const top = (pools||[]).slice(0, 10);
       if(!top.length){
-        tickerTrack.innerHTML = `<div class="tickerEmpty">Trending unavailable.</div>`;
+        tickerTrack.innerHTML = `<span class="tickerItem" style="opacity:.75"><span class="rank">!</span><span class="sym">Trending unavailable</span></span>`;
+        syncTickerMarquee();
         return;
       }
-      const html = top.map((p,i)=>poolToTickerItem(p,i,incMap)).join('');
-      tickerTrack.innerHTML = html + html;
+
+      const items = top.map((p,i)=>poolToTickerItem(p,i,incMap)).join('');
+      tickerTrack.innerHTML = items + items;
+      syncTickerMarquee();
     }
 
     async function startTrending(){
