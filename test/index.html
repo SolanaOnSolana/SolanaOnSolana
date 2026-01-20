@@ -294,55 +294,7 @@ img{max-width:100%; height:auto}
  transform: translateY(-1px);
  }
 
-/* DexGuard CTA (menu) — gold, premium */
-.menuDexCta{
- display:flex;
- align-items:center;
- justify-content:space-between;
- gap:12px;
- padding: 12px 12px;
- border-radius: 16px;
- border: 1px solid rgba(243,186,47,.40);
- background: linear-gradient(90deg, rgba(243,186,47,.98), rgba(255,215,0,.90), rgba(255,242,190,.78));
- color: rgba(10,10,22,.96);
- font-weight: 1100;
- box-shadow: 0 22px 70px rgba(0,0,0,.58), 0 0 0 1px rgba(255,215,0,.22) inset;
- position:relative;
- overflow:hidden;
-}
-.menuDexCta::before{
- content:"";
- position:absolute;
- inset:-40px;
- background:
-   radial-gradient(240px 120px at 18% 35%, rgba(255,255,255,.40), transparent 60%),
-   radial-gradient(260px 140px at 82% 65%, rgba(255,255,255,.22), transparent 62%);
- opacity:.55;
- filter: blur(10px);
- pointer-events:none;
-}
-.menuDexCta > *{ position:relative; z-index:1; }
-.menuDexCta:hover{ transform: translateY(-1px); box-shadow: 0 26px 84px rgba(0,0,0,.62), 0 0 0 1px rgba(255,215,0,.26) inset; }
-.menuDexLeft{ display:flex; flex-direction:column; gap:3px; min-width:0; }
-.menuDexTitle{ font-weight: 1200; letter-spacing:-.2px; }
-.menuDexSub{ font-weight: 900; font-size: 12px; opacity:.82; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.menuDexChip{
- display:inline-flex;
- align-items:center;
- gap:8px;
- padding: 7px 10px;
- border-radius: 999px;
- background: rgba(0,0,0,.12);
- border: 1px solid rgba(0,0,0,.14);
- font-size: 12px;
- font-weight: 1100;
-}
-.menuDexChip svg{ width:16px; height:16px; display:block; }
-
-
-
-
-.menuBadge{
+ .menuBadge{
  flex: 0 0 auto;
  font-size:11px;
  font-weight:950;
@@ -1553,20 +1505,27 @@ body.net-eth{ --netColor: var(--ethColor); --netGlow: rgba(98,126,234,.22); }
 body.net-bnb{ --netColor: var(--bnbColor); --netGlow: rgba(243,186,47,.22); }
 body.net-base{ --netColor: var(--baseColor); --netGlow: rgba(0,82,255,.22); }
 
-body{ padding-top: 0; }
+/* Top bar sits at the very top of the page (NOT sticky/fixed).
+   It should disappear naturally when the user scrolls down. */
 .topBar{
-  position: relative;
-  top: 0; left: 0; right: 0;
+  position: sticky;
+  top: 0;
+  width: 100%;
   z-index: 85;
   background: rgba(7,7,17,.62);
   border-bottom: 1px solid rgba(255,255,255,.10);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  transition: none;
-  will-change: auto;
 }
 
-
+/* Mobile/desktop: make the HERO start immediately after the search (no dead space). */
+main.wrap{ padding-top: 0 !important; }
+main.wrap > section.hero{
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  margin-top: 0 !important;
+}
+main.wrap > section.hero .heroCard{ margin-top: 0 !important; }
 
 .topBarInner{
   max-width: var(--max);
@@ -1604,59 +1563,75 @@ body{ padding-top: 0; }
   box-shadow: 0 12px 32px rgba(0,0,0,.24);
   font-weight: 1100;
   letter-spacing: .6px;
+  color: rgba(255,255,255,.92);
+  text-decoration: none;
+  cursor: default;
 }
 .hotFire{ width: 18px; height: 18px; opacity: .95; }
 
-/* DexGuard brand (top-left, next to Live Trending) */
-.dexguardLogo{
-  height: 44px;
-  width: auto;
-  display:block;
-  transform: translateZ(0);
-  filter: drop-shadow(0 12px 26px rgba(0,0,0,.45));
-}
-.dexguardBtn{
-  border: 1px solid rgba(255,255,255,.22);
-  padding: 10px 14px;
-  gap: 10px;
-  font-weight: 1150;
-  letter-spacing: .2px;
-  color: rgba(10,10,22,.92);
-  background: linear-gradient(90deg, rgba(250,250,252,.96), rgba(192,200,214,.96), rgba(250,250,252,.94));
-  box-shadow:
-    0 16px 34px rgba(0,0,0,.34),
-    0 0 0 1px rgba(255,255,255,.18) inset,
-    0 0 34px rgba(255,255,255,.10),
-    0 0 28px var(--netGlow);
+.hotLabel.hotDex{
+  cursor: pointer;
+  background: rgba(0,82,255,.10);
+  border: 1px solid rgba(0,82,255,.26);
   position: relative;
-  overflow: hidden;
+  justify-content: center;
+  min-width: 170px;
+  padding: 9px 14px;
 }
-.dexguardBtn::before{
+.hotLabel.hotDex:hover{
+  background: rgba(0,82,255,.14);
+  border-color: rgba(0,82,255,.34);
+}
+
+/* Dexguard button (DEX badge + label + subtle pulse) */
+.dexBadge{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 2px solid rgba(255,255,255,.10);
+  background: rgba(255,255,255,.06);
+  box-shadow: 0 10px 24px rgba(0,0,0,.22);
+  font-weight: 1200;
+  letter-spacing: 2px;
+  font-size: 12px;
+  line-height: 1;
+  position: relative;
+}
+.dexBadge:before{
   content:"";
   position:absolute;
-  inset:-60px;
-  background:
-    radial-gradient(260px 140px at 20% 30%, rgba(255,255,255,.35), transparent 60%),
-    radial-gradient(300px 160px at 80% 70%, rgba(255,255,255,.18), transparent 62%),
-    linear-gradient(120deg, transparent 0%, rgba(255,255,255,.22) 35%, transparent 70%);
-  opacity: .55;
-  filter: blur(10px);
-  transform: translateZ(0);
+  inset:-2px;
+  border-radius: 999px;
+  padding: 2px;
+  background: linear-gradient(90deg, var(--g), var(--c), var(--p));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
   pointer-events:none;
+  opacity: .9;
 }
-.dexguardBtn > *{ position: relative; z-index: 1; }
-.dexguardBtn:hover{
-  transform: translateY(-1px);
-  border-color: rgba(255,255,255,.30);
-  box-shadow:
-    0 18px 40px rgba(0,0,0,.38),
-    0 0 0 1px rgba(255,255,255,.20) inset,
-    0 0 40px rgba(255,255,255,.14),
-    0 0 36px var(--netGlow);
+.dexText{
+  font-weight: 1050;
+  letter-spacing: .2px;
+  color: rgba(255,255,255,.94);
 }
-.dexguardBtn:active{ transform: translateY(0) scale(.99); }
-.dgIco{ width: 18px; height: 18px; display:block; }
+@keyframes dexPulse{
+  0%,100%{ box-shadow: 0 12px 32px rgba(0,0,0,.24), 0 0 0 0 rgba(0,82,255,.0); }
+  50%{ box-shadow: 0 14px 40px rgba(0,0,0,.30), 0 0 0 6px rgba(0,82,255,.14); }
+}
+.hotLabel.hotDex{
+  animation: dexPulse 2.2s ease-in-out infinite;
+}
+.hotLabel.hotDex:hover{ animation-play-state: paused; }
 
+/* Slightly smaller on very small screens (still big + readable) */
+@media (max-width: 420px){
+  .hotLabel.hotDex{ min-width: 150px; padding: 9px 12px; }
+  .dexBadge{ height: 26px; padding: 0 9px; font-size: 11px; }
+}
 .chainToggle{
   display:inline-flex;
   align-items:center;
@@ -1847,7 +1822,7 @@ body.net-base .chainBtn.active{ background: linear-gradient(90deg, rgba(0,82,255
 }
 .tickerItem.top1 .chain{ color: rgba(255,215,0,.92); }
 
-.dexSearch{ position: relative; width: 360px; max-width: 44vw; }
+.dexSearch{ position: relative; width: 240px; max-width: 30vw; flex: 0 0 240px; }
 .dexSearchInner{
   display:flex;
   gap: 8px;
@@ -1858,6 +1833,7 @@ body.net-base .chainBtn.active{ background: linear-gradient(90deg, rgba(0,82,255
   border: 1px solid rgba(255,255,255,.10);
   box-shadow: 0 10px 30px rgba(0,0,0,.22);
 }
+.dexSearchIcon{ width:18px; height:18px; opacity:.88; flex: 0 0 18px; }
 .dexInput{
   flex: 1;
   min-width: 0;
@@ -2055,85 +2031,89 @@ body.net-base .chainBtn.active{ background: linear-gradient(90deg, rgba(0,82,255
 }
 
 
-
-/* mobile: NEW premium topbar layout (clean, swipeable, not a block) */
+/* mobile: stack + keep everything clickable */
 @media (max-width: 860px){
-  /* Mobile: make it feel like an app header */
-  .topBar{
-    background: transparent;
-    border-bottom: 0;
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
-    padding: calc(env(safe-area-inset-top) + 8px) 10px 0;
-  }
-  .topBarInner{
-    max-width: none;
-    margin: 0 auto;
-    padding: 12px;
-    gap: 12px;
-    border-radius: 24px;
-    border: 1px solid rgba(255,255,255,.12);
-    background: rgba(7,7,17,.72);
-    box-shadow: 0 18px 50px rgba(0,0,0,.55);
-    backdrop-filter: blur(18px);
-    -webkit-backdrop-filter: blur(18px);
-  }
+  :root{ --tickerSpeed: 5.2s; } /* ✅ mobile speed stays exactly as-is */
 
-  /* Stack rows nicely */
-  .topRow{ flex-direction: column; align-items: stretch; gap: 10px; }
-  .hotBlock{ width:100%; display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:nowrap; }
+  /* Mobile topbar: ultra clean, no horizontal scrolling, no cramped UI */
+  .topBarInner{ padding: calc(10px + env(safe-area-inset-top)) 12px 10px; gap: 10px; }
 
-  .hotLabel{ padding: 9px 12px; font-size: 12px; letter-spacing: .55px; }
+  /* Mobile spacing: remove the big empty block above $SOS */
+  section{ padding: 10px 0; }
+  main.wrap{ padding-top: 0 !important; margin-top: 0 !important; }
+  section.hero{ padding-top: 0 !important; margin-top: 0 !important; }
+  .hero{ padding-top: 0 !important; }
+
+  /* Row 1: label + chain selector (wraps nicely) */
+  .topRow{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap: 10px;
+    flex-wrap:wrap;
+  }
+  .hotBlock{ width:100%; display:flex; align-items:center; justify-content:flex-start; gap:8px; flex-wrap:wrap; }
+  .hotLabel{ padding: 9px 12px; font-size: 12px; letter-spacing: .5px; }
   .hotFire{ width: 16px; height: 16px; }
 
-  /* Make DexGuard brand readable */
-  .dexguardLogo{ height: 38px; }
-  .dexguardBtn{ padding: 10px 12px; font-size: 13px; }
+  /* Dexguard button: DEX badge + label */
+  .hotLabel.hotDex{ min-width: 0; padding: 9px 12px; justify-content:center; }
+  .dexBadge{ height: 26px; padding: 0 9px; font-size: 11px; }
 
-  /* Chain selector becomes swipeable chips (no cramped 4-grid) */
+
+  /* Chain selector: 4 equal buttons, always visible (no scrolling) */
   .chainToggle{
-    width:100%;
-    display:flex;
-    gap:8px;
-    padding: 8px;
-    border-radius: 18px;
-    overflow:auto;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-    background: rgba(255,255,255,.04);
+    width: 100%;
+    display:grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+    padding: 6px;
+    overflow: visible;
+    justify-content: stretch;
   }
-  .chainToggle::-webkit-scrollbar{ height:0; }
-  .chainBtn{ padding: 10px 14px; min-width: 78px; font-size: 12px; }
+  .chainBtn{ width:100%; padding:  9px 0; font-size: 12px; }
+  .chainBtn{ box-shadow: 0 0 0 1px rgba(255,255,255,.06) inset, 0 10px 22px rgba(0,0,0,.20); }
 
-  /* Search first (big + friendly) */
+  /* Row 2: ticker */
+  .tickerWrap{ width: 100%; padding: 9px 10px; }
+  .tickerItem{ font-size: 12.5px; padding: 7px 9px; gap: 8px; }
+  .tickerLogoWrap{ width:22px; height:22px; flex:0 0 22px; border-radius:6px; }
+  .tickerLogoFallback{ font-size: 11px; }
+  .tickerItem .rank{ min-width: 26px; height: 21px; font-size: 11px; }
+
+  /* Row 3: search */
   .bottomRow{ flex-direction: column; align-items: stretch; gap: 10px; }
-  .dexSearch{ width: 100%; max-width: 100%; order: 1; }
-  .dexSearchInner{ padding: 12px 12px; border-radius: 18px; }
+  .dexSearch{ width: 100%; max-width: 100%; }
+  .dexSearchInner{ padding: 10px 10px; }
+  /* Mobile iOS fix: keep search results directly under the search bar (no ghost spacer) */
+  .dexResults{
+    position: static;
+    inset: auto;
+    width: 100%;
+    max-height: 55vh;
+    margin-top: 10px;
+    z-index: 120;
+  }
+  /* iOS: prevent accidental vertical spacer */
+  main.wrap > section.hero:first-of-type{ padding-top: 0 !important; }
+  /* prevent iOS input zoom */
   .dexInput{ font-size: 16px; }
-  .dexMiniBtn{ padding: 9px 12px; }
+  .dexMiniBtn{ padding: 8px 10px; }
 
-  /* Trending becomes swipeable chips (no ugly marquee) */
-  .tickerWrap{ width: 100%; order: 2; padding: 10px 10px; border-radius: 18px; overflow:auto; scroll-snap-type: x mandatory; }
-  .tickerWrap:before, .tickerWrap:after{ display:none; }
-  .tickerTrack{ animation: none !important; gap: 10px; }
-  .tickerItem{ scroll-snap-align: start; font-size: 12.5px; padding: 8px 10px; gap: 9px; }
-  .tickerLogoWrap{ width:26px; height:26px; flex:0 0 26px; border-radius:8px; }
   /* Menu button: always top-right and sized for iOS */
   .menuBtn{ padding: 9px 12px; border-radius: 14px; font-size: 20px; }
   .menuPop{ width: min(340px, calc(100vw - 24px)); }
+
 }
 
 @media (max-width: 380px){
-  .chainBtn{ min-width: 72px; padding: 10px 12px; font-size: 11.5px; }
-  .dexguardBtn{ font-size: 12.5px; }
+  .chainBtn{ font-size: 11.5px; padding: 7px 0; }
 }
 
 /* reduced motion */
 @media (prefers-reduced-motion: reduce){
   .tickerTrack{ animation: none !important; }
 }
-
-
 </style>
 </head>
 
@@ -2189,6 +2169,11 @@ body.net-base .chainBtn.active{ background: linear-gradient(90deg, rgba(0,82,255
  <path d="M10.2 15.4c.2-1.5 1.3-2.4 2-3.4c.3-.4.5-.8.6-1.2c.6 1 .9 1.8 1.1 2.7c.2 1.1-.3 1.8-.8 2.5c-.5.7-.7 1.1-.7 1.9c0 1.4 1.1 2.1 2 2.4" fill="none" stroke="url(#gradBrand)" stroke-width="2" stroke-linecap="round" opacity=".75"/>
  </symbol>
 
+ <symbol id="ico-search" viewBox="0 0 24 24">
+ <path d="M10.5 18a7.5 7.5 0 1 1 0-15a7.5 7.5 0 0 1 0 15Z" fill="none" stroke="url(#gradBrand)" stroke-width="2"/>
+ <path d="M16.4 16.4L21 21" fill="none" stroke="url(#gradBrand)" stroke-width="2" stroke-linecap="round"/>
+ </symbol>
+
  <symbol id="ico-percent" viewBox="0 0 24 24">
  <path d="M19 5L5 19" fill="none" stroke="url(#gradBrand)" stroke-width="2" stroke-linecap="round"/>
  <path d="M7.5 9a1.8 1.8 0 1 0 0-3.6a1.8 1.8 0 0 0 0 3.6Z" fill="none" stroke="url(#gradBrand)" stroke-width="2"/>
@@ -2199,31 +2184,21 @@ body.net-base .chainBtn.active{ background: linear-gradient(90deg, rgba(0,82,255
  <path d="M12 4l9 5-9 5-9-5 9-5Z" fill="none" stroke="url(#gradBrand)" stroke-width="2" stroke-linejoin="round"/>
  <path d="M21 9v6l-9 5-9-5V9" fill="none" stroke="url(#gradBrand)" stroke-width="2" stroke-linejoin="round" opacity=".8"/>
  </symbol>
-
- <symbol id="ico-chart" viewBox="0 0 24 24">
- <path d="M4 19.5H20" fill="none" stroke="url(#gradBrand)" stroke-width="2" stroke-linecap="round"/>
- <path d="M6 17v-4" fill="none" stroke="url(#gradBrand)" stroke-width="2" stroke-linecap="round"/>
- <path d="M10 17v-7" fill="none" stroke="url(#gradBrand)" stroke-width="2" stroke-linecap="round"/>
- <path d="M14 17v-10" fill="none" stroke="url(#gradBrand)" stroke-width="2" stroke-linecap="round"/>
- <path d="M18 17v-6" fill="none" stroke="url(#gradBrand)" stroke-width="2" stroke-linecap="round"/>
- <path d="M6 11l4-2l4-3l4 2" fill="none" stroke="url(#gradBrand)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity=".75"/>
- </symbol>
  </svg>
 
  <!-- TOP TRENDING BAR + SEARCH (Dex-style) -->
  <div class="topBar" id="topBar">
    <div class="topBarInner">
      <div class="topRow">
-       <div class="hotBlock" aria-label="Live trending">
+       <div class="hotBlock" aria-label="Hot trending live">
          <div class="hotLabel" title="Live trending">
            <svg class="hotFire" aria-hidden="true"><use href="#ico-fire"></use></svg>
            <span>LIVE TRENDING</span>
          </div>
-
-         <!-- DexGuard brand + CTA -->
-         <img class="dexguardLogo" src="dexguard.png" alt="DexGuard" loading="eager" decoding="async" />
-         <a class="btn dexguardBtn" id="dexguardBtn" href="/dexguard" target="_blank" rel="noreferrer" title="Open DexGuard">
-           <svg class="dgIco" aria-hidden="true"><use href="#ico-chart"></use></svg> DexGuard</a>
+         <a class="hotLabel hotDex" href="https://www.solanax1.com/dexguard" target="_self" rel="noopener" title="Open Dexguard">
+           <span class="dexBadge" aria-hidden="true">DEX</span>
+           <span class="dexText">Dexguard</span>
+         </a>
        </div>
 
        <div class="chainToggle" id="chainToggle" role="tablist" aria-label="Choose chain">
@@ -2243,9 +2218,8 @@ body.net-base .chainBtn.active{ background: linear-gradient(90deg, rgba(0,82,255
 
        <div class="dexSearch" role="search" aria-label="Search token by name or contract">
          <div class="dexSearchInner">
+           <svg class="dexSearchIcon" aria-hidden="true"><use href="#ico-search"></use></svg>
            <input class="dexInput" id="dexSearchInput" autocomplete="off" spellcheck="false" placeholder="Search token / paste contract…" />
-           <button class="btn ghost dexMiniBtn" id="dexSearchGo" type="button">Search</button>
-           <button class="btn ghost dexMiniBtn" id="dexSearchCopy" type="button" title="Scan (coming soon)">Scan</button>
          </div>
          <div class="dexResults" id="dexResults" hidden></div>
        </div>
@@ -2267,17 +2241,6 @@ body.net-base .chainBtn.active{ background: linear-gradient(90deg, rgba(0,82,255
  </button>
 
  <div class="menuPop" id="menuPop" role="menu" aria-label="Quick links">
- <div class="menuLabel">DexGuard DEX</div>
- <a class="menuDexCta" role="menuitem" href="/dexguard" target="_blank" rel="noreferrer" title="Open DexGuard">
-   <span class="menuDexLeft">
-     <span class="menuDexTitle">Enter DexGuard</span>
-     <span class="menuDexSub">Charts • Swaps • Live Pairs</span>
-   </span>
-   <span class="menuDexChip"><svg aria-hidden="true"><use href="#ico-chart"></use></svg> DEX</span>
- </a>
-
- <div class="menuSep"></div>
-
 
  <div class="menuLabel">Navigate</div>
  <a class="menuItem" role="menuitem" href="#what"><span class="menuText">What is $SOS?</span><span class="menuBadge badgeSection">Section</span></a>
@@ -2859,6 +2822,7 @@ body.net-base .chainBtn.active{ background: linear-gradient(90deg, rgba(0,82,255
  // Year
  document.getElementById("y").textContent = new Date().getFullYear();
 
+
  // Copy helpers
  function setHint(el, ok){
  if(!el) return;
@@ -3070,7 +3034,54 @@ function toggleMenu(){
      window.location.href = url;
    }
 
-   if(!trendTrack || !inEl || !resEl || !btnGo || !btnCopy) return;
+   if(!trendTrack || !inEl || !resEl) return;
+
+   // Prevent the "wrong item opens" bug: don't swap ticker DOM while the user is hovering/clicking.
+   const tickerWrap = trendTrack.closest('.tickerWrap');
+   let _tickerHover = false;
+   let _tickerHold = false;
+   let _pendingTickerHtml = null;
+
+   function _applyTickerHtml(html){
+     try{
+       if(!trendTrack) return;
+       _pendingTickerHtml = null;
+       // Restart animation cleanly so click targets never drift over time
+       trendTrack.style.animation = 'none';
+       // force reflow
+       void trendTrack.offsetHeight;
+       trendTrack.innerHTML = html;
+       syncTickerMarquee();
+       trendTrack.style.animation = '';
+     }catch(_e){}
+   }
+
+   function setTickerItems(itemsHtml){
+     const html = (itemsHtml || '') + (itemsHtml || '');
+     if(_tickerHover || _tickerHold){
+       _pendingTickerHtml = html;
+       return;
+     }
+     _applyTickerHtml(html);
+   }
+
+   if(tickerWrap){
+     tickerWrap.addEventListener('mouseenter', ()=>{ _tickerHover = true; }, {passive:true});
+     tickerWrap.addEventListener('mouseleave', ()=>{
+       _tickerHover = false;
+       if(_pendingTickerHtml && !_tickerHold) _applyTickerHtml(_pendingTickerHtml);
+     }, {passive:true});
+     tickerWrap.addEventListener('pointerdown', ()=>{ _tickerHold = true; }, {passive:true});
+     window.addEventListener('pointerup', ()=>{
+       _tickerHold = false;
+       if(!_tickerHover && _pendingTickerHtml) _applyTickerHtml(_pendingTickerHtml);
+     }, {passive:true});
+     window.addEventListener('pointercancel', ()=>{
+       _tickerHold = false;
+       if(!_tickerHover && _pendingTickerHtml) _applyTickerHtml(_pendingTickerHtml);
+     }, {passive:true});
+   }
+
    // Chain toggle events
 
    const toggleEl = document.getElementById('chainToggle');
@@ -3235,8 +3246,7 @@ function toggleMenu(){
     const cached = readTrendCache(net);
     try{
       if(cached && trendTrack && (!trendTrack.innerHTML || /(Trending unavailable|Loading trending)/i.test(trendTrack.textContent||""))){
-        trendTrack.innerHTML = cached.items + cached.items;
-        syncTickerMarquee();
+        setTickerItems(cached.items);
       }
 
       const url = `https://api.geckoterminal.com/api/v2/networks/${encodeURIComponent(net)}/trending_pools?include=base_token,quote_token`;
@@ -3282,8 +3292,15 @@ function toggleMenu(){
         let logoUrl = logoUrlRaw;
         if(logoUrl && logoUrl.startsWith('/')) logoUrl = 'https://www.geckoterminal.com' + logoUrl;
         const first = (symClean || 'T').slice(0,1).toUpperCase();
-         const addr = (a?.address || '').trim();
-         const href = addr ? `https://www.geckoterminal.com/${encodeURIComponent(net)}/pools/${encodeURIComponent(addr)}` : '#';
+         const poolAddr = (a?.address || '').trim();
+         // Prefer token address (GeckoTerminal base_token id is usually the token CA)
+         const tokenAddr = String((baseT?.address || baseId || '')).trim();
+         // Map Gecko networks to DexGuard chains
+         const guardNet = (net === 'solana') ? 'sol' : (net === 'eth') ? 'eth' : (net === 'bsc') ? 'bnb' : 'base';
+         // If tokenAddr is missing, keep GeckoTerminal as a safe fallback (never break the ticker)
+         const href = tokenAddr
+           ? `/dexguard?chain=${encodeURIComponent(guardNet)}&addr=${encodeURIComponent(tokenAddr)}`
+           : (poolAddr ? `https://www.geckoterminal.com/${encodeURIComponent(net)}/pools/${encodeURIComponent(poolAddr)}` : '#');
          const top1 = (n===0);
          const cls = `tickerItem${top1?' top1':''}`;
          const rankTxt = top1 ? `🔥 #1` : `#${n+1}`;
@@ -3300,7 +3317,7 @@ function toggleMenu(){
        }).join('');
 
       writeTrendCache(net, items);
-      trendTrack.innerHTML = items + items;
+      setTickerItems(items);
 
        // ✅ ensure it runs through the full list before looping (no "cut" mid-way)
        syncTickerMarquee();
@@ -3311,7 +3328,7 @@ function toggleMenu(){
       const keepExisting = !!(trendTrack && trendTrack.children && trendTrack.children.length > 0);
       const cached2 = readTrendCache(net);
       if(cached2 && trendTrack){
-        trendTrack.innerHTML = cached2.items + cached2.items;
+        setTickerItems(cached2.items);
         toast('Trending temporarily unavailable');
       }else if(!keepExisting){
         trendTrack.innerHTML = `<span class="tickerItem" style="opacity:.75"><span class="rank">!</span><span class="sym">Trending unavailable</span><span class="chain" style="display:none">${esc(net)}</span></span>`;
@@ -3405,8 +3422,10 @@ function toggleMenu(){
          const mcapLabel = (p.marketCap != null ? "MCap" : (p.fdv != null ? "FDV" : "MCap"));
          const ca = p.baseToken?.address || "";
 
-         // Route to our internal chart page (no external redirect)
-         const href = `/chart?chain=${encodeURIComponent(String(p.chainId||''))}&addr=${encodeURIComponent(String(ca||''))}`;
+         // Route to DexGuard (internal)
+         const dc = String(p.chainId||'').toLowerCase();
+         const guardChain = DEX_TO_SCANNER_CHAIN[dc] || DEX_TO_SCANNER_CHAIN[NET_TO_DEX_CHAIN[activeNet]||''] || 'sol';
+         const href = `/dexguard?chain=${encodeURIComponent(guardChain)}&addr=${encodeURIComponent(String(ca||''))}`;
          return `<div class="dexResRow">
            <div class="dexResLeft">
              <div class="dexResTitleRow">
@@ -3459,7 +3478,7 @@ function toggleMenu(){
      tmr = setTimeout(()=> runSearch(q), 250);
    });
 
-   btnGo.addEventListener("click", () => {
+   if(btnGo) btnGo.addEventListener("click", () => {
      // Search button should NOT navigate away. It simply forces an immediate local search.
      const q = (inEl.value || "").trim();
      if(!q) { inEl.focus(); return; }
@@ -3469,7 +3488,7 @@ function toggleMenu(){
      inEl.focus();
    });
 
-   btnCopy.addEventListener("click", () => {
+   if(btnCopy) btnCopy.addEventListener("click", () => {
      // Scan: redirects to the Contract Scanner and auto-runs with the selected CA.
      // If user typed a real CA, we use it. Otherwise we use the best dropdown match.
      (async () => {
@@ -3542,11 +3561,16 @@ function toggleMenu(){
      }
    });
 
-   // keyboard: Enter triggers go
+   // keyboard: Enter forces an immediate local search (no navigation)
    inEl.addEventListener("keydown", (e) => {
      if(e.key === "Enter"){
        e.preventDefault();
-       btnGo.click();
+       const q = (inEl.value || "").trim();
+       if(!q){ inEl.focus(); return; }
+       clearTimeout(tmr);
+       runSearch(q);
+       resEl.hidden = false;
+       inEl.focus();
      }
      if(e.key === "Escape"){
        resEl.hidden = true;
