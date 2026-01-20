@@ -233,8 +233,10 @@
 
     #chartWrap{height:560px;}
     #chart{height:100%;}
-
-    
+    #chart{width:100%;}
+    #chartWrap{position:relative;}
+    #chartEmbed{position:absolute; inset:0; display:none;}
+    #chartEmbed iframe{width:100%; height:100%; border:0; display:block;}
     .viewRow{display:flex;gap:8px;align-items:center}
     .btn.tiny{padding:8px 10px;border-radius:999px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;opacity:.85}
     .btn.tiny.active{opacity:1;box-shadow:0 0 0 1px rgba(255,255,255,.18) inset, 0 10px 24px rgba(0,0,0,.28)}
@@ -386,7 +388,7 @@
           </div>
           <div class="stats" id="stats"></div>
         </div>
-        <div id="chartWrap"><div id="chart"></div></div>
+        <div id="chartWrap"><div id="chart"></div><div id="chartEmbed"></div></div>
         <div class="controls">
           <div class="tfRow" id="tfRow"></div>
           <div class="viewRow" id="viewRow">
@@ -424,6 +426,7 @@
   (function(){
     // -------------------- Helpers
     const GECKO = 'https://api.geckoterminal.com/api/v2';
+    const DEX = 'https://api.dexscreener.com/latest/dex';
     const $ = (id)=>document.getElementById(id);
     const qs = new URLSearchParams(location.search);
     const SCANNER_PAGE = '/scanner';
@@ -494,6 +497,8 @@
 
     const rawChain = (qs.get('chain') || qs.get('net') || 'solana').trim();
     let addr = (qs.get('addr') || qs.get('address') || qs.get('ca') || '').trim();
+    let pairChain = (qs.get('pairChain') || qs.get('pairchain') || qs.get('dexChain') || '').trim();
+    let pairAddr = (qs.get('pair') || qs.get('pairAddr') || qs.get('pairaddr') || '').trim();
 
     function normalizeChain(x){
       x = (x||'').toLowerCase().trim();
@@ -671,6 +676,7 @@
 
     // -------------------- Chart
     const chartEl = $('chart');
+    const chartEmbedEl = $('chartEmbed');
     const chart = LightweightCharts.createChart(chartEl, {
       width: chartEl.clientWidth || 600,
       height: chartEl.clientHeight || 560,
@@ -855,19 +861,31 @@
 
     // -------------------- Navigation
     // Soft navigation: update URL + reload data without a full page refresh.
-    function updateUrl(chain, address){
+    function updateUrl(chain, address, pairA='', pairC=''){
       const url = new URL(location.href);
       url.searchParams.set('chain', chain);
       url.searchParams.set('addr', address);
+      if(pairA){
+        url.searchParams.set('pair', pairA);
+      } else {
+        url.searchParams.delete('pair');
+      }
+      if(pairC){
+        url.searchParams.set('pairChain', pairC);
+      } else {
+        url.searchParams.delete('pairChain');
+      }
       history.replaceState({}, '', url.toString());
     }
 
     // Backwards-compatible helper (older handlers call navigateTo)
     // Soft navigation: switch chain/address and reload chart/trades without a full page refresh.
-    async function navigateTo(chain, address){
+    async function navigateTo(chain, address, pAddr='', pChain=''){
       activeNet = normalizeChain(chain);
       addr = (address||'').trim();
-      updateUrl(activeNet, addr);
+      pairAddr = (pAddr||'').trim();
+      pairChain = (pChain||'').trim();
+      updateUrl(activeNet, addr, pairAddr, pairChain);
 
       // update UI state
       $all('.net', netPills).forEach(b=>b.classList.toggle('active', (b.dataset.net||'')===activeNet));
@@ -1028,7 +1046,9 @@
           el.onclick = ()=>{
             const chain = el.getAttribute('data-chain');
             const addr = el.getAttribute('data-addr');
-            if(chain && addr) navigateTo(chain, addr);
+            const p = el.getAttribute('data-pair')||'';
+            const pc = el.getAttribute('data-pairchain')||'';
+            if(chain && addr) navigateTo(chain, addr, p, pc);
           };
         });
 
@@ -1061,7 +1081,7 @@
       const mcap = num(p?.marketCap);
       const fdv = num(p?.fdv);
 
-      return { net, addr, pairLabel, img, ch24, mcap, fdv };
+      return { net, addr, pairLabel, img, ch24, mcap, fdv, pairAddress: (p?.pairAddress||''), chainId: (p?.chainId||'') };
     }
 
     function renderResult(it){
@@ -1075,7 +1095,7 @@
       const logoHtml = it.img ? `<img src="${esc(it.img)}" alt="" referrerpolicy="no-referrer" onerror="this.remove(); this.parentNode.textContent='${fb}';">` : `<span class="fb">${fb}</span>`;
 
       return `
-        <div class="resItem" data-go="1" data-chain="${esc(it.net)}" data-addr="${esc(it.addr)}" style="cursor:pointer">
+        <div class="resItem" data-go="1" data-chain="${esc(it.net)}" data-addr="${esc(it.addr)}" data-pair="${esc(it.pairAddress||'')}" data-pairchain="${esc(it.chainId||'')}" style="cursor:pointer">
           <div class="resL">
             <div class="resLogo">${logoHtml}</div>
             <div class="resTxt">
@@ -1497,8 +1517,60 @@
     let tradesTimer=null;
     let candlesTimer=null;
 
+
+
+    // -------------------- DexScreener chart embed (guaranteed full-history chart)
+    const DS_TOKEN = DEX + '/tokens/';
+
+    function dsChainIdFromNet(net){
+      if(net==='eth') return 'ethereum';
+      if(net==='bsc') return 'bsc';
+      if(net==='base') return 'base';
+      return 'solana';
+    }
+
+    function showDexEmbed(chainId, pairAddress){
+      if(!chainId || !pairAddress){
+        chartEmbedEl.style.display='none';
+        chartEmbedEl.innerHTML='';
+        return;
+      }
+      const src = `https://dexscreener.com/${encodeURIComponent(chainId)}/${encodeURIComponent(pairAddress)}?embed=1&theme=dark&info=0&trades=0&chartLeftToolbar=0&chartTheme=dark`;
+      chartEmbedEl.style.display='block';
+      chartEmbedEl.innerHTML = `<iframe src="${esc(src)}" loading="lazy" referrerpolicy="no-referrer" sandbox="allow-scripts allow-same-origin allow-popups allow-forms" allow="clipboard-read; clipboard-write"></iframe>`;
+    }
+
+    function pickBestPairForNet(pairs, net){
+      const want = dsChainIdFromNet(net);
+      const list = (pairs||[]).filter(p=>String(p?.chainId||'').toLowerCase()===want);
+      if(!list.length) return null;
+      // sort by liquidity usd, then 24h volume
+      list.sort((a,b)=>{
+        const la = Number(a?.liquidity?.usd||0);
+        const lb = Number(b?.liquidity?.usd||0);
+        if(lb!=la) return lb-la;
+        const va = Number(a?.volume?.h24||0);
+        const vb = Number(b?.volume?.h24||0);
+        return vb-va;
+      });
+      return list[0]||null;
+    }
+
+    async function resolveDexPair(net, tokenAddr){
+      // 1) if URL already has pair + chain and it matches current net, use it
+      const want = dsChainIdFromNet(net);
+      if(pairAddr && pairChain && String(pairChain).toLowerCase()===want){
+        return { chainId: want, pairAddress: pairAddr };
+      }
+      // 2) otherwise query DexScreener token endpoint
+      const j = await safeJson(DS_TOKEN + encodeURIComponent(tokenAddr));
+      const best = pickBestPairForNet(j?.pairs||[], net);
+      if(!best) return null;
+      return { pairAddress: best.pairAddress, chainId: String(best.chainId||want).toLowerCase(), pair: best };
+    }
+
     async function loadToken(net, tokenAddr){
-      // reset state
+      // reset state (stop Gecko timers)
       if(tradesTimer){ clearInterval(tradesTimer); tradesTimer=null; }
       if(candlesTimer){ clearInterval(candlesTimer); candlesTimer=null; }
       tradesSeen = new Set();
@@ -1512,72 +1584,72 @@
       rawCandleData = [];
 
       statusEl.textContent = 'Loading…';
-      tradesEl.innerHTML = emptyTrades('Loading…');
+      tradesEl.innerHTML = emptyTrades('');
+      candleSeries.setData([]);
+      volumeSeries.setData([]);
 
       try{
-        const rp = await resolveBestPool(net, tokenAddr);
-        poolChoices = rp?.pools || [];
-        poolAddress = rp?.best || null;
-        if(!poolAddress) throw new Error('Not found');
+        const r = await resolveDexPair(net, tokenAddr);
+        if(!r) throw new Error('Not found');
 
-        // pool dropdown
-        if(poolChoices.length > 1){
-          poolSel.style.display = '';
-          poolSel.innerHTML = poolChoices.map(p=>{
-            const v = poolAddr(p);
-            const lab = makePoolLabel(p);
-            return `<option value="${esc(v)}">${esc(lab)}</option>`;
-          }).join('');
-          poolSel.value = poolAddress;
-          poolSel.onchange = async ()=>{
-            const v = poolSel.value;
-            if(!v || v===poolAddress) return;
-            poolAddress = v;
-            tradesSeen = new Set();
-            statusEl.textContent = 'Loading…';
-            try{
-              poolInfo = await getPool(activeNet, poolAddress);
-              tokenSide = computeTokenSide(poolInfo, addr);
-              renderHeader(poolInfo);
-              await loadCandles(true);
-              await loadTrades(true);
-              statusEl.textContent = 'Live';
-            }catch(e){
-              statusEl.textContent = 'Not found';
-              tradesEl.innerHTML = emptyTrades('Not found');
-            }
-          };
-        } else {
-          poolSel.style.display = 'none';
-          poolSel.onchange = null;
+        // remember for URL
+        pairChain = r.chainId;
+        pairAddr = r.pairAddress;
+        updateUrl(activeNet, addr, pairAddr, pairChain);
+
+        // show embedded full-history chart
+        showDexEmbed(r.chainId, r.pairAddress);
+
+        // render header using Dex pair when available
+        const p = r.pair || null;
+        const base = p?.baseToken || {};
+        const quote = p?.quoteToken || {};
+        const baseSym = sanitizeSymbol(base?.symbol || base?.name || 'TOKEN');
+        const quoteSym = sanitizeSymbol(quote?.symbol || quote?.name || '');
+        const title = quoteSym ? `$${baseSym}/${quoteSym}` : `$${baseSym}`;
+        pairNameEl.textContent = title;
+        pairMetaEl.textContent = `${activeNet.toUpperCase()} • ${shortAddr(tokenAddr)} • Dex ${r.chainId}`;
+
+        // token logo
+        const img = p?.info?.imageUrl || p?.info?.image_url || base?.logoURI || base?.icon || base?.image || '';
+        if(img){
+          const fb = esc((baseSym||'T').slice(0,1).toUpperCase());
+          logoWrap.innerHTML = `<img src="${esc(img)}" alt="" referrerpolicy="no-referrer" onerror="this.remove(); this.parentNode.textContent='${fb}';">`;
+        }else{
+          logoWrap.innerHTML = `<span class="fb">${esc((baseSym||'T').slice(0,1).toUpperCase())}</span>`;
         }
 
-        poolInfo = await getPool(net, poolAddress);
-        tokenSide = computeTokenSide(poolInfo, tokenAddr);
-        renderHeader(poolInfo);
-        syncLinks();
+        // stats (best-effort)
+        const price = num(p?.priceUsd);
+        const liq = num(p?.liquidity?.usd);
+        const fdv = num(p?.fdv);
+        const mcap = num(p?.marketCap);
+        const ch24 = num(p?.priceChange?.h24);
+        const pills=[];
+        if(Number.isFinite(price)) pills.push(`<span class="pill">Price $${formatCompact(price)}</span>`);
+        if(Number.isFinite(liq)) pills.push(`<span class="pill">Liq $${formatCompact(liq)}</span>`);
+        if(Number.isFinite(mcap)) pills.push(`<span class="pill">MCap $${formatCompact(mcap)}</span>`);
+        else if(Number.isFinite(fdv)) pills.push(`<span class="pill">FDV $${formatCompact(fdv)}</span>`);
+        if(Number.isFinite(ch24)) pills.push(`<span class="pill ${ch24>0?'up':(ch24<0?'down':'')}">24h ${ch24>0?'+':''}${ch24.toFixed(2)}%</span>`);
+        statsEl.innerHTML = pills.join('');
 
-        await loadCandles(true);
-        await loadTrades(true);
-
-        tradesTimer = setInterval(()=>loadTrades(false), 2500);
-        candlesTimer = setInterval(()=>{ if(!(activeTF && activeTF.live)) loadCandles(false); }, 20000);
-
+        // for now, trades panel shows a hint (we'll rebuild native trades next step)
+        tradesEl.innerHTML = emptyTrades('Chart loaded. Next step: native Live Trades.');
         statusEl.textContent = 'Live';
+        syncLinks();
       }catch(e){
+        showDexEmbed('', '');
         pairNameEl.textContent = 'Not found';
         pairMetaEl.textContent = `${activeNet.toUpperCase()} • ${shortAddr(tokenAddr)}`;
         statsEl.innerHTML = `<span class="pill">Not found</span>`;
         statusEl.textContent = 'Not found';
         tradesEl.innerHTML = emptyTrades('Not found');
-        candleSeries.setData([]);
-        volumeSeries.setData([]);
-        liveSeries.setData([]);
       }
     }
 
     async function boot(){
       // Single entry point. No duplicate intervals, no stale state.
+      if(!addr){ addr = DEFAULT_TOKEN[activeNet] || DEFAULT_TOKEN.solana; }
       await loadToken(activeNet, addr);
     }
 
