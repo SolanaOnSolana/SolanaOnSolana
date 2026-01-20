@@ -1590,6 +1590,33 @@ body{ padding-top: 0; }
 }
 .dexguardBtn:active{ transform: translateY(0px) scale(.995); }
 
+/* ✨ Dexguard shine pulse (subtle, every few seconds) */
+.dexguardBtn{ position:relative; overflow:hidden; }
+.dexguardBtn::after{
+  content:"";
+  position:absolute;
+  inset:-60% -40%;
+  background: linear-gradient(120deg,
+    transparent 0%,
+    rgba(255,255,255,.00) 35%,
+    rgba(255,255,255,.22) 50%,
+    rgba(255,255,255,.06) 60%,
+    transparent 75%
+  );
+  transform: translateX(-170%) rotate(10deg);
+  opacity:0;
+  pointer-events:none;
+  mix-blend-mode: screen;
+  animation: dexguardShine 6.8s ease-in-out infinite;
+}
+@keyframes dexguardShine{
+  0%, 72%{ opacity:0; transform: translateX(-170%) rotate(10deg); }
+  78%{ opacity:.70; }
+  92%{ opacity:0; transform: translateX(170%) rotate(10deg); }
+  100%{ opacity:0; transform: translateX(170%) rotate(10deg); }
+}
+
+
 .dexguardChip{
   position: relative;
   display:inline-flex;
@@ -2041,9 +2068,15 @@ body.net-base .chainBtn.active{ background: linear-gradient(90deg, rgba(0,82,255
     gap: 10px;
     flex-wrap:wrap;
   }
-  .hotBlock{ width:100%; display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  .hotBlock{ width:100%; display:flex; align-items:center; justify-content:flex-start; gap:10px; flex-wrap:wrap; }
   .hotLabel{ padding: 9px 12px; font-size: 12px; letter-spacing: .5px; }
   .hotFire{ width: 16px; height: 16px; }
+
+  /* Dexguard: same size as LIVE TRENDING + closer */
+  .dexguardBtn{ padding: 9px 12px; gap:10px; }
+  .dexguardChip{ padding: 7px 12px; font-size: 12px; }
+  .dexguardText{ font-size: 16px; }
+
 
   /* Chain selector: 4 equal buttons, always visible (no scrolling) */
   .chainToggle{
@@ -2051,7 +2084,9 @@ body.net-base .chainBtn.active{ background: linear-gradient(90deg, rgba(0,82,255
     display:grid;
     grid-template-columns: repeat(4, 1fr);
     gap: 6px;
-    padding: 6px;
+    padding: 0;
+    background: transparent;
+    border: 0;
     overflow: visible;
     justify-content: stretch;
   }
@@ -2068,7 +2103,7 @@ body.net-base .chainBtn.active{ background: linear-gradient(90deg, rgba(0,82,255
   /* Row 3: search */
   .bottomRow{ flex-direction: column; align-items: stretch; gap: 10px; }
   .dexSearch{ width: 100%; max-width: 100%; }
-  .dexSearchInner{ padding: 10px 10px; }
+  .dexSearchInner{ padding: 10px 12px; }
   /* prevent iOS input zoom */
   .dexInput{ font-size: 16px; }
   .dexMiniBtn{ padding: 8px 10px; }
@@ -2094,24 +2129,24 @@ body.net-base .chainBtn.active{ background: linear-gradient(90deg, rgba(0,82,255
    Keeps desktop unchanged
 ============================ */
 @media (max-width: 860px){
-  /* Floating topbar card (cleaner than full-width strip) */
+  /* Mobile topbar: clean strip (no big bordered block) */
   .topBar{
-    background: transparent;
-    border-bottom: 0;
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
-    padding: calc(env(safe-area-inset-top) + 8px) 10px 0;
+    background: rgba(7,7,17,.62);
+    border-bottom: 1px solid rgba(255,255,255,.10);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    padding: 0;
   }
   .topBarInner{
-    max-width: none;
+    max-width: var(--max);
     margin: 0 auto;
-    padding: 12px 12px 12px;
-    border-radius: 24px;
-    border: 1px solid rgba(255,255,255,.12);
-    background: rgba(7,7,17,.72);
-    box-shadow: 0 18px 50px rgba(0,0,0,.55);
-    backdrop-filter: blur(18px);
-    -webkit-backdrop-filter: blur(18px);
+    padding: calc(10px + env(safe-area-inset-top)) 12px 10px;
+    border-radius: 0;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
   }
 
   /* Menu button always top-right, slightly smaller on mobile */
@@ -2248,8 +2283,6 @@ body.net-base .chainBtn.active{ background: linear-gradient(90deg, rgba(0,82,255
        <div class="dexSearch" role="search" aria-label="Search token by name or contract">
          <div class="dexSearchInner">
            <input class="dexInput" id="dexSearchInput" autocomplete="off" spellcheck="false" placeholder="Search token / paste contract…" />
-           <button class="btn ghost dexMiniBtn" id="dexSearchGo" type="button">Search</button>
-           <button class="btn ghost dexMiniBtn" id="dexSearchCopy" type="button" title="Scan (coming soon)">Scan</button>
          </div>
          <div class="dexResults" id="dexResults" hidden></div>
        </div>
@@ -3031,8 +3064,8 @@ function toggleMenu(){
    const trendTrack = $("#trendTrack");
    const inEl = $("#dexSearchInput");
    const resEl = $("#dexResults");
-   const btnGo = $("#dexSearchGo");
-   const btnCopy = $("#dexSearchCopy");
+   const btnGo = $("#dexSearchGo"); // (removed from UI)
+   const btnCopy = $("#dexSearchCopy"); // (removed from UI)
 
    // Where to send users for the Contract Scanner.
    // Your page already links to https://solanax1.com/contract, so we default to "/contract".
@@ -3063,7 +3096,7 @@ function toggleMenu(){
      window.location.href = url;
    }
 
-   if(!trendTrack || !inEl || !resEl || !btnGo || !btnCopy) return;
+   if(!trendTrack || !inEl || !resEl) return;
    // Chain toggle events
 
    const toggleEl = document.getElementById('chainToggle');
@@ -3474,54 +3507,60 @@ function toggleMenu(){
      clearTimeout(tmr);
      tmr = setTimeout(()=> runSearch(q), 250);
    });
+   if(btnGo){
 
-   btnGo.addEventListener("click", () => {
-     // Search button should NOT navigate away. It simply forces an immediate local search.
-     const q = (inEl.value || "").trim();
-     if(!q) { inEl.focus(); return; }
-     clearTimeout(tmr);
-     runSearch(q);
-     resEl.hidden = false;
-     inEl.focus();
-   });
 
-   btnCopy.addEventListener("click", () => {
-     // Scan: redirects to the Contract Scanner and auto-runs with the selected CA.
-     // If user typed a real CA, we use it. Otherwise we use the best dropdown match.
-     (async () => {
+     btnGo.addEventListener("click", () => {
+       // Search button should NOT navigate away. It simply forces an immediate local search.
        const q = (inEl.value || "").trim();
-       if(!q) return;
+       if(!q) { inEl.focus(); return; }
+       clearTimeout(tmr);
+       runSearch(q);
+       resEl.hidden = false;
+       inEl.focus();
+     });
+   }
+   if(btnCopy){
 
-       // 1) If input already looks like a CA for the active network, use it.
-       if(looksAddressForNet(activeNet, q) || looksEvmAddress(q) || looksSolAddress(q)){
-         openScanner(q, NET_TO_DEX_CHAIN[activeNet] || "solana");
-         return;
-       }
 
-       // 2) If dropdown already has a best candidate, use it.
-       const bestCa = (resEl.dataset.bestCa || "").trim();
-       const bestChain = (resEl.dataset.bestChain || "").trim();
-       if(bestCa){
-         openScanner(bestCa, bestChain || (NET_TO_DEX_CHAIN[activeNet] || "solana"));
-         return;
-       }
+     btnCopy.addEventListener("click", () => {
+       // Scan: redirects to the Contract Scanner and auto-runs with the selected CA.
+       // If user typed a real CA, we use it. Otherwise we use the best dropdown match.
+       (async () => {
+         const q = (inEl.value || "").trim();
+         if(!q) return;
 
-       // 3) Fallback: query DexScreener once and pick a best result.
-       try{
-         const data = await safeJson(`https://api.dexscreener.com/latest/dex/search?q=${encodeURIComponent(q)}`);
-         const pairs = Array.isArray(data?.pairs) ? data.pairs : [];
-         const want = (NET_TO_DEX_CHAIN[activeNet] || "solana").toLowerCase();
-         const pick = pairs.find(p => String(p?.chainId||"").toLowerCase() === want) || pairs[0];
-         const ca = pick?.baseToken?.address || "";
-         if(ca){
-           openScanner(ca, pick?.chainId || want);
+         // 1) If input already looks like a CA for the active network, use it.
+         if(looksAddressForNet(activeNet, q) || looksEvmAddress(q) || looksSolAddress(q)){
+           openScanner(q, NET_TO_DEX_CHAIN[activeNet] || "solana");
            return;
          }
-       }catch(_e){}
 
-       toast("No scan target");
-     })();
-   });
+         // 2) If dropdown already has a best candidate, use it.
+         const bestCa = (resEl.dataset.bestCa || "").trim();
+         const bestChain = (resEl.dataset.bestChain || "").trim();
+         if(bestCa){
+           openScanner(bestCa, bestChain || (NET_TO_DEX_CHAIN[activeNet] || "solana"));
+           return;
+         }
+
+         // 3) Fallback: query DexScreener once and pick a best result.
+         try{
+           const data = await safeJson(`https://api.dexscreener.com/latest/dex/search?q=${encodeURIComponent(q)}`);
+           const pairs = Array.isArray(data?.pairs) ? data.pairs : [];
+           const want = (NET_TO_DEX_CHAIN[activeNet] || "solana").toLowerCase();
+           const pick = pairs.find(p => String(p?.chainId||"").toLowerCase() === want) || pairs[0];
+           const ca = pick?.baseToken?.address || "";
+           if(ca){
+             openScanner(ca, pick?.chainId || want);
+             return;
+           }
+         }catch(_e){}
+
+         toast("No scan target");
+       })();
+     });
+   }
 
    // action buttons in dropdown (copy + scanner)
    resEl.addEventListener("click", async (e) => {
@@ -3562,7 +3601,12 @@ function toggleMenu(){
    inEl.addEventListener("keydown", (e) => {
      if(e.key === "Enter"){
        e.preventDefault();
-       btnGo.click();
+       const q = (inEl.value || "").trim();
+       if(!q) { inEl.focus(); return; }
+       clearTimeout(tmr);
+       runSearch(q);
+       resEl.hidden = false;
+       inEl.focus();
      }
      if(e.key === "Escape"){
        resEl.hidden = true;
