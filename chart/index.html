@@ -460,10 +460,12 @@
     const NET_LABEL = { solana:'SOL', eth:'ETH', bsc:'BNB', base:'BASE' };
     const NET_GECKO = { solana:'solana', eth:'ethereum', bsc:'bsc', base:'base' };
     const DEFAULT_TOKEN = {
-  solana: 'So11111111111111111111111111111111111111112',
-  ethereum: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
-  bsc: '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c',
-  base: '0x4200000000000000000000000000000000000006' // WETH on Base
+  // IMPORTANT: keys must match normalizeChain() output: solana, eth, bsc, base
+  // Use tokens that are guaranteed to exist on GeckoTerminal (prevents 'Not found' on first load).
+  solana: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', // USDC (Solana)
+  eth: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',      // WETH (Ethereum)
+  bsc: '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c',      // WBNB (BSC)
+  base: '0x4200000000000000000000000000000000000006'      // WETH (Base)
 };
 
   // Preferred stable-coin quote tokens (used to pick "real" native charts like SOL/USDC)
@@ -1428,7 +1430,7 @@
       const nativeAddr = (DEFAULT_TOKEN[activeNet] || '').toLowerCase();
       const baseAddr = (base?.address || base?.id || '').toLowerCase();
       const isNative = !!nativeAddr && baseAddr === nativeAddr;
-      const nativeSymbol = ({ solana:'SOL', ethereum:'ETH', bsc:'BNB', base:'ETH' })[activeNet] || baseSymRaw;
+      const nativeSymbol = ({ solana:'SOL', eth:'ETH', bsc:'BNB', base:'ETH' })[activeNet] || baseSymRaw;
       const baseSym = isNative ? nativeSymbol : baseSymRaw;
 
       const prefix = isNative ? '' : '$';
