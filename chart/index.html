@@ -1656,9 +1656,9 @@
     }
 
     // -------------------- Trending
-    async function geckoTrending(){
-      // Top pools by 24h volume (per network)
-      const url = `${GECKO}/networks/${encodeURIComponent(geckoNet())}/pools?sort=-volume_usd_24h&page[number]=1&page[size]=50&include=base_token`;
+        async function geckoTrending(){
+      // GeckoTerminal v2: Trending pools by network (cached ~1 min)
+      const url = `${GECKO}/networks/${encodeURIComponent(geckoNet())}/trending_pools?page=1&include=base_token`;
       const j = await fetchJson(url, {timeout:14000, retries:1});
       const data = Array.isArray(j?.data) ? j.data : [];
       const inc  = Array.isArray(j?.included) ? j.included : [];
@@ -1670,69 +1670,62 @@
       return { data, incMap };
     }
 
-    function renderTicker(items, incMap={}){
-      const top = (items||[]).slice(0, 10);
+    function renderTicker(pools, incMap={}){
+      const top = (pools||[]).slice(0, 10);
       if(!top.length){
         tickerTrack.innerHTML = `<div class="tickerEmpty">Trending unavailable.</div>`;
         return;
       }
 
-      function tokenMetaFromPool(p){
+      function metaFromPool(p){
+        // Prefer included base_token
         const rel = p?.relationships?.base_token?.data;
-        const id = rel?.id;
-        const it = id ? incMap[id] : null;
-        const a = it?.attributes || {};
+        const tid = rel?.id || '';
+        const t = tid ? incMap[tid] : null;
+        const a = t?.attributes || {};
         const sym = (a?.symbol || a?.name || '').toString().trim();
         const img = (a?.image_url || a?.image || '').toString().trim();
-        const addr = tokenIdToAddr(id||'') || '';
+        // Gecko token ids often: "solana_<addr>" / "ethereum_<addr>"
+        const addr = tokenIdToAddr(tid) || '';
         return { sym, img, addr };
       }
 
       const chips = top.map((p,i)=>{
-        const a = p?.attributes||{};
-        const chg = num(a?.price_change_percentage_24h);
-        const pct = Number.isFinite(chg) ? (chg>=0?`+${chg.toFixed(2)}%`:`${chg.toFixed(2)}%`) : '—';
-        const up = Number.isFinite(chg) ? (chg>=0) : false;
-        const meta = tokenMetaFromPool(p);
-        const name = meta.sym ? `$${meta.sym}` : 'Token';
+        const a = p?.attributes || {};
+        const chg24 = num(a?.price_change_percentage?.h24 ?? a?.price_change_percentage_24h ?? a?.price_change_percentage?.h24);
+        const pct = Number.isFinite(chg24) ? (chg24>=0?`+${chg24.toFixed(2)}%`:`${chg24.toFixed(2)}%`) : '—';
+        const up = Number.isFinite(chg24) ? (chg24>=0) : false;
+
+        const meta = metaFromPool(p);
+        const name = meta.sym ? `$${meta.sym}` : (a?.name ? a.name.split('/')[0].trim() : 'Token');
         const img = meta.img ? `<img alt="" src="${esc(meta.img)}" loading="lazy" />` : `<span class="dot"></span>`;
         const addr = meta.addr;
+
         return `<button class="chip" data-addr="${esc(addr)}" title="Open ${esc(name)}">
           <span class="rank">${i+1}</span>
           <span class="ico">${img}</span>
           <span class="nm">${esc(name)}</span>
           <span class="pct ${up?'up':'dn'}">${esc(pct)}</span>
         </button>`;
-      }).join('');
-
-      tickerTrack.innerHTML = `<div class="tickerRow">${chips}</div>`;
-    }).join('');
-
-      // duplicate for seamless loop
-      tickerTrack.innerHTML = top + top;
-
-      [...tickerTrack.querySelectorAll('.chip')].forEach(ch=>{
-        ch.onclick=()=>{
-          const a = ch.getAttribute('data-addr')||'';
-          if(!a) return;
-          q.value = a;
-          openToken(a);
-        };
       });
+
+      // seamless marquee: duplicate the list
+      tickerTrack.innerHTML = chips.join('') + chips.join('');
     }
 
-    
     async function startTrending(){
       const load = async ()=>{
         try{
           const res = await geckoTrending();
           renderTicker(res.data, res.incMap);
         }catch(e){
+          console.error('trending failed', e);
           tickerTrack.innerHTML = `<div class="tickerEmpty">Trending unavailable.</div>`;
         }
       };
 
-      load();
+      await load();
+      statusEl.textContent = 'Live.';
       if(trendingTimer) clearInterval(trendingTimer);
       trendingTimer = setInterval(load, 25000);
 
@@ -1742,18 +1735,6 @@
         const addr = b.getAttribute('data-addr') || '';
         if(addr) openToken(addr, {skipInput:true});
       };
-    }catch(e){
-        tickerTrack.innerHTML = `<div style="padding:0 14px; color:rgba(255,255,255,.65)">Trending unavailable.</div>`;
-      }
-
-      // keep it live
-      if(trendingTimer) clearInterval(trendingTimer);
-      trendingTimer = setInterval(async ()=>{
-        try{
-          const items = await geckoTrending();
-          renderTicker(items);
-        }catch(e){ /* ignore */ }
-      }, 30000);
     }
 
     // -------------------- Navigation + Boot
