@@ -3,15 +3,15 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <meta name="theme-color" content="#0b1033" />
+  <meta name="theme-color" content="#070711" />
   <title>$SOS — DEX Terminal (Multi-Chain)</title>
   <meta name="description" content="$SOS DEX Terminal — native chart + live trades across Solana, Ethereum, BNB, Base." />
 
   <style>
     :root{
-      --bg:#0b1033;
-      --bg2:#111a4f;
-      --bg3:#0a123d;
+      --bg:#070711;
+      --bg2:#070711;
+      --bg3:#070711;
       --panel: rgba(255,255,255,.06);
       --panel2: rgba(255,255,255,.085);
       --stroke: rgba(255,255,255,.12);
@@ -32,15 +32,29 @@
     *{box-sizing:border-box}
     html,body{height:100%}
     body{
-      margin:0;
-      background: linear-gradient(180deg, var(--bg2) 0%, var(--bg) 55%, var(--bg3) 100%);
-      background-attachment: fixed;
-      color:var(--text);
-      font: 15.5px/1.55 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
-      overflow-x:hidden;
-    }
+     margin:0;
+     color:var(--text);
+     font: 16px/1.6 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+     background: var(--bg);
+     overflow-x:hidden;
+     position: relative;
+     }
 
-    a{color:inherit; text-decoration:none}
+    body::before{
+     content:"";
+     position: fixed;
+     inset: 0;
+     z-index: -1;
+     pointer-events: none;
+     background:
+     radial-gradient(1200px 760px at 10% 5%, rgba(153,69,255,.24), transparent 60%),
+     radial-gradient(1000px 720px at 90% 10%, rgba(20,241,149,.18), transparent 58%),
+     radial-gradient(900px 640px at 72% 92%, rgba(0,209,255,.14), transparent 58%),
+     radial-gradient(900px 640px at 0% 95%, rgba(0,209,255,.06), transparent 60%),
+     var(--bg);
+     transform: translateZ(0);
+     }
+a{color:inherit; text-decoration:none}
     button,input,select{font:inherit}
 
     .wrap{max-width:var(--max); margin:0 auto; padding:18px 16px 28px}
@@ -172,6 +186,7 @@
 
     /* Top trending bar container (inside panel) */
     .topBar{
+      z-index: 60;
       position: relative;
       background: rgba(11,16,51,.45);
       border-bottom: 1px solid rgba(255,255,255,.08);
@@ -494,7 +509,8 @@
 
     /* Re-skin existing results dropdown to match main page style */
     .results{
-      display:none;
+      z-index: 1000001;
+display:none;
       position:absolute;
       top: calc(100% + 10px);
       right: 0;
@@ -506,11 +522,24 @@
       border-radius: 18px;
       border: 1px solid rgba(255,255,255,.14);
       /* IMPORTANT: fully readable dropdown (no chart bleed-through) */
-      background: #0f163a;
+      background: rgba(12,16,40,.98);
       box-shadow: 0 26px 90px rgba(0,0,0,.78);
       isolation: isolate;
       z-index: 999999;
     }
+
+    /* Search modal scrim: blocks chart/trades from showing through while searching */
+    .searchScrim{
+      display:none;
+      position:fixed;
+      inset:0;
+      background: rgba(7,7,17,.72);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      z-index: 999990;
+    }
+    .dexSearch.open .searchScrim{ display:block; }
+
 
     /* Keep DexGuard search row markup, but make it feel like the main dropdown */
     .resItem{
@@ -822,6 +851,7 @@
                 <button class="btn" id="btnGo" type="button">Open</button>
               </div>
               <div class="results" id="results"></div>
+              <div id="searchScrim" class="searchScrim" aria-hidden="true"></div>
             </div>
           </div>
         </div>
@@ -962,7 +992,9 @@
     const clockEl = $('clock');
     const tickerTrack = $('tickerTrack');
     const q = $('q');
+    const dexSearch = q?.closest?.('.dexSearch');
     const results = $('results');
+    const searchScrim = $('searchScrim');
     const btnGo = $('btnGo');
     const modeHint = $('modeHint');
 
@@ -1350,11 +1382,20 @@
 
     function showResults(html){
       results.innerHTML = html;
-      results.style.display = html ? 'block' : 'none';
+      const open = !!html;
+      results.style.display = open ? 'block' : 'none';
+      if(searchScrim) searchScrim.style.display = open ? 'block' : 'none';
+      if(dexSearch) dexSearch.classList.toggle('open', open);
     }
 
     function hideResults(){
       results.style.display = 'none';
+      if(searchScrim) searchScrim.style.display = 'none';
+      if(dexSearch) dexSearch.classList.remove('open');
+    }
+
+    if(searchScrim){
+      searchScrim.addEventListener('click', hideResults);
     }
 
     async function dsSearch(query){
