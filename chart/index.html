@@ -297,54 +297,21 @@
 
     /* safety for android horizontal scroll */
     .wrap,.top,.tickerBar,.card,.searchRow,#chartWrap,#chart{max-width:100%}
-  
-    .brandBanner{height:34px;width:auto;display:block;filter:drop-shadow(0 8px 22px rgba(0,0,0,.45));}
-    .topActions{display:flex;gap:10px;align-items:center;}
-    .btn.ghost{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.10);color:rgba(255,255,255,.9);}
-    .btn.ghost:hover{background:rgba(255,255,255,.09);}
-
-    .seg{display:inline-flex;gap:6px;align-items:center;padding:6px;border-radius:999px;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.10);}
-    .segBtn{cursor:pointer;border:0;background:rgba(255,255,255,.06);color:rgba(255,255,255,.88);padding:8px 10px;border-radius:999px;font-weight:800;font-size:12px;line-height:1;letter-spacing:.02em;}
-    .segBtn:hover{background:rgba(255,255,255,.10);}
-    .segBtn.active{background:linear-gradient(90deg, rgba(20,241,149,.35), rgba(153,69,255,.35));border:1px solid rgba(255,255,255,.12);box-shadow:0 10px 26px rgba(0,0,0,.35) inset;}
-
-    /* Color tune to match main */
-    body{background:radial-gradient(1200px 700px at 15% 0%, rgba(153,69,255,.22), transparent 55%),
-                 radial-gradient(1100px 800px at 85% 10%, rgba(0,209,255,.18), transparent 55%),
-                 radial-gradient(900px 700px at 70% 90%, rgba(20,241,149,.12), transparent 55%),
-                 var(--bg);}
-
-    /* Mobile: true layout */
-    @media (max-width: 900px){
-      .topbar{position:sticky;top:0;z-index:50;backdrop-filter: blur(18px);-webkit-backdrop-filter: blur(18px);}
-      .brandBanner{height:30px;}
-      .topActions{gap:8px;}
-      .btn{padding:10px 12px;font-size:13px;border-radius:16px;}
-      .page{padding:14px 14px 26px;}
-      .tickerBar{padding:12px;}
-      .tickerRow{gap:10px;}
-      .searchRow{margin-top:12px;}
-      .grid{display:block;}
-      .chartWrap{margin-top:12px;}
-      .tradesWrap{margin-top:12px;}
-      .chartHdr{flex-direction:column;align-items:flex-start;gap:10px;}
-      .chartHdrRight{width:100%;display:flex;flex-wrap:wrap;gap:10px;justify-content:flex-start;}
-      .seg{width:100%;justify-content:space-between;}
-      .segBtn{flex:1;text-align:center;}
-      .tvBox{min-height:360px;}
-    }
-
-</style>
+  </style>
 </head>
 <body>
   <div class="wrap">
     <div class="top">
-      <a class="brand" href="/" aria-label="Back to main">
-        <img class="brandBanner" src="assets/dexguard.png" alt="DexGuard" />
-      </a>
+      <div class="brand" id="goHome">
+        <div class="logo"><span>⚡</span></div>
+        <div class="brandTxt">
+          <div class="sup">$SOS</div>
+          <div class="ttl">Chart</div>
+        </div>
+      </div>
       <div class="actions">
-        <a class="btn" id="btnBack" href="/">Back to Main</a>
-        <a class="btn" id="btnX" href="https://www.x.com/Solana_x1" target="_blank" rel="noreferrer">X</a>
+        <button class="btn" id="btnCopy">Copy CA</button>
+        <a class="btn grad" id="btnScanner" href="#">Scanner</a>
         <a class="btn buy" id="btnBuy" href="#" target="_blank" rel="noreferrer">Buy</a>
       </div>
     </div>
@@ -423,42 +390,19 @@
   <script>
   (function(){
     // -------------------- Helpers
-    const GECKO = 'https://api.geckoterminal.com/api/v2';
     const $ = (id)=>document.getElementById(id);
     const qs = new URLSearchParams(location.search);
-    const SCANNER_PAGE = '/scanner';
+    const SCANNER_PAGE = (window.SOS_SCANNER_URL && String(window.SOS_SCANNER_URL)) || (location.origin + "/new");
 
     // Network labels + API slug mapping
     const NET_LABEL = { solana:'SOL', eth:'ETH', bsc:'BNB', base:'BASE' };
     const NET_GECKO = { solana:'solana', eth:'ethereum', bsc:'bsc', base:'base' };
     const DEFAULT_TOKEN = {
-  solana: 'So11111111111111111111111111111111111111112',
-  ethereum: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
-  bsc: '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c',
-  base: '0x4200000000000000000000000000000000000006' // WETH on Base
-};
-
-  // Preferred stable-coin quote tokens (used to pick "real" native charts like SOL/USDC)
-  // Internal only: we do not show data sources, this is just for pool selection.
-  const STABLE_QUOTES = {
-    solana: [
-      'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v' // USDC
-    ],
-    eth: [
-      '0xA0b86991c6218b36c1d19d4a2e9eb0ce3606eb48', // USDC
-      '0xdAC17F958D2ee523a2206206994597C13D831ec7'  // USDT
-    ],
-    bsc: [
-      '0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d', // USDC
-      '0x55d398326f99059fF775485246999027B3197955'  // USDT
-    ],
-    base: [
-      '0x833589fCD6eDb6E08f4c7C32D4f71b54bda02913' // USDC
-    ]
-  };
-
-  const lc = (v)=>String(v||'').toLowerCase();
-
+      solana:'So11111111111111111111111111111111111111112',
+      eth:'0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
+      bsc:'0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c',
+      base:'0x4200000000000000000000000000000000000006'
+    };
     const geckoNet = (n)=> NET_GECKO[n] || n;
 
 
@@ -591,8 +535,11 @@
     }
 
     // -------------------- UI elements
-    const btnBack = $('btnBack');
-    const btnX = $('btnX');
+    const goHome = $('goHome');
+    goHome.onclick = ()=>location.href='/';
+
+    const btnCopy = $('btnCopy');
+    const btnScanner = $('btnScanner');
     const btnBuy = $('btnBuy');
     const btnFit = $('btnFit');
     const btnRefresh = $('btnRefresh');
@@ -631,11 +578,12 @@
       b.dataset.net=n.k;
       b.innerHTML = `<span class="dot"></span>${esc(n.label)}`;
       b.onclick=()=>{
-        // Clicking a chain always loads the *native* chart for that chain (SOL, ETH, BNB, BASE)
+        if(activeNet===n.k) return;
         activeNet = n.k;
         [...netPills.children].forEach(x=>x.classList.toggle('active', x.dataset.net===activeNet));
+        // refresh trending + if address exists, reload chart on same addr
         startTrending(activeNet);
-        addr = DEFAULT_TOKEN[activeNet] || DEFAULT_TOKEN.solana;
+        addr = DEFAULT_TOKEN[activeNet] || addr || '';
         navigateTo(activeNet, addr);
       };
       netPills.appendChild(b);
@@ -696,8 +644,7 @@
       {k:'ALL', api:{tf:'day', agg:1}, points: 2500},
     ];
 
-    // Default to a longer view so old coins don't look like they only existed for days.
-    let activeTF = TF.find(x=>x.k==='ALL') || TF.find(x=>x.k==='1d') || TF[0];
+    let activeTF = TF.find(x=>x.k==='15m') || TF[0];
     const tfRow = $('tfRow');
     TF.forEach(t=>{
       const b=document.createElement('button');
@@ -740,7 +687,6 @@
     // -------------------- Core state
     let poolAddress = null;
     let poolInfo = null;
-    let tokenSide = 'base';
     let poolChoices = [];
     let tradesSeen = new Set();
     let searchReqId = 0;
@@ -749,30 +695,24 @@
     let rawCandleData = [];
 
 
-    // -------------------- Buttons    function syncLinks(){
-            btnBuy.href = buildBuyUrl(activeNet, addr);
+    // -------------------- Buttons
+    btnCopy.onclick = async ()=>{
+      if(!addr) return toast('Not found');
+      try{ await navigator.clipboard.writeText(addr); toast('Copied'); }
+      catch(e){ toast('Copy failed'); }
+    };
+
+    function syncLinks(){
+      btnScanner.href = `${SCANNER_PAGE}?chain=${encodeURIComponent(NET_LABEL[activeNet]||activeNet.toUpperCase())}&addr=${encodeURIComponent(addr||'')}`;
+      btnBuy.href = buildBuyUrl(activeNet, addr);
     }
 
     // -------------------- Navigation
-    // Soft navigation: update URL + reload data without a full page refresh.
-    function updateUrl(chain, address){
+    function navigateTo(chain, address){
       const url = new URL(location.href);
       url.searchParams.set('chain', chain);
       url.searchParams.set('addr', address);
-      history.replaceState({}, '', url.toString());
-    }
-
-    // Backwards-compatible helper (older handlers call navigateTo)
-    // Soft navigation: switch chain/address and reload chart/trades without a full page refresh.
-    async function navigateTo(chain, address){
-      activeNet = normalizeChain(chain);
-      addr = (address||'').trim();
-      updateUrl(activeNet, addr);
-      // refresh UI state
-      $all('.netBtn').forEach(b=>b.classList.toggle('active', (b.dataset.net||'')===activeNet));
-      renderTimeframes();
-      // load
-      await loadToken(activeNet, addr);
+      location.href = url.toString();
     }
 
     // -------------------- Trending
@@ -1036,61 +976,32 @@
     }
 
     async function resolveBestPool(net, tokenAddr){
-    // We prefer pools where the requested token is the *base* token.
-    // If we can, we also prefer stable-coin quotes (SOL/USDC, ETH/USDC, ...).
-    const tokL = lc(tokenAddr);
-    const preferSet = new Set((STABLE_QUOTES[normalizeChain(net)]||[]).map(lc));
+      // Get pools list
+      const url = `https://api.geckoterminal.com/api/v2/networks/${encodeURIComponent(geckoNet(net))}/tokens/${encodeURIComponent(tokenAddr)}/pools?page=1`;
+      const j = await safeJson(url);
+      const pools = (j?.data || []).slice(0, 15);
+      if(!pools.length) return { best:null, pools:[] };
 
-    // First, fetch candidate pools for this token
-    const url = `${GECKO}/networks/${geckoNet(net)}/tokens/${tokenAddr}/pools?page=1`;
-    const j = await safeJson(url);
-    const pools = (j?.data||[]).slice();
-    // Sort by on-chain reserve (USD) descending
-    pools.sort((a,b)=>Number(b?.attributes?.reserve_in_usd||0)-Number(a?.attributes?.reserve_in_usd||0));
+      // Score: prefer liquidity, but also value age to avoid truncating history.
+      // Users can override via the Pool dropdown.
+      let best = pools[0];
+      let bestScore = -Infinity;
+      for(const p of pools){
+        const liq = poolLiqUsd(p);
+        const created = poolCreatedMs(p);
+        const ageDays = Number.isFinite(created) ? (Date.now()-created)/86400000 : 0;
+        const liqScore = Math.log10(Math.max(1, liq));
+        const ageScore = Math.log10(Math.max(1, ageDays+1));
+        const score = (1.25*liqScore) + (0.85*ageScore);
+        if(score > bestScore){ bestScore = score; best = p; }
+      }
 
-    // Fast fallback (best by reserve)
-    const fallback = poolAddr(pools[0]);
-
-    // Helper to check token roles via pool detail
-    async function poolRoleScore(p){
-      const id = poolAddr(p);
-      if(!id) return null
+      const bestAddr = poolAddr(best) || null;
+      return { best: bestAddr, pools };
     }
 
-    let bestStable = null; let bestStableScore = -1;
-    let bestBase = null; let bestBaseScore = -1;
 
-    const candidates = pools.slice(0, 25);
-    for(const p of candidates){
-      const pAddr = poolAddr(p);
-      if(!pAddr) continue;
-      let pj;
-      try{
-        pj = await getPool(net, pAddr);
-      }catch(_){
-        continue;
-      }
-      const baseTok = pickToken(pj, 'base_token');
-      const quoteTok = pickToken(pj, 'quote_token');
-      const baseA = lc(baseTok?.address);
-      const quoteA = lc(quoteTok?.address);
-      const liq = Number(p?.attributes?.reserve_in_usd||0);
-      // Token may be base or quote (EVM often has stable as base and token as quote)
-      const tokenIsBase = (baseA === tokL);
-      const tokenIsQuote = (quoteA === tokL);
-      if(!tokenIsBase && !tokenIsQuote) continue;
-      const otherA = tokenIsBase ? quoteA : baseA;
-
-      if(liq > bestBaseScore){ bestBaseScore = liq; bestBase = pAddr; }
-      if(preferSet.size && preferSet.has(otherA) && liq > bestStableScore){
-        bestStableScore = liq; bestStable = pAddr;
-      }
-    }
-
-    return { best: (bestStable || bestBase || fallback || null), pools };
-  }
-
-  async function getPool(net, poolAddr){
+    async function getPool(net, poolAddr){
       const url = `https://api.geckoterminal.com/api/v2/networks/${encodeURIComponent(geckoNet(net))}/pools/${encodeURIComponent(poolAddr)}?include=base_token,quote_token`;
       return await safeJson(url);
     }
@@ -1103,19 +1014,8 @@
       return tok?.attributes || null;
     }
 
-    function computeTokenSide(pool, tokenAddr){
-      try{
-        const t = lc(tokenAddr);
-        const b = pickToken(pool, 'base_token');
-        const q = pickToken(pool, 'quote_token');
-        if(lc(b?.address) === t) return 'base';
-        if(lc(q?.address) === t) return 'quote';
-      }catch(e){}
-      return 'base';
-    }
-
     // -------------------- Candles (backfill so coins older than a year show properly)
-    async function fetchCandlesBackfill(net, poolAddr, tf, points, tokenSide){
+    async function fetchCandlesBackfill(net, poolAddr, tf, points){
       const out=[];
       let before = Math.floor(Date.now()/1000);
       let guard = 0;
@@ -1123,7 +1023,7 @@
       while(out.length < points && guard < 10){
         guard++;
         const need = Math.min(maxPer, points - out.length);
-        const url = `https://api.geckoterminal.com/api/v2/networks/${encodeURIComponent(geckoNet(net))}/pools/${encodeURIComponent(poolAddr)}/ohlcv/${encodeURIComponent(tf.tf)}?aggregate=${tf.agg}&before_timestamp=${before}&limit=${need}&currency=usd&token=${encodeURIComponent(tokenSide||"base")}`;
+        const url = `https://api.geckoterminal.com/api/v2/networks/${encodeURIComponent(geckoNet(net))}/pools/${encodeURIComponent(poolAddr)}/ohlcv/${encodeURIComponent(tf.tf)}?aggregate=${tf.agg}&before_timestamp=${before}&limit=${need}&currency=usd&token=base`;
         const j = await safeJson(url);
         const arr = j?.data?.attributes?.ohlcv_list || [];
         if(!arr.length) break;
@@ -1190,7 +1090,7 @@
       try{
         statusEl.textContent = 'Loading…';
         chart.applyOptions({ timeScale: { timeVisible: true, secondsVisible: false } });
-        const raw = await fetchCandlesBackfill(activeNet, poolAddress, activeTF.api, activeTF.points, tokenSide);
+        const raw = await fetchCandlesBackfill(activeNet, poolAddress, activeTF.api, activeTF.points);
         let candles = raw;
         if(activeTF.postAgg) candles = aggregateCandles(raw, activeTF.postAgg);
         if(candles.length){
@@ -1321,18 +1221,9 @@
       const base = pickToken(pool, 'base_token');
       const quote = pickToken(pool, 'quote_token');
 
-      const baseSymRaw = sanitizeSymbol(base?.symbol || base?.name || 'TOKEN');
+      const baseSym = sanitizeSymbol(base?.symbol || base?.name || 'TOKEN');
       const quoteSym = sanitizeSymbol(quote?.symbol || quote?.name || '');
-
-      // Make native chain charts look like SOL/USDC, ETH/USDC, BNB/USDT, etc.
-      const nativeAddr = (DEFAULT_TOKEN[activeNet] || '').toLowerCase();
-      const baseAddr = (base?.address || base?.id || '').toLowerCase();
-      const isNative = !!nativeAddr && baseAddr === nativeAddr;
-      const nativeSymbol = ({ solana:'SOL', ethereum:'ETH', bsc:'BNB', base:'ETH' })[activeNet] || baseSymRaw;
-      const baseSym = isNative ? nativeSymbol : baseSymRaw;
-
-      const prefix = isNative ? '' : '$';
-      const title = quoteSym ? `${prefix}${baseSym}/${quoteSym}` : `${prefix}${baseSym}`;
+      const title = quoteSym ? `$${baseSym}/${quoteSym}` : `$${baseSym}`;
       pairNameEl.textContent = title;
       pairMetaEl.textContent = `${activeNet.toUpperCase()} • ${shortAddr(addr)} • Pool ${shortAddr(poolAddress)}`;
 
@@ -1384,8 +1275,7 @@
     async function boot(){
       try{
         statusEl.textContent = 'Loading…';
-        let rp = await resolveBestPool(activeNet, addr);
-        if(typeof rp === 'string'){ rp = { best: rp, pools: [] }; }
+        const rp = await resolveBestPool(activeNet, addr);
         poolChoices = rp.pools || [];
         poolAddress = rp.best;
         if(!poolAddress) throw new Error('Not found');
@@ -1407,8 +1297,7 @@
             statusEl.textContent = 'Loading…';
             try{
               poolInfo = await getPool(activeNet, poolAddress);
-        tokenSide = computeTokenSide(poolInfo, addr);
-        renderHeader(poolInfo);
+              renderHeader(poolInfo);
               await loadCandles(true);
               await loadTrades(true);
               statusEl.textContent = 'Live';
