@@ -124,22 +124,6 @@
     .btn.primary{background: rgba(20,241,149,.14); border-color: rgba(20,241,149,.32)}
     .btn.ghost{background: rgba(255,255,255,.03)}
 
-    /* Twitter/X button (topbar) */
-    .btn.xbtn{
-      background: rgba(0,0,0,.55);
-      border-color: rgba(255,255,255,.16);
-      color: rgba(255,255,255,.92);
-    }
-    .btn.xbtn:hover{ background: rgba(0,0,0,.70); }
-
-    /* Hide topbar chain pills + buy button (use lower controls instead) */
-    #netPills, #btnBuy{ display:none !important; }
-    .btn.xbtn svg{ width:14px; height:14px; display:block; }
-
-    /* Remove topbar chain pills + buy button (keep lower buttons) */
-    #netPills{ display:none !important; }
-    #btnBuy{ display:none !important; }
-
     .panel{
       margin-top:14px;
       border:1px solid var(--stroke);
@@ -702,21 +686,16 @@
   <div class="wrap">
     <div class="topbar">
       <div class="brand">
-        <button class="dexguardBtn" id="topDexguardBtn" type="button" aria-label="DexGuard">
+        <button class="dexguardBtn" id="topDexguardBtn" type="button" aria-label="Dexguard">
           <span class="dexguardChip" aria-hidden="true">DEX</span>
-          <span class="dexguardText">DexGuard</span>
+          <span class="dexguardText">Dexguard</span>
         </button>
       </div>
 
       <div class="actions">
         <div class="pillRow" id="netPills"></div>
         <a class="btn ghost" id="btnBack" href="/">Back to Main</a>
-        <a class="btn xbtn" id="btnX" href="https://www.x.com/solana_x1" target="_blank" rel="noreferrer" aria-label="Twitter/X">
-          <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false" style="display:block">
-            <path fill="currentColor" d="M18.9 2H22l-6.8 7.8L23 22h-6.2l-4.8-7.1L5.8 22H2l7.4-8.5L1 2h6.3l4.3 6.4L18.9 2Zm-1.1 18h1.7L6.2 3.9H4.4L17.8 20Z"/>
-          </svg>
-          <span>Twitter/X</span>
-        </a>
+        <button class="btn" id="btnClose" type="button">X</button>
         <a class="btn primary" id="btnBuy" href="#" target="_blank" rel="noreferrer">Buy</a>
       </div>
     </div>
@@ -727,6 +706,10 @@
           <div class="topRow">
             <div class="hotBlock" aria-label="Hot trending live">
               <div class="hotLabel" title="Live trending"><span class="hotFire">🔥</span><span>LIVE TRENDING</span></div>
+              <button class="dexguardBtn" id="dexguardBtn" type="button" aria-label="Dexguard">
+                <span class="dexguardChip" aria-hidden="true">DEX</span>
+                <span class="dexguardText">Dexguard</span>
+              </button>
               <div id="status" style="display:none">Booting…</div>
               <div id="clock" style="display:none"></div>
             </div>
@@ -917,6 +900,7 @@
     const tradesStatM = $('tradesStatM');
 
     const btnBack = $('btnBack');
+    const btnClose = $('btnClose');
     const btnBuy = $('btnBuy');
 
     const topDexguardBtn = $('topDexguardBtn');
@@ -1261,7 +1245,11 @@
       tabTrades.onclick=()=>setMobileTab('trades');
     }
 
-
+    btnClose.onclick=()=>{
+      try{ window.close(); }catch(e){}
+      // if browser blocks close
+      toast('Close blocked by browser');
+    };
 
     // Top-left Dexguard button -> jump to trending bar
     if(topDexguardBtn){
