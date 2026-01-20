@@ -58,7 +58,14 @@
       position:sticky; top:10px; z-index:20;
     }
 
-    .brand{display:flex; align-items:center; gap:10px; min-width:0}
+    
+
+    /* Topbar: replace $SOS title with Dexguard button */
+    .topbar #topDexguardBtn{ padding: 9px 16px; }
+    .topbar #topDexguardBtn .dexguardText{ font-size: 18px; }
+    .topbar #topDexguardBtn .dexguardChip{ font-size: 12px; }
+
+.brand{display:flex; align-items:center; gap:10px; min-width:0}
     .logo{
       width:38px; height:38px; border-radius:14px;
       display:grid; place-items:center;
@@ -69,7 +76,15 @@
         rgba(255,255,255,.06);
       border:1px solid rgba(255,255,255,.14);
     }
-    .logo span{font-weight:900; letter-spacing:-.02em}
+    .logo span{font-weight:900; letter-spacing:-.02em
+
+    /* Top-left Dexguard button (replaces old SOS title) */
+    .topbar .dexguardBtn{ padding:9px 16px; }
+    .topbar .dexguardText{ font-size:18px; }
+    @media (max-width:520px){
+      .topbar .dexguardText{ font-size:16px; }
+    }
+}
 
     .brandTxt{min-width:0}
     .brandTxt .t1{font-weight:900; letter-spacing:-.02em; font-size:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
@@ -671,11 +686,10 @@
   <div class="wrap">
     <div class="topbar">
       <div class="brand">
-        <div class="logo"><span>SOS</span></div>
-        <div class="brandTxt">
-          <div class="t1">$SOS — DEX Terminal</div>
-          <div class="t2">Native chart + live trades • Multi-chain</div>
-        </div>
+        <button class="dexguardBtn" id="topDexguardBtn" type="button" aria-label="Dexguard">
+          <span class="dexguardChip" aria-hidden="true">DEX</span>
+          <span class="dexguardText">Dexguard</span>
+        </button>
       </div>
 
       <div class="actions">
@@ -888,6 +902,8 @@
     const btnBack = $('btnBack');
     const btnClose = $('btnClose');
     const btnBuy = $('btnBuy');
+
+    const topDexguardBtn = $('topDexguardBtn');
 
     const tabChart = $('tabChart');
     const tabTrades = $('tabTrades');
@@ -1234,6 +1250,14 @@
       // if browser blocks close
       toast('Close blocked by browser');
     };
+
+    // Top-left Dexguard button -> jump to trending bar
+    if(topDexguardBtn){
+      topDexguardBtn.onclick = ()=>{
+        const tb = document.getElementById('topBar');
+        if(tb) tb.scrollIntoView({behavior:'smooth', block:'start'});
+      };
+    }
 
     btnRefresh.onclick=()=>{
       if(!poolAddr){ toast('Pick a token first'); return; }
@@ -2051,9 +2075,6 @@
       const items = top.map((p,i)=>poolToTickerItem(p,i,incMap)).join('');
       tickerTrack.innerHTML = items + items;
       syncTickerMarquee();
-    }
-      const html = top.map((p,i)=>poolToTickerItem(p,i,incMap)).join('');
-      tickerTrack.innerHTML = html + html;
     }
 
     async function startTrending(){
