@@ -1566,10 +1566,61 @@ body{ padding-top: 0; }
   cursor: pointer;
   background: rgba(0,82,255,.10);
   border: 1px solid rgba(0,82,255,.26);
+  position: relative;
 }
 .hotLabel.hotDex:hover{
   background: rgba(0,82,255,.14);
   border-color: rgba(0,82,255,.34);
+}
+
+/* Dexguard logo + "tap me" nudge */
+.dexguardLogo{
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  object-fit: contain;
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.12);
+  box-shadow: 0 10px 22px rgba(0,0,0,.22);
+}
+.hotLabel.hotDex .dexText{ font-weight: 1100; }
+
+@keyframes dexNudgeX{
+  0%,100%{ transform: translate(0,-50%) scale(1); opacity:.92; }
+  50%{ transform: translate(-6px,-50%) scale(1.02); opacity:1; }
+}
+@keyframes dexNudgeY{
+  0%,100%{ transform: translate(-50%,0) scale(1); opacity:.90; }
+  50%{ transform: translate(-50%,5px) scale(1.02); opacity:1; }
+}
+
+/* A couple of subtle "fingers" pointing at the Dexguard button */
+.hotLabel.hotDex::after{
+  content: "👉";
+  position: absolute;
+  right: -22px;
+  top: 50%;
+  font-size: 18px;
+  line-height: 1;
+  pointer-events: none;
+  animation: dexNudgeX 1.15s ease-in-out infinite;
+}
+.hotLabel.hotDex::before{
+  content: "👇";
+  position: absolute;
+  right: 14px;
+  top: -18px;
+  font-size: 18px;
+  line-height: 1;
+  pointer-events: none;
+  animation: dexNudgeY 1.25s ease-in-out infinite;
+}
+
+/* Slightly more breathing room on very small screens */
+@media (max-width: 420px){
+  .dexguardLogo{ width: 28px; height: 28px; border-radius: 9px; }
+  .hotLabel.hotDex::after{ right: -18px; }
+  .hotLabel.hotDex::before{ top: -16px; }
 }
 
 .chainToggle{
@@ -2113,7 +2164,10 @@ body.net-base .chainBtn.active{ background: linear-gradient(90deg, rgba(0,82,255
            <svg class="hotFire" aria-hidden="true"><use href="#ico-fire"></use></svg>
            <span>LIVE TRENDING</span>
          </div>
-         <a class="hotLabel hotDex" href="https://www.solanax1.com/dexguard" target="_self" rel="noopener" title="Open Dexguard">Dexguard</a>
+         <a class="hotLabel hotDex" href="https://www.solanax1.com/dexguard" target="_self" rel="noopener" title="Open Dexguard">
+           <img class="dexguardLogo" src="dexguard.png" alt="Dexguard" loading="lazy" />
+           <span class="dexText">Dexguard</span>
+         </a>
        </div>
 
        <div class="chainToggle" id="chainToggle" role="tablist" aria-label="Choose chain">
