@@ -186,13 +186,15 @@ a{color:inherit; text-decoration:none}
 
     /* Top trending bar container (inside panel) */
     .topBar{
-      z-index: 60;
-      position: relative;
+      z-index: 1500;
+      position: sticky;
+      top: 92px;
       background: rgba(11,16,51,.45);
       border-bottom: 1px solid rgba(255,255,255,.08);
       backdrop-filter: blur(16px);
       -webkit-backdrop-filter: blur(16px);
     }
+
 
     .topBarInner{
       padding: 14px 16px 12px;
@@ -533,12 +535,14 @@ display:none;
       display:none;
       position:fixed;
       inset:0;
-      background: rgba(7,7,17,.72);
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
+      background: transparent;
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+      pointer-events: none;
       z-index: 999990;
     }
-    .dexSearch.open .searchScrim{ display:block; }
+
+    .dexSearch.open .searchScrim{ display:none; }
 
 
     /* Keep DexGuard search row markup, but make it feel like the main dropdown */
@@ -1004,6 +1008,26 @@ display:none;
     const statsEl = $('stats');
     const tokenLogo = $('tokenLogo');
     const tokenLogoFb = $('tokenLogoFb');
+
+    function setTokenLogo(url, fallback){
+      const letter = String(fallback||'T').slice(0,1).toUpperCase();
+      if(!tokenLogo) return;
+      tokenLogo.innerHTML = '';
+      if(url){
+        const img = document.createElement('img');
+        img.src = String(url);
+        img.alt = '';
+        img.decoding = 'async';
+        img.loading = 'lazy';
+        img.referrerPolicy = 'no-referrer';
+        img.onerror = () => { setTokenLogo(img, symClean);
+};
+        tokenLogo.appendChild(img);
+      } else {
+        setTokenLogo(img, symClean);
+}
+    }
+
 
     const poolSel = $('poolSel');
     const tfRow = $('tfRow');
@@ -1640,12 +1664,14 @@ display:none;
 
       if(img){
         curTokenImgUrl = String(img);
-        tokenLogo.innerHTML = `<img src="${esc(img)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove(); this.parentNode.innerHTML='<span class=\\"fb\\">${esc(sym.slice(0,1).toUpperCase())}</span>';" />`;
-      }else if(existingImg){
+        setTokenLogo(img, (base?.symbol||\'T\'));
+      setTokenLogo(img, symClean);
+        setTokenLogo(img, symClean);
+}else if(existingImg){
         // keep current logo
       }else{
-        tokenLogo.innerHTML = `<span class="fb">${esc(sym.slice(0,1).toUpperCase())}</span>`;
-      }
+        setTokenLogo(img, symClean);
+}
     }
 
     function applyStats(st){
@@ -2364,16 +2390,20 @@ display:none;
         const base = dsPair?.baseToken || {};
         const quote = dsPair?.quoteToken || {};
         const title = `${(base?.symbol||'TOKEN')}/${(quote?.symbol||'')}`.replace(/\/$/,'');
-        pairNameEl.textContent = title || (base?.symbol||'TOKEN');
-        pairMetaEl.textContent = `${NET_LABEL[activeNet] || activeNet} • ${shortAddr(v)} • Native chart + live trades`;
+        const chainTag = (activeNet==='solana'?'Sol':(activeNet==='ethereum'?'Eth':(activeNet==='bsc'?'Bnb':(activeNet==='base'?'Base':activeNet))));
+        const sym0 = (base?.symbol||title||'TOKEN');
+        pairNameEl.textContent = `$${String(sym0).replace(/\$/g,'')}/${chainTag}`;
+pairMetaEl.textContent = `${NET_LABEL[activeNet] || activeNet} • ${shortAddr(v)} • Native chart + live trades`;
 
         let img = base?.logoURI || base?.logoUrl || base?.logoURL || base?.icon || base?.image || base?.imageUrl || '';
         if(img){
           curTokenImgUrl = String(img);
-          tokenLogo.innerHTML = `<img src="${esc(img)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove(); this.parentNode.innerHTML='<span class=\"fb\">${esc((base?.symbol||'T').slice(0,1).toUpperCase())}</span>';" />`;
-        }else{
-          tokenLogo.innerHTML = `<span class="fb">${esc((base?.symbol||'T').slice(0,1).toUpperCase())}</span>`;
-        }
+        setTokenLogo(img, (base?.symbol||\'T\'));
+      setTokenLogo(img, symClean);
+          setTokenLogo(img, symClean);
+}else{
+          setTokenLogo(img, symClean);
+}
 
         applyStats({
           price: num(dsPair?.priceUsd),
@@ -2382,8 +2412,8 @@ display:none;
           h24: num(dsPair?.priceChange?.h24),
         });
 
-        curTokenSymbol = (base?.symbol||'TOKEN');
-        curQuoteSymbol = (quote?.symbol||'');
+        curTokenSymbol = (base?.symbol||title||'TOKEN');
+curQuoteSymbol = (quote?.symbol||'');
       }else{
         pairNameEl.textContent = '$TOKEN';
         pairMetaEl.textContent = `${NET_LABEL[activeNet] || activeNet} • ${shortAddr(v)} • Native chart + live trades`;
