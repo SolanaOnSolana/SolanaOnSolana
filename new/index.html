@@ -65,7 +65,9 @@
     .topbar #topDexguardBtn .dexguardText{ font-size: 18px; }
     .topbar #topDexguardBtn .dexguardChip{ font-size: 12px; }
 
-.brand{display:flex; align-items:center; gap:10px; min-width:0}
+
+    /* Topbar brand area (legacy logo styles kept clean so CSS never breaks) */
+    .brand{display:flex; align-items:center; gap:10px; min-width:0}
     .logo{
       width:38px; height:38px; border-radius:14px;
       display:grid; place-items:center;
@@ -76,15 +78,14 @@
         rgba(255,255,255,.06);
       border:1px solid rgba(255,255,255,.14);
     }
-    .logo span{font-weight:900; letter-spacing:-.02em
+    .logo span{font-weight:900; letter-spacing:-.02em}
 
-    /* Top-left Dexguard button (replaces old SOS title) */
+    /* Top-left DexGuard button (replaces old SOS title) */
     .topbar .dexguardBtn{ padding:9px 16px; }
     .topbar .dexguardText{ font-size:18px; }
     @media (max-width:520px){
       .topbar .dexguardText{ font-size:16px; }
     }
-}
 
     .brandTxt{min-width:0}
     .brandTxt .t1{font-weight:900; letter-spacing:-.02em; font-size:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
@@ -123,6 +124,22 @@
     .btn:hover{transform: translateY(-1px); background: rgba(255,255,255,.085)}
     .btn.primary{background: rgba(20,241,149,.14); border-color: rgba(20,241,149,.32)}
     .btn.ghost{background: rgba(255,255,255,.03)}
+
+    /* Twitter/X button (topbar) */
+    .btn.xbtn{
+      background: rgba(0,0,0,.55);
+      border-color: rgba(255,255,255,.16);
+      color: rgba(255,255,255,.92);
+    }
+    .btn.xbtn:hover{ background: rgba(0,0,0,.70); }
+
+    /* Hide topbar chain pills + buy button (use lower controls instead) */
+    #netPills, #btnBuy{ display:none !important; }
+    .btn.xbtn svg{ width:14px; height:14px; display:block; }
+
+    /* Remove topbar chain pills + buy button (keep lower buttons) */
+    #netPills{ display:none !important; }
+    #btnBuy{ display:none !important; }
 
     .panel{
       margin-top:14px;
@@ -173,10 +190,13 @@
     .topRow{
       display:flex;
       align-items:center;
-      justify-content:space-between;
+      justify-content:flex-start;
       gap: 12px;
       flex-wrap:wrap;
     }
+
+    /* keep chain pills close to LIVE TRENDING (not pushed to far right) */
+    .chainToggle{ margin-left: 10px; }
 
     .bottomRow{
       display:flex;
@@ -475,6 +495,7 @@
 
     /* Re-skin existing results dropdown to match main page style */
     .results{
+      display:none;
       position:absolute;
       top: calc(100% + 10px);
       right: 0;
@@ -484,17 +505,52 @@
       overflow:auto;
       padding: 10px;
       border-radius: 18px;
-      border: 1px solid rgba(255,255,255,.12);
-      background: rgba(10,10,22,.92);
-      box-shadow: var(--shadow);
+      border: 1px solid rgba(255,255,255,.14);
+      /* IMPORTANT: fully readable dropdown (no chart bleed-through) */
+      background: rgba(10,10,22,.985);
+      box-shadow: 0 26px 90px rgba(0,0,0,.78);
       backdrop-filter: blur(18px);
       -webkit-backdrop-filter: blur(18px);
-      z-index: 120;
+      isolation: isolate;
+      z-index: 5000;
     }
 
     /* Keep DexGuard search row markup, but make it feel like the main dropdown */
-    .resItem{ border-radius: 16px; margin-bottom: 10px; border: 1px solid rgba(255,255,255,.10); background: rgba(255,255,255,.03); }
+    .resItem{
+      border-radius: 16px;
+      margin-bottom: 10px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(16,16,30,.90);
+      padding: 10px 10px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 10px;
+      cursor:pointer;
+      transition: background .15s ease, border-color .15s ease, transform .15s ease;
+    }
+    .resItem:hover{ background: rgba(24,24,44,.86); border-color: rgba(255,255,255,.18); transform: translateY(-1px); }
     .resItem:last-child{ margin-bottom: 0; }
+
+    .resL{ display:flex; align-items:center; gap: 10px; min-width:0; }
+    .resLogo{
+      width: 36px;
+      height: 36px;
+      border-radius: 12px;
+      overflow:hidden;
+      display:grid;
+      place-items:center;
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.10);
+      flex: 0 0 36px;
+    }
+    .resLogo img{ width:100%; height:100%; object-fit:cover; display:block; }
+    .resLogo .fb{ font-weight:1100; color: rgba(255,255,255,.92); }
+
+    .resTxt{ min-width:0; }
+    .resName{ font-weight: 1000; letter-spacing:-.01em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .resMeta{ font-size: 12px; color: rgba(255,255,255,.64); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top: 2px; }
+    .resR{ display:flex; gap: 8px; align-items:center; flex-wrap:wrap; justify-content:flex-end; }
 
     /* Hide legacy UI bits so the bar looks identical */
     #btnGo{ display:none !important; }
@@ -504,9 +560,10 @@
       .dexSearch{ width: 100%; max-width: 100%; }
       .bottomRow{ flex-direction: column; align-items: stretch; }
     }
+    /* Layout: chart on top, trades underneath (desktop + mobile) */
     .grid{
       display:grid;
-      grid-template-columns: 1.8fr 1fr;
+      grid-template-columns: 1fr;
       gap:14px;
       padding:14px;
     }
@@ -546,8 +603,10 @@
     .statPill.up{border-color: rgba(20,241,149,.30); background: rgba(20,241,149,.10); color: rgba(20,241,149,.92)}
     .statPill.down{border-color: rgba(255,77,109,.28); background: rgba(255,77,109,.10); color: rgba(255,77,109,.92)}
 
-    #chartWrap{height: 520px; position:relative}
-    #chart{position:absolute; inset:0}
+    #chartWrap{height: 520px; position:relative; z-index:1}
+    #chart{position:absolute; inset:0; z-index:1}
+    /* Ensure dropdowns/menus always sit above the chart canvas */
+    #chart canvas{position:relative; z-index:1}
 
     .controls{
       display:flex; align-items:center; justify-content:space-between;
@@ -661,21 +720,47 @@
     }
 
     @media (max-width: 640px){
-      .wrap{padding:14px 12px 22px}
-      .topbar{padding:10px 10px}
-      .brandTxt .t2{display:none}
-      .pillRow{gap:6px}
+      /* Remove the harsh green mid-page wash on small screens */
+      body{
+        background:
+          radial-gradient(900px 520px at 25% 0%, rgba(153,69,255,.22), transparent 60%),
+          radial-gradient(900px 520px at 85% 18%, rgba(0,209,255,.14), transparent 60%),
+          var(--bg);
+      }
+
+      .wrap{padding:12px 10px 18px}
+
+      /* Cleaner, less "thick" top header */
+      .topbar{
+        padding:10px 10px;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+      }
+      .actions{justify-content:space-between; width:100%; gap:8px; flex-wrap:wrap}
+      .btn{padding:10px 12px; font-size:13px}
       .pill{padding:8px 10px}
+
+      /* Make the trending/search header feel compact & aligned */
+      .topBarInner{padding:12px 12px 12px}
+      .hotLabel{padding:10px 12px; font-size:13px}
+      .chainBtn{padding:8px 10px; font-size:12px}
+      .dexSearchInner{padding:10px 12px}
+      .results{left:0; right:0; width: calc(100vw - 24px)}
+
       .tickerTrack{animation-duration: 22s}
       .grid{padding:12px}
       .stats{justify-content:flex-start}
 
-      /* Mobile tabs: show chart OR trades, not both */
-      .desktopOnly{display:none}
-      .mobileTabs{display:block}
-      #chartWrap{height: 440px}
+      /* Always show chart then trades (no tabs) */
+      .mobileTabs{display:none !important}
+      #mobileTradesWrap{display:none !important}
+      .desktopOnly{display:block}
+
+      #chartWrap{height: 460px}
       .trades{height: 520px}
 
+      /* Trades table: keep it readable */
       .tradeHead, .tradeRow{grid-template-columns: 62px 64px 78px 1fr 0 0 34px}
       .tradeHead .hideM, .tradeRow .hideM{display:none}
       .maker .new{display:none}
@@ -686,16 +771,21 @@
   <div class="wrap">
     <div class="topbar">
       <div class="brand">
-        <button class="dexguardBtn" id="topDexguardBtn" type="button" aria-label="Dexguard">
+        <button class="dexguardBtn" id="topDexguardBtn" type="button" aria-label="DexGuard">
           <span class="dexguardChip" aria-hidden="true">DEX</span>
-          <span class="dexguardText">Dexguard</span>
+          <span class="dexguardText">DexGuard</span>
         </button>
       </div>
 
       <div class="actions">
         <div class="pillRow" id="netPills"></div>
         <a class="btn ghost" id="btnBack" href="/">Back to Main</a>
-        <button class="btn" id="btnClose" type="button">X</button>
+        <a class="btn xbtn" id="btnX" href="https://www.x.com/solana_x1" target="_blank" rel="noreferrer" aria-label="Twitter/X">
+          <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false" style="display:block">
+            <path fill="currentColor" d="M18.9 2H22l-6.8 7.8L23 22h-6.2l-4.8-7.1L5.8 22H2l7.4-8.5L1 2h6.3l4.3 6.4L18.9 2Zm-1.1 18h1.7L6.2 3.9H4.4L17.8 20Z"/>
+          </svg>
+          <span>Twitter/X</span>
+        </a>
         <a class="btn primary" id="btnBuy" href="#" target="_blank" rel="noreferrer">Buy</a>
       </div>
     </div>
@@ -706,10 +796,6 @@
           <div class="topRow">
             <div class="hotBlock" aria-label="Hot trending live">
               <div class="hotLabel" title="Live trending"><span class="hotFire">🔥</span><span>LIVE TRENDING</span></div>
-              <button class="dexguardBtn" id="dexguardBtn" type="button" aria-label="Dexguard">
-                <span class="dexguardChip" aria-hidden="true">DEX</span>
-                <span class="dexguardText">Dexguard</span>
-              </button>
               <div id="status" style="display:none">Booting…</div>
               <div id="clock" style="display:none"></div>
             </div>
@@ -900,7 +986,6 @@
     const tradesStatM = $('tradesStatM');
 
     const btnBack = $('btnBack');
-    const btnClose = $('btnClose');
     const btnBuy = $('btnBuy');
 
     const topDexguardBtn = $('topDexguardBtn');
@@ -1245,11 +1330,7 @@
       tabTrades.onclick=()=>setMobileTab('trades');
     }
 
-    btnClose.onclick=()=>{
-      try{ window.close(); }catch(e){}
-      // if browser blocks close
-      toast('Close blocked by browser');
-    };
+
 
     // Top-left Dexguard button -> jump to trending bar
     if(topDexguardBtn){
