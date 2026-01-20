@@ -4,8 +4,10 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <meta name="theme-color" content="#070711" />
-  <title>$SOS — DEX Terminal (Multi-Chain)</title>
-  <meta name="description" content="$SOS DEX Terminal — native chart + live trades across Solana, Ethereum, BNB, Base." />
+  <title>$SOS — DEX Terminal</title>
+
+  <!-- Native chart (no TradingView iframe). -->
+  <script defer src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
 
   <style>
     :root{
@@ -14,1988 +16,1684 @@
       --panel2: rgba(255,255,255,.085);
       --stroke: rgba(255,255,255,.12);
       --text: rgba(255,255,255,.92);
-      --muted: rgba(255,255,255,.70);
-      --muted2: rgba(255,255,255,.55);
+      --muted: rgba(255,255,255,.72);
       --g:#14F195;
-      --r:#FF4D6D;
       --c:#00D1FF;
       --p:#9945FF;
+      --eth:#627EEA;
+      --bnb:#F3BA2F;
+      --base:#0052FF;
       --radius: 22px;
-      --shadow: 0 14px 40px rgba(0,0,0,.55);
-      --max: 1280px;
-      --glass: blur(14px);
-      --t: .18s ease;
+      --shadow2: 0 14px 44px rgba(0,0,0,.45);
+      --shadowSoft: 0 10px 28px rgba(0,0,0,.28);
+      --max: 1200px;
+      --ring: 0 0 0 6px rgba(20,241,149,.08);
+
+      /* ticker defaults (important so animation NEVER stops) */
+      --tickerSpeed: 12.5s;
+      --tickerDistance: 1400px;
+
+      /* per-chain dynamic (set on body class) */
+      --netColor: var(--p);
+      --netGlow: rgba(153,69,255,.22);
     }
 
     *{box-sizing:border-box}
     html,body{height:100%}
     body{
       margin:0;
-      background:
-        radial-gradient(1200px 600px at 20% 0%, rgba(153,69,255,.22), transparent 60%),
-        radial-gradient(1200px 600px at 85% 25%, rgba(0,209,255,.14), transparent 60%),
-        radial-gradient(1200px 600px at 50% 90%, rgba(20,241,149,.12), transparent 65%),
-        var(--bg);
       color:var(--text);
-      font: 15.5px/1.55 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+      font: 15.5px/1.55 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial;
+      background: var(--bg);
       overflow-x:hidden;
+      position:relative;
+    }
+
+    body::before{
+      content:"";
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      pointer-events:none;
+      background:
+        radial-gradient(1200px 760px at 10% 5%, rgba(153,69,255,.24), transparent 60%),
+        radial-gradient(1000px 720px at 90% 10%, rgba(20,241,149,.18), transparent 58%),
+        radial-gradient(900px 640px at 72% 92%, rgba(0,209,255,.14), transparent 58%),
+        radial-gradient(900px 640px at 0% 95%, rgba(0,209,255,.06), transparent 60%),
+        var(--bg);
+      transform: translateZ(0);
     }
 
     a{color:inherit; text-decoration:none}
-    button,input,select{font:inherit}
+    img{max-width:100%; height:auto}
 
-    .wrap{max-width:var(--max); margin:0 auto; padding:18px 16px 28px}
+    :focus-visible{ outline:none; box-shadow: var(--ring); border-radius: 14px; }
 
-    .topbar{
-      display:flex; align-items:center; justify-content:space-between;
+    .wrap{max-width:var(--max); margin:0 auto; padding:0 16px;}
+
+    .header{
+      position:sticky; top:0; z-index:50;
+      backdrop-filter: blur(14px);
+      background: rgba(7,7,17,.68);
+      border-bottom: 1px solid rgba(255,255,255,.08);
+    }
+
+    .headerRow{
+      display:grid;
+      grid-template-columns: auto 1fr auto;
+      align-items:center;
       gap:12px;
-      padding:12px 12px;
-      border:1px solid var(--stroke);
-      background:linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.04));
-      border-radius: 26px;
-      box-shadow: var(--shadow);
-      backdrop-filter: var(--glass);
-      position:sticky; top:10px; z-index:20;
+      padding:12px 0;
     }
 
-    .brand{display:flex; align-items:center; gap:10px; min-width:0}
-    .logo{
-      width:38px; height:38px; border-radius:14px;
+    .brand{display:flex; align-items:center; gap:12px; min-width: 220px;}
+    .brandLogo{
+      width:42px; height:42px;
+      border-radius: 14px;
+      background: radial-gradient(circle at 30% 20%, rgba(20,241,149,.35), transparent 50%),
+                  radial-gradient(circle at 70% 30%, rgba(0,209,255,.28), transparent 52%),
+                  radial-gradient(circle at 45% 75%, rgba(153,69,255,.30), transparent 55%),
+                  rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.12);
+      box-shadow: 0 12px 30px rgba(0,0,0,.28);
       display:grid; place-items:center;
-      background:
-        radial-gradient(14px 14px at 35% 30%, rgba(20,241,149,.9), transparent 60%),
-        radial-gradient(14px 14px at 70% 35%, rgba(0,209,255,.9), transparent 60%),
-        radial-gradient(14px 14px at 50% 80%, rgba(153,69,255,.9), transparent 60%),
-        rgba(255,255,255,.06);
-      border:1px solid rgba(255,255,255,.14);
+      font-weight: 1100;
+      letter-spacing:.2px;
     }
-    .logo span{font-weight:900; letter-spacing:-.02em}
+    .brandText{display:flex; flex-direction:column; line-height:1.06}
+    .brandText .title{font-weight:1000; font-size:18px}
+    .brandText .sub{color:var(--muted); font-weight:750; font-size:13.5px}
 
-    .brandTxt{min-width:0}
-    .brandTxt .t1{font-weight:900; letter-spacing:-.02em; font-size:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
-    .brandTxt .t2{font-size:12px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
-
-    .actions{display:flex; align-items:center; gap:10px}
-
-    .pillRow{display:flex; align-items:center; gap:8px; flex-wrap:wrap}
-    .pill{
-      display:inline-flex; align-items:center; gap:7px;
-      padding:9px 12px;
-      border-radius: 999px;
-      border:1px solid rgba(255,255,255,.12);
-      background: rgba(255,255,255,.05);
-      color: rgba(255,255,255,.85);
-      cursor:pointer;
-      user-select:none;
-      transition: transform var(--t), background var(--t), border-color var(--t);
-    }
-    .pill:hover{transform: translateY(-1px); background: rgba(255,255,255,.07)}
-    .pill.active{border-color: rgba(153,69,255,.55); background: rgba(153,69,255,.14)}
-    .pill .dot{width:10px; height:10px; border-radius:50%; background: rgba(255,255,255,.18); box-shadow: inset 0 0 0 1px rgba(255,255,255,.14)}
-    .pill.active .dot{background: var(--p)}
+    .headerMid{display:flex; justify-content:center; gap:10px; min-width:0;}
 
     .btn{
       display:inline-flex; align-items:center; justify-content:center;
-      gap:8px;
-      padding:10px 14px;
+      padding:9px 12px;
       border-radius: 999px;
-      border:1px solid rgba(255,255,255,.14);
+      border: 1px solid rgba(255,255,255,.14);
       background: rgba(255,255,255,.06);
-      color: rgba(255,255,255,.88);
-      cursor:pointer;
-      transition: transform var(--t), background var(--t), border-color var(--t);
+      color: rgba(255,255,255,.90);
+      font-weight:900;
+      font-size:13px;
+      transition: transform .15s ease, background .15s ease, box-shadow .15s ease, border-color .15s ease;
+      white-space: nowrap;
+      user-select:none;
+      -webkit-tap-highlight-color: transparent;
     }
-    .btn:hover{transform: translateY(-1px); background: rgba(255,255,255,.085)}
-    .btn.primary{background: rgba(20,241,149,.14); border-color: rgba(20,241,149,.32)}
-    .btn.ghost{background: rgba(255,255,255,.03)}
-
-    .panel{
-      margin-top:14px;
-      border:1px solid var(--stroke);
-      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      backdrop-filter: var(--glass);
-      overflow:hidden;
+    .btn:hover{background: rgba(255,255,255,.10); transform: translateY(-1px)}
+    .btn:active{transform: translateY(0px) scale(.99)}
+    .btn.primary{
+      border: 0;
+      background: linear-gradient(90deg, var(--g), var(--c), var(--p));
+      color: #061012;
+      box-shadow: 0 14px 28px rgba(0,0,0,.28);
     }
+    .btn.icon{ width:44px; padding:9px 0; font-size:16px; }
 
-    /* --- Trending ticker (match main site) --- */
-    :root{ --netColor:#9945FF; --netGlow: rgba(153,69,255,.26); --tickerSpeed: 36s; }
-    body.net-sol{ --netColor:#9945FF; --netGlow: rgba(153,69,255,.26); }
-    body.net-eth{ --netColor:#00D1FF; --netGlow: rgba(0,209,255,.22); }
-    body.net-bnb{ --netColor:#f3ba2f; --netGlow: rgba(243,186,47,.22); }
-    body.net-base{ --netColor:#2d6cff; --netGlow: rgba(45,108,255,.22); }
-
-    .tickerHd{ padding:14px 16px; border-bottom:1px solid rgba(255,255,255,.08); }
-    .topRow{ display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
-
-    .hotBlock{ display:flex; align-items:center; gap:10px; }
-    
-    .hotBlock{ display:flex; align-items:center; gap:10px; }
-    .hotIcon{ width:34px; height:34px; border-radius:12px; display:grid; place-items:center;
-      background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.04));
-      border:1px solid rgba(255,255,255,.12);
-      box-shadow: 0 10px 30px rgba(0,0,0,.25), 0 0 0 1px rgba(255,255,255,.04) inset;
-    }
-    .hotTitle{ font-weight: 900; letter-spacing:-.02em; display:flex; align-items:center; gap:8px; }
-    .autoPill{ font-size:12px; font-weight:900; padding:4px 10px; border-radius:999px;
-      border:1px solid rgba(255,255,255,.14); background: rgba(0,0,0,.15); color: rgba(255,255,255,.72);
-    }
-    .hotSub{ font-size:13px; color: rgba(255,255,255,.68); }
-
-    .chainToggle{ display:flex; align-items:center; gap:8px; padding:6px; border-radius:999px;
-      background: rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.10);
-    }
-    .chainBtn{ border:1px solid rgba(255,255,255,.12); background: rgba(0,0,0,.12); color: rgba(255,255,255,.82);
-      padding:8px 12px; border-radius:999px; font-weight:900; cursor:pointer; transition: transform var(--t), background var(--t), border-color var(--t);
-      display:flex; align-items:center; gap:8px;
-    }
-    .chainBtn .dot{ width:10px; height:10px; border-radius:50%; background: rgba(255,255,255,.20); box-shadow: inset 0 0 0 1px rgba(255,255,255,.12); }
-    .chainBtn:hover{ transform: translateY(-1px); background: rgba(255,255,255,.07); }
-    .chainBtn.active{ border-color: color-mix(in oklab, var(--netColor) 55%, rgba(255,255,255,.12));
-      background: color-mix(in oklab, var(--netGlow) 55%, rgba(0,0,0,.18));
-      box-shadow: 0 0 0 1px rgba(255,255,255,.05) inset;
-    }
-    .chainBtn.active .dot{ background: var(--netColor); }
-
-    .clockWrap{ margin-left:auto; }
-
-    .tickerWrap{ position:relative; overflow:hidden; padding:10px 0 12px; border-top:1px solid rgba(255,255,255,.06); }
-    .tickerTrack{ display:flex; gap:12px; width:max-content; padding: 0 14px; animation: marquee var(--tickerSpeed) linear infinite; }
-    @keyframes marquee{ from{transform: translateX(0)} to{transform: translateX(-50%)} }
-
-    .tickerItem{ display:inline-flex; align-items:center; gap:10px; padding:10px 12px; border-radius:999px;
-      border:1px solid rgba(255,255,255,.10); background: rgba(255,255,255,.05); white-space:nowrap; cursor:pointer;
-      transition: transform var(--t), background var(--t), border-color var(--t);
-    }
-    .tickerItem:hover{ transform: translateY(-1px); background: rgba(255,255,255,.075); }
-
-    .rank{ width:26px; height:26px; border-radius:999px; display:grid; place-items:center; font-weight:900; font-size:12px;
-      background: rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.10);
-    }
-    .rank.medal{ color: rgba(0,0,0,.85); border-color: rgba(0,0,0,.12); }
-    .rank.gold{ background: linear-gradient(180deg, #ffd36b, #e7a700); }
-    .rank.silver{ background: linear-gradient(180deg, #e8eef6, #9aa6b2); }
-    .rank.bronze{ background: linear-gradient(180deg, #ffb59a, #c36a1f); }
-
-    .tLogo{ width:22px; height:22px; border-radius:8px; overflow:hidden; display:grid; place-items:center;
-      background: rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.10);
-    }
-    .tLogo img{ width:100%; height:100%; object-fit:cover; }
-    .tName{ font-weight:900; letter-spacing:-.01em; }
-    .tPct{ font-weight:900; }
-    .tPct.up{ color: rgba(20,241,149,.95); }
-    .tPct.down{ color: rgba(255,77,109,.95); }
-
-    .tickerEmpty{ padding:10px 14px; color: rgba(255,255,255,.65); }
-
-
-    .searchBar{
-      display:flex; align-items:center; gap:10px;
-      padding:14px 16px;
-      border-top:1px solid rgba(255,255,255,.06);
-      background: rgba(0,0,0,.10);
-    }
-    .search{
-      flex:1;
-      position:relative;
-    }
-    .search input{
-      width:100%;
-      padding:14px 44px 14px 44px;
-      border-radius: 18px;
-      border:1px solid rgba(255,255,255,.12);
+    .chainToggle{
+      display:inline-flex; align-items:center; gap:8px;
+      padding:7px;
+      border-radius: 999px;
       background: rgba(255,255,255,.05);
-      color: var(--text);
-      outline:none;
-    }
-    .search input:focus{border-color: rgba(0,209,255,.35)}
-    .search .icon{
-      position:absolute; left:14px; top:50%; transform: translateY(-50%);
-      width:22px; height:22px; opacity:.75
-    }
-    .search .hint{
-      position:absolute; right:12px; top:50%; transform: translateY(-50%);
-      font-size:12px; color: var(--muted2);
-      padding:6px 10px; border-radius:999px;
-      border:1px solid rgba(255,255,255,.10);
-      background: rgba(0,0,0,.12);
-    }
-
-    .results{
-      position:absolute; left:0; right:0; top:calc(100% + 8px);
-      background: rgba(10,10,18,.92);
-      border:1px solid rgba(255,255,255,.14);
-      border-radius: 18px;
-      box-shadow: 0 20px 70px rgba(0,0,0,.65);
-      backdrop-filter: blur(14px);
-      overflow:hidden;
-      display:none;
-      z-index:30;
-      max-height: 360px;
+      border: 1px solid rgba(255,255,255,.10);
+      box-shadow: 0 10px 30px rgba(0,0,0,.22);
       overflow:auto;
     }
-    .resItem{
-      display:flex; align-items:center; justify-content:space-between;
-      gap:12px;
-      padding:12px 12px;
-      border-bottom:1px solid rgba(255,255,255,.06);
+    .chainBtn{
+      display:inline-flex; align-items:center; justify-content:center;
+      height: 36px;
+      padding: 0 14px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.05);
+      color: rgba(255,255,255,.88);
+      font-weight: 1000;
+      letter-spacing:.3px;
       cursor:pointer;
+      user-select:none;
+      -webkit-tap-highlight-color: transparent;
     }
-    .resItem:hover{background: rgba(255,255,255,.06)}
-    .resL{display:flex; align-items:center; gap:10px; min-width:0}
-    .resLogo{width:34px; height:34px; border-radius:12px; overflow:hidden; background: rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.10); display:grid; place-items:center}
-    .resLogo img{width:100%; height:100%; object-fit:cover}
-    .resTxt{min-width:0}
-    .resName{font-weight:900; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
-    .resMeta{font-size:12px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
-    .resR{display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:flex-end}
+    .chainBtn .dot{width:10px; height:10px; border-radius:999px; background: rgba(255,255,255,.35); margin-right:8px;}
+    .chainBtn.active{ border-color: rgba(255,255,255,.96); color: rgba(255,255,255,.98); }
 
-    .grid{
-      display:grid;
-      grid-template-columns: 1.8fr 1fr;
-      gap:14px;
-      padding:14px;
-    }
+    /* per-chain active fill (exact from main) */
+    body.net-sol{ --netColor: var(--p); --netGlow: rgba(153,69,255,.22); }
+    body.net-eth{ --netColor: var(--eth); --netGlow: rgba(98,126,234,.22); }
+    body.net-bnb{ --netColor: var(--bnb); --netGlow: rgba(243,186,47,.20); }
+    body.net-base{ --netColor: var(--base); --netGlow: rgba(0,82,255,.20); }
 
+    body.net-sol .chainBtn.active{ background: linear-gradient(90deg, rgba(153,69,255,.96), rgba(153,69,255,.52)); border-color: rgba(255,255,255,.96); box-shadow: 0 0 0 1px rgba(153,69,255,.20) inset, 0 12px 30px rgba(153,69,255,.18), 0 16px 34px rgba(0,0,0,.34); }
+    body.net-eth .chainBtn.active{ background: linear-gradient(90deg, rgba(98,126,234,.96), rgba(98,126,234,.52)); border-color: rgba(255,255,255,.96); box-shadow: 0 0 0 1px rgba(98,126,234,.20) inset, 0 12px 30px rgba(98,126,234,.18), 0 16px 34px rgba(0,0,0,.34); }
+    body.net-bnb .chainBtn.active{ background: linear-gradient(90deg, rgba(243,186,47,.96), rgba(243,186,47,.50)); border-color: rgba(255,255,255,.96); box-shadow: 0 0 0 1px rgba(243,186,47,.20) inset, 0 12px 30px rgba(243,186,47,.16), 0 16px 34px rgba(0,0,0,.34); }
+    body.net-base .chainBtn.active{ background: linear-gradient(90deg, rgba(0,82,255,.96), rgba(0,82,255,.50)); border-color: rgba(255,255,255,.96); box-shadow: 0 0 0 1px rgba(0,82,255,.20) inset, 0 12px 30px rgba(0,82,255,.16), 0 16px 34px rgba(0,0,0,.34); }
+
+    /* Cards */
     .card{
-      border:1px solid rgba(255,255,255,.10);
-      background: rgba(255,255,255,.045);
-      border-radius: 20px;
+      background: linear-gradient(180deg, rgba(255,255,255,.075), rgba(255,255,255,.045));
+      border: 1px solid rgba(255,255,255,.11);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow2);
+      position: relative;
       overflow:hidden;
     }
 
-    .cardHd{
-      display:flex; align-items:center; justify-content:space-between;
-      gap:12px;
-      padding:14px 14px;
-      border-bottom:1px solid rgba(255,255,255,.07);
+    .card::before{
+      content:"";
+      position:absolute; inset:0;
+      pointer-events:none;
+      background:
+        radial-gradient(600px 260px at 0% 0%, rgba(153,69,255,.10), transparent 60%),
+        radial-gradient(540px 260px at 100% 0%, rgba(0,209,255,.08), transparent 62%);
+      opacity:.9;
     }
-    .pair{display:flex; align-items:center; gap:10px; min-width:0}
-    .tlogo{width:38px; height:38px; border-radius:14px; overflow:hidden; display:grid; place-items:center; background: rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.10)}
-    .tlogo img{width:100%; height:100%; object-fit:cover}
-    .tlogo .fb{font-weight:900; opacity:.9}
-    .pairTxt{min-width:0}
-    .pairName{font-weight:950; letter-spacing:-.02em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
-    .pairMeta{font-size:12px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
 
-    .stats{display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end}
-    .statPill{
-      display:inline-flex; align-items:center; gap:8px;
-      padding:8px 10px;
-      border-radius:999px;
-      border:1px solid rgba(255,255,255,.10);
-      background: rgba(0,0,0,.10);
-      font-size:12px;
+    .cardInner{ position:relative; padding: 16px; }
+
+    /* Trending block (same vibe as main) */
+    .hotBlock{ margin: 16px 0 12px; }
+    .hotRow{ display:flex; gap:12px; align-items:center; }
+    .hotLabel{
+      display:flex; align-items:center; gap:10px;
+      padding:10px 14px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.06);
+      box-shadow: 0 10px 30px rgba(0,0,0,.22);
+      font-weight:1000;
+      white-space:nowrap;
+    }
+    .hotLabel .pill{
+      padding: 3px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.06);
+      color: rgba(255,255,255,.82);
+      font-size: 12px;
+      font-weight: 1000;
+      letter-spacing:.2px;
+    }
+    .hotStatus{ margin-left: 6px; color: rgba(255,255,255,.70); font-weight:900; font-size: 13px; }
+
+    .tickerWrap{
+      flex: 1;
+      min-width: 0;
+      position: relative;
+      overflow: hidden;
+      border-radius: 999px;
+      background: rgba(255,255,255,.05);
+      border: 1px solid rgba(255,255,255,.10);
+      box-shadow: 0 10px 30px rgba(0,0,0,.22);
+      padding: 10px 12px;
+    }
+
+    .tickerWrap:before,.tickerWrap:after{
+      content:"";
+      position:absolute;
+      top:0; bottom:0;
+      width: 44px;
+      pointer-events:none;
+      z-index: 2;
+    }
+    .tickerWrap:before{ left:0; background: linear-gradient(90deg, rgba(7,7,17,.95), rgba(7,7,17,0)); }
+    .tickerWrap:after{ right:0; background: linear-gradient(270deg, rgba(7,7,17,.95), rgba(7,7,17,0)); }
+
+    .tickerTrack{
+      display:flex;
+      gap: 10px;
+      align-items:center;
+      white-space: nowrap;
+      will-change: transform;
+      animation: tickerMarquee var(--tickerSpeed) linear infinite;
+    }
+    .tickerWrap:hover .tickerTrack{ animation-play-state: paused; }
+
+    @keyframes tickerMarquee{
+      0%{ transform: translateX(0); }
+      100%{ transform: translateX(calc(-1 * var(--tickerDistance))); }
+    }
+
+    .tickerItem{
+      display:inline-flex;
+      align-items:center;
+      gap: 10px;
+      padding: 7px 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.10);
+      box-shadow: 0 0 0 1px var(--netGlow) inset;
+      color: rgba(255,255,255,.92);
+      font-weight: 900;
+      font-size: 13px;
+      letter-spacing: .1px;
+      cursor:pointer;
+      user-select:none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .tickerItem:active{ transform: scale(.995); }
+
+    .tickerLogoWrap{
+      width:28px;
+      height:28px;
+      flex:0 0 28px;
+      border-radius: 6px;
+      overflow:hidden;
+      display:grid;
+      place-items:center;
+      background: rgba(255,255,255,.07);
+      border: 1px solid rgba(255,255,255,.10);
+      box-shadow: 0 8px 18px rgba(0,0,0,.22);
+    }
+    .tickerLogo{ width:100%; height:100%; object-fit: cover; display:block; }
+    .tickerLogoFallback{ font-size: 12px; font-weight: 1100; color: rgba(255,255,255,.90); line-height: 1; }
+
+    .tickerItem.top1{ background: rgba(255,215,0,.10); border-color: rgba(255,215,0,.32); box-shadow: 0 0 0 1px rgba(255,215,0,.18) inset, 0 12px 30px rgba(0,0,0,.26); }
+    .tickerItem.top1 .tickerLogoWrap{ border-color: rgba(255,215,0,.35); box-shadow: 0 0 0 1px rgba(255,215,0,.15) inset, 0 10px 22px rgba(0,0,0,.22); }
+
+    .tickerItem .rank{
+      display:inline-flex; align-items:center; justify-content:center;
+      min-width: 28px; height: 22px; padding: 0 8px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.08);
+      border: 1px solid rgba(255,255,255,.10);
+      font-size: 12px;
+      font-weight: 1000;
+      color: var(--netColor);
+    }
+    .tickerItem.top1 .rank{ background: linear-gradient(90deg, #F3BA2F, #FFD700, #FFF2B0); color: rgba(10,10,22,.92); border:0; font-weight: 1100; }
+
+    .tickerPct{
+      display:inline-flex; align-items:center; justify-content:center;
+      height: 22px; padding: 0 8px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.10);
+      font-size: 12px;
+      font-weight: 950;
+      color: rgba(255,255,255,.90);
+    }
+    .tickerPct.up{ color: rgba(20,241,149,.98); background: rgba(20,241,149,.10); border-color: rgba(20,241,149,.22); }
+    .tickerPct.down{ color: rgba(255,90,90,.96); background: rgba(255,90,90,.10); border-color: rgba(255,90,90,.22); }
+
+    /* Search */
+    .searchRow{ display:flex; gap:10px; align-items:center; margin-top: 12px; }
+    .searchWrap{
+      flex:1; display:flex; align-items:center; gap:10px;
+      padding: 10px 12px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.05);
+      border: 1px solid rgba(255,255,255,.10);
+      box-shadow: 0 10px 30px rgba(0,0,0,.22);
+    }
+    .searchWrap .icon{ opacity:.8; }
+    .searchInput{
+      flex:1;
+      background: transparent;
+      border:0;
+      outline:none;
+      color: rgba(255,255,255,.92);
+      font-weight: 900;
+      font-size: 14.5px;
+      letter-spacing:.1px;
+    }
+    .searchInput::placeholder{ color: rgba(255,255,255,.55); font-weight: 800; }
+
+    .pillAuto{
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.06);
+      color: rgba(255,255,255,.82);
+      font-size: 12px;
+      font-weight: 1000;
+      cursor:pointer;
+      user-select:none;
+    }
+
+    /* Result dropdown */
+    .resBox{
+      margin-top: 10px;
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(7,7,17,.55);
+      backdrop-filter: blur(10px);
+      box-shadow: 0 16px 44px rgba(0,0,0,.40);
+      overflow:hidden;
+      display:none;
+    }
+    .resBox.show{ display:block; }
+
+    .resRow{
+      display:flex; align-items:center; justify-content:space-between;
+      padding: 10px 12px;
+      border-top: 1px solid rgba(255,255,255,.06);
+      cursor:pointer;
+      user-select:none;
+    }
+    .resRow:first-child{ border-top:0; }
+    .resRow:hover{ background: rgba(255,255,255,.04); }
+
+    .resLeft{ display:flex; gap:10px; align-items:center; min-width:0; }
+    .resLogoWrap{
+      width:34px; height:34px; border-radius: 10px;
+      overflow:hidden;
+      background: rgba(255,255,255,.07);
+      border: 1px solid rgba(255,255,255,.10);
+      box-shadow: 0 10px 24px rgba(0,0,0,.22);
+      display:grid; place-items:center;
+      flex:0 0 34px;
+    }
+    .resLogo{ width:100%; height:100%; object-fit:cover; }
+    .resLogoFallback{ font-weight:1100; font-size:13px; color: rgba(255,255,255,.9); }
+
+    .resTitle{ font-weight: 1000; white-space:nowrap; overflow:hidden; text-overflow: ellipsis; }
+    .resMeta{ color: rgba(255,255,255,.65); font-weight:900; font-size: 12px; }
+
+    .resRight{ display:flex; gap:8px; align-items:center; }
+    .pill{
+      display:inline-flex; align-items:center; justify-content:center;
+      height: 22px;
+      padding: 0 8px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.10);
+      font-size: 12px;
+      font-weight: 1000;
       color: rgba(255,255,255,.86);
       white-space:nowrap;
     }
-    .statPill.up{border-color: rgba(20,241,149,.30); background: rgba(20,241,149,.10); color: rgba(20,241,149,.92)}
-    .statPill.down{border-color: rgba(255,77,109,.28); background: rgba(255,77,109,.10); color: rgba(255,77,109,.92)}
+    .pill.up{ color: rgba(20,241,149,.98); background: rgba(20,241,149,.10); border-color: rgba(20,241,149,.22); }
+    .pill.down{ color: rgba(255,90,90,.96); background: rgba(255,90,90,.10); border-color: rgba(255,90,90,.22); }
 
-    #chartWrap{height: 520px; position:relative}
-    #chart{position:absolute; inset:0}
+    /* Token header */
+    .tokenTop{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top: 12px; }
+    .tokenInfo{ display:flex; align-items:center; gap:12px; min-width:0; }
+    .tokenLogoWrap{ width:42px; height:42px; border-radius: 14px; overflow:hidden; background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.12); box-shadow: 0 12px 30px rgba(0,0,0,.28); display:grid; place-items:center; }
+    .tokenLogo{ width:100%; height:100%; object-fit: cover; }
+    .tokenLogoFallback{ font-weight: 1100; }
 
-    .controls{
-      display:flex; align-items:center; justify-content:space-between;
-      gap:10px;
-      padding:12px 12px;
-      border-top:1px solid rgba(255,255,255,.07);
-      background: rgba(0,0,0,.10);
-      flex-wrap:wrap;
-    }
+    .tokenNames{ display:flex; flex-direction:column; min-width:0; }
+    .tokenNames .sym{ font-weight: 1100; font-size: 20px; letter-spacing:.2px; white-space:nowrap; overflow:hidden; text-overflow: ellipsis; }
+    .tokenNames .name{ color: rgba(255,255,255,.65); font-weight: 900; font-size: 13px; white-space:nowrap; overflow:hidden; text-overflow: ellipsis; }
 
-    .tfRow{display:flex; gap:6px; flex-wrap:wrap}
-    .tf{padding:8px 10px; border-radius: 999px; border:1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.05); cursor:pointer; font-weight:850; font-size:12px}
-    .tf.active{border-color: rgba(0,209,255,.42); background: rgba(0,209,255,.14)}
-
-    .rightCtl{display:flex; gap:8px; align-items:center; flex-wrap:wrap}
-    .sel{padding:9px 10px; border-radius: 999px; border:1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.05); color: var(--text)}
-
-    .tableHd{
-      display:flex; align-items:flex-end; justify-content:space-between;
-      padding:14px 14px;
-      border-bottom:1px solid rgba(255,255,255,.07);
-    }
-    .ttl{font-weight:950; letter-spacing:-.02em}
-    .sub{font-size:12px; color:var(--muted)}
-
-    .trades{
-      height: 600px;
-      overflow:auto;
-    }
-
-    .tradeHead, .tradeRow{
-      display:grid;
-      grid-template-columns: 90px 70px 90px 1fr 110px 1fr 34px;
-      gap:10px;
-      align-items:center;
-      padding:10px 12px;
-      border-bottom:1px solid rgba(255,255,255,.06);
-      font-size:13px;
-    }
-    .tradeHead{
-      position:sticky; top:0; z-index:5;
-      background: rgba(12,12,20,.92);
-      backdrop-filter: blur(12px);
-      font-size:12px;
-      color: rgba(255,255,255,.72);
-      font-weight:900;
-    }
-    .tradeRow:hover{background: rgba(255,255,255,.05)}
-    .typeBadge{
+    .chips{ display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end; }
+    .chip{
       display:inline-flex; align-items:center; justify-content:center;
-      padding:6px 10px;
-      border-radius:999px;
-      font-weight:950;
-      font-size:12px;
-      letter-spacing:-.01em;
-      border:1px solid rgba(255,255,255,.10);
-      width:fit-content;
+      height: 34px;
+      padding: 0 12px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.10);
+      font-weight: 1000;
+      color: rgba(255,255,255,.92);
+      box-shadow: 0 0 0 1px rgba(255,255,255,.03) inset;
+      white-space:nowrap;
     }
-    .typeBadge.buy{background: rgba(20,241,149,.10); border-color: rgba(20,241,149,.30); color: rgba(20,241,149,.95)}
-    .typeBadge.sell{background: rgba(255,77,109,.10); border-color: rgba(255,77,109,.28); color: rgba(255,77,109,.95)}
+    .chip.negative{ color: rgba(255,90,90,.96); background: rgba(255,90,90,.10); border-color: rgba(255,90,90,.22); }
+    .chip.positive{ color: rgba(20,241,149,.98); background: rgba(20,241,149,.10); border-color: rgba(20,241,149,.22); }
 
-    .mono{font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1}
-    .maker{display:flex; align-items:center; gap:8px; min-width:0}
-    .maker .addr{white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color: rgba(255,255,255,.85)}
-    .maker .new{font-size:11px; padding:4px 8px; border-radius:999px; border:1px solid rgba(153,69,255,.30); background: rgba(153,69,255,.12); color: rgba(153,69,255,.95); font-weight:900}
+    /* Main grid */
+    .grid{
+      display:grid;
+      grid-template-columns: 1.65fr 1fr;
+      gap: 14px;
+      margin-top: 12px;
+    }
 
-    .iconBtn{width:30px; height:30px; border-radius: 999px; border:1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.05); display:grid; place-items:center; cursor:pointer}
-    .iconBtn:hover{background: rgba(255,255,255,.08)}
+    .chartCard .cardInner{ padding: 12px; }
+    .chartHead{
+      display:flex; align-items:center; justify-content:space-between; gap:10px;
+      margin-bottom: 8px;
+    }
+
+    .tfRow{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+    .tfBtn{ height: 30px; padding: 0 10px; font-size: 12px; font-weight: 1000; border-radius: 999px; border: 1px solid rgba(255,255,255,.10); background: rgba(255,255,255,.05); color: rgba(255,255,255,.86); cursor:pointer; }
+    .tfBtn.active{ background: rgba(255,255,255,.10); border-color: rgba(255,255,255,.18); box-shadow: 0 0 0 1px var(--netGlow) inset; }
+
+    .chartArea{ height: 520px; border-radius: 16px; overflow:hidden; border: 1px solid rgba(255,255,255,.08); background: rgba(0,0,0,.10); }
+
+    .chartFoot{ display:flex; gap:10px; align-items:center; justify-content:flex-end; margin-top: 10px; }
+    .miniBtn{ height: 34px; padding: 0 12px; }
+
+    .tradesCard .cardInner{ padding: 12px; }
+    .tradesHead{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom: 8px; }
+    .tradesTitle{ font-weight: 1100; }
+    .tradesStat{ color: rgba(255,255,255,.65); font-weight: 900; font-size: 12.5px; }
+
+    .tradeTable{ width:100%; border-collapse: collapse; }
+    .tradeTable th, .tradeTable td{ text-align:left; padding: 10px 10px; border-top: 1px solid rgba(255,255,255,.06); font-weight: 900; }
+    .tradeTable th{ color: rgba(255,255,255,.62); font-weight: 1000; font-size: 12px; position: sticky; top: 0; background: rgba(7,7,17,.62); backdrop-filter: blur(10px); z-index: 2; }
+    .tradeTable td{ font-size: 13px; color: rgba(255,255,255,.90); }
+    .tradeTable tr:hover td{ background: rgba(255,255,255,.03); }
+
+    .typeBuy{ color: rgba(20,241,149,.98); }
+    .typeSell{ color: rgba(255,90,90,.96); }
+
+    .addr{ font-family: ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace; font-size: 12px; color: rgba(255,255,255,.72); }
 
     .toast{
-      position:fixed;
-      left:50%; transform: translateX(-50%);
-      bottom:18px;
-      background: rgba(10,10,18,.92);
-      border:1px solid rgba(255,255,255,.14);
+      position: fixed;
+      left: 50%;
+      bottom: 18px;
+      transform: translateX(-50%);
+      z-index: 999;
+      padding: 12px 14px;
+      border-radius: 14px;
+      background: rgba(10,10,22,.76);
+      border: 1px solid rgba(255,255,255,.10);
+      box-shadow: 0 18px 40px rgba(0,0,0,.45);
       color: rgba(255,255,255,.92);
-      padding:12px 14px;
-      border-radius: 14px;
-      box-shadow: 0 14px 60px rgba(0,0,0,.65);
-      backdrop-filter: blur(14px);
-      display:none;
-      z-index:60;
-      max-width: calc(100% - 24px);
+      font-weight: 950;
+      opacity:0;
+      pointer-events:none;
+      transition: opacity .18s ease, transform .18s ease;
     }
+    .toast.show{ opacity:1; transform: translateX(-50%) translateY(-2px); }
 
-    /* Mobile-first: keep it clean */
-    .mobileTabs{display:none}
-    .tabBar{
-      display:flex; gap:8px;
-      padding:12px 12px;
-      border-top:1px solid rgba(255,255,255,.06);
-      background: rgba(0,0,0,.12);
-    }
-    .tab{
-      flex:1;
-      padding:10px 12px;
-      border-radius: 14px;
-      border:1px solid rgba(255,255,255,.12);
-      background: rgba(255,255,255,.05);
-      font-weight:950;
-      cursor:pointer;
-      text-align:center;
-    }
-    .tab.active{border-color: rgba(153,69,255,.55); background: rgba(153,69,255,.14)}
+    /* ===== MOBILE (clean, usable, NO chaos) ===== */
+    .mobileTabs{ display:none; }
 
     @media (max-width: 980px){
-      .grid{grid-template-columns: 1fr}
-      .trades{height: 420px}
-      #chartWrap{height: 420px}
-      .topbar{position:sticky; top:10px}
+      .headerRow{ grid-template-columns: 1fr; gap:10px; }
+      .brand{ min-width: 0; justify-content:center; }
+      .headerMid{ justify-content:center; }
+      .headerActions{ display:flex; justify-content:center; gap:10px; }
+
+      .hotRow{ flex-direction:column; align-items:stretch; }
+      .hotLabel{ justify-content:space-between; }
+
+      .searchRow{ flex-direction:column; align-items:stretch; }
+
+      .tokenTop{ flex-direction:column; align-items:flex-start; }
+      .chips{ justify-content:flex-start; }
+
+      .grid{ grid-template-columns: 1fr; }
+      .chartArea{ height: 420px; }
+
+      .tradeTable th:nth-child(4), .tradeTable td:nth-child(4){ display:none; } /* hide Amount column on small screens */
+
+      .mobileTabs{
+        display:flex;
+        position: sticky;
+        bottom: 0;
+        z-index: 60;
+        gap: 8px;
+        padding: 10px 12px calc(env(safe-area-inset-bottom) + 10px);
+        background: rgba(7,7,17,.72);
+        border-top: 1px solid rgba(255,255,255,.08);
+        backdrop-filter: blur(14px);
+      }
+      .mTab{
+        flex:1;
+        height: 42px;
+        border-radius: 14px;
+        border: 1px solid rgba(255,255,255,.10);
+        background: rgba(255,255,255,.06);
+        color: rgba(255,255,255,.90);
+        font-weight: 1100;
+        display:flex; align-items:center; justify-content:center;
+        cursor:pointer;
+        user-select:none;
+        -webkit-tap-highlight-color: transparent;
+      }
+      .mTab.active{ background: rgba(255,255,255,.10); box-shadow: 0 0 0 1px var(--netGlow) inset; }
+
+      .mobilePane{ display:none; }
+      .mobilePane.show{ display:block; }
+
+      /* panes spacing */
+      .chartCard, .tradesCard{ margin-bottom: 10px; }
     }
 
-    @media (max-width: 640px){
-      .wrap{padding:14px 12px 22px}
-      .topbar{padding:10px 10px}
-      .brandTxt .t2{display:none}
-      .pillRow{gap:6px}
-      .pill{padding:8px 10px}
-      .tickerTrack{animation-duration: 22s}
-      .grid{padding:12px}
-      .stats{justify-content:flex-start}
-
-      /* Mobile tabs: show chart OR trades, not both */
-      .desktopOnly{display:none}
-      .mobileTabs{display:block}
-      #chartWrap{height: 440px}
-      .trades{height: 520px}
-
-      .tradeHead, .tradeRow{grid-template-columns: 62px 64px 78px 1fr 0 0 34px}
-      .tradeHead .hideM, .tradeRow .hideM{display:none}
-      .maker .new{display:none}
-    }
   </style>
 </head>
-<body>
-  <div class="wrap">
-    <div class="topbar">
-      <div class="brand">
-        <div class="logo"><span>SOS</span></div>
-        <div class="brandTxt">
-          <div class="t1">$SOS — DEX Terminal</div>
-          <div class="t2">Native chart + live trades • Multi-chain</div>
-        </div>
-      </div>
+<body class="net-sol">
 
-      <div class="actions">
-        <div class="pillRow" id="netPills"></div>
-        <a class="btn ghost" id="btnBack" href="/">Back to Main</a>
-        <button class="btn" id="btnClose" type="button">X</button>
-        <a class="btn primary" id="btnBuy" href="#" target="_blank" rel="noreferrer">Buy</a>
+  <header class="header">
+    <div class="wrap">
+      <div class="headerRow">
+        <div class="brand">
+          <div class="brandLogo">SOS</div>
+          <div class="brandText">
+            <div class="title">$SOS — DEX Terminal</div>
+            <div class="sub">Native chart + live trades • Multi-chain</div>
+          </div>
+        </div>
+
+        <div class="headerMid">
+          <div id="chainToggle" class="chainToggle" role="group" aria-label="Select chain">
+            <button class="chainBtn active" data-net="solana" aria-pressed="true"><span class="dot" style="background:rgba(153,69,255,.85)"></span>SOL</button>
+            <button class="chainBtn" data-net="eth" aria-pressed="false"><span class="dot" style="background:rgba(98,126,234,.85)"></span>ETH</button>
+            <button class="chainBtn" data-net="bsc" aria-pressed="false"><span class="dot" style="background:rgba(243,186,47,.90)"></span>BNB</button>
+            <button class="chainBtn" data-net="base" aria-pressed="false"><span class="dot" style="background:rgba(0,82,255,.90)"></span>BASE</button>
+          </div>
+        </div>
+
+        <div class="headerActions" style="display:flex; justify-content:flex-end; gap:10px; min-width: 240px;">
+          <a class="btn" href="./" id="backBtn">Back to Main</a>
+          <button class="btn icon" id="closeBtn" title="Close">✕</button>
+          <button class="btn primary" id="buyBtn">Buy</button>
+        </div>
       </div>
     </div>
+  </header>
 
-    
-    <div class="panel">
-      <div class="tickerHd">
-        <div class="topRow">
-          <div class="hotBlock">
-            <div class="hotIcon">🔥</div>
-            <div>
-              <div class="hotTitle">Live Trending <span class="autoPill">auto</span></div>
-              <div class="hotSub" id="status">Booting…</div>
-            </div>
+  <main class="wrap">
+
+    <section class="card hotBlock" aria-label="Hot trending live">
+      <div class="cardInner">
+        <div class="hotRow">
+          <div class="hotLabel" title="Live trending">
+            <span style="display:flex; gap:10px; align-items:center;">
+              <span aria-hidden="true">🔥</span>
+              <span style="font-weight:1100">Live Trending</span>
+            </span>
+            <span class="pill" id="trendMode">auto</span>
           </div>
-          <div class="chainToggle" id="trendToggle" aria-label="Trending chain">
-            <button class="chainBtn" data-net="solana" type="button"><span class="dot"></span>SOL</button>
-            <button class="chainBtn" data-net="eth" type="button"><span class="dot"></span>ETH</button>
-            <button class="chainBtn" data-net="bsc" type="button"><span class="dot"></span>BNB</button>
-            <button class="chainBtn" data-net="base" type="button"><span class="dot"></span>BASE</button>
+          <div class="tickerWrap" aria-label="Top 10 trending">
+            <div id="trendTrack" class="tickerTrack" role="list"></div>
           </div>
-          <div class="clockWrap"><div class="sub" id="clock"></div></div>
+          <div class="hotStatus" id="trendStatus">Loading…</div>
         </div>
-      </div>
 
-      <div class="tickerWrap">
-        <div class="tickerTrack" id="tickerTrack"></div>
-      </div>
-      <div class="searchBar">
-        <div class="search">
-          <svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z" stroke="rgba(255,255,255,.75)" stroke-width="2"/><path d="M16.5 16.5 21 21" stroke="rgba(255,255,255,.75)" stroke-width="2" stroke-linecap="round"/></svg>
-          <input id="q" placeholder="Search token name or paste contract (SOL / ETH / BNB / BASE)…" autocomplete="off" spellcheck="false" />
-          <div class="hint" id="modeHint">auto</div>
-          <div class="results" id="results"></div>
+        <div class="searchRow">
+          <div class="searchWrap">
+            <span class="icon">🔎</span>
+            <input id="q" class="searchInput" placeholder="Search token name or paste contract (SOL / ETH / BNB / BASE)…" autocomplete="off" spellcheck="false" />
+            <span class="pillAuto" id="autoPill">auto</span>
+          </div>
+          <button class="btn" id="openBtn">Open</button>
         </div>
-        <button class="btn" id="btnGo" type="button">Open</button>
-      </div>
+        <div id="res" class="resBox" aria-label="Search results"></div>
 
-      <div class="grid">
-        <div class="card" id="chartCard">
-          <div class="cardHd">
-            <div class="pair">
-              <div class="tlogo" id="tokenLogo"><span class="fb" id="tokenLogoFb">$</span></div>
-              <div class="pairTxt">
-                <div class="pairName" id="pairName">—</div>
-                <div class="pairMeta" id="pairMeta">Paste a token / choose a trending token</div>
-              </div>
-            </div>
-            <div class="stats" id="stats"></div>
-          </div>
-
-          <div id="chartWrap"><div id="chart"></div></div>
-
-          <div class="controls">
-            <div class="tfRow" id="tfRow"></div>
-            <div class="rightCtl">
-              <button class="btn" id="btnFit" type="button">Fit</button>
-              <button class="btn" id="btnRefresh" type="button">Refresh</button>
-              <select class="sel" id="poolSel" title="Pool"></select>
+        <div class="tokenTop" id="tokenTop" style="margin-top: 14px; display:none;">
+          <div class="tokenInfo">
+            <div class="tokenLogoWrap" id="tokenLogoWrap"><span class="tokenLogoFallback" id="tokenLogoFallback">T</span><img id="tokenLogo" class="tokenLogo" alt="" style="display:none" /></div>
+            <div class="tokenNames">
+              <div class="sym" id="tokenSym">$TOKEN</div>
+              <div class="name" id="tokenName">Token</div>
             </div>
           </div>
-
-          <div class="mobileTabs">
-            <div class="tabBar">
-              <button class="tab active" id="tabChart" type="button">Chart</button>
-              <button class="tab" id="tabTrades" type="button">Trades</button>
-            </div>
+          <div class="chips">
+            <div class="chip" id="chipPrice">Price —</div>
+            <div class="chip" id="chipLiq">Liq —</div>
+            <div class="chip" id="chipMcap">MCap —</div>
+            <div class="chip" id="chip24h">24h —</div>
           </div>
         </div>
 
-        <div class="card desktopOnly" id="tradesCard">
-          <div class="tableHd">
-            <div>
-              <div class="ttl">Live Trades</div>
-              <div class="sub" id="tradesSub">Buys / Sells (live)</div>
-            </div>
-            <div class="sub" id="tradesStat">—</div>
-          </div>
+      </div>
+    </section>
 
-          <div class="trades" id="trades">
-            <div class="tradeHead">
-              <div class="col age">Age</div>
-              <div class="col type">Type</div>
-              <div class="col usd">USD</div>
-              <div class="col amt">Amount</div>
-              <div class="col price hideM">Price</div>
-              <div class="col maker hideM">Maker</div>
-              <div class="col links"></div>
+    <section class="grid">
+      <div class="card chartCard mobilePane show" id="paneChart">
+        <div class="cardInner">
+          <div class="chartHead">
+            <div class="tfRow" id="tfRow">
+              <button class="tfBtn" data-tf="1m">1m</button>
+              <button class="tfBtn" data-tf="5m">5m</button>
+              <button class="tfBtn active" data-tf="15m">15m</button>
+              <button class="tfBtn" data-tf="1h">1h</button>
+              <button class="tfBtn" data-tf="4h">4h</button>
+              <button class="tfBtn" data-tf="1d">1D</button>
+              <button class="tfBtn" data-tf="ALL">ALL</button>
             </div>
+            <div style="display:flex; gap:8px; align-items:center;">
+              <span style="color:rgba(255,255,255,.65); font-weight:900; font-size:12.5px;" id="chartStatus">—</span>
+            </div>
+          </div>
+          <div id="chart" class="chartArea" aria-label="Candlestick chart"></div>
+          <div class="chartFoot">
+            <button class="btn miniBtn" id="fitBtn">Fit</button>
+            <button class="btn miniBtn" id="refreshBtn">Refresh</button>
           </div>
         </div>
       </div>
 
-      <div class="grid mobileTabs" id="mobileTradesWrap" style="display:none; padding-top:0">
-        <div class="card" style="grid-column:1/-1">
-          <div class="tableHd">
-            <div>
-              <div class="ttl">Live Trades</div>
-              <div class="sub" id="tradesSubM">Buys / Sells (live)</div>
-            </div>
-            <div class="sub" id="tradesStatM">—</div>
+      <div class="card tradesCard mobilePane show" id="paneTrades">
+        <div class="cardInner">
+          <div class="tradesHead">
+            <div class="tradesTitle">Live Trades</div>
+            <div class="tradesStat" id="tradesStat">—</div>
           </div>
-          <div class="trades" id="tradesM">
-            <div class="tradeHead">
-              <div class="col age">Age</div>
-              <div class="col type">Type</div>
-              <div class="col usd">USD</div>
-              <div class="col amt">Amount</div>
-              <div class="col price hideM">Price</div>
-              <div class="col maker hideM">Maker</div>
-              <div class="col links"></div>
-            </div>
+          <div style="max-height: 520px; overflow:auto; border-radius: 16px; border: 1px solid rgba(255,255,255,.08);">
+            <table class="tradeTable">
+              <thead>
+                <tr>
+                  <th style="width:78px">Age</th>
+                  <th style="width:68px">Type</th>
+                  <th style="width:90px">USD</th>
+                  <th style="width:110px">Amount</th>
+                  <th style="width:110px">Price</th>
+                  <th>Maker</th>
+                </tr>
+              </thead>
+              <tbody id="tradeBody">
+                <tr><td colspan="6" style="padding: 14px 10px; color: rgba(255,255,255,.65)">Paste a token / choose a trending token.</td></tr>
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
+    </section>
 
+    <div class="mobileTabs" id="mobileTabs">
+      <div class="mTab active" data-tab="chart">Chart</div>
+      <div class="mTab" data-tab="trades">Trades</div>
     </div>
 
-    <div class="toast" id="toast"></div>
-  </div>
+  </main>
 
-  <script src="https://unpkg.com/lightweight-charts@4.2.1/dist/lightweight-charts.standalone.production.js"></script>
-  <script>
-  (function(){
-    // =========================================================
-    //  $SOS DEX Terminal — from scratch
-    //  Data sources:
-    //   - Token discovery: DexScreener public API (search + token pairs)
-    //   - OHLCV + trades: GeckoTerminal API (pools)
-    //  No embeds. No third-party iframes.
-    // =========================================================
+  <div class="toast" id="toast"></div>
 
-    // -------------------- Constants
-    const GECKO = 'https://api.geckoterminal.com/api/v2';
-    const DS = 'https://api.dexscreener.com/latest/dex';
+<script>
+(() => {
+  'use strict';
 
-    const NET_LABEL = { solana:'SOL', eth:'ETH', bsc:'BNB', base:'BASE' };
-    const NET_DS = { solana:'solana', eth:'ethereum', bsc:'bsc', base:'base' };
-    const NET_GECKO = { solana:'solana', eth:'eth', bsc:'bsc', base:'base' };
+  // -------------------------- Helpers
+  const $ = (id)=>document.getElementById(id);
+  const esc = (s)=>String(s??'').replace(/[&<>"]/g, m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[m]));
+  const clamp = (n,a,b)=>Math.min(b,Math.max(a,n));
 
-    const DEFAULT_TOKEN = {
-      solana: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', // USDC
-      eth:    '0xA0b86991c6218b36c1d19d4a2e9eb0ce3606eb48',  // USDC
-      bsc:    '0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d',  // USDC
-      base:   '0x833589fCD6eDb6E08f4c7C32D4f71b54bda02913'   // USDC
+  function formatCompact(n){
+    n = Number(n);
+    if(!Number.isFinite(n)) return '—';
+    const abs = Math.abs(n);
+    const fmt = (v, suf)=>{
+      const d = v>=100 ? 0 : v>=10 ? 1 : 2;
+      return v.toFixed(d).replace(/\.0+$|0+$/,'') + suf;
     };
+    if(abs>=1e12) return fmt(n/1e12,'T');
+    if(abs>=1e9) return fmt(n/1e9,'B');
+    if(abs>=1e6) return fmt(n/1e6,'M');
+    if(abs>=1e3) return fmt(n/1e3,'K');
+    return String(Math.round(n));
+  }
 
-    // Prefer stable quote pools for chart correctness
-    const STABLE_QUOTES = {
-      solana: ['EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'],
-      eth: ['0xA0b86991c6218b36c1d19d4a2e9eb0ce3606eb48','0xdAC17F958D2ee523a2206206994597C13D831ec7'],
-      bsc: ['0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d','0x55d398326f99059fF775485246999027B3197955'],
-      base:['0x833589fCD6eDb6E08f4c7C32D4f71b54bda02913']
-    };
+  function timeAgo(tsMs){
+    const s = Math.max(0, Math.floor((Date.now()-tsMs)/1000));
+    if(s<60) return s+'s';
+    const m = Math.floor(s/60);
+    if(m<60) return m+'m';
+    const h = Math.floor(m/60);
+    if(h<24) return h+'h';
+    return Math.floor(h/24)+'d';
+  }
 
-    // Chart timeframes -> Gecko candle granularity
-    const TF = [
-      {k:'1m',  gecko:'minute',   agg:60,    live:true},
-      {k:'5m',  gecko:'minute',   agg:300},
-      {k:'15m', gecko:'minute',   agg:900},
-      {k:'1h',  gecko:'hour',     agg:3600},
-      {k:'4h',  gecko:'hour',     agg:14400},
-      {k:'1d',  gecko:'day',      agg:86400},
-      {k:'ALL', gecko:'day',      agg:86400}
-    ];
+  let toastT = null;
+  function toast(msg){
+    const el = $('toast');
+    if(!el) return;
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(toastT);
+    toastT = setTimeout(()=>el.classList.remove('show'), 2200);
+  }
 
-    // -------------------- DOM
-    const $ = (id)=>document.getElementById(id);
-    const netPills = $('netPills');
-    const statusEl = $('status');
-    const clockEl = $('clock');
-    const tickerTrack = $('tickerTrack');
-    const q = $('q');
-    const results = $('results');
-    const btnGo = $('btnGo');
-    const modeHint = $('modeHint');
+  // -------------------------- Fetch with CORS fallbacks
+  const PROXIES = [
+    (url)=>`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+    (url)=>`https://cors.isomorphic-git.org/${url}`,
+    (url)=>`https://corsproxy.io/?${encodeURIComponent(url)}`,
+    (url)=>`https://thingproxy.freeboard.io/fetch/${url}`
+  ];
 
-    const pairNameEl = $('pairName');
-    const pairMetaEl = $('pairMeta');
-    const statsEl = $('stats');
-    const tokenLogo = $('tokenLogo');
-    const tokenLogoFb = $('tokenLogoFb');
-
-    const poolSel = $('poolSel');
-    const tfRow = $('tfRow');
-    const btnFit = $('btnFit');
-    const btnRefresh = $('btnRefresh');
-
-    const tradesDesk = $('trades');
-    const tradesMob = $('tradesM');
-    const tradesStat = $('tradesStat');
-    const tradesStatM = $('tradesStatM');
-
-    const btnBack = $('btnBack');
-    const btnClose = $('btnClose');
-    const btnBuy = $('btnBuy');
-
-    const tabChart = $('tabChart');
-    const tabTrades = $('tabTrades');
-    const mobileTradesWrap = $('mobileTradesWrap');
-    const chartCard = $('chartCard');
-    const tradesCard = $('tradesCard');
-
-    const toastEl = $('toast');
-
-    // -------------------- Helpers
-    const sleep = (ms)=>new Promise(r=>setTimeout(r, ms));
-    const lc = (v)=>String(v||'').toLowerCase();
-
-    function toast(msg, ms=2200){
-      toastEl.textContent = msg;
-      toastEl.style.display='block';
-      clearTimeout(toastEl._t);
-      toastEl._t = setTimeout(()=>toastEl.style.display='none', ms);
+  async function fetchText(url, {timeoutMs=12000, retries=1, retryBaseMs=650}={}){
+    let lastErr = null;
+    for(let attempt=0; attempt<=retries; attempt++){
+      const ctrl = new AbortController();
+      const t = setTimeout(()=>ctrl.abort(), timeoutMs);
+      try{
+        const r = await fetch(url, {signal: ctrl.signal, headers:{'accept':'application/json,text/plain,*/*'}});
+        clearTimeout(t);
+        if(!r.ok) throw new Error('HTTP '+r.status);
+        return await r.text();
+      }catch(e){
+        clearTimeout(t);
+        lastErr = e;
+        if(attempt<retries) await new Promise(res=>setTimeout(res, retryBaseMs * Math.pow(2, attempt)));
+      }
     }
+    throw lastErr || new Error('Fetch failed');
+  }
 
-    function esc(s){
-      return String(s??'').replace(/[&<>"]/g, m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[m]));
-    }
-
-    function shortAddr(a){
-      a = String(a||'');
-      if(a.length<=14) return a;
-      return a.slice(0,6)+'…'+a.slice(-4);
-    }
-
-    function num(v){
-      const n = Number(v);
-      return Number.isFinite(n) ? n : NaN;
-    }
-
-    function formatCompact(n){
-      n = Number(n);
-      if(!Number.isFinite(n)) return '—';
-      const abs = Math.abs(n);
-      const s = (x)=> (Math.round(x*100)/100).toString();
-      if(abs>=1e12) return s(n/1e12)+'T';
-      if(abs>=1e9)  return s(n/1e9)+'B';
-      if(abs>=1e6)  return s(n/1e6)+'M';
-      if(abs>=1e3)  return s(n/1e3)+'K';
-      if(abs>=1)    return (Math.round(n*10000)/10000).toString();
-      return n.toPrecision(3);
-    }
-
-    function formatPrice(v){
-      v = Number(v);
-      if(!Number.isFinite(v)) return '—';
-      if(v===0) return '0';
-      if(v>=1) return v.toFixed(6).replace(/0+$/,'').replace(/\.$/,'');
-      // small price
-      const s = v.toPrecision(6);
-      return s;
-    }
-
-    function nowClock(){
-      const d = new Date();
-      clockEl.textContent = d.toLocaleString(undefined, {hour:'2-digit', minute:'2-digit', second:'2-digit'});
-    }
-
-    // fetch with timeout + retry + CORS fallback via allorigins
-    async function fetchJson(url, {timeout=12000, retries=1}={}){
-      const proxy = (u)=>'https://api.allorigins.win/raw?url=' + encodeURIComponent(u);
-      let lastErr=null;
-      for(let i=0;i<=retries;i++){
-        const ctl = new AbortController();
-        const t = setTimeout(()=>ctl.abort(), timeout);
+  async function fetchJson(url, opts={}){
+    // Try direct
+    try{
+      const txt = await fetchText(url, opts);
+      return JSON.parse(txt);
+    }catch(_e1){
+      // Try proxies
+      let last = _e1;
+      for(const p of PROXIES){
         try{
-          const r = await fetch(url, {
-            headers:{'accept':'application/json'},
-            signal: ctl.signal,
-            cache: 'no-store'
-          });
-          clearTimeout(t);
-          if(!r.ok) throw new Error('HTTP '+r.status);
-          return await r.json();
-        }catch(e){
-          clearTimeout(t);
-          lastErr=e;
-          // try proxy for CORS / network error
-          try{
-            const msg = String(e&&e.message||e||'');
-            const isCors = (e instanceof TypeError) || /Failed to fetch|NetworkError|CORS/i.test(msg);
-            if(isCors){
-              const r2 = await fetch(proxy(url), {cache:'no-store'});
-              if(r2.ok){
-                const txt = await r2.text();
-                return JSON.parse(txt);
-              }
-            }
-          }catch(_){ }
-          if(i<retries) await sleep(250*(i+1));
-        }
+          const txt = await fetchText(p(url), {...opts, timeoutMs: Math.max(9000, (opts.timeoutMs||12000))});
+          return JSON.parse(txt);
+        }catch(e){ last = e; }
       }
-      throw lastErr || new Error('Network');
+      throw last;
+    }
+  }
+
+  // -------------------------- Networks
+  const NETS = {
+    solana: { dexChain:'solana', gecko:'solana', label:'SOL' },
+    eth:    { dexChain:'ethereum', gecko:'eth', label:'ETH' },
+    bsc:    { dexChain:'bsc', gecko:'bsc', label:'BNB' },
+    base:   { dexChain:'base', gecko:'base', label:'BASE' },
+  };
+
+  let activeNet = 'solana';
+  let selected = null; // {chainId, baseAddr, pairAddress, symbol, name, logo}
+  let poolAddr = '';
+
+  // -------------------------- UI Elements
+  const trendTrack = $('trendTrack');
+  const trendStatus = $('trendStatus');
+  const q = $('q');
+  const res = $('res');
+  const openBtn = $('openBtn');
+  const autoPill = $('autoPill');
+
+  // Token header
+  const tokenTop = $('tokenTop');
+  const tokenSym = $('tokenSym');
+  const tokenName = $('tokenName');
+  const tokenLogo = $('tokenLogo');
+  const tokenLogoFallback = $('tokenLogoFallback');
+  const chipPrice = $('chipPrice');
+  const chipLiq = $('chipLiq');
+  const chipMcap = $('chipMcap');
+  const chip24h = $('chip24h');
+
+  // Trades
+  const tradeBody = $('tradeBody');
+  const tradesStat = $('tradesStat');
+
+  // Chart
+  const chartEl = $('chart');
+  const chartStatus = $('chartStatus');
+  const fitBtn = $('fitBtn');
+  const refreshBtn = $('refreshBtn');
+
+  // -------------------------- Chain toggle
+  function applyNetUI(net){
+    document.body.classList.remove('net-sol','net-eth','net-bnb','net-base');
+    document.body.classList.add(net==='solana'?'net-sol':net==='eth'?'net-eth':net==='bsc'?'net-bnb':'net-base');
+
+    document.querySelectorAll('#chainToggle .chainBtn').forEach(b=>{
+      const on = b.getAttribute('data-net')===net;
+      b.classList.toggle('active', on);
+      b.setAttribute('aria-pressed', on?'true':'false');
+    });
+  }
+
+  document.querySelectorAll('#chainToggle .chainBtn').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      const net = b.getAttribute('data-net');
+      setActiveNet(net);
+    });
+  });
+
+  function setActiveNet(net){
+    if(!NETS[net]) net='solana';
+    activeNet = net;
+    applyNetUI(net);
+    // trending must switch to chain immediately
+    startTrending(net);
+    // clear results view
+    hideResults();
+  }
+
+  // -------------------------- Trending (EXACT behavior: always moving, always looping)
+  const TREND_TTL = 20*60*1000;
+  let trendTimer = null;
+  let trendReqId = 0;
+
+  function trendCacheKey(net){ return `sos_dex_trend_v8_${net}`; }
+  function readTrendCache(net){
+    try{
+      const raw = localStorage.getItem(trendCacheKey(net));
+      if(!raw) return null;
+      const obj = JSON.parse(raw);
+      if(!obj || !obj.html || !obj.ts) return null;
+      if(Date.now()-obj.ts > TREND_TTL) return null;
+      return obj;
+    }catch(_){ return null; }
+  }
+  function writeTrendCache(net, html){
+    try{ localStorage.setItem(trendCacheKey(net), JSON.stringify({ts: Date.now(), html})); }catch(_){ }
+  }
+
+  function syncTickerMarquee(){
+    try{
+      if(!trendTrack) return;
+      const total = trendTrack.scrollWidth || 0;
+      if(total < 40) return;
+      const one = Math.max(1, Math.round(total/2));
+      document.documentElement.style.setProperty('--tickerDistance', one+'px');
+      const isMobile = window.matchMedia('(max-width: 860px)').matches;
+      const pxPerSec = isMobile ? 120 : 95;
+      const dur = Math.min(22, Math.max(6.5, one/pxPerSec));
+      document.documentElement.style.setProperty('--tickerSpeed', dur.toFixed(2)+'s');
+    }catch(_e){}
+  }
+
+  let _tickerResizeT = null;
+  window.addEventListener('resize', ()=>{
+    clearTimeout(_tickerResizeT);
+    _tickerResizeT = setTimeout(syncTickerMarquee, 120);
+  }, {passive:true});
+
+  async function loadTrending(net){
+    const myReq = ++trendReqId;
+    trendStatus.textContent = 'Loading…';
+
+    // show cache instantly
+    const cached = readTrendCache(net);
+    if(cached && (!trendTrack.innerHTML || /unavailable|loading/i.test(trendTrack.textContent||''))){
+      trendTrack.innerHTML = cached.html + cached.html;
+      requestAnimationFrame(syncTickerMarquee);
+      trendStatus.textContent = 'Live.';
     }
 
-    function normalizeChain(x){
-      x = lc(x);
-      if(x==='sol' || x==='solana') return 'solana';
-      if(x==='eth' || x==='ethereum') return 'eth';
-      if(x==='bnb' || x==='bsc') return 'bsc';
-      if(x==='base') return 'base';
-      return 'solana';
-    }
+    try{
+      // NOTE: GeckoTerminal trending endpoint. We include page size for stability.
+      const url = `https://api.geckoterminal.com/api/v2/networks/${encodeURIComponent(net)}/trending_pools?include=base_token,quote_token&page[size]=10`;
+      const data = await fetchJson(url, {timeoutMs: 12000, retries: 2, retryBaseMs: 900});
+      if(myReq !== trendReqId) return;
 
-    function isEvmAddr(s){
-      return /^0x[a-fA-F0-9]{40}$/.test(String(s||'').trim());
-    }
+      const pools = Array.isArray(data?.data) ? data.data.slice(0,10) : [];
+      const included = Array.isArray(data?.included) ? data.included : [];
 
-    function isSolAddr(s){
-      // best-effort base58 length
-      s = String(s||'').trim();
-      return s.length>=32 && s.length<=50 && /^[1-9A-HJ-NP-Za-km-z]+$/.test(s);
-    }
-
-    // robust pool address extraction from gecko pool object
-    function poolAddressFromPool(p){
-      const a = p?.attributes || {};
-      if(a.address) return String(a.address);
-      const id = String(p?.id||'');
-      // examples:
-      //  - "solana_..._POOL"
-      //  - "ethereum:0xPOOL"
-      //  - "bsc/0xPOOL"
-      const last = id.split('_').pop();
-      const last2 = last.split(':').pop();
-      const last3 = last2.split('/').pop();
-      return last3;
-    }
-
-    function tokenIdToAddr(id){
-      id = String(id||'').trim();
-      if(!id) return '';
-      // Gecko often uses ids like 'solana_<addr>' or 'ethereum_<addr>'
-      if(id.includes('_')) return id.split('_').pop();
-      if(id.includes(':')) return id.split(':').pop();
-      if(id.includes('/')) return id.split('/').pop();
-      return id;
-    }
-
-    function tokenAddrFromPool(p, which){
-      const a = p?.attributes || {};
-      let v = a[`${which}_token_address`] || a[`${which}_token_id`] || '';
-      if(!v){
-        const rel = p?.relationships?.[`${which}_token`]?.data?.id || '';
-        v = rel;
+      const byKey = new Map();
+      for(const inc of included){
+        if(!inc || !inc.id) continue;
+        const id = String(inc.id);
+        byKey.set(id, inc);
+        if(inc.type) byKey.set(String(inc.type)+':' + id, inc);
       }
-      return tokenIdToAddr(v);
+
+      if(!pools.length) throw new Error('No trending');
+
+      const items = pools.map((pool, i)=>{
+        const a = pool?.attributes || {};
+        const rel = pool?.relationships || {};
+
+        const baseRef = rel?.base_token?.data || null;
+        const baseId = baseRef?.id ? String(baseRef.id) : '';
+        const baseType = baseRef?.type ? String(baseRef.type) : '';
+        const baseT = baseId ? ((byKey.get(baseType+':' + baseId) || byKey.get(baseId))?.attributes || {}) : {};
+
+        const sym = (baseT?.symbol || baseT?.name || (a?.name? String(a.name).split('/')[0] : 'TOKEN')).trim();
+        const symClean = String(sym||'TOKEN').replace(/[^a-zA-Z0-9_$\.\-]/g,'').slice(0,24) || 'TOKEN';
+        const symDisp = symClean.startsWith('$') ? symClean : ('$' + symClean.replace(/^\$/,''));
+
+        const pctRaw = ((a?.price_change_percentage && (a.price_change_percentage.h24 ?? a.price_change_percentage['h24'] ?? a.price_change_percentage['24h'])) ?? a?.price_change_percentage_24h ?? a?.price_change_percentage_h24 ?? null);
+        const pctNum = (pctRaw===null || pctRaw===undefined || pctRaw==='') ? NaN : Number(pctRaw);
+        const pctTxt = Number.isFinite(pctNum) ? `${pctNum>0?'+':''}${pctNum.toFixed(2)}%` : '';
+        const pctCls = Number.isFinite(pctNum) ? (pctNum>0?'up':(pctNum<0?'down':'')) : '';
+
+        let logoUrl = String(baseT?.image_url || baseT?.imageUrl || baseT?.image || baseT?.logo_url || baseT?.logoUrl || '').trim();
+        if(logoUrl && logoUrl.startsWith('/')) logoUrl = 'https://www.geckoterminal.com' + logoUrl;
+
+        const first = (symClean || 'T').slice(0,1).toUpperCase();
+        const top1 = (i===0);
+        const addr = (a?.address || '').trim();
+
+        const logo = logoUrl
+          ? `<span class="tickerLogoWrap"><img class="tickerLogo" src="${esc(logoUrl)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove(); var w=this.closest('.tickerLogoWrap'); if(w){w.innerHTML='<span class=tickerLogoFallback>${esc(first)}</span>';}" /></span>`
+          : `<span class="tickerLogoWrap"><span class="tickerLogoFallback">${esc(first)}</span></span>`;
+
+        return `<button class="tickerItem${top1?' top1':''}" type="button" data-pool="${esc(addr)}" title="${esc(symDisp)}">`+
+          `<span class="rank">${top1?'🔥 #1':'#'+(i+1)}</span>`+
+          logo+
+          `<span class="sym">${esc(symDisp)}</span>`+
+          (pctTxt ? `<span class="tickerPct ${esc(pctCls)}">${esc(pctTxt)}</span>` : '')+
+        `</button>`;
+      }).join('');
+
+      // Write + duplicate for seamless loop
+      writeTrendCache(net, items);
+      trendTrack.innerHTML = items + items;
+      requestAnimationFrame(syncTickerMarquee);
+      trendStatus.textContent = 'Live.';
+
+    }catch(e){
+      if(myReq !== trendReqId) return;
+      const cached2 = readTrendCache(net);
+      if(cached2){
+        trendTrack.innerHTML = cached2.html + cached2.html;
+        requestAnimationFrame(syncTickerMarquee);
+        trendStatus.textContent = 'Live.';
+        toast('Trending temporarily unavailable');
+      }else{
+        trendTrack.innerHTML = `<span class="tickerItem" style="opacity:.75"><span class="rank">!</span><span class="sym">Trending unavailable</span></span>`;
+        requestAnimationFrame(syncTickerMarquee);
+        trendStatus.textContent = 'Load error.';
+      }
+      // self-heal retry
+      setTimeout(()=>{ if(activeNet===net) loadTrending(net); }, 4500);
+    }
+  }
+
+  function startTrending(net){
+    clearInterval(trendTimer);
+    loadTrending(net);
+    trendTimer = setInterval(()=>loadTrending(net), 30000);
+  }
+
+  // Trending click => open pool
+  trendTrack.addEventListener('click', async (ev)=>{
+    const btn = ev.target.closest('.tickerItem');
+    if(!btn) return;
+    const pool = btn.getAttribute('data-pool') || '';
+    if(!pool) return;
+    openPool(activeNet, pool);
+  });
+
+  // -------------------------- Search (DexScreener)
+  const SEARCH_DEBOUNCE = 220;
+  let searchT = null;
+  let searchReq = 0;
+
+  function hideResults(){
+    res.classList.remove('show');
+    res.innerHTML = '';
+    res.dataset.best = '';
+  }
+
+  function showResults(){
+    res.classList.add('show');
+  }
+
+  function parseChainToNet(chainId){
+    const c = String(chainId||'').toLowerCase();
+    if(c==='solana') return 'solana';
+    if(c==='ethereum' || c==='eth') return 'eth';
+    if(c==='bsc' || c==='bnb') return 'bsc';
+    if(c==='base') return 'base';
+    return null;
+  }
+
+  async function runSearch(query){
+    const qv = (query||'').trim();
+    const my = ++searchReq;
+    if(!qv){ hideResults(); return; }
+
+    try{
+      const data = await fetchJson(`https://api.dexscreener.com/latest/dex/search?q=${encodeURIComponent(qv)}`, {timeoutMs: 12000, retries: 1});
+      if(my!==searchReq) return;
+      const pairs = Array.isArray(data?.pairs) ? data.pairs : [];
+      const wantNet = activeNet;
+
+      const filtered = pairs
+        .map(p=>({p, net: parseChainToNet(p?.chainId)}))
+        .filter(x=>!!x.net);
+
+      const top = filtered.slice(0, 12);
+      if(!top.length){
+        res.innerHTML = `<div class="resRow" style="opacity:.75"><div class="resLeft"><div class="resLogoWrap"><span class="resLogoFallback">?</span></div><div><div class="resTitle">No results</div><div class="resMeta">Try symbol, name, or paste a contract.</div></div></div></div>`;
+        showResults();
+        res.dataset.best = '';
+        return;
+      }
+
+      // pick best for current chain by liquidity then mcap
+      const bestForChain = top
+        .filter(x=>x.net===wantNet)
+        .sort((a,b)=> (Number(b.p?.liquidity?.usd||0)-Number(a.p?.liquidity?.usd||0)) || (Number(b.p?.marketCap||b.p?.fdv||0)-Number(a.p?.marketCap||a.p?.fdv||0)) )[0] || top[0];
+      res.dataset.best = JSON.stringify(bestForChain.p);
+
+      res.innerHTML = top.map(({p,net})=>{
+        const baseSym = p?.baseToken?.symbol || 'TOKEN';
+        const baseName = p?.baseToken?.name || baseSym;
+        const quoteSym = p?.quoteToken?.symbol || '';
+        const title = quoteSym ? `${baseSym}/${quoteSym}` : `${baseSym}`;
+        const logoUrl = p?.info?.imageUrl || p?.info?.image || p?.baseToken?.logoURI || '';
+        const ch24 = p?.priceChange?.h24;
+        const chTxt = (typeof ch24==='number') ? `${ch24>0?'+':''}${ch24.toFixed(2)}%` : '—';
+        const chClass = (typeof ch24==='number') ? (ch24>0?'up':(ch24<0?'down':'')) : '';
+        const mcapVal = (p?.marketCap!=null ? Number(p.marketCap) : (p?.fdv!=null ? Number(p.fdv) : NaN));
+        const mcapTxt = Number.isFinite(mcapVal) ? '$'+formatCompact(mcapVal) : '—';
+
+        const first = (baseSym||'T').slice(0,1).toUpperCase();
+        return `<div class="resRow" data-p='${esc(JSON.stringify(p))}'>
+          <div class="resLeft">
+            <div class="resLogoWrap ${logoUrl?'':'noimg'}">
+              ${logoUrl ? `<img class="resLogo" src="${esc(logoUrl)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.style.display='none'; this.nextElementSibling.style.display='block'">` : ''}
+              <span class="resLogoFallback" style="display:${logoUrl?'none':'block'}">${esc(first)}</span>
+            </div>
+            <div style="min-width:0">
+              <div class="resTitle">${esc(title)}</div>
+              <div class="resMeta">${esc(baseName)} • ${esc(String(p?.dexId||'DEX'))}</div>
+            </div>
+          </div>
+          <div class="resRight">
+            <span class="pill" style="color: var(--netColor)">${esc(NETS[net].label)}</span>
+            <span class="pill ${esc(chClass)}">24h ${esc(chTxt)}</span>
+            <span class="pill">MCap ${esc(mcapTxt)}</span>
+          </div>
+        </div>`;
+      }).join('');
+
+      showResults();
+
+    }catch(e){
+      if(my!==searchReq) return;
+      res.innerHTML = `<div class="resRow" style="opacity:.75"><div class="resLeft"><div class="resLogoWrap"><span class="resLogoFallback">!</span></div><div><div class="resTitle">Search error</div><div class="resMeta">Temporary network / CORS issue. Try again.</div></div></div></div>`;
+      showResults();
+    }
+  }
+
+  q.addEventListener('input', ()=>{
+    clearTimeout(searchT);
+    searchT = setTimeout(()=>runSearch(q.value), SEARCH_DEBOUNCE);
+  });
+
+  document.addEventListener('click', (ev)=>{
+    if(ev.target.closest('.searchRow') || ev.target.closest('#res')) return;
+    hideResults();
+  });
+
+  res.addEventListener('click', (ev)=>{
+    const row = ev.target.closest('.resRow');
+    if(!row) return;
+    const raw = row.getAttribute('data-p');
+    if(!raw) return;
+    try{
+      const p = JSON.parse(raw);
+      openFromDexPair(p);
+      hideResults();
+    }catch(_e){}
+  });
+
+  openBtn.addEventListener('click', ()=>{
+    if(res.dataset.best){
+      try{
+        const p = JSON.parse(res.dataset.best);
+        openFromDexPair(p);
+        hideResults();
+        return;
+      }catch(_e){}
+    }
+    // If user pasted CA and there is no dropdown, attempt open directly
+    const raw = (q.value||'').trim();
+    if(raw) openByAddressGuess(raw);
+  });
+
+  // -------------------------- Pool resolution + meta
+  const GECKO = 'https://api.geckoterminal.com/api/v2';
+
+  function geckoNet(){
+    return NETS[activeNet].gecko;
+  }
+
+  function setTokenHeader({symbol, name, logoUrl, priceUsd, liqUsd, mcapUsd, ch24}){
+    tokenTop.style.display = 'flex';
+
+    const symClean = (symbol||'TOKEN').trim();
+    tokenSym.textContent = symClean.startsWith('$') ? symClean : ('$'+symClean.replace(/^\$/,''));
+    tokenName.textContent = (name||'').trim() || symClean;
+
+    const first = (symClean||'T').slice(0,1).toUpperCase();
+    tokenLogoFallback.textContent = first;
+    tokenLogo.style.display = 'none';
+
+    if(logoUrl){
+      tokenLogo.src = logoUrl;
+      tokenLogo.onload = ()=>{ tokenLogo.style.display='block'; };
+      tokenLogo.onerror = ()=>{ tokenLogo.style.display='none'; };
     }
 
-    function tokenSymFromPool(p, which){
-      const a = p?.attributes || {};
-      const k = `${which}_token_symbol`;
-      const sym = a[k] || a[`${which}_symbol`] || '';
-      return String(sym||'').replace(/\s+/g,'').slice(0,12);
+    chipPrice.textContent = 'Price ' + (priceUsd!=null ? ('$'+Number(priceUsd).toLocaleString(undefined,{maximumFractionDigits:8})) : '—');
+    chipLiq.textContent = 'Liq ' + (liqUsd!=null ? ('$'+formatCompact(liqUsd)) : '—');
+    chipMcap.textContent = 'MCap ' + (mcapUsd!=null ? ('$'+formatCompact(mcapUsd)) : '—');
+
+    if(typeof ch24==='number' && Number.isFinite(ch24)){
+      chip24h.textContent = '24h ' + (ch24>0?'+':'') + ch24.toFixed(2) + '%';
+      chip24h.classList.remove('positive','negative');
+      chip24h.classList.add(ch24>0?'positive':(ch24<0?'negative':''));
+    }else{
+      chip24h.textContent = '24h —';
+      chip24h.classList.remove('positive','negative');
+    }
+  }
+
+  async function openFromDexPair(p){
+    const net = parseChainToNet(p?.chainId);
+    if(!net) return toast('Unsupported chain');
+    setActiveNet(net);
+
+    selected = {
+      chainId: p?.chainId,
+      baseAddr: p?.baseToken?.address || '',
+      pairAddress: p?.pairAddress || '',
+      symbol: p?.baseToken?.symbol || '',
+      name: p?.baseToken?.name || '',
+      logo: p?.info?.imageUrl || p?.info?.image || p?.baseToken?.logoURI || ''
+    };
+
+    // show header instantly with Dex data
+    setTokenHeader({
+      symbol: selected.symbol,
+      name: selected.name,
+      logoUrl: selected.logo,
+      priceUsd: p?.priceUsd ? Number(p.priceUsd) : null,
+      liqUsd: p?.liquidity?.usd != null ? Number(p.liquidity.usd) : null,
+      mcapUsd: p?.marketCap != null ? Number(p.marketCap) : (p?.fdv!=null?Number(p.fdv):null),
+      ch24: (typeof p?.priceChange?.h24==='number') ? p.priceChange.h24 : null
+    });
+
+    // resolve pool on Gecko
+    try{
+      const resolved = await resolveBestPool(net, selected.baseAddr, selected.pairAddress);
+      poolAddr = resolved.pool;
+      // load chart + trades
+      await bootstrapToken();
+    }catch(e){
+      console.error(e);
+      toast('Failed to resolve pool (API/CORS).');
+    }
+  }
+
+  async function openPool(net, pool){
+    setActiveNet(net);
+    selected = null;
+    poolAddr = pool;
+    // fetch pool meta and derive token fields
+    await bootstrapToken();
+  }
+
+  async function openByAddressGuess(raw){
+    const addr = raw.trim();
+    // Attempt dex token-pairs for the chain currently selected
+    const dexChain = NETS[activeNet].dexChain;
+    try{
+      const pairs = await fetchJson(`https://api.dexscreener.com/token-pairs/v1/${encodeURIComponent(dexChain)}/${encodeURIComponent(addr)}`, {timeoutMs: 12000, retries: 1});
+      const p = Array.isArray(pairs) ? pairs[0] : null;
+      if(p) return openFromDexPair(p);
+    }catch(_e){}
+    // fallback: search
+    q.value = addr;
+    runSearch(addr);
+    toast('Select a result');
+  }
+
+  async function resolveBestPool(net, tokenAddr, pairAddrHint){
+    // 1) If we have a pairAddress from DexScreener, try that as pool address.
+    if(pairAddrHint){
+      try{
+        const j = await fetchJson(`${GECKO}/networks/${encodeURIComponent(NETS[net].gecko)}/pools/${encodeURIComponent(pairAddrHint)}?include=base_token,quote_token`, {timeoutMs: 12000, retries: 1});
+        if(j?.data?.attributes?.address) return {pool: j.data.attributes.address};
+      }catch(_e){}
     }
 
-    function tokenImgFromPool(p, which){
-      const a = p?.attributes || {};
-      // Some responses include image urls per token
-      const direct = a[`${which}_token_image_url`] || a[`${which}_token_logo`] || '';
-      if(direct) return String(direct);
-      // Best-effort fallback: sometimes nested token object is present (not always)
-      const nested = a?.[`${which}_token`]?.data?.attributes?.image_url || a?.[`${which}_token`]?.data?.attributes?.imageUrl || '';
-      return String(nested||'');
+    // 2) Token pools endpoint
+    const url = `${GECKO}/networks/${encodeURIComponent(NETS[net].gecko)}/tokens/${encodeURIComponent(tokenAddr)}/pools?include=base_token,quote_token&page[size]=25`;
+    const j = await fetchJson(url, {timeoutMs: 12000, retries: 2});
+    const pools = Array.isArray(j?.data) ? j.data : [];
+    if(!pools.length) throw new Error('No pools');
+
+    // best by reserve_usd / volume
+    const scored = pools.map(p=>{
+      const a = p?.attributes||{};
+      const liq = Number(a?.reserve_in_usd||0);
+      const vol = Number(a?.volume_usd?.h24||a?.volume_usd_24h||0);
+      return {p, score: liq*2 + vol};
+    }).sort((a,b)=>b.score-a.score);
+
+    const best = scored[0].p;
+    const addr = best?.attributes?.address || best?.id || '';
+    if(!addr) throw new Error('Bad pool');
+    return {pool: addr};
+  }
+
+  async function fetchPoolMeta(){
+    const net = geckoNet();
+    const j = await fetchJson(`${GECKO}/networks/${encodeURIComponent(net)}/pools/${encodeURIComponent(poolAddr)}?include=base_token,quote_token`, {timeoutMs: 12000, retries: 2});
+    return j;
+  }
+
+  function extractIncludedMap(included){
+    const m = new Map();
+    for(const inc of (included||[])){
+      if(!inc || !inc.id) continue;
+      m.set(String(inc.id), inc);
+      if(inc.type) m.set(String(inc.type)+':'+String(inc.id), inc);
     }
+    return m;
+  }
 
-    function tokenPriceFromPool(p, which){
-      const a = p?.attributes || {};
-      const v = (which==='base') ? (a.base_token_price_usd || a.token_price_usd || a.price_usd) : (a.quote_token_price_usd || a.quote_price_usd);
-      const n = Number(v);
-      return Number.isFinite(n) ? n : NaN;
-    }
+  // -------------------------- Chart (lightweight-charts)
+  let chart = null;
+  let candleSeries = null;
+  let volumeSeries = null;
+  let rawCandles = [];
 
-    function poolLiqUsd(p){
-      const a = p?.attributes || {};
-      const v = num(a.reserve_in_usd || a.liquidity_in_usd || a.liquidity_usd || a.reserveUsd);
-      return Number.isFinite(v) ? v : 0;
-    }
+  const TF = {
+    '1m': {tf:'minute', agg: 60, maxBars: 900},
+    '5m': {tf:'minute', agg: 300, maxBars: 1200},
+    '15m': {tf:'minute', agg: 900, maxBars: 1500},
+    '1h': {tf:'hour', agg: 3600, maxBars: 2000},
+    '4h': {tf:'hour', agg: 14400, maxBars: 2600},
+    '1d': {tf:'day', agg: 86400, maxBars: 4000},
+    'ALL': {tf:'hour', agg: 14400, maxBars: 5000},
+  };
+  let activeTFKey = '15m';
+  let pollTradesTimer = null;
+  let pollMetaTimer = null;
 
-    function poolCreatedMs(p){
-      const a = p?.attributes || {};
-      const t = Date.parse(a.pool_created_at || a.created_at || a.createdAt || a.creation_time || '');
-      return Number.isFinite(t) ? t : NaN;
-    }
-
-    function fmtAge(ms){
-      if(!Number.isFinite(ms)) return '—';
-      const d = Math.max(0, Date.now()-ms);
-      const s = Math.floor(d/1000);
-      if(s<60) return s+'s';
-      const m = Math.floor(s/60);
-      if(m<60) return m+'m';
-      const h = Math.floor(m/60);
-      if(h<24) return h+'h';
-      const days = Math.floor(h/24);
-      return days+'d';
-    }
-
-    function explorerTx(net, sig){
-      net = normalizeChain(net);
-      if(net==='solana') return 'https://solscan.io/tx/'+sig;
-      if(net==='eth') return 'https://etherscan.io/tx/'+sig;
-      if(net==='bsc') return 'https://bscscan.com/tx/'+sig;
-      if(net==='base') return 'https://basescan.org/tx/'+sig;
-      return '#';
-    }
-
-    function explorerAddr(net, a){
-      net = normalizeChain(net);
-      if(net==='solana') return 'https://solscan.io/account/'+a;
-      if(net==='eth') return 'https://etherscan.io/address/'+a;
-      if(net==='bsc') return 'https://bscscan.com/address/'+a;
-      if(net==='base') return 'https://basescan.org/address/'+a;
-      return '#';
-    }
-
-    // Buy link (best-effort) — can be replaced later per your preference
-    function buildBuyUrl(net, tokenAddr){
-      net = normalizeChain(net);
-      if(net==='solana') return 'https://jup.ag/swap/SOL-' + encodeURIComponent(tokenAddr);
-      if(net==='eth') return 'https://app.uniswap.org/#/swap?outputCurrency=' + encodeURIComponent(tokenAddr);
-      if(net==='bsc') return 'https://pancakeswap.finance/swap?outputCurrency=' + encodeURIComponent(tokenAddr);
-      if(net==='base') return 'https://app.uniswap.org/#/swap?chain=base&outputCurrency=' + encodeURIComponent(tokenAddr);
-      return '#';
-    }
-
-    // -------------------- State
-    const qs = new URLSearchParams(location.search);
-    let activeNet = normalizeChain(qs.get('chain') || 'solana');
-    let addr = String(qs.get('addr')||'').trim();
-
-    let activeTF = TF.find(x=>x.k==='ALL');
-    let poolChoices = [];
-    let poolId = '';
-    let poolAddr = '';
-    let tokenSide = 'base';
-    let curTokenSymbol = 'TOKEN';
-    let curQuoteSymbol = '';
-    let seenMakers = new Set();
-    let tradesSeen = new Set();
-
-    let pollTradesTimer = null;
-    let pollMetaTimer = null;
-    let pollCandleTimer = null;
-    let trendingTimer = null;
-    let ageTimer = null;
-
-    // -------------------- Chart
-    const chartEl = $('chart');
-    const chart = LightweightCharts.createChart(chartEl, {
-      width: chartEl.clientWidth || 800,
-      height: chartEl.clientHeight || 520,
-      layout: { background: { type:'solid', color:'rgba(0,0,0,0)' }, textColor:'rgba(255,255,255,.86)' },
-      grid: { vertLines:{color:'rgba(255,255,255,.06)'}, horzLines:{color:'rgba(255,255,255,.06)'} },
-      rightPriceScale: { borderColor:'rgba(255,255,255,.12)' },
-      timeScale: { borderColor:'rgba(255,255,255,.12)', timeVisible:true, secondsVisible:false },
+  function ensureChart(){
+    if(chart) return;
+    chart = LightweightCharts.createChart(chartEl, {
+      layout: { background: { type: 'solid', color: 'rgba(0,0,0,0)' }, textColor: 'rgba(255,255,255,.78)' },
+      grid: { vertLines: { color: 'rgba(255,255,255,.06)' }, horzLines: { color: 'rgba(255,255,255,.06)' } },
+      rightPriceScale: { borderColor: 'rgba(255,255,255,.10)' },
+      timeScale: { borderColor: 'rgba(255,255,255,.10)' },
       crosshair: { mode: 1 },
-      handleScroll: { mouseWheel:true, pressedMouseMove:true, horzTouchDrag:true, vertTouchDrag:true },
-      handleScale: { axisPressedMouseMove:true, mouseWheel:true, pinch:true },
+      handleScroll: { mouseWheel: true, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: true },
+      handleScale: { axisPressedMouseMove: true, mouseWheel: true, pinch: true },
     });
 
-    const candleSeries = chart.addCandlestickSeries({
+    candleSeries = chart.addCandlestickSeries({
       upColor: 'rgba(20,241,149,.95)',
-      downColor:'rgba(255,77,109,.95)',
-      wickUpColor:'rgba(20,241,149,.95)',
-      wickDownColor:'rgba(255,77,109,.95)',
-      borderVisible:false,
-      priceFormat:{ type:'price', precision: 10, minMove: 1e-10 }
+      downColor: 'rgba(255,77,109,.95)',
+      borderVisible: false,
+      wickUpColor: 'rgba(20,241,149,.95)',
+      wickDownColor: 'rgba(255,77,109,.95)',
     });
 
-    const volumeSeries = chart.addHistogramSeries({
-      priceFormat: { type:'volume' },
+    volumeSeries = chart.addHistogramSeries({
+      priceFormat: { type: 'volume' },
       priceScaleId: '',
-      lastValueVisible:false,
-      base:0,
+      scaleMargins: { top: 0.80, bottom: 0 },
     });
-    chart.priceScale('').applyOptions({ scaleMargins:{ top:0.84, bottom:0 } });
 
     const ro = new ResizeObserver(()=>{
       chart.applyOptions({ width: chartEl.clientWidth, height: chartEl.clientHeight });
     });
     ro.observe(chartEl);
+  }
 
-    btnFit.onclick = ()=>chart.timeScale().fitContent();
+  async function fetchOhlcvPage({net, pool, tfKey, beforeTs=null, limit=1000}){
+    const cfg = TF[tfKey];
+    const timeframe = cfg.tf;
+    const agg = cfg.agg;
 
-    // -------------------- UI boot
-    function renderNetPills(){
-      netPills.innerHTML='';
-      const nets=[{k:'solana',label:'SOL'},{k:'eth',label:'ETH'},{k:'bsc',label:'BNB'},{k:'base',label:'BASE'}];
-      nets.forEach(n=>{
-        const b=document.createElement('div');
-        b.className='pill'+(activeNet===n.k?' active':'');
-        b.innerHTML = `<span class="dot"></span>${esc(n.label)}`;
-        b.onclick=()=>{
-          activeNet=n.k;
-          renderNetPills();
-          toast('Chain: '+n.label);
-          // keep current addr if it matches chain type; otherwise default
-          if(!addr){ addr = DEFAULT_TOKEN[activeNet]; }
-          navigate(activeNet, addr);
-        };
-        netPills.appendChild(b);
-      });
+    const params = new URLSearchParams();
+    params.set('aggregate', String(agg));
+    params.set('limit', String(clamp(limit, 1, 1000)));
+    if(beforeTs) params.set('before_timestamp', String(beforeTs));
+
+    const url = `${GECKO}/networks/${encodeURIComponent(net)}/pools/${encodeURIComponent(pool)}/ohlcv/${encodeURIComponent(timeframe)}?${params.toString()}`;
+    return await fetchJson(url, {timeoutMs: 14000, retries: 2, retryBaseMs: 900});
+  }
+
+  function toCandle(row){
+    // GeckoTerminal OHLCV usually: [timestamp, open, high, low, close, volume]
+    const t = Number(row?.[0]);
+    if(!Number.isFinite(t)) return null;
+    const ts = Math.floor(t);
+    const o = Number(row?.[1]);
+    const h = Number(row?.[2]);
+    const l = Number(row?.[3]);
+    const c = Number(row?.[4]);
+    const v = Number(row?.[5] ?? 0);
+    if(![o,h,l,c].every(Number.isFinite)) return null;
+    return { time: ts, open:o, high:h, low:l, close:c, volume: Number.isFinite(v)?v:0 };
+  }
+
+  async function loadCandlesFull(){
+    if(!poolAddr) return;
+    ensureChart();
+
+    const net = geckoNet();
+    const cfg = TF[activeTFKey];
+
+    chartStatus.textContent = 'Loading candles…';
+
+    const want = cfg.maxBars;
+    let all = [];
+    let before = null;
+    let guard = 0;
+
+    while(all.length < want && guard < 12){
+      guard += 1;
+      const j = await fetchOhlcvPage({net, pool: poolAddr, tfKey: activeTFKey, beforeTs: before, limit: 1000});
+      const rows = j?.data?.attributes?.ohlcv_list || j?.data?.attributes?.ohlcv_list || j?.data?.attributes?.ohlcv_list;
+      const list = Array.isArray(rows) ? rows : (Array.isArray(j?.data?.attributes?.ohlcv_list) ? j.data.attributes.ohlcv_list : []);
+      if(!list.length) break;
+
+      const candles = list.map(toCandle).filter(Boolean);
+      if(!candles.length) break;
+
+      // Gecko returns newest->oldest usually. Normalize.
+      candles.sort((a,b)=>a.time-b.time);
+
+      // prepend older to front
+      all = candles.concat(all);
+
+      // next page: before oldest time
+      before = candles[0].time;
+
+      // stop if repeating
+      if(all.length && before <= all[0].time) break;
+
+      // throttle
+      await new Promise(r=>setTimeout(r, 120));
     }
 
-    function renderTimeframes(){
-      tfRow.innerHTML='';
-      TF.forEach(t=>{
-        const b=document.createElement('button');
-        b.className='tf'+(t.k===activeTF.k?' active':'');
-        b.textContent=t.k;
-        b.onclick=()=>{
-          activeTF=t;
-          [...tfRow.children].forEach(x=>x.classList.toggle('active', x.textContent===t.k));
-          if(poolAddr){
-            loadCandles(true);
-          }
-        };
-        tfRow.appendChild(b);
-      });
-    }
+    // unique + sort
+    const map = new Map();
+    for(const c of all){ map.set(c.time, c); }
+    const merged = Array.from(map.values()).sort((a,b)=>a.time-b.time);
 
-    function setMobileTab(which){
-      if(!tabChart || !tabTrades) return;
-      const isTrades = which==='trades';
-      tabChart.classList.toggle('active', !isTrades);
-      tabTrades.classList.toggle('active', isTrades);
-      mobileTradesWrap.style.display = isTrades ? 'block' : 'none';
-      chartCard.style.display = isTrades ? 'none' : 'block';
-    }
+    rawCandles = merged;
 
-    if(tabChart && tabTrades){
-      tabChart.onclick=()=>setMobileTab('chart');
-      tabTrades.onclick=()=>setMobileTab('trades');
-    }
+    candleSeries.setData(merged.map(c=>({time:c.time, open:c.open, high:c.high, low:c.low, close:c.close})));
+    volumeSeries.setData(merged.map(c=>({time:c.time, value:c.volume, color:(c.close>=c.open)?'rgba(20,241,149,.35)':'rgba(255,77,109,.35)'})));
 
-    btnClose.onclick=()=>{
-      try{ window.close(); }catch(e){}
-      // if browser blocks close
-      toast('Close blocked by browser');
+    chart.timeScale().fitContent();
+    chartStatus.textContent = 'Live.';
+  }
+
+  fitBtn.addEventListener('click', ()=>{ try{ chart?.timeScale()?.fitContent(); }catch(_e){} });
+  refreshBtn.addEventListener('click', ()=>{ if(poolAddr) bootstrapToken(true); });
+
+  // timeframe buttons
+  document.querySelectorAll('.tfBtn').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      document.querySelectorAll('.tfBtn').forEach(x=>x.classList.remove('active'));
+      b.classList.add('active');
+      activeTFKey = b.getAttribute('data-tf');
+      if(poolAddr) bootstrapToken(true);
+    });
+  });
+
+  // -------------------------- Trades (live)
+  const tradesSeen = new Set();
+
+  async function geckoTrades(limit=60){
+    const net = geckoNet();
+    const url = `${GECKO}/networks/${encodeURIComponent(net)}/pools/${encodeURIComponent(poolAddr)}/trades?page[size]=${encodeURIComponent(String(clamp(limit,1,100)))}&include=tx,token`;
+    return await fetchJson(url, {timeoutMs: 12000, retries: 2, retryBaseMs: 900});
+  }
+
+  function normalizeTrade(t){
+    const a = t?.attributes || {};
+    const ts = a?.block_timestamp || a?.timestamp || a?.created_at || a?.time || null;
+    let tsMs = null;
+    if(typeof ts==='number') tsMs = ts>1e12 ? ts : ts*1000;
+    else if(typeof ts==='string') tsMs = Date.parse(ts);
+    if(!tsMs) tsMs = Date.now();
+
+    const price = Number(a?.price_in_usd || a?.price_usd || a?.price || a?.price_in_quote || NaN);
+    const usd = Number(a?.volume_in_usd || a?.amount_in_usd || a?.total_in_usd || a?.trade_volume_in_usd || NaN);
+
+    // direction fields vary; try common keys
+    const kind = String(a?.kind || a?.trade_type || a?.side || a?.type || '').toLowerCase();
+    const isBuy = kind.includes('buy');
+    const isSell = kind.includes('sell');
+
+    const maker = String(a?.tx_from_address || a?.maker || a?.taker || a?.buyer || a?.seller || '');
+
+    // base/quote amounts
+    const amount = Number(a?.base_token_amount || a?.base_amount || a?.token_amount || a?.amount || a?.volume || NaN);
+
+    return {
+      id: String(t?.id || a?.tx_hash || tsMs + ':' + price),
+      tsMs,
+      kind: isBuy ? 'buy' : (isSell ? 'sell' : (usd>=0 ? 'buy' : 'sell')),
+      usd: Number.isFinite(usd) ? usd : null,
+      amount: Number.isFinite(amount) ? amount : null,
+      price: Number.isFinite(price) ? price : null,
+      maker,
     };
+  }
 
-    btnRefresh.onclick=()=>{
-      if(!poolAddr){ toast('Pick a token first'); return; }
-      loadCandles(true);
-      loadTrades(true);
-      loadMeta(true);
-    };
+  function tradeRow(tr){
+    const age = timeAgo(tr.tsMs);
+    const type = tr.kind==='buy' ? 'Buy' : 'Sell';
+    const typeCls = tr.kind==='buy' ? 'typeBuy' : 'typeSell';
+    const usd = tr.usd!=null ? '$'+(tr.usd>=1000?formatCompact(tr.usd):tr.usd.toFixed(2)) : '—';
+    const amt = tr.amount!=null ? formatCompact(tr.amount) : '—';
+    const price = tr.price!=null ? '$'+tr.price.toLocaleString(undefined,{maximumFractionDigits:10}) : '—';
+    const makerShort = tr.maker ? (tr.maker.slice(0,4)+'…'+tr.maker.slice(-4)) : '—';
+    return `<tr data-id="${esc(tr.id)}" data-ts="${esc(String(tr.tsMs))}">
+      <td class="addr">${esc(age)}</td>
+      <td class="${typeCls}">${esc(type)}</td>
+      <td>${esc(usd)}</td>
+      <td>${esc(amt)}</td>
+      <td>${esc(price)}</td>
+      <td class="addr" title="${esc(tr.maker||'')}">${esc(makerShort)}</td>
+    </tr>`;
+  }
 
-    // -------------------- Search
-    let searchTimer=null;
-    let searchReq=0;
-
-    function showResults(html){
-      results.innerHTML = html;
-      results.style.display = html ? 'block' : 'none';
-    }
-
-    function hideResults(){
-      results.style.display = 'none';
-    }
-
-    async function dsSearch(query){
-      // DexScreener search is used ONLY for discovery. We do not embed anything.
-      const url = DS + '/search/?q=' + encodeURIComponent(query);
-      const j = await fetchJson(url, {timeout:12000, retries:1});
-      return Array.isArray(j?.pairs) ? j.pairs : [];
-    }
-
-    async function dsTokenPairsV1(net, tokenAddr){
-      const chain = NET_DS[normalizeChain(net)] || 'solana';
-      const url = `https://api.dexscreener.com/token-pairs/v1/${chain}/${encodeURIComponent(tokenAddr)}`;
-      try{
-        const j = await fetchJson(url, {timeout:14000, retries:1});
-        return Array.isArray(j) ? j : [];
-      }catch(_){
-        return [];
-      }
-    }
-
-    function bestPairAnyNet(pairs){
-      const list = (pairs||[]).slice();
-      if(!list.length) return null;
-      list.sort((a,b)=>{
-        const la = Number(a?.liquidity?.usd||0);
-        const lb = Number(b?.liquidity?.usd||0);
-        if(lb!==la) return lb-la;
-        const va = Number(a?.volume?.h24||0);
-        const vb = Number(b?.volume?.h24||0);
-        return vb-va;
-      });
-      return list[0];
-    }
-
-    function bestPairForNet(pairs, net){
-      const want = NET_DS[normalizeChain(net)];
-      const list = (pairs||[]).filter(p=>lc(p?.chainId)===want);
-      if(!list.length) return null;
-      list.sort((a,b)=>{
-        const la = Number(a?.liquidity?.usd||0);
-        const lb = Number(b?.liquidity?.usd||0);
-        if(lb!==la) return lb-la;
-        const va = Number(a?.volume?.h24||0);
-        const vb = Number(b?.volume?.h24||0);
-        return vb-va;
-      });
-      return list[0];
-    }
-
-
-    function netFromDsChainId(chainId){
-      const c = lc(chainId);
-      if(c==='solana') return 'solana';
-      if(c==='ethereum') return 'eth';
-      if(c==='bsc') return 'bsc';
-      if(c==='base') return 'base';
-      return null;
-    }
-
-    function bestPairAnyNet(pairs){
-      const list = (pairs||[]).filter(p=>netFromDsChainId(p?.chainId));
-      if(!list.length) return null;
-      list.sort((a,b)=>{
-        const la = Number(a?.liquidity?.usd||0);
-        const lb = Number(b?.liquidity?.usd||0);
-        if(lb!==la) return lb-la;
-        const va = Number(a?.volume?.h24||0);
-        const vb = Number(b?.volume?.h24||0);
-        return vb-va;
-      });
-      return list[0];
-    }
-
-    function renderSearchResults(pairs){
-      const best = bestPairForNet(pairs, activeNet);
-      // show top 12 for chain
-      const want = NET_DS[activeNet];
-      const list = (pairs||[]).filter(p=>lc(p?.chainId)===want).slice(0, 12);
-      if(!list.length){
-        showResults(`<div style="padding:12px; color:rgba(255,255,255,.75)">No results on ${esc(NET_LABEL[activeNet])}. Try another chain.</div>`);
-        return;
-      }
-      const html = list.map(p=>{
-        const base = p?.baseToken || {};
-        const sym = String(base.symbol || base.name || 'TOKEN');
-        const name = String(base.name || sym);
-        const addr = String(base.address || '');
-        const img = p?.info?.imageUrl || p?.info?.image_url || '';
-        const pct = num(p?.priceChange?.h24);
-        const mc = num(p?.marketCap || p?.fdv);
-        const pctTxt = Number.isFinite(pct) ? (pct>0?'+':'')+pct.toFixed(2)+'%' : '—';
-        const pctClass = Number.isFinite(pct) ? (pct>0?'up':(pct<0?'down':'')) : '';
-        const logo = img ? `<img src="${esc(img)}" referrerpolicy="no-referrer" onerror="this.remove();"/>` : `<span class="fb">${esc(sym.slice(0,1).toUpperCase())}</span>`;
-        return `
-          <div class="resItem" data-addr="${esc(addr)}" data-name="${esc(sym)}">
-            <div class="resL">
-              <div class="resLogo">${logo}</div>
-              <div class="resTxt">
-                <div class="resName">$${esc(sym)} <span style="opacity:.65">(${esc(name)})</span></div>
-                <div class="resMeta">${esc(NET_LABEL[activeNet])} • ${esc(shortAddr(addr))} • Liq $${esc(formatCompact(p?.liquidity?.usd))}</div>
-              </div>
-            </div>
-            <div class="resR">
-              <span class="statPill ${pctClass}">24h ${esc(pctTxt)}</span>
-              <span class="statPill">MCap ${esc(formatCompact(mc))}</span>
-            </div>
-          </div>
-        `;
-      }).join('');
-      showResults(html);
-
-      // click bind
-      [...results.querySelectorAll('.resItem')].forEach(el=>{
-        el.onclick=()=>{
-          const a = el.getAttribute('data-addr')||'';
-          hideResults();
-          q.value = a;
-          openToken(a);
-        };
-      });
-    }
-
-    q.addEventListener('input', ()=>{
-      clearTimeout(searchTimer);
-      const v = q.value.trim();
-
-      // mode hint
-      if(isEvmAddr(v)) modeHint.textContent = 'EVM';
-      else if(isSolAddr(v)) modeHint.textContent = 'SOL';
-      else modeHint.textContent = 'auto';
-
-      if(v.length<2){ hideResults(); return; }
-      searchTimer = setTimeout(async ()=>{
-        const id = ++searchReq;
-        try{
-          const pairs = await dsSearch(v);
-          if(id!==searchReq) return;
-          renderSearchResults(pairs);
-        }catch(e){
-          if(id!==searchReq) return;
-          showResults(`<div style="padding:12px; color:rgba(255,255,255,.75)">Search error. Try again.</div>`);
-        }
-      }, 220);
+  function updateAgeCells(){
+    document.querySelectorAll('#tradeBody tr[data-ts]').forEach(row=>{
+      const ts = Number(row.getAttribute('data-ts')||0);
+      const cell = row.querySelector('td');
+      if(cell && ts) cell.textContent = timeAgo(ts);
     });
+  }
 
-    q.addEventListener('keydown', (e)=>{
-      if(e.key==='Enter'){
-        e.preventDefault();
-        hideResults();
-        openToken(q.value.trim());
-      }
-    });
+  function applyTradeToCandles(tr){
+    if(!rawCandles || !rawCandles.length) return;
+    if(!Number.isFinite(tr.price)) return;
+    const cfg = TF[activeTFKey];
+    const bucket = Math.floor((tr.tsMs/1000) / cfg.agg) * cfg.agg;
 
-    document.addEventListener('click', (e)=>{
-      if(!results.contains(e.target) && e.target!==q) hideResults();
-    });
+    const last = rawCandles[rawCandles.length-1];
+    const usdVol = Number.isFinite(tr.usd) ? tr.usd : 0;
 
-    btnGo.onclick=()=>openToken(q.value.trim());
+    if(bucket < last.time - cfg.agg*5) return;
 
-    // -------------------- Gecko: pool selection
-    function geckoNet(){ return NET_GECKO[activeNet]; }
-
-    async function resolvePoolsFromGecko(tokenAddr){
-      // /networks/{network}/tokens/{token}/pools?include=base_token,quote_token&page=1
-      const url = `${GECKO}/networks/${encodeURIComponent(geckoNet())}/tokens/${encodeURIComponent(tokenAddr)}/pools?include=base_token,quote_token,dex&page=1`;
-      const j = await fetchJson(url, {timeout:14000, retries:1});
-      return Array.isArray(j?.data) ? j.data : [];
+    if(bucket === last.time){
+      last.close = tr.price;
+      last.high = Math.max(last.high, tr.price);
+      last.low = Math.min(last.low, tr.price);
+      last.volume = (Number(last.volume)||0) + usdVol;
+      candleSeries.update({time:last.time, open:last.open, high:last.high, low:last.low, close:last.close});
+      volumeSeries.update({time:last.time, value:last.volume, color:(last.close>=last.open)?'rgba(20,241,149,.35)':'rgba(255,77,109,.35)'});
+      return;
     }
 
-    function chooseBestPool(pools, tokenAddr){
-      const tok = lc(tokenAddr);
-      const preferSet = new Set((STABLE_QUOTES[activeNet]||[]).map(lc));
-
-      // rank pools
-      const ranked = (pools||[]).map(p=>{
-        const a = p?.attributes || {};
-        const base = lc(tokenAddrFromPool(p,'base'));
-        const quote = lc(tokenAddrFromPool(p,'quote'));
-        const liq = poolLiqUsd(p);
-        const created = poolCreatedMs(p);
-        const isBase = base===tok;
-        const isQuote = quote===tok;
-        const stableQuote = isBase && preferSet.has(quote);
-        const score =
-          (stableQuote? 9e15 : 0) +
-          (isBase? 7e15 : 0) +
-          (isQuote? 4e15 : 0) +
-          (Number.isFinite(liq)? liq*1e6 : 0) +
-          (Number.isFinite(created)? created : 0);
-        return {p, score, isBase, isQuote, liq};
-      }).sort((a,b)=>b.score-a.score);
-
-      return ranked[0]?.p || null;
+    if(bucket > last.time){
+      const open = Number.isFinite(last.close) ? last.close : tr.price;
+      const close = tr.price;
+      const high = Math.max(open, close);
+      const low = Math.min(open, close);
+      const c = {time: bucket, open, high, low, close, volume: usdVol};
+      rawCandles.push(c);
+      candleSeries.update({time:c.time, open:c.open, high:c.high, low:c.low, close:c.close});
+      volumeSeries.update({time:c.time, value:c.volume, color:(c.close>=c.open)?'rgba(20,241,149,.35)':'rgba(255,77,109,.35)'});
     }
+  }
 
-    function renderPoolSelect(pools){
-      poolSel.innerHTML='';
-      const opts = pools.slice(0, 25).map((p,i)=>{
-        const a = p?.attributes || {};
-        const dex = String(a.dex_name || a.dex || 'DEX');
-        const name = String(a.name || a.pool_name || '').trim();
-        const liq = poolLiqUsd(p);
-        const age = fmtAge(poolCreatedMs(p));
-        const label = `${dex} • ${name?name:shortAddr(poolAddressFromPool(p))} • Liq $${formatCompact(liq)} • ${age}`;
-        const id = String(p?.id||'');
-        return `<option value="${esc(id)}">${esc(label)}</option>`;
-      }).join('');
-      poolSel.innerHTML = opts;
-      poolSel.style.display = opts ? 'inline-flex' : 'none';
-      poolSel.disabled = !opts;
+  async function loadTrades(reset=false){
+    if(!poolAddr) return;
+    try{
+      const j = await geckoTrades(80);
+      const list = Array.isArray(j?.data) ? j.data : [];
+      const parsed = list.map(normalizeTrade).filter(t=>t.id);
 
-      poolSel.onchange = ()=>{
-        const id = poolSel.value;
-        const picked = pools.find(x=>String(x?.id||'')===id);
-        if(picked){
-          applyPool(picked);
-          loadCandles(true);
-          loadTrades(true);
-          loadMeta(true);
-        }
-      };
-    }
-
-    function applyTokenHeader(meta){
-      const sym = meta?.symbol || 'TOKEN';
-      const quote = meta?.quoteSymbol || '';
-      curTokenSymbol = sym;
-      curQuoteSymbol = quote;
-
-      pairNameEl.textContent = quote ? `$${sym}/${quote}` : `$${sym}`;
-      pairMetaEl.textContent = `${NET_LABEL[activeNet]} • ${shortAddr(addr)} • Native chart + live trades`;
-
-      const img = meta?.image || '';
-      if(img){
-        tokenLogo.innerHTML = `<img src="${esc(img)}" alt="" referrerpolicy="no-referrer" onerror="this.remove(); this.parentNode.innerHTML='<span class=\"fb\">${esc(sym.slice(0,1).toUpperCase())}</span>';" />`;
-      }else{
-        tokenLogo.innerHTML = `<span class="fb">${esc(sym.slice(0,1).toUpperCase())}</span>`;
-      }
-    }
-
-    function applyStats(st){
-      const pills=[];
-      if(Number.isFinite(st.price)) pills.push(`<span class="statPill">Price $${esc(formatPrice(st.price))}</span>`);
-      if(Number.isFinite(st.liq)) pills.push(`<span class="statPill">Liq $${esc(formatCompact(st.liq))}</span>`);
-      if(Number.isFinite(st.mcap)) pills.push(`<span class="statPill">MCap $${esc(formatCompact(st.mcap))}</span>`);
-      if(Number.isFinite(st.h24)) pills.push(`<span class="statPill ${st.h24>0?'up':(st.h24<0?'down':'')}">24h ${esc((st.h24>0?'+':'')+st.h24.toFixed(2)+'%')}</span>`);
-      statsEl.innerHTML = pills.join('') || `<span class="statPill">—</span>`;
-    }
-
-    function applyPool(p){
-      const a = p?.attributes || {};
-      poolId = String(p?.id||'');
-      poolAddr = poolAddressFromPool(p);
-
-      // Determine side: if token matches base -> buys are quote->base? We use Gecko trade_type.
-      const base = lc(tokenAddrFromPool(p,'base'));
-      const quote = lc(tokenAddrFromPool(p,'quote'));
-      tokenSide = (base===lc(addr)) ? 'base' : ((quote===lc(addr)) ? 'quote' : 'base');
-
-      // Meta (pick correct token side)
-      const baseSym = tokenSymFromPool(p,'base') || 'TOKEN';
-      const quoteSym = tokenSymFromPool(p,'quote') || '';
-      const sym = tokenSide==='base' ? baseSym : (quoteSym || baseSym || 'TOKEN');
-      const quoteShown = tokenSide==='base' ? quoteSym : baseSym;
-      const img = tokenSide==='base' ? tokenImgFromPool(p,'base') : tokenImgFromPool(p,'quote');
-      applyTokenHeader({symbol: sym, quoteSymbol: quoteShown, image: img});
-
-      // initial stats best-effort (pick correct side price)
-      const price = tokenSide==='base' ? tokenPriceFromPool(p,'base') : tokenPriceFromPool(p,'quote');
-      const liq = num(a.reserve_in_usd || a.liquidity_in_usd || a.liquidity_usd);
-      const mcap = num(a.market_cap_usd || a.fdv_usd);
-      const h24 = num(a.price_change_percentage?.h24 || a.price_change_percentage_24h || a.price_change_24h);
-      applyStats({price, liq, mcap, h24});
-
-      btnBuy.href = buildBuyUrl(activeNet, addr);
-    }
-
-    // -------------------- Candles
-    let rawCandles=[];
-
-    function geckoCandlesUrl(gran, before){
-      // /networks/{network}/pools/{pool}/ohlcv/{timeframe}?aggregate=...&before_timestamp=...&limit=1000&currency=usd
-      const agg = (activeTF.k==='ALL' ? 1 : Math.max(1, Math.floor(activeTF.agg / (gran==='minute'?60:(gran==='hour'?3600:86400)) )));
-      const params = new URLSearchParams();
-      params.set('aggregate', String(agg));
-      params.set('limit', '1000');
-      params.set('currency','usd');
-      if(before) params.set('before_timestamp', String(before));
-      return `${GECKO}/networks/${encodeURIComponent(geckoNet())}/pools/${encodeURIComponent(poolAddr)}/ohlcv/${encodeURIComponent(gran)}?`+params.toString();
-    }
-
-    function mapGeckoOhlcv(j){
-      const list = j?.data?.attributes?.ohlcv_list;
-      if(!Array.isArray(list)) return [];
-      // each row: [timestamp, open, high, low, close, volume]
-      // Gecko timestamps should be unix seconds, but some proxies may return ms.
-      return list.map(r=>{
-        const ts = Number(r[0]) || 0;
-        const time = ts>1e12 ? Math.floor(ts/1000) : Math.floor(ts);
-        const open = Number(r[1]);
-        const high = Number(r[2]);
-        const low  = Number(r[3]);
-        const close= Number(r[4]);
-        const volume = Number(r[5]);
-        return {time, open, high, low, close, volume};
-      }).filter(x=>x.time>0 && Number.isFinite(x.open) && Number.isFinite(x.high) && Number.isFinite(x.low) && Number.isFinite(x.close));
-    }
-
-    function applyCandlesToChart(fit){
-      const src = rawCandles;
-      candleSeries.setData(src.map(c=>({time:c.time, open:c.open, high:c.high, low:c.low, close:c.close})));
-      volumeSeries.setData(src.map(c=>({time:c.time, value:c.volume, color:(c.close>=c.open)?'rgba(20,241,149,.35)':'rgba(255,77,109,.35)'})));
-      if(fit) chart.timeScale().fitContent();
-    }
-
-    function applyTradeToCandles(tr){
-      if(!rawCandles || !rawCandles.length) return;
-      if(!Number.isFinite(tr?.price)) return;
-      if(!Number.isFinite(tr?.tsMs)) return;
-
-      const tsSec = Math.floor(tr.tsMs/1000);
-      const bucket = Math.floor(tsSec / activeTF.agg) * activeTF.agg;
-
-      const last = rawCandles[rawCandles.length-1];
-      const usdVol = Number.isFinite(tr.usd) ? tr.usd : 0;
-
-      if(bucket < last.time - activeTF.agg*3){
-        // too old for current visible timeframe; ignore
-        return;
-      }
-
-      if(bucket === last.time){
-        last.close = tr.price;
-        if(tr.price > last.high) last.high = tr.price;
-        if(tr.price < last.low) last.low = tr.price;
-        if(usdVol) last.volume = (Number.isFinite(last.volume)?last.volume:0) + usdVol;
-        candleSeries.update({time:last.time, open:last.open, high:last.high, low:last.low, close:last.close});
-        volumeSeries.update({time:last.time, value:last.volume, color:(last.close>=last.open)?'rgba(20,241,149,.35)':'rgba(255,77,109,.35)'});
-        return;
-      }
-
-      if(bucket > last.time){
-        const open = Number.isFinite(last.close) ? last.close : tr.price;
-        const c = {
-          time: bucket,
-          open,
-          high: Math.max(open, tr.price),
-          low: Math.min(open, tr.price),
-          close: tr.price,
-          volume: usdVol
-        };
-        rawCandles.push(c);
-        candleSeries.update({time:c.time, open:c.open, high:c.high, low:c.low, close:c.close});
-        volumeSeries.update({time:c.time, value:c.volume, color:(c.close>=c.open)?'rgba(20,241,149,.35)':'rgba(255,77,109,.35)'});
-      }
-    }
-
-    async function refreshLatestCandles(){
-      if(!poolAddr) return;
-      try{
-        const gran = activeTF.gecko;
-        const url = geckoCandlesUrl(gran, null);
-        const j = await fetchJson(url, {timeout:16000, retries:1});
-        const part = mapGeckoOhlcv(j);
-        if(!part.length) return;
-        part.sort((a,b)=>a.time-b.time);
-
-        // Merge by time, keeping history
-        const earliest = part[0].time;
-        const keep = rawCandles.filter(c=>c.time < earliest);
-        const map = new Map();
-        for(const c of part) map.set(c.time, c);
-        rawCandles = keep.concat(Array.from(map.values()).sort((a,b)=>a.time-b.time));
-
-        applyCandlesToChart(false);
-      }catch(e){
-        // ignore
-      }
-    }
-
-
-    async function loadCandles(fit){
-      if(!poolAddr) return;
-      statusEl.textContent = 'Loading chart…';
-      rawCandles=[];
-      candleSeries.setData([]);
-      volumeSeries.setData([]);
-
-      try{
-        const gran = activeTF.gecko;
-
-        // backfill loop to get full history (until no older candles)
-        let before = null;
-        let all = [];
-        let guard = 0;
-        while(guard++ < (activeTF.k==='ALL' ? 12 : 4)){
-          const url = geckoCandlesUrl(gran, before);
-          const j = await fetchJson(url, {timeout:16000, retries:1});
-          const part = mapGeckoOhlcv(j);
-          if(!part.length) break;
-          // gecko returns newest->oldest sometimes; normalize
-          part.sort((a,b)=>a.time-b.time);
-          // prepend
-          all = part.concat(all);
-          // next before = oldest timestamp - 1
-          before = part[0].time - 1;
-          if(part.length < 990) break; // no more pages
-        }
-
-        // dedupe by time
-        const map = new Map();
-        all.forEach(c=>map.set(c.time, c));
-        rawCandles = Array.from(map.values()).sort((a,b)=>a.time-b.time);
-
-        if(!rawCandles.length){
-          statusEl.textContent = 'Chart not available for this pool.';
-          return;
-        }
-
-        applyCandlesToChart(fit);
-        statusEl.textContent = 'Live.';
-
-      }catch(e){
-        statusEl.textContent = 'Chart error.';
-        console.error(e);
-      }
-    }
-
-    // -------------------- Trades
-    function tradesContainer(){
-      // write to both desktop + mobile
-      return [tradesDesk, tradesMob];
-    }
-
-    function ensureTradeHead(){
-      // head exists in markup
-    }
-
-    function timeAgo(tsMs){
-      const d = Math.max(0, Date.now() - tsMs);
-      const s = Math.floor(d/1000);
-      if(s<60) return s+'s';
-      const m = Math.floor(s/60);
-      if(m<60) return m+'m';
-      const h = Math.floor(m/60);
-      if(h<24) return h+'h';
-      const days = Math.floor(h/24);
-      return days+'d';
-    }
-
-    function parseTrade(t){
-      const a = t?.attributes || {};
-      const id = String(t?.id || a.tx_hash || a.transaction_hash || a.signature || a.transaction_id || '') || '';
-      const side = String(a.trade_type || a.side || a.taker_side || a.kind || '').toLowerCase();
-      const type = side.includes('sell') ? 'sell' : (side.includes('buy') ? 'buy' : (a.is_buy===true?'buy':(a.is_sell===true?'sell':'')));
-
-      const tx = String(a.tx_hash || a.transaction_hash || a.signature || a.transaction_id || id || '').trim();
-      const maker = String(
-        a.taker || a.trader || a.wallet_address || a.from_address || a.maker || a.maker_address || a.tx_from_address || a.user_address || ''
-      ).trim();
-
-      const rawTs = (a.block_timestamp ?? a.timestamp ?? a.time ?? a.created_at ?? a.mined_at ?? a.block_time ?? 0);
-      let tsMs = NaN;
-      if(typeof rawTs==='number'){
-        tsMs = rawTs>1e12 ? rawTs : rawTs*1000;
-      }else{
-        const tsv = String(rawTs||'').trim();
-        if(tsv && /^\d+(\.\d+)?$/.test(tsv)){
-          const n = Number(tsv);
-          tsMs = n>1e12 ? n : n*1000;
-        }else{
-          const d = Date.parse(tsv);
-          if(Number.isFinite(d)) tsMs = d;
-        }
-      }
-      if(!Number.isFinite(tsMs)) tsMs = Date.now();
-
-      const usd = num(a.volume_in_usd || a.usd_value || a.volume_usd || a.amount_usd || a.total_usd);
-      const price = num(a.price_in_usd || a.price_usd || a.price);
-      const baseAmt = num(a.base_token_amount || a.amount_base || a.base_amount || a.base_token_volume || a.base_volume);
-      const quoteAmt = num(a.quote_token_amount || a.amount_quote || a.quote_amount || a.quote_token_volume || a.quote_volume);
-      const amount = Number.isFinite(baseAmt) ? baseAmt : (Number.isFinite(quoteAmt)? quoteAmt : NaN);
-
-      return { id, type, tx, maker, tsMs, usd, price, amount };
-    }
-
-    function tradeRowHtml(tr){
-      const age = timeAgo(tr.tsMs);
-      const usdTxt = Number.isFinite(tr.usd) ? '$'+formatCompact(tr.usd) : '—';
-      const amtTxt = Number.isFinite(tr.amount) ? formatCompact(tr.amount)+' '+esc(curTokenSymbol) : '—';
-      const priceTxt = Number.isFinite(tr.price) ? '$'+formatPrice(tr.price) : '—';
-
-      const isNew = tr.maker ? (!seenMakers.has(tr.maker)) : false;
-      if(tr.maker) seenMakers.add(tr.maker);
-
-      const makerHtml = tr.maker
-        ? `<div class="maker"><span class="addr mono" title="${esc(tr.maker)}">${esc(shortAddr(tr.maker))}</span>${isNew?'<span class="new">NEW</span>':''}</div>`
-        : `<span class="mono" style="opacity:.7">—</span>`;
-
-      const txUrl = tr.tx ? explorerTx(activeNet, tr.tx) : '#';
-      const addrUrl = tr.maker ? explorerAddr(activeNet, tr.maker) : '#';
-
-      return `
-        <div class=\"tradeRow\" data-id=\"${esc(tr.id)}\" data-ts=\"${Number.isFinite(tr.tsMs)?tr.tsMs:0}\" data-price=\"${Number.isFinite(tr.price)?tr.price:''}\" data-usd=\"${Number.isFinite(tr.usd)?tr.usd:''}\" data-type=\"${esc(tr.type||'')}\">
-          <div class=\"mono age\">${esc(age)}</div>
-          <div><span class="typeBadge ${tr.type==='sell'?'sell':'buy'}">${tr.type==='sell'?'SELL':'BUY'}</span></div>
-          <div class="mono">${esc(usdTxt)}</div>
-          <div class="mono">${amtTxt}</div>
-          <div class="mono hideM">${esc(priceTxt)}</div>
-          <div class="hideM">${makerHtml}</div>
-          <div>
-            <a class="iconBtn" href="${esc(txUrl)}" target="_blank" rel="noreferrer" title="Open Tx">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M14 3h7v7" stroke="rgba(255,255,255,.80)" stroke-width="2" stroke-linecap="round"/><path d="M21 3 10 14" stroke="rgba(255,255,255,.80)" stroke-width="2" stroke-linecap="round"/><path d="M10 5H7a4 4 0 0 0-4 4v8a4 4 0 0 0 4 4h8a4 4 0 0 0 4-4v-3" stroke="rgba(255,255,255,.55)" stroke-width="2" stroke-linecap="round"/></svg>
-            </a>
-          </div>
-        </div>
-      `;
-    }
-
-    async function geckoTrades(limit=80){
-      const base = `${GECKO}/networks/${encodeURIComponent(geckoNet())}/pools/${encodeURIComponent(poolAddr)}/trades`;
-      // GeckoTerminal often uses JSON:API pagination. Try page params first, then fallback to limit.
-      try{
-        const url1 = base + `?page=1&limit=${encodeURIComponent(limit)}`;
-        const j1 = await fetchJson(url1, {timeout:14000, retries:1});
-        if(Array.isArray(j1?.data) && j1.data.length) return j1.data;
-      }catch(e){ /* ignore */ }
-
-      try{
-        const url2 = base + `?limit=${encodeURIComponent(limit)}`;
-        const j2 = await fetchJson(url2, {timeout:14000, retries:1});
-        if(Array.isArray(j2?.data)) return j2.data;
-      }catch(e){ /* ignore */ }
-
-      return [];
-    }
-
-    function renderTrades(trades, {reset=false}={}){
-      const parsed = (trades||[]).map(parseTrade).filter(x=>x.id && Number.isFinite(x.tsMs));
+      // newest first
       parsed.sort((a,b)=>b.tsMs-a.tsMs);
 
       if(reset){
-        tradesSeen = new Set();
-        seenMakers = new Set();
-        // clear existing rows (keep header)
-        tradesContainer().forEach(el=>{
-          const head = el.querySelector('.tradeHead');
-          el.innerHTML='';
-          el.appendChild(head);
-        });
+        tradesSeen.clear();
+        tradeBody.innerHTML = '';
       }
 
+      let added = 0;
       const newly = [];
-
-      // Only add unseen trades (prepend)
       for(const tr of parsed){
         if(tradesSeen.has(tr.id)) continue;
         tradesSeen.add(tr.id);
         newly.push(tr);
-
-        const html = tradeRowHtml(tr);
-        tradesContainer().forEach(el=>{
-          const head = el.querySelector('.tradeHead');
-          const wrapper = document.createElement('div');
-          wrapper.innerHTML = html;
-          const row = wrapper.firstElementChild;
-          // insert after head
-          el.insertBefore(row, head.nextSibling);
-          // cap rows
-          const rows = [...el.querySelectorAll('.tradeRow')];
-          if(rows.length>120){
-            rows.slice(120).forEach(r=>r.remove());
-          }
-        });
       }
 
-      const total = tradesDesk.querySelectorAll('.tradeRow').length;
-      tradesStat.textContent = `${total} trades`;
-      tradesStatM.textContent = `${total} trades`;
+      // apply oldest->newest to candles for correctness
+      newly.slice().sort((a,b)=>a.tsMs-b.tsMs).forEach(applyTradeToCandles);
 
-      updateAges();
-      return newly;
-    }
-
-    function updateAges(){
-      tradesContainer().forEach(el=>{
-        [...el.querySelectorAll('.tradeRow')].forEach(row=>{
-          const ts = Number(row.getAttribute('data-ts')||0);
-          if(!ts) return;
-          const ageEl = row.querySelector('.age');
-          if(ageEl) ageEl.textContent = timeAgo(ts);
-        });
-      });
-    }
-
-    function applyTradeToCandles(tr){
-      if(!rawCandles || !rawCandles.length) return;
-      if(!Number.isFinite(tr.price)) return;
-      if(!Number.isFinite(activeTF?.agg) || activeTF.agg<=0) return;
-
-      const tsSec = Math.floor(tr.tsMs/1000);
-      const bucket = Math.floor(tsSec / activeTF.agg) * activeTF.agg;
-
-      const last = rawCandles[rawCandles.length-1];
-      const usdVol = Number.isFinite(tr.usd) ? tr.usd : 0;
-
-      // ignore very old trades (keeps chart stable)
-      if(bucket < last.time - activeTF.agg*5) return;
-
-      if(bucket === last.time){
-        last.close = tr.price;
-        last.high = Math.max(last.high, tr.price);
-        last.low  = Math.min(last.low, tr.price);
-        last.volume = (Number(last.volume)||0) + usdVol;
-        candleSeries.update({time:last.time, open:last.open, high:last.high, low:last.low, close:last.close});
-        volumeSeries.update({time:last.time, value:last.volume, color:(last.close>=last.open)?'rgba(20,241,149,.35)':'rgba(255,77,109,.35)'});
-        return;
+      // render newest on top
+      if(newly.length){
+        const html = newly.sort((a,b)=>b.tsMs-a.tsMs).map(tradeRow).join('');
+        const tmp = document.createElement('tbody');
+        tmp.innerHTML = html;
+        // prepend
+        tradeBody.prepend(...Array.from(tmp.children));
+        added = newly.length;
       }
 
-      if(bucket > last.time){
-        const open = Number.isFinite(last.close) ? last.close : tr.price;
-        const close = tr.price;
-        const high = Math.max(open, close);
-        const low = Math.min(open, close);
-        const c = {time: bucket, open, high, low, close, volume: usdVol};
-        rawCandles.push(c);
-        candleSeries.update({time:c.time, open:c.open, high:c.high, low:c.low, close:c.close});
-        volumeSeries.update({time:c.time, value:c.volume, color:(c.close>=c.open)?'rgba(20,241,149,.35)':'rgba(255,77,109,.35)'});
-      }
-    }
-
-    async function loadTrades(reset=false){
-      if(!poolAddr) return;
-      try{
-        const data = await geckoTrades(80);
-        const newly = renderTrades(data, {reset}) || [];
-        if(newly.length){
-          // Apply oldest->newest so candle updates are correct
-          newly.slice().sort((a,b)=>a.tsMs-b.tsMs).forEach(applyTradeToCandles);
-        }
-
-    function startLiveLoops(){
-      if(tradesTimer) clearInterval(tradesTimer);
-      tradesTimer = setInterval(async ()=>{ try{ await loadTrades(false); }catch(_){ } }, 2500);
-
-      if(candlesTimer) clearInterval(candlesTimer);
-      candlesTimer = setInterval(async ()=>{ try{ await refreshLatestCandles(); }catch(_){ } }, 5000);
-    }
-        statusEl.textContent = 'Live.';
-      }catch(e){
-        console.error(e);
-        statusEl.textContent = 'Trades error.';
-      }
-    }
-
-// -------------------- Meta (refresh price/liquidity/24h)
-    async function geckoPool(){
-      const url = `${GECKO}/networks/${encodeURIComponent(geckoNet())}/pools/${encodeURIComponent(poolAddr)}?include=base_token,quote_token`;
-      const j = await fetchJson(url, {timeout:14000, retries:1});
-      return j?.data || null;
-    }
-
-    async function loadMeta(){
-      if(!poolAddr) return;
-      try{
-        const p = await geckoPool();
-        if(!p) return;
-        applyPool(p);
-      }catch(e){
-        // ignore
-      }
-    }
-
-    
-    // -------------------- Trending (match main site)
-    const TREND_CACHE = new Map();
-
-    function applyNetTheme(){
-      document.body.classList.remove('net-sol','net-eth','net-bnb','net-base');
-      if(activeNet==='solana') document.body.classList.add('net-sol');
-      else if(activeNet==='eth') document.body.classList.add('net-eth');
-      else if(activeNet==='bsc') document.body.classList.add('net-bnb');
-      else if(activeNet==='base') document.body.classList.add('net-base');
-    }
-
-    function syncTrendToggle(){
-      const wrap = $('trendToggle');
-      if(!wrap) return;
-      [...wrap.querySelectorAll('.chainBtn')].forEach(b=>{
-        b.classList.toggle('active', normalizeChain(b.dataset.net)===(activeNet));
-      });
-    }
-
-    async function fetchTrendingPools(net){
-      const key = String(net||'');
-      const cached = TREND_CACHE.get(key);
-      const now = Date.now();
-      if(cached && (now - cached.ts) < 45000) return cached.data;
-
-      const url = `${GECKO}/networks/${encodeURIComponent(net)}/trending_pools?include=base_token,quote_token,dex`;
-      const j = await fetchJson(url, {timeout:14000, retries:1});
-      const data = Array.isArray(j?.data) ? j.data : [];
-      const inc  = Array.isArray(j?.included) ? j.included : [];
-      const incMap = new Map();
-      for(const it of inc){ if(it?.id) incMap.set(it.id, it); }
-      const out = { data, incMap };
-      TREND_CACHE.set(key, {ts: now, data: out});
-      return out;
-    }
-
-    function poolToTickerItem(p, i, incMap){
-      const a = p?.attributes || {};
-      const rel = p?.relationships?.base_token?.data;
-      const tid = rel?.id || '';
-      const t = tid ? incMap.get(tid) : null;
-      const ta = t?.attributes || {};
-
-      const sym = String(ta?.symbol||'').trim();
-      const nm = String(ta?.name||'').trim();
-      const imgUrl = String(ta?.image_url || ta?.image || '').trim();
-
-      const chg24 = num(a?.price_change_percentage?.h24 ?? a?.price_change_percentage_24h);
-      const pctTxt = Number.isFinite(chg24) ? (chg24>=0?`+${chg24.toFixed(2)}%`:`${chg24.toFixed(2)}%`) : '—';
-
-      const medal = (i===0?' gold':(i===1?' silver':(i===2?' bronze':'')));
-      const rankCls = 'rank'+(i<3?(' medal'+medal):'');
-      const name = sym ? `$${sym}` : (nm ? `$${nm}` : 'Token');
-
-      const addrGuess = String(ta?.address||'').trim() || tokenIdToAddr(tid) || '';
-
-      const logo = imgUrl ? `<img alt="" src="${esc(imgUrl)}" loading="lazy"/>` : `<span class="dot"></span>`;
-      const up = Number.isFinite(chg24) && chg24>=0;
-
-      return `<a class="tickerItem" href="#" data-addr="${esc(addrGuess)}" title="Open ${esc(name)}">
-        <span class="${rankCls}">${i+1}</span>
-        <span class="tLogo">${logo}</span>
-        <span class="tName">${esc(name)}</span>
-        <span class="tPct ${up?'up':'down'}">${esc(pctTxt)}</span>
-      </a>`;
-    }
-
-    function renderTrendingTicker(pools, incMap){
-      const top = (pools||[]).slice(0, 10);
-      if(!top.length){
-        tickerTrack.innerHTML = `<div class="tickerEmpty">Trending unavailable.</div>`;
-        return;
-      }
-      const html = top.map((p,i)=>poolToTickerItem(p,i,incMap)).join('');
-      tickerTrack.innerHTML = html + html;
-    }
-
-    async function startTrending(){
-      applyNetTheme();
-      syncTrendToggle();
-
-      const load = async ()=>{
-        try{
-          const net = geckoNet();
-          const res = await fetchTrendingPools(net);
-          renderTrendingTicker(res.data, res.incMap);
-        }catch(e){
-          console.error('trending failed', e);
-          tickerTrack.innerHTML = `<div class="tickerEmpty">Trending unavailable.</div>`;
-        }
-      };
-
-      await load();
-      statusEl.textContent = 'Live.';
-      if(trendingTimer) clearInterval(trendingTimer);
-      trendingTimer = setInterval(load, 25000);
-
-      tickerTrack.onclick = (e)=>{
-        const a = e.target.closest('.tickerItem');
-        if(!a) return;
-        e.preventDefault();
-        const tAddr = a.getAttribute('data-addr') || '';
-        if(tAddr) openToken(tAddr, {skipInput:true});
-      };
-
-      const toggle = $('trendToggle');
-      if(toggle){
-        toggle.onclick = (e)=>{
-          const b = e.target.closest('.chainBtn');
-          if(!b) return;
-          const net = normalizeChain(b.dataset.net || 'solana');
-          if(net===activeNet) return;
-          activeNet = net;
-          applyNetTheme();
-          syncTrendToggle();
-          renderNetPills();
-          if(!addr) addr = DEFAULT_TOKEN[activeNet];
-          navigate(activeNet, addr);
-        };
-      }
-    }
-
-
-    // -------------------- Navigation + Boot
-    function updateUrl(){
-      const u = new URL(location.href);
-      u.searchParams.set('chain', activeNet);
-      if(addr) u.searchParams.set('addr', addr);
-      history.replaceState({}, '', u.toString());
-    }
-
-    function navigate(chain, address){
-      activeNet = normalizeChain(chain);
-      addr = String(address||'').trim();
-      updateUrl();
-      renderNetPills();
-      applyNetTheme();
-      startTrending();
-      // if address exists, load it
-      if(addr){
-        openToken(addr, {skipInput:true});
-      }
-    }
-
-    async function openToken(input, {skipInput=false}={}){
-      let v = String(input||'').trim();
-      if(!v){ toast('Paste a token name or address'); return; }
-      if(!skipInput) q.value = v;
-
-      // reset view
-      statusEl.textContent = 'Loading…';
-      pairNameEl.textContent = 'Loading…';
-      pairMetaEl.textContent = 'Resolving best pool…';
-      results.innerHTML = '';
-
-      let dsPair = null;
-
-      // If user typed a name/symbol (not an address), resolve via DexScreener search (auto across chains)
-      if(!isEvmAddr(v) && !isSolAddr(v)){
-        statusEl.textContent = 'Searching…';
-        pairNameEl.textContent = 'Searching…';
-        pairMetaEl.textContent = 'Finding best match…';
-        try{
-          const pairs = await dsSearch(v);
-          if(!pairs.length){
-            statusEl.textContent = 'Not found.';
-            pairNameEl.textContent = 'Not found';
-            pairMetaEl.textContent = 'Try a contract address.';
-            toast('No results. Try contract address.');
-            return;
-          }
-          const best = bestPairAnyNet(pairs);
-          if(!best){
-            toast('No usable pair found.');
-            return;
-          }
-          // switch net to best match chain
-          const chainId = lc(best?.chainId||'');
-          const newNet = (chainId==='solana') ? 'solana' : (chainId==='ethereum' ? 'eth' : (chainId==='bsc' ? 'bsc' : (chainId==='base' ? 'base' : activeNet)));
-          if(newNet !== activeNet){
-            activeNet = newNet;
-            renderNetPills();
-            startTrending();
-          }
-
-          dsPair = best;
-          v = String(best?.baseToken?.address || '').trim() || v;
-          if(!skipInput) q.value = v;
-        }catch(e){
-          statusEl.textContent = 'Search error.';
-          toast('Search failed. Try again.');
-          return;
-        }
+      // cap rows
+      const rows = tradeBody.querySelectorAll('tr[data-id]');
+      if(rows.length > 120){
+        Array.from(rows).slice(120).forEach(r=>r.remove());
       }
 
-      // If it's an EVM address and no dsPair yet, try all EVM nets and pick best liquidity
-      if(isEvmAddr(v) && !dsPair){
-        const nets = ['eth','bsc','base'];
-        let best = null;
-        for(const n of nets){
-          const arr = await dsTokenPairsV1(n, v);
-          const cand = bestPairAnyNet(arr);
-          if(cand && (!best || Number(cand?.liquidity?.usd||0) > Number(best?.liquidity?.usd||0))) best = cand;
-        }
-        if(best){
-          const chainId = lc(best?.chainId||'');
-          const newNet = (chainId==='ethereum') ? 'eth' : (chainId==='bsc' ? 'bsc' : (chainId==='base' ? 'base' : activeNet));
-          if(newNet !== activeNet){
-            activeNet = newNet;
-            renderNetPills();
-            startTrending();
-          }
-          dsPair = best;
-        }
+      const total = tradeBody.querySelectorAll('tr[data-id]').length;
+      tradesStat.textContent = total ? `${total} trades` : '0 trades';
+
+      if(!total){
+        tradeBody.innerHTML = `<tr><td colspan="6" style="padding: 14px 10px; color: rgba(255,255,255,.65)">No recent trades found.</td></tr>`;
       }
 
-      // If it's Solana address and no dsPair yet, fetch DS token-pairs on Solana
-      if(isSolAddr(v) && !dsPair){
-        const arr = await dsTokenPairsV1('solana', v);
-        const best = bestPairAnyNet(arr);
-        if(best) dsPair = best;
-      }
+      updateAgeCells();
+      return added;
 
-      // preferred pool address (pairAddress is usually the AMM pool address)
-      let preferredPool = dsPair?.pairAddress || dsPair?.pair_address || '';
+    }catch(e){
+      console.error(e);
+      tradesStat.textContent = 'Trades error.';
+    }
+  }
 
-      // Fill header from DexScreener meta (fast symbols/logos/stats)
-      if(dsPair){
-        const base = dsPair?.baseToken || {};
-        const quote = dsPair?.quoteToken || {};
-        const title = `${(base?.symbol||'TOKEN')}/${(quote?.symbol||'')}`.replace(/\/$/,'');
-        pairNameEl.textContent = title || (base?.symbol||'TOKEN');
-        pairMetaEl.textContent = `${NET_LABEL[activeNet] || activeNet} • ${shortAddr(v)} • Native chart + live trades`;
+  // -------------------------- Meta refresh
+  async function loadMeta(){
+    if(!poolAddr) return;
+    try{
+      const net = geckoNet();
+      const j = await fetchJson(`${GECKO}/networks/${encodeURIComponent(net)}/pools/${encodeURIComponent(poolAddr)}?include=base_token,quote_token`, {timeoutMs: 12000, retries: 1});
+      const data = j?.data;
+      if(!data) return;
+      const a = data.attributes || {};
+      const inc = extractIncludedMap(j?.included);
+      const rel = data.relationships || {};
+      const baseRef = rel?.base_token?.data;
+      const base = baseRef ? (inc.get(baseRef.type+':'+baseRef.id)?.attributes || {}) : {};
 
-        const img = base?.logoURI || base?.icon || base?.image || '';
-        if(img){
-          tokenLogo.innerHTML = `<img alt="" src="${esc(img)}" loading="lazy" />`;
-        }else{
-          tokenLogoFb.textContent = (base?.symbol||'T').slice(0,1).toUpperCase();
-        }
+      const symbol = (base?.symbol || selected?.symbol || 'TOKEN');
+      const name = (base?.name || selected?.name || symbol);
+      let logoUrl = String(base?.image_url || base?.image || selected?.logo || '').trim();
+      if(logoUrl && logoUrl.startsWith('/')) logoUrl = 'https://www.geckoterminal.com'+logoUrl;
 
-        applyStats({
-          price: num(dsPair?.priceUsd),
-          liq: num(dsPair?.liquidity?.usd),
-          mcap: num(dsPair?.fdv),
-          h24: num(dsPair?.priceChange?.h24),
-        });
+      const priceUsd = a?.base_token_price_usd != null ? Number(a.base_token_price_usd) : (a?.price_in_usd!=null?Number(a.price_in_usd):null);
+      const liqUsd = a?.reserve_in_usd != null ? Number(a.reserve_in_usd) : null;
+      const mcapUsd = a?.market_cap_usd != null ? Number(a.market_cap_usd) : (a?.fdv_usd!=null?Number(a.fdv_usd):null);
 
-        curTokenSymbol = (base?.symbol||'TOKEN');
-        curQuoteSymbol = (quote?.symbol||'');
-      }else{
-        pairNameEl.textContent = '$TOKEN';
-        pairMetaEl.textContent = `${NET_LABEL[activeNet] || activeNet} • ${shortAddr(v)} • Native chart + live trades`;
-        applyStats({});
-      }
+      const pctRaw = (a?.price_change_percentage && (a.price_change_percentage.h24 ?? a.price_change_percentage['h24'] ?? a.price_change_percentage['24h']))
+        ?? a?.price_change_percentage_24h ?? null;
+      const ch24 = (pctRaw==null ? null : Number(pctRaw));
 
-      // reset caches/timers
-      tradesSeen = new Set();
-      seenMakers = new Set();
+      setTokenHeader({symbol,name,logoUrl,priceUsd,liqUsd,mcapUsd,ch24});
 
-      try{
-        // 1) preferred pool first (when available via DexScreener)
-        if(preferredPool){
-          poolAddr = preferredPool;
-          const p = await geckoPool();
-          if(p){
-            applyPool(p);
-            statusEl.textContent = 'Loading chart…';
-            await loadCandles(true);
-            statusEl.textContent = 'Loading trades…';
-            await loadTrades(true);
-            statusEl.textContent = 'Live.';
-            startLiveLoops();
-            return;
-          }
-        }
+    }catch(_e){}
+  }
 
-        // 2) fallback: Gecko token pools -> choose best
-        const pools = await resolvePoolsFromGecko(v);
-        if(!pools.length){
-          statusEl.textContent = 'Not found.';
-          pairNameEl.textContent = 'Not found';
-          pairMetaEl.textContent = 'Try a different token or chain.';
-          toast('Token not found on this chain.');
-          return;
-        }
+  // -------------------------- Bootstrap token
+  async function bootstrapToken(force=false){
+    if(!poolAddr) return;
 
-        const best = chooseBestPool(pools, v);
-        poolChoices = pools;
-        poolAddr = poolAddressFromPool(best);
+    // reset UI
+    chartStatus.textContent = 'Loading…';
+    tradesStat.textContent = 'Loading…';
 
-        const p = await geckoPool();
-        if(!p) throw new Error('Pool fetch failed');
-        applyPool(p);
+    try{
+      // Always load meta first so token name/logo is correct
+      await loadMeta();
 
-        statusEl.textContent = 'Loading chart…';
-        await loadCandles(true);
-        statusEl.textContent = 'Loading trades…';
-        await loadTrades(true);
-        statusEl.textContent = 'Live.';
-        startLiveLoops();
-      }catch(e){
-        console.error(e);
-        statusEl.textContent = 'Load error.';
-        toast('Failed to load chart/trades. API blocked or pool unsupported.');
-      }
+      // candles
+      await loadCandlesFull();
+
+      // trades
+      await loadTrades(true);
+
+      clearInterval(pollTradesTimer);
+      clearInterval(pollMetaTimer);
+      pollTradesTimer = setInterval(()=>loadTrades(false), 2500);
+      pollMetaTimer = setInterval(()=>loadMeta(), 8000);
+
+      setInterval(updateAgeCells, 1500);
+
+    }catch(e){
+      console.error(e);
+      chartStatus.textContent = 'Load error.';
+      toast('Failed to load chart/trades. API blocked or pool unsupported.');
+    }
+  }
+
+  // -------------------------- Mobile tabs
+  const mobileTabs = $('mobileTabs');
+  function updateMobileTabs(){
+    if(window.matchMedia('(max-width: 980px)').matches){
+      mobileTabs.style.display = 'flex';
+      // start chart visible
+      showPane('chart');
+    }else{
+      mobileTabs.style.display = 'none';
+      $('paneChart').classList.add('show');
+      $('paneTrades').classList.add('show');
+    }
+  }
+
+  function showPane(which){
+    const pc = $('paneChart');
+    const pt = $('paneTrades');
+    if(which==='chart'){
+      pc.classList.add('show');
+      pt.classList.remove('show');
+    }else{
+      pt.classList.add('show');
+      pc.classList.remove('show');
     }
 
-    // Boot trending
-    startTrending();
+    document.querySelectorAll('.mTab').forEach(t=>{
+      t.classList.toggle('active', t.getAttribute('data-tab')===which);
+    });
+  }
 
-    // Open initial token if present
-    if(!addr) addr = DEFAULT_TOKEN[activeNet];
-    // auto-open default
-    openToken(addr, {skipInput:true});
+  document.querySelectorAll('.mTab').forEach(t=>{
+    t.addEventListener('click', ()=>showPane(t.getAttribute('data-tab')));
+  });
 
-  })();
-  </script>
+  window.addEventListener('resize', updateMobileTabs, {passive:true});
+
+  // -------------------------- Buttons
+  $('closeBtn').addEventListener('click', ()=>{
+    // simple close: scroll top + clear token
+    q.value='';
+    hideResults();
+    poolAddr='';
+    selected=null;
+    tokenTop.style.display='none';
+    chartStatus.textContent='—';
+    chartEl.innerHTML='';
+    chart=null; candleSeries=null; volumeSeries=null; rawCandles=[];
+    tradeBody.innerHTML = `<tr><td colspan="6" style="padding: 14px 10px; color: rgba(255,255,255,.65)">Paste a token / choose a trending token.</td></tr>`;
+    tradesStat.textContent='—';
+    toast('Closed');
+  });
+
+  $('buyBtn').addEventListener('click', ()=>{
+    toast('Add your Buy routing here');
+  });
+
+  // -------------------------- Init
+  updateMobileTabs();
+  setActiveNet('solana');
+
+})();
+</script>
+
 </body>
 </html>
