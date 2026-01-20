@@ -1108,11 +1108,15 @@
       const a = p?.attributes || {};
       return String(a.dex_name || a.dex || a.exchange || '').trim() || 'DEX';
     }
-
     function poolAddr(p){
-      return p?.attributes?.address || (String(p?.id||'').split('_').pop()) || '';
+      const a = p?.attributes || {};
+      if(a.address) return String(a.address).trim();
+      const id = String(p?.id||'').trim();
+      if(!id) return '';
+      // GeckoTerminal IDs may be like: 'ethereum_0xPOOL', 'solana:POOL', or 'bsc/0xPOOL'
+      const parts = id.split(/[\/\:_]/).filter(Boolean);
+      return (parts[parts.length-1] || id).trim();
     }
-
     function fmtAge(ms){
       if(!Number.isFinite(ms)) return '—';
       const d = Math.max(0, Date.now()-ms);
@@ -1145,11 +1149,11 @@
     const preferSet = new Set((STABLE_QUOTES[normalizeChain(net)]||[]).map(lc));
 
     // First, fetch candidate pools for this token
-    const url = `${GECKO}/networks/${geckoNet(net)}/tokens/${tokenAddr}/pools?page=1`;
+    const url = `${GECKO}/networks/${encodeURIComponent(geckoNet(net))}/tokens/${encodeURIComponent(tokenAddr)}/pools?page=1`;
     const j = await safeJson(url);
     const pools = (j?.data||[]).slice();
     // Sort by on-chain reserve (USD) descending
-    pools.sort((a,b)=>Number(b?.attributes?.reserve_in_usd||0)-Number(a?.attributes?.reserve_in_usd||0));
+    pools.sort((a,b)=>poolLiqUsd(b)-poolLiqUsd(a));
 
     // Fast fallback (best by reserve)
     const fallback = poolAddr(pools[0]);
