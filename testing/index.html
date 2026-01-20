@@ -1262,6 +1262,7 @@ display:none;
     let tokenSide = 'base';
     let curTokenSymbol = 'TOKEN';
     let curQuoteSymbol = '';
+    let curTokenImgUrl = '';
     let seenMakers = new Set();
     let tradesSeen = new Set();
 
@@ -1631,9 +1632,17 @@ display:none;
       pairNameEl.textContent = chainTag ? `$${symClean}/${chainTag}` : `$${symClean}`;
       pairMetaEl.textContent = `${NET_LABEL[activeNet]} • ${shortAddr(addr)} • Native chart + live trades`;
 
-      const img = meta?.image || meta?.logo || meta?.icon || meta?.imageUrl || '';
+      let img = meta?.image || meta?.logo || meta?.icon || meta?.imageUrl || meta?.logoURI || meta?.logoUrl || '';
+      if(!img && curTokenImgUrl) img = curTokenImgUrl;
+
+      // If we already show an image and the new meta has no image, don't downgrade to a letter
+      const existingImg = tokenLogo.querySelector('img');
+
       if(img){
-        tokenLogo.innerHTML = `<img src="${esc(img)}" alt="" referrerpolicy="no-referrer" onerror="this.remove(); this.parentNode.innerHTML='<span class=\"fb\">${esc(sym.slice(0,1).toUpperCase())}</span>';" />`;
+        curTokenImgUrl = String(img);
+        tokenLogo.innerHTML = `<img src="${esc(img)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove(); this.parentNode.innerHTML='<span class=\\"fb\\">${esc(sym.slice(0,1).toUpperCase())}</span>';" />`;
+      }else if(existingImg){
+        // keep current logo
       }else{
         tokenLogo.innerHTML = `<span class="fb">${esc(sym.slice(0,1).toUpperCase())}</span>`;
       }
@@ -1665,6 +1674,7 @@ display:none;
       const quoteShown = tokenSide==='base' ? quoteSym : baseSym;
       let img = tokenSide==='base' ? tokenImgFromPool(p,'base') : tokenImgFromPool(p,'quote');
       if(!img){ img = tokenImgFromPool(p, tokenSide==='base' ? 'quote' : 'base'); }
+      if(!img && curTokenImgUrl) img = curTokenImgUrl;
       applyTokenHeader({symbol: sym, quoteSymbol: quoteShown, image: img});
 
       // initial stats best-effort (pick correct side price)
@@ -2357,11 +2367,13 @@ display:none;
         pairNameEl.textContent = title || (base?.symbol||'TOKEN');
         pairMetaEl.textContent = `${NET_LABEL[activeNet] || activeNet} • ${shortAddr(v)} • Native chart + live trades`;
 
-        const img = base?.logoURI || base?.icon || base?.image || '';
+        let img = base?.logoURI || base?.logoUrl || base?.logoURL || base?.icon || base?.image || base?.imageUrl || '';
         if(img){
-          tokenLogo.innerHTML = `<img alt="" src="${esc(img)}" loading="lazy" />`;
+          curTokenImgUrl = String(img);
+          tokenLogo.innerHTML = `<img src="${esc(img)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove(); this.parentNode.innerHTML='<span class=\"fb\">${esc((base?.symbol||'T').slice(0,1).toUpperCase())}</span>';" />`;
         }else{
-          tokenLogoFb.textContent = (base?.symbol||'T').slice(0,1).toUpperCase();
+          tokenLogo.innerHTML = `<span class="fb">${esc((base?.symbol||'T').slice(0,1).toUpperCase())}</span>`;
+        }
         }
 
         applyStats({
