@@ -505,12 +505,14 @@
       overflow:auto;
       padding: 10px;
       border-radius: 18px;
-      border: 1px solid rgba(255,255,255,.12);
-      background: rgba(10,10,22,.92);
-      box-shadow: var(--shadow);
+      border: 1px solid rgba(255,255,255,.14);
+      /* IMPORTANT: fully readable dropdown (no chart bleed-through) */
+      background: rgba(10,10,22,.985);
+      box-shadow: 0 26px 90px rgba(0,0,0,.78);
       backdrop-filter: blur(18px);
       -webkit-backdrop-filter: blur(18px);
-      z-index: 120;
+      isolation: isolate;
+      z-index: 5000;
     }
 
     /* Keep DexGuard search row markup, but make it feel like the main dropdown */
@@ -518,7 +520,7 @@
       border-radius: 16px;
       margin-bottom: 10px;
       border: 1px solid rgba(255,255,255,.10);
-      background: rgba(255,255,255,.03);
+      background: rgba(16,16,30,.90);
       padding: 10px 10px;
       display:flex;
       align-items:center;
@@ -527,7 +529,7 @@
       cursor:pointer;
       transition: background .15s ease, border-color .15s ease, transform .15s ease;
     }
-    .resItem:hover{ background: rgba(255,255,255,.055); border-color: rgba(255,255,255,.16); transform: translateY(-1px); }
+    .resItem:hover{ background: rgba(24,24,44,.86); border-color: rgba(255,255,255,.18); transform: translateY(-1px); }
     .resItem:last-child{ margin-bottom: 0; }
 
     .resL{ display:flex; align-items:center; gap: 10px; min-width:0; }
@@ -558,9 +560,10 @@
       .dexSearch{ width: 100%; max-width: 100%; }
       .bottomRow{ flex-direction: column; align-items: stretch; }
     }
+    /* Layout: chart on top, trades underneath (desktop + mobile) */
     .grid{
       display:grid;
-      grid-template-columns: 1.8fr 1fr;
+      grid-template-columns: 1fr;
       gap:14px;
       padding:14px;
     }
@@ -600,8 +603,10 @@
     .statPill.up{border-color: rgba(20,241,149,.30); background: rgba(20,241,149,.10); color: rgba(20,241,149,.92)}
     .statPill.down{border-color: rgba(255,77,109,.28); background: rgba(255,77,109,.10); color: rgba(255,77,109,.92)}
 
-    #chartWrap{height: 520px; position:relative}
-    #chart{position:absolute; inset:0}
+    #chartWrap{height: 520px; position:relative; z-index:1}
+    #chart{position:absolute; inset:0; z-index:1}
+    /* Ensure dropdowns/menus always sit above the chart canvas */
+    #chart canvas{position:relative; z-index:1}
 
     .controls{
       display:flex; align-items:center; justify-content:space-between;
@@ -715,21 +720,47 @@
     }
 
     @media (max-width: 640px){
-      .wrap{padding:14px 12px 22px}
-      .topbar{padding:10px 10px}
-      .brandTxt .t2{display:none}
-      .pillRow{gap:6px}
+      /* Remove the harsh green mid-page wash on small screens */
+      body{
+        background:
+          radial-gradient(900px 520px at 25% 0%, rgba(153,69,255,.22), transparent 60%),
+          radial-gradient(900px 520px at 85% 18%, rgba(0,209,255,.14), transparent 60%),
+          var(--bg);
+      }
+
+      .wrap{padding:12px 10px 18px}
+
+      /* Cleaner, less "thick" top header */
+      .topbar{
+        padding:10px 10px;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+      }
+      .actions{justify-content:space-between; width:100%; gap:8px; flex-wrap:wrap}
+      .btn{padding:10px 12px; font-size:13px}
       .pill{padding:8px 10px}
+
+      /* Make the trending/search header feel compact & aligned */
+      .topBarInner{padding:12px 12px 12px}
+      .hotLabel{padding:10px 12px; font-size:13px}
+      .chainBtn{padding:8px 10px; font-size:12px}
+      .dexSearchInner{padding:10px 12px}
+      .results{left:0; right:0; width: calc(100vw - 24px)}
+
       .tickerTrack{animation-duration: 22s}
       .grid{padding:12px}
       .stats{justify-content:flex-start}
 
-      /* Mobile tabs: show chart OR trades, not both */
-      .desktopOnly{display:none}
-      .mobileTabs{display:block}
-      #chartWrap{height: 440px}
+      /* Always show chart then trades (no tabs) */
+      .mobileTabs{display:none !important}
+      #mobileTradesWrap{display:none !important}
+      .desktopOnly{display:block}
+
+      #chartWrap{height: 460px}
       .trades{height: 520px}
 
+      /* Trades table: keep it readable */
       .tradeHead, .tradeRow{grid-template-columns: 62px 64px 78px 1fr 0 0 34px}
       .tradeHead .hideM, .tradeRow .hideM{display:none}
       .maker .new{display:none}
