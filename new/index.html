@@ -3,13 +3,15 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <meta name="theme-color" content="#070711" />
+  <meta name="theme-color" content="#0b1033" />
   <title>$SOS — DEX Terminal (Multi-Chain)</title>
   <meta name="description" content="$SOS DEX Terminal — native chart + live trades across Solana, Ethereum, BNB, Base." />
 
   <style>
     :root{
-      --bg:#070711;
+      --bg:#0b1033;
+      --bg2:#111a4f;
+      --bg3:#0a123d;
       --panel: rgba(255,255,255,.06);
       --panel2: rgba(255,255,255,.085);
       --stroke: rgba(255,255,255,.12);
@@ -31,11 +33,8 @@
     html,body{height:100%}
     body{
       margin:0;
-      background:
-        radial-gradient(1200px 600px at 20% 0%, rgba(153,69,255,.22), transparent 60%),
-        radial-gradient(1200px 600px at 85% 25%, rgba(0,209,255,.14), transparent 60%),
-        radial-gradient(1200px 600px at 50% 90%, rgba(20,241,149,.12), transparent 65%),
-        var(--bg);
+      background: linear-gradient(180deg, var(--bg2) 0%, var(--bg) 55%, var(--bg3) 100%);
+      background-attachment: fixed;
       color:var(--text);
       font: 15.5px/1.55 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
       overflow-x:hidden;
@@ -174,7 +173,7 @@
     /* Top trending bar container (inside panel) */
     .topBar{
       position: relative;
-      background: rgba(7,7,17,.45);
+      background: rgba(11,16,51,.45);
       border-bottom: 1px solid rgba(255,255,255,.08);
       backdrop-filter: blur(16px);
       -webkit-backdrop-filter: blur(16px);
@@ -374,8 +373,8 @@
       pointer-events:none;
       z-index: 2;
     }
-    .tickerWrap:before{ left:0; background: linear-gradient(90deg, rgba(7,7,17,.95), rgba(7,7,17,0)); }
-    .tickerWrap:after{ right:0; background: linear-gradient(270deg, rgba(7,7,17,.95), rgba(7,7,17,0)); }
+    .tickerWrap:before{ left:0; background: linear-gradient(90deg, rgba(11,16,51,.92), rgba(11,16,51,0)); }
+    .tickerWrap:after{ right:0; background: linear-gradient(270deg, rgba(11,16,51,.92), rgba(11,16,51,0)); }
 
     .tickerTrack{
       display:flex;
@@ -470,7 +469,7 @@
     }
 
     /* Search (styled like main page) */
-    .dexSearch{ position: relative; width: 360px; max-width: 44vw; }
+    .dexSearch{position: relative; width: 360px; max-width: 44vw; z-index: 99999; isolation:isolate; }
     .dexSearchInner{
       display:flex;
       gap: 8px;
@@ -507,12 +506,10 @@
       border-radius: 18px;
       border: 1px solid rgba(255,255,255,.14);
       /* IMPORTANT: fully readable dropdown (no chart bleed-through) */
-      background: rgba(10,10,22,.985);
+      background: #0f163a;
       box-shadow: 0 26px 90px rgba(0,0,0,.78);
-      backdrop-filter: blur(18px);
-      -webkit-backdrop-filter: blur(18px);
       isolation: isolate;
-      z-index: 5000;
+      z-index: 999999;
     }
 
     /* Keep DexGuard search row markup, but make it feel like the main dropdown */
@@ -520,7 +517,7 @@
       border-radius: 16px;
       margin-bottom: 10px;
       border: 1px solid rgba(255,255,255,.10);
-      background: rgba(16,16,30,.90);
+      background: #141c44;
       padding: 10px 10px;
       display:flex;
       align-items:center;
@@ -529,7 +526,7 @@
       cursor:pointer;
       transition: background .15s ease, border-color .15s ease, transform .15s ease;
     }
-    .resItem:hover{ background: rgba(24,24,44,.86); border-color: rgba(255,255,255,.18); transform: translateY(-1px); }
+    .resItem:hover{ background: #18214f; border-color: rgba(255,255,255,.18); transform: translateY(-1px); }
     .resItem:last-child{ margin-bottom: 0; }
 
     .resL{ display:flex; align-items:center; gap: 10px; min-width:0; }
@@ -603,7 +600,7 @@
     .statPill.up{border-color: rgba(20,241,149,.30); background: rgba(20,241,149,.10); color: rgba(20,241,149,.92)}
     .statPill.down{border-color: rgba(255,77,109,.28); background: rgba(255,77,109,.10); color: rgba(255,77,109,.92)}
 
-    #chartWrap{height: 520px; position:relative; z-index:1}
+    #chartWrap{height: 520px; position:relative; z-index:0}
     #chart{position:absolute; inset:0; z-index:1}
     /* Ensure dropdowns/menus always sit above the chart canvas */
     #chart canvas{position:relative; z-index:1}
@@ -2221,7 +2218,7 @@
       startTrending();
       // if address exists, load it
       if(addr){
-        openToken(addr, {skipInput:true});
+        openToken(addr, {skipInput:true, silent:true, boot:true});
       }
     }
 
@@ -2385,8 +2382,16 @@
       }catch(e){
         console.error(e);
         statusEl.textContent = 'Load error.';
-        toast('Failed to load chart/trades. API blocked or pool unsupported.');
-      }
+        // Avoid noisy toast on first load / auto-open. Show toast only after user actions.
+        if(!opts || (!opts.silent && !opts.boot)){
+          toast('Failed to load chart/trades. API blocked or pool unsupported.');
+        }
+        // One gentle auto-retry on boot (sometimes APIs are rate-limited on initial load)
+        if(opts && opts.boot && !openToken._bootRetried){
+          openToken._bootRetried = true;
+          setTimeout(()=>openToken(addr, {skipInput:true, silent:true}), 1200);
+        }
+}
     }
 
     // Boot trending
@@ -2395,7 +2400,7 @@
     // Open initial token if present
     if(!addr) addr = DEFAULT_TOKEN[activeNet];
     // auto-open default
-    openToken(addr, {skipInput:true});
+    openToken(addr, {skipInput:true, silent:true, boot:true});
 
   })();
   </script>
