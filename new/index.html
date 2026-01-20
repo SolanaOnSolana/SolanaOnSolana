@@ -1749,7 +1749,7 @@ body.net-base .chainBtn.active{ background: linear-gradient(90deg, rgba(0,82,255
 }
 .tickerItem.top1 .chain{ color: rgba(255,215,0,.92); }
 
-.dexSearch{ position: relative; width: 360px; max-width: 44vw; }
+.dexSearch{ position: relative; width: 310px; max-width: 38vw; flex: 0 0 310px; }
 .dexSearchInner{
   display:flex;
   gap: 8px;
@@ -1760,6 +1760,7 @@ body.net-base .chainBtn.active{ background: linear-gradient(90deg, rgba(0,82,255
   border: 1px solid rgba(255,255,255,.10);
   box-shadow: 0 10px 30px rgba(0,0,0,.22);
 }
+.dexSearchIcon{ width:18px; height:18px; opacity:.88; flex: 0 0 18px; }
 .dexInput{
   flex: 1;
   min-width: 0;
@@ -2131,7 +2132,13 @@ body.net-base .chainBtn.active{ background: linear-gradient(90deg, rgba(0,82,255
  <symbol id="ico-fire" viewBox="0 0 24 24">
  <path d="M12 22c4 0 7-3 7-7c0-3.5-2.6-5.8-4.3-7.8c-.7-.8-1.2-1.7-1.4-2.7c-1 1.1-2 2.4-2.6 3.9c-.8 2-.4 3.1-1.9 4.6c-1.1 1.1-3 2.4-3 5.1c0 4 3 6.9 6.2 6.9Z" fill="none" stroke="url(#gradBrand)" stroke-width="2" stroke-linejoin="round"/>
  <path d="M10.2 15.4c.2-1.5 1.3-2.4 2-3.4c.3-.4.5-.8.6-1.2c.6 1 .9 1.8 1.1 2.7c.2 1.1-.3 1.8-.8 2.5c-.5.7-.7 1.1-.7 1.9c0 1.4 1.1 2.1 2 2.4" fill="none" stroke="url(#gradBrand)" stroke-width="2" stroke-linecap="round" opacity=".75"/>
+ 
+
+ <symbol id="ico-search" viewBox="0 0 24 24">
+ <path d="M10.5 18a7.5 7.5 0 1 1 0-15a7.5 7.5 0 0 1 0 15Z" fill="none" stroke="url(#gradBrand)" stroke-width="2"/>
+ <path d="M16.4 16.4L21 21" fill="none" stroke="url(#gradBrand)" stroke-width="2" stroke-linecap="round"/>
  </symbol>
+</symbol>
 
  <symbol id="ico-percent" viewBox="0 0 24 24">
  <path d="M19 5L5 19" fill="none" stroke="url(#gradBrand)" stroke-width="2" stroke-linecap="round"/>
@@ -2173,9 +2180,8 @@ body.net-base .chainBtn.active{ background: linear-gradient(90deg, rgba(0,82,255
 
        <div class="dexSearch" role="search" aria-label="Search token by name or contract">
          <div class="dexSearchInner">
+           <svg class="dexSearchIcon" aria-hidden="true"><use href="#ico-search"></use></svg>
            <input class="dexInput" id="dexSearchInput" autocomplete="off" spellcheck="false" placeholder="Search token / paste contract…" />
-           <button class="btn ghost dexMiniBtn" id="dexSearchGo" type="button">Search</button>
-           <button class="btn ghost dexMiniBtn" id="dexSearchCopy" type="button" title="Scan (coming soon)">Scan</button>
          </div>
          <div class="dexResults" id="dexResults" hidden></div>
        </div>
@@ -2989,7 +2995,54 @@ function toggleMenu(){
      window.location.href = url;
    }
 
-   if(!trendTrack || !inEl || !resEl || !btnGo || !btnCopy) return;
+   if(!trendTrack || !inEl || !resEl) return;
+
+   // Prevent the "wrong item opens" bug: don't swap ticker DOM while the user is hovering/clicking.
+   const tickerWrap = trendTrack.closest('.tickerWrap');
+   let _tickerHover = false;
+   let _tickerHold = false;
+   let _pendingTickerHtml = null;
+
+   function _applyTickerHtml(html){
+     try{
+       if(!trendTrack) return;
+       _pendingTickerHtml = null;
+       // Restart animation cleanly so click targets never drift over time
+       trendTrack.style.animation = 'none';
+       // force reflow
+       void trendTrack.offsetHeight;
+       trendTrack.innerHTML = html;
+       syncTickerMarquee();
+       trendTrack.style.animation = '';
+     }catch(_e){}
+   }
+
+   function setTickerItems(itemsHtml){
+     const html = (itemsHtml || '') + (itemsHtml || '');
+     if(_tickerHover || _tickerHold){
+       _pendingTickerHtml = html;
+       return;
+     }
+     _applyTickerHtml(html);
+   }
+
+   if(tickerWrap){
+     tickerWrap.addEventListener('mouseenter', ()=>{ _tickerHover = true; }, {passive:true});
+     tickerWrap.addEventListener('mouseleave', ()=>{
+       _tickerHover = false;
+       if(_pendingTickerHtml && !_tickerHold) _applyTickerHtml(_pendingTickerHtml);
+     }, {passive:true});
+     tickerWrap.addEventListener('pointerdown', ()=>{ _tickerHold = true; }, {passive:true});
+     window.addEventListener('pointerup', ()=>{
+       _tickerHold = false;
+       if(!_tickerHover && _pendingTickerHtml) _applyTickerHtml(_pendingTickerHtml);
+     }, {passive:true});
+     window.addEventListener('pointercancel', ()=>{
+       _tickerHold = false;
+       if(!_tickerHover && _pendingTickerHtml) _applyTickerHtml(_pendingTickerHtml);
+     }, {passive:true});
+   }
+
    // Chain toggle events
 
    const toggleEl = document.getElementById('chainToggle');
@@ -3154,8 +3207,7 @@ function toggleMenu(){
     const cached = readTrendCache(net);
     try{
       if(cached && trendTrack && (!trendTrack.innerHTML || /(Trending unavailable|Loading trending)/i.test(trendTrack.textContent||""))){
-        trendTrack.innerHTML = cached.items + cached.items;
-        syncTickerMarquee();
+        setTickerItems(cached.items);
       }
 
       const url = `https://api.geckoterminal.com/api/v2/networks/${encodeURIComponent(net)}/trending_pools?include=base_token,quote_token`;
@@ -3201,8 +3253,15 @@ function toggleMenu(){
         let logoUrl = logoUrlRaw;
         if(logoUrl && logoUrl.startsWith('/')) logoUrl = 'https://www.geckoterminal.com' + logoUrl;
         const first = (symClean || 'T').slice(0,1).toUpperCase();
-         const addr = (a?.address || '').trim();
-         const href = addr ? `https://www.geckoterminal.com/${encodeURIComponent(net)}/pools/${encodeURIComponent(addr)}` : '#';
+         const poolAddr = (a?.address || '').trim();
+         // Prefer token address (GeckoTerminal base_token id is usually the token CA)
+         const tokenAddr = String((baseT?.address || baseId || '')).trim();
+         // Map Gecko networks to DexGuard chains
+         const guardNet = (net === 'solana') ? 'sol' : (net === 'eth') ? 'eth' : (net === 'bsc') ? 'bnb' : 'base';
+         // If tokenAddr is missing, keep GeckoTerminal as a safe fallback (never break the ticker)
+         const href = tokenAddr
+           ? `/dexguard?chain=${encodeURIComponent(guardNet)}&addr=${encodeURIComponent(tokenAddr)}`
+           : (poolAddr ? `https://www.geckoterminal.com/${encodeURIComponent(net)}/pools/${encodeURIComponent(poolAddr)}` : '#');
          const top1 = (n===0);
          const cls = `tickerItem${top1?' top1':''}`;
          const rankTxt = top1 ? `🔥 #1` : `#${n+1}`;
@@ -3219,7 +3278,7 @@ function toggleMenu(){
        }).join('');
 
       writeTrendCache(net, items);
-      trendTrack.innerHTML = items + items;
+      setTickerItems(items);
 
        // ✅ ensure it runs through the full list before looping (no "cut" mid-way)
        syncTickerMarquee();
@@ -3230,7 +3289,7 @@ function toggleMenu(){
       const keepExisting = !!(trendTrack && trendTrack.children && trendTrack.children.length > 0);
       const cached2 = readTrendCache(net);
       if(cached2 && trendTrack){
-        trendTrack.innerHTML = cached2.items + cached2.items;
+        setTickerItems(cached2.items);
         toast('Trending temporarily unavailable');
       }else if(!keepExisting){
         trendTrack.innerHTML = `<span class="tickerItem" style="opacity:.75"><span class="rank">!</span><span class="sym">Trending unavailable</span><span class="chain" style="display:none">${esc(net)}</span></span>`;
@@ -3324,8 +3383,10 @@ function toggleMenu(){
          const mcapLabel = (p.marketCap != null ? "MCap" : (p.fdv != null ? "FDV" : "MCap"));
          const ca = p.baseToken?.address || "";
 
-         // Route to our internal chart page (no external redirect)
-         const href = `/chart?chain=${encodeURIComponent(String(p.chainId||''))}&addr=${encodeURIComponent(String(ca||''))}`;
+         // Route to DexGuard (internal)
+         const dc = String(p.chainId||'').toLowerCase();
+         const guardChain = DEX_TO_SCANNER_CHAIN[dc] || DEX_TO_SCANNER_CHAIN[NET_TO_DEX_CHAIN[activeNet]||''] || 'sol';
+         const href = `/dexguard?chain=${encodeURIComponent(guardChain)}&addr=${encodeURIComponent(String(ca||''))}`;
          return `<div class="dexResRow">
            <div class="dexResLeft">
              <div class="dexResTitleRow">
@@ -3378,7 +3439,7 @@ function toggleMenu(){
      tmr = setTimeout(()=> runSearch(q), 250);
    });
 
-   btnGo.addEventListener("click", () => {
+   if(btnGo) btnGo.addEventListener("click", () => {
      // Search button should NOT navigate away. It simply forces an immediate local search.
      const q = (inEl.value || "").trim();
      if(!q) { inEl.focus(); return; }
@@ -3388,7 +3449,7 @@ function toggleMenu(){
      inEl.focus();
    });
 
-   btnCopy.addEventListener("click", () => {
+   if(btnCopy) btnCopy.addEventListener("click", () => {
      // Scan: redirects to the Contract Scanner and auto-runs with the selected CA.
      // If user typed a real CA, we use it. Otherwise we use the best dropdown match.
      (async () => {
@@ -3461,11 +3522,16 @@ function toggleMenu(){
      }
    });
 
-   // keyboard: Enter triggers go
+   // keyboard: Enter forces an immediate local search (no navigation)
    inEl.addEventListener("keydown", (e) => {
      if(e.key === "Enter"){
        e.preventDefault();
-       btnGo.click();
+       const q = (inEl.value || "").trim();
+       if(!q){ inEl.focus(); return; }
+       clearTimeout(tmr);
+       runSearch(q);
+       resEl.hidden = false;
+       inEl.focus();
      }
      if(e.key === "Escape"){
        resEl.hidden = true;
