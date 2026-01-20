@@ -3201,8 +3201,15 @@ function toggleMenu(){
         let logoUrl = logoUrlRaw;
         if(logoUrl && logoUrl.startsWith('/')) logoUrl = 'https://www.geckoterminal.com' + logoUrl;
         const first = (symClean || 'T').slice(0,1).toUpperCase();
-         const addr = (a?.address || '').trim();
-         const href = addr ? `https://www.geckoterminal.com/${encodeURIComponent(net)}/pools/${encodeURIComponent(addr)}` : '#';
+         const poolAddr = (a?.address || '').trim();
+         // Prefer token address (GeckoTerminal base_token id is usually the token CA)
+         const tokenAddr = String((baseT?.address || baseId || '')).trim();
+         // Map Gecko networks to DexGuard chains
+         const guardNet = (net === 'solana') ? 'sol' : (net === 'eth') ? 'eth' : (net === 'bsc') ? 'bnb' : 'base';
+         // If tokenAddr is missing, keep GeckoTerminal as a safe fallback (never break the ticker)
+         const href = tokenAddr
+           ? `/dexguard?chain=${encodeURIComponent(guardNet)}&addr=${encodeURIComponent(tokenAddr)}`
+           : (poolAddr ? `https://www.geckoterminal.com/${encodeURIComponent(net)}/pools/${encodeURIComponent(poolAddr)}` : '#');
          const top1 = (n===0);
          const cls = `tickerItem${top1?' top1':''}`;
          const rankTxt = top1 ? `🔥 #1` : `#${n+1}`;
@@ -3324,8 +3331,10 @@ function toggleMenu(){
          const mcapLabel = (p.marketCap != null ? "MCap" : (p.fdv != null ? "FDV" : "MCap"));
          const ca = p.baseToken?.address || "";
 
-         // Route to our internal chart page (no external redirect)
-         const href = `/chart?chain=${encodeURIComponent(String(p.chainId||''))}&addr=${encodeURIComponent(String(ca||''))}`;
+         // Route to DexGuard (internal)
+         const dc = String(p.chainId||'').toLowerCase();
+         const guardChain = DEX_TO_SCANNER_CHAIN[dc] || DEX_TO_SCANNER_CHAIN[NET_TO_DEX_CHAIN[activeNet]||''] || 'sol';
+         const href = `/dexguard?chain=${encodeURIComponent(guardChain)}&addr=${encodeURIComponent(String(ca||''))}`;
          return `<div class="dexResRow">
            <div class="dexResLeft">
              <div class="dexResTitleRow">
