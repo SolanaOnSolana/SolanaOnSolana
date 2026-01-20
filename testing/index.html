@@ -1255,7 +1255,7 @@ display:none;
     let activeNet = normalizeChain(qs.get('chain') || 'solana');
     let addr = String(qs.get('addr')||'').trim();
 
-    let activeTF = TF.find(x=>x.k==='ALL');
+    let activeTF = TF.find(x=>x.k==='5m') || TF[1] || TF[0];
     let poolChoices = [];
     let poolId = '';
     let poolAddr = '';
@@ -1668,10 +1668,8 @@ let seenMakers = new Set();
       if(imgIn) curTokenImage = imgIn;
 
       const title = quote ? `$${sym}/${quote}` : `$${sym}`;
-      const nameHtml = (name && name.toLowerCase()!==sym.toLowerCase())
-        ? `<span class="pairNameSub">${esc(name)}</span>` : '';
-      pairNameEl.innerHTML = `${esc(title)}${nameHtml ? ' ' + nameHtml : ''}`;
-      pairMetaEl.textContent = `${NET_LABEL[activeNet]} • ${shortAddr(addr)} • Native chart + live trades`;
+      pairNameEl.textContent = title;
+      pairMetaEl.textContent = `${NET_LABEL[activeNet]} • ${shortAddr(addr)}`;
 
       if(img){
         tokenLogo.innerHTML = `<img src="${esc(img)}" alt="" referrerpolicy="no-referrer" onerror="this.onerror=null; this.remove(); var p=this.parentNode; if(p){p.innerHTML='<span class=\\"fb\\">${esc(sym.slice(0,1).toUpperCase())}</span>';}" />`;
@@ -2321,6 +2319,12 @@ let seenMakers = new Set();
       pairNameEl.textContent = 'Loading…';
       pairMetaEl.textContent = 'Resolving best pool…';
       results.innerHTML = '';
+
+      
+
+      // default timeframe: always open on 5m
+      activeTF = TF.find(x=>x.k==='5m') || TF[1] || TF[0];
+      renderTimeframes();
 
       let dsPair = null;
 
