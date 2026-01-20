@@ -3201,7 +3201,18 @@ function toggleMenu(){
         let logoUrl = logoUrlRaw;
         if(logoUrl && logoUrl.startsWith('/')) logoUrl = 'https://www.geckoterminal.com' + logoUrl;
         const first = (symClean || 'T').slice(0,1).toUpperCase();
-         const addr = (a?.address || '').trim();
+         const poolAddr = (a?.address || '').trim();
+
+// GeckoTerminal "base_token" id ist in der Praxis sehr oft die Token-CA:
+let tokenAddr = (baseT?.address || baseId || '').trim();
+
+// Fallback: wenn tokenAddr leer ist, nimm poolAddr (oder später weiterhin GeckoTerminal)
+const chainShort = (net === "solana") ? "sol" : (net === "eth") ? "eth" : (net === "bsc") ? "bnb" : "base";
+
+const href =
+  tokenAddr
+    ? `${location.origin}/dexguard?chain=${encodeURIComponent(chainShort)}&addr=${encodeURIComponent(tokenAddr)}`
+    : (poolAddr ? `https://www.geckoterminal.com/${encodeURIComponent(net)}/pools/${encodeURIComponent(poolAddr)}` : "#");
          const href = addr ? `https://www.geckoterminal.com/${encodeURIComponent(net)}/pools/${encodeURIComponent(addr)}` : '#';
          const top1 = (n===0);
          const cls = `tickerItem${top1?' top1':''}`;
@@ -3323,9 +3334,11 @@ function toggleMenu(){
          const mcap = (typeof mcapVal === 'number' && Number.isFinite(mcapVal)) ? `$${formatCompact(mcapVal)}` : "—";
          const mcapLabel = (p.marketCap != null ? "MCap" : (p.fdv != null ? "FDV" : "MCap"));
          const ca = p.baseToken?.address || "";
-
-         // Route to our internal chart page (no external redirect)
-         const href = `/chart?chain=${encodeURIComponent(String(p.chainId||''))}&addr=${encodeURIComponent(String(ca||''))}`;
+        
+         // Route to DexGuard (internal)
+        const dc = String(p.chainId || '').toLowerCase();
+        const guardChain = DEX_TO_SCANNER_CHAIN[dc] || "sol";
+        const href = `${location.origin}/dexguard?chain=${encodeURIComponent(guardChain)}&addr=${encodeURIComponent(String(ca||''))}`;
          return `<div class="dexResRow">
            <div class="dexResLeft">
              <div class="dexResTitleRow">
