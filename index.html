@@ -1556,21 +1556,104 @@ body{ padding-top: 0; }
   box-shadow: 0 12px 32px rgba(0,0,0,.24);
   font-weight: 1100;
   letter-spacing: .6px;
-  color: rgba(255,255,255,.92);
-  text-decoration: none;
-  cursor: default;
 }
 .hotFire{ width: 18px; height: 18px; opacity: .95; }
 
-.hotLabel.hotDex{
-  cursor: pointer;
-  background: rgba(0,82,255,.10);
-  border: 1px solid rgba(0,82,255,.26);
+/* Dexguard button (matches the style from your reference) */
+.dexguardBtn{
+  display:inline-flex;
+  align-items:center;
+  gap:12px;
+  padding: 9px 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.12);
+  background:
+    radial-gradient(140% 120% at 0% 0%, rgba(0,209,255,.18), rgba(0,209,255,0) 55%),
+    radial-gradient(140% 120% at 100% 100%, rgba(153,69,255,.18), rgba(153,69,255,0) 55%),
+    rgba(8,18,40,.50);
+  box-shadow: 0 12px 34px rgba(0,0,0,.28);
+  color: rgba(255,255,255,.92);
+  font-weight: 1050;
+  cursor:pointer;
+  user-select:none;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform .15s ease, background .15s ease, border-color .15s ease, box-shadow .15s ease;
 }
-.hotLabel.hotDex:hover{
-  background: rgba(0,82,255,.14);
-  border-color: rgba(0,82,255,.34);
+.dexguardBtn:hover{
+  transform: translateY(-1px);
+  border-color: rgba(255,255,255,.18);
+  background:
+    radial-gradient(140% 120% at 0% 0%, rgba(0,209,255,.22), rgba(0,209,255,0) 60%),
+    radial-gradient(140% 120% at 100% 100%, rgba(153,69,255,.22), rgba(153,69,255,0) 60%),
+    rgba(8,18,40,.62);
+  box-shadow: 0 16px 46px rgba(0,0,0,.36);
 }
+.dexguardBtn:active{ transform: translateY(0px) scale(.995); }
+
+/* ✨ Dexguard shine pulse (subtle, every few seconds) */
+.dexguardBtn{ position:relative; overflow:hidden; }
+.dexguardBtn::after{
+  content:"";
+  position:absolute;
+  inset:-60% -40%;
+  background: linear-gradient(120deg,
+    transparent 0%,
+    rgba(255,255,255,.00) 35%,
+    rgba(255,255,255,.22) 50%,
+    rgba(255,255,255,.06) 60%,
+    transparent 75%
+  );
+  transform: translateX(-170%) rotate(10deg);
+  opacity:0;
+  pointer-events:none;
+  mix-blend-mode: screen;
+  animation: dexguardShine 6.8s ease-in-out infinite;
+}
+@keyframes dexguardShine{
+  0%, 72%{ opacity:0; transform: translateX(-170%) rotate(10deg); }
+  78%{ opacity:.70; }
+  92%{ opacity:0; transform: translateX(170%) rotate(10deg); }
+  100%{ opacity:0; transform: translateX(170%) rotate(10deg); }
+}
+
+
+.dexguardChip{
+  position: relative;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding: 7px 14px;
+  border-radius: 999px;
+  background: rgba(3,12,24,.65);
+  border: 1px solid rgba(255,255,255,.10);
+  font-weight: 1100;
+  letter-spacing: .28em;
+  font-size: 13px;
+  color: rgba(255,255,255,.96);
+}
+.dexguardChip::before{
+  content:"";
+  position:absolute;
+  inset:-2px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(20,241,149,.88), rgba(0,209,255,.88), rgba(153,69,255,.88));
+  z-index:-1;
+  opacity:.9;
+}
+
+.dexguardText{
+  font-weight: 1050;
+  letter-spacing: -.2px;
+  font-size: 20px;
+  line-height: 1;
+}
+
+@media (max-width: 520px){
+  .dexguardText{ font-size: 18px; }
+  .dexguardBtn{ padding: 9px 14px; gap: 10px; }
+  .dexguardChip{ padding: 7px 12px; }
+}
+
 
 .chainToggle{
   display:inline-flex;
@@ -1762,7 +1845,7 @@ body.net-base .chainBtn.active{ background: linear-gradient(90deg, rgba(0,82,255
 }
 .tickerItem.top1 .chain{ color: rgba(255,215,0,.92); }
 
-.dexSearch{ position: relative; width: 240px; max-width: 30vw; flex: 0 0 240px; }
+.dexSearch{ position: relative; width: 360px; max-width: 44vw; }
 .dexSearchInner{
   display:flex;
   gap: 8px;
@@ -1773,7 +1856,6 @@ body.net-base .chainBtn.active{ background: linear-gradient(90deg, rgba(0,82,255
   border: 1px solid rgba(255,255,255,.10);
   box-shadow: 0 10px 30px rgba(0,0,0,.22);
 }
-.dexSearchIcon{ width:18px; height:18px; opacity:.88; flex: 0 0 18px; }
 .dexInput{
   flex: 1;
   min-width: 0;
@@ -1986,9 +2068,16 @@ body.net-base .chainBtn.active{ background: linear-gradient(90deg, rgba(0,82,255
     gap: 10px;
     flex-wrap:wrap;
   }
-  .hotBlock{ width:100%; display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  .hotBlock{ width:100%; display:flex; align-items:center; justify-content:flex-start; gap:10px; flex-wrap:wrap; }
   .hotLabel{ padding: 9px 12px; font-size: 12px; letter-spacing: .5px; }
   .hotFire{ width: 16px; height: 16px; }
+
+  /* Dexguard: EXACT same height as LIVE TRENDING (mobile) */
+  .hotLabel, .dexguardBtn{ height: 40px; padding: 0 12px; }
+  .dexguardBtn{ gap:10px; }
+  .dexguardChip{ padding: 4px 10px; font-size: 11px; line-height: 1; }
+  .dexguardText{ font-size: 15px; line-height: 1; }
+
 
   /* Chain selector: 4 equal buttons, always visible (no scrolling) */
   .chainToggle{
@@ -1996,7 +2085,9 @@ body.net-base .chainBtn.active{ background: linear-gradient(90deg, rgba(0,82,255
     display:grid;
     grid-template-columns: repeat(4, 1fr);
     gap: 6px;
-    padding: 6px;
+    padding: 0;
+    background: transparent;
+    border: 0;
     overflow: visible;
     justify-content: stretch;
   }
@@ -2013,7 +2104,7 @@ body.net-base .chainBtn.active{ background: linear-gradient(90deg, rgba(0,82,255
   /* Row 3: search */
   .bottomRow{ flex-direction: column; align-items: stretch; gap: 10px; }
   .dexSearch{ width: 100%; max-width: 100%; }
-  .dexSearchInner{ padding: 10px 10px; }
+  .dexSearchInner{ padding: 10px 12px; }
   /* prevent iOS input zoom */
   .dexInput{ font-size: 16px; }
   .dexMiniBtn{ padding: 8px 10px; }
@@ -2030,6 +2121,67 @@ body.net-base .chainBtn.active{ background: linear-gradient(90deg, rgba(0,82,255
 /* reduced motion */
 @media (prefers-reduced-motion: reduce){
   .tickerTrack{ animation: none !important; }
+}
+
+
+
+/* ============================
+   MOBILE ULTRA (LAYOUT ONLY)
+   Keeps desktop unchanged
+============================ */
+@media (max-width: 860px){
+  /* Mobile topbar: clean strip (no big bordered block) */
+  .topBar{
+    background: rgba(7,7,17,.62);
+    border-bottom: 1px solid rgba(255,255,255,.10);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    padding: 0;
+  }
+  .topBarInner{
+    max-width: var(--max);
+    margin: 0 auto;
+    padding: calc(10px + env(safe-area-inset-top)) 12px 10px;
+    border-radius: 0;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  /* Menu button always top-right, slightly smaller on mobile */
+  .menuBtn{ padding: 9px 12px; border-radius: 16px; }
+
+  /* Page spacing feels designed for mobile */
+  .wrap{ padding-left: 12px; padding-right: 12px; }
+  section{ padding: 26px 0; }
+
+  /* Hero: tighter + more premium */
+  .hero{ padding-top: 10px; }
+  .heroCard{
+    padding: 26px 16px;
+    border-radius: 26px;
+  }
+  .heroTitle{ font-size: clamp(38px, 10vw, 54px); }
+  .heroSubName{ letter-spacing: .55em; font-size: 12px; }
+  .heroPoemText{ font-size: 14.5px; line-height: 1.62; }
+
+  /* CTA buttons: 2-column grid, full width */
+  .heroActions{
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    justify-content: stretch;
+  }
+  .heroActions .btn{ width: 100%; justify-content: center; }
+
+  /* Cards overall */
+  .cardInner{ padding: 18px; border-radius: 22px; }
+  .h2{ font-size: 28px; }
+
+  /* Tool CTAs full width */
+  .toolCTA{ flex-direction: column; align-items: stretch; }
 }
 </style>
 </head>
@@ -2084,13 +2236,7 @@ body.net-base .chainBtn.active{ background: linear-gradient(90deg, rgba(0,82,255
  <symbol id="ico-fire" viewBox="0 0 24 24">
  <path d="M12 22c4 0 7-3 7-7c0-3.5-2.6-5.8-4.3-7.8c-.7-.8-1.2-1.7-1.4-2.7c-1 1.1-2 2.4-2.6 3.9c-.8 2-.4 3.1-1.9 4.6c-1.1 1.1-3 2.4-3 5.1c0 4 3 6.9 6.2 6.9Z" fill="none" stroke="url(#gradBrand)" stroke-width="2" stroke-linejoin="round"/>
  <path d="M10.2 15.4c.2-1.5 1.3-2.4 2-3.4c.3-.4.5-.8.6-1.2c.6 1 .9 1.8 1.1 2.7c.2 1.1-.3 1.8-.8 2.5c-.5.7-.7 1.1-.7 1.9c0 1.4 1.1 2.1 2 2.4" fill="none" stroke="url(#gradBrand)" stroke-width="2" stroke-linecap="round" opacity=".75"/>
- 
-
- <symbol id="ico-search" viewBox="0 0 24 24">
- <path d="M10.5 18a7.5 7.5 0 1 1 0-15a7.5 7.5 0 0 1 0 15Z" fill="none" stroke="url(#gradBrand)" stroke-width="2"/>
- <path d="M16.4 16.4L21 21" fill="none" stroke="url(#gradBrand)" stroke-width="2" stroke-linecap="round"/>
  </symbol>
-</symbol>
 
  <symbol id="ico-percent" viewBox="0 0 24 24">
  <path d="M19 5L5 19" fill="none" stroke="url(#gradBrand)" stroke-width="2" stroke-linecap="round"/>
@@ -2113,7 +2259,11 @@ body.net-base .chainBtn.active{ background: linear-gradient(90deg, rgba(0,82,255
            <svg class="hotFire" aria-hidden="true"><use href="#ico-fire"></use></svg>
            <span>LIVE TRENDING</span>
          </div>
-         <a class="hotLabel hotDex" href="https://www.solanax1.com/dexguard" target="_self" rel="noopener" title="Open Dexguard">Dexguard</a>
+
+         <button class="dexguardBtn" id="dexguardBtn" type="button" aria-label="Dexguard">
+           <span class="dexguardChip" aria-hidden="true">DEX</span>
+           <span class="dexguardText">Dexguard</span>
+         </button>
        </div>
 
        <div class="chainToggle" id="chainToggle" role="tablist" aria-label="Choose chain">
@@ -2133,7 +2283,6 @@ body.net-base .chainBtn.active{ background: linear-gradient(90deg, rgba(0,82,255
 
        <div class="dexSearch" role="search" aria-label="Search token by name or contract">
          <div class="dexSearchInner">
-           <svg class="dexSearchIcon" aria-hidden="true"><use href="#ico-search"></use></svg>
            <input class="dexInput" id="dexSearchInput" autocomplete="off" spellcheck="false" placeholder="Search token / paste contract…" />
          </div>
          <div class="dexResults" id="dexResults" hidden></div>
@@ -2916,8 +3065,8 @@ function toggleMenu(){
    const trendTrack = $("#trendTrack");
    const inEl = $("#dexSearchInput");
    const resEl = $("#dexResults");
-   const btnGo = $("#dexSearchGo");
-   const btnCopy = $("#dexSearchCopy");
+   const btnGo = $("#dexSearchGo"); // (removed from UI)
+   const btnCopy = $("#dexSearchCopy"); // (removed from UI)
 
    // Where to send users for the Contract Scanner.
    // Your page already links to https://solanax1.com/contract, so we default to "/contract".
@@ -2949,53 +3098,6 @@ function toggleMenu(){
    }
 
    if(!trendTrack || !inEl || !resEl) return;
-
-   // Prevent the "wrong item opens" bug: don't swap ticker DOM while the user is hovering/clicking.
-   const tickerWrap = trendTrack.closest('.tickerWrap');
-   let _tickerHover = false;
-   let _tickerHold = false;
-   let _pendingTickerHtml = null;
-
-   function _applyTickerHtml(html){
-     try{
-       if(!trendTrack) return;
-       _pendingTickerHtml = null;
-       // Restart animation cleanly so click targets never drift over time
-       trendTrack.style.animation = 'none';
-       // force reflow
-       void trendTrack.offsetHeight;
-       trendTrack.innerHTML = html;
-       syncTickerMarquee();
-       trendTrack.style.animation = '';
-     }catch(_e){}
-   }
-
-   function setTickerItems(itemsHtml){
-     const html = (itemsHtml || '') + (itemsHtml || '');
-     if(_tickerHover || _tickerHold){
-       _pendingTickerHtml = html;
-       return;
-     }
-     _applyTickerHtml(html);
-   }
-
-   if(tickerWrap){
-     tickerWrap.addEventListener('mouseenter', ()=>{ _tickerHover = true; }, {passive:true});
-     tickerWrap.addEventListener('mouseleave', ()=>{
-       _tickerHover = false;
-       if(_pendingTickerHtml && !_tickerHold) _applyTickerHtml(_pendingTickerHtml);
-     }, {passive:true});
-     tickerWrap.addEventListener('pointerdown', ()=>{ _tickerHold = true; }, {passive:true});
-     window.addEventListener('pointerup', ()=>{
-       _tickerHold = false;
-       if(!_tickerHover && _pendingTickerHtml) _applyTickerHtml(_pendingTickerHtml);
-     }, {passive:true});
-     window.addEventListener('pointercancel', ()=>{
-       _tickerHold = false;
-       if(!_tickerHover && _pendingTickerHtml) _applyTickerHtml(_pendingTickerHtml);
-     }, {passive:true});
-   }
-
    // Chain toggle events
 
    const toggleEl = document.getElementById('chainToggle');
@@ -3046,6 +3148,15 @@ function toggleMenu(){
        setTimeout(()=>{ document.title = document.title.replace(msg,"").trim() || "$SOS — Solana on Solana"; }, 700);
      }catch(e){}
    }
+
+   // Dexguard button (go to Dexguard page)
+   const dexguardBtn = $("#dexguardBtn");
+   if(dexguardBtn){
+     dexguardBtn.addEventListener('click', ()=>{
+       window.location.href = "https://www.solanax1.com/dexguard";
+     });
+   }
+
 
   async function safeJson(url, opts={}){
     const timeoutMs = Number(opts.timeoutMs ?? 12000);
@@ -3160,7 +3271,8 @@ function toggleMenu(){
     const cached = readTrendCache(net);
     try{
       if(cached && trendTrack && (!trendTrack.innerHTML || /(Trending unavailable|Loading trending)/i.test(trendTrack.textContent||""))){
-        setTickerItems(cached.items);
+        trendTrack.innerHTML = cached.items + cached.items;
+        syncTickerMarquee();
       }
 
       const url = `https://api.geckoterminal.com/api/v2/networks/${encodeURIComponent(net)}/trending_pools?include=base_token,quote_token`;
@@ -3231,7 +3343,7 @@ function toggleMenu(){
        }).join('');
 
       writeTrendCache(net, items);
-      setTickerItems(items);
+      trendTrack.innerHTML = items + items;
 
        // ✅ ensure it runs through the full list before looping (no "cut" mid-way)
        syncTickerMarquee();
@@ -3242,7 +3354,7 @@ function toggleMenu(){
       const keepExisting = !!(trendTrack && trendTrack.children && trendTrack.children.length > 0);
       const cached2 = readTrendCache(net);
       if(cached2 && trendTrack){
-        setTickerItems(cached2.items);
+        trendTrack.innerHTML = cached2.items + cached2.items;
         toast('Trending temporarily unavailable');
       }else if(!keepExisting){
         trendTrack.innerHTML = `<span class="tickerItem" style="opacity:.75"><span class="rank">!</span><span class="sym">Trending unavailable</span><span class="chain" style="display:none">${esc(net)}</span></span>`;
@@ -3391,54 +3503,60 @@ function toggleMenu(){
      clearTimeout(tmr);
      tmr = setTimeout(()=> runSearch(q), 250);
    });
+   if(btnGo){
 
-   if(btnGo) btnGo.addEventListener("click", () => {
-     // Search button should NOT navigate away. It simply forces an immediate local search.
-     const q = (inEl.value || "").trim();
-     if(!q) { inEl.focus(); return; }
-     clearTimeout(tmr);
-     runSearch(q);
-     resEl.hidden = false;
-     inEl.focus();
-   });
 
-   if(btnCopy) btnCopy.addEventListener("click", () => {
-     // Scan: redirects to the Contract Scanner and auto-runs with the selected CA.
-     // If user typed a real CA, we use it. Otherwise we use the best dropdown match.
-     (async () => {
+     btnGo.addEventListener("click", () => {
+       // Search button should NOT navigate away. It simply forces an immediate local search.
        const q = (inEl.value || "").trim();
-       if(!q) return;
+       if(!q) { inEl.focus(); return; }
+       clearTimeout(tmr);
+       runSearch(q);
+       resEl.hidden = false;
+       inEl.focus();
+     });
+   }
+   if(btnCopy){
 
-       // 1) If input already looks like a CA for the active network, use it.
-       if(looksAddressForNet(activeNet, q) || looksEvmAddress(q) || looksSolAddress(q)){
-         openScanner(q, NET_TO_DEX_CHAIN[activeNet] || "solana");
-         return;
-       }
 
-       // 2) If dropdown already has a best candidate, use it.
-       const bestCa = (resEl.dataset.bestCa || "").trim();
-       const bestChain = (resEl.dataset.bestChain || "").trim();
-       if(bestCa){
-         openScanner(bestCa, bestChain || (NET_TO_DEX_CHAIN[activeNet] || "solana"));
-         return;
-       }
+     btnCopy.addEventListener("click", () => {
+       // Scan: redirects to the Contract Scanner and auto-runs with the selected CA.
+       // If user typed a real CA, we use it. Otherwise we use the best dropdown match.
+       (async () => {
+         const q = (inEl.value || "").trim();
+         if(!q) return;
 
-       // 3) Fallback: query DexScreener once and pick a best result.
-       try{
-         const data = await safeJson(`https://api.dexscreener.com/latest/dex/search?q=${encodeURIComponent(q)}`);
-         const pairs = Array.isArray(data?.pairs) ? data.pairs : [];
-         const want = (NET_TO_DEX_CHAIN[activeNet] || "solana").toLowerCase();
-         const pick = pairs.find(p => String(p?.chainId||"").toLowerCase() === want) || pairs[0];
-         const ca = pick?.baseToken?.address || "";
-         if(ca){
-           openScanner(ca, pick?.chainId || want);
+         // 1) If input already looks like a CA for the active network, use it.
+         if(looksAddressForNet(activeNet, q) || looksEvmAddress(q) || looksSolAddress(q)){
+           openScanner(q, NET_TO_DEX_CHAIN[activeNet] || "solana");
            return;
          }
-       }catch(_e){}
 
-       toast("No scan target");
-     })();
-   });
+         // 2) If dropdown already has a best candidate, use it.
+         const bestCa = (resEl.dataset.bestCa || "").trim();
+         const bestChain = (resEl.dataset.bestChain || "").trim();
+         if(bestCa){
+           openScanner(bestCa, bestChain || (NET_TO_DEX_CHAIN[activeNet] || "solana"));
+           return;
+         }
+
+         // 3) Fallback: query DexScreener once and pick a best result.
+         try{
+           const data = await safeJson(`https://api.dexscreener.com/latest/dex/search?q=${encodeURIComponent(q)}`);
+           const pairs = Array.isArray(data?.pairs) ? data.pairs : [];
+           const want = (NET_TO_DEX_CHAIN[activeNet] || "solana").toLowerCase();
+           const pick = pairs.find(p => String(p?.chainId||"").toLowerCase() === want) || pairs[0];
+           const ca = pick?.baseToken?.address || "";
+           if(ca){
+             openScanner(ca, pick?.chainId || want);
+             return;
+           }
+         }catch(_e){}
+
+         toast("No scan target");
+       })();
+     });
+   }
 
    // action buttons in dropdown (copy + scanner)
    resEl.addEventListener("click", async (e) => {
@@ -3475,12 +3593,12 @@ function toggleMenu(){
      }
    });
 
-   // keyboard: Enter forces an immediate local search (no navigation)
+   // keyboard: Enter triggers go
    inEl.addEventListener("keydown", (e) => {
      if(e.key === "Enter"){
        e.preventDefault();
        const q = (inEl.value || "").trim();
-       if(!q){ inEl.focus(); return; }
+       if(!q) { inEl.focus(); return; }
        clearTimeout(tmr);
        runSearch(q);
        resEl.hidden = false;
