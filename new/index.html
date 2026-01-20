@@ -1505,12 +1505,9 @@ body.net-eth{ --netColor: var(--ethColor); --netGlow: rgba(98,126,234,.22); }
 body.net-bnb{ --netColor: var(--bnbColor); --netGlow: rgba(243,186,47,.22); }
 body.net-base{ --netColor: var(--baseColor); --netGlow: rgba(0,82,255,.22); }
 
-/* Top bar is fixed; this padding keeps the page content (SOS, sections) snug under it */
-body{ padding-top: var(--topBarTotal); }
-/* Anchor links shouldn't hide behind the fixed top bar */
-section{ scroll-margin-top: calc(var(--topBarTotal) + 14px); }
+/* Top bar is sticky; it reserves its own space so content stays snug under it */
 .topBar{
-  position: fixed;
+  position: sticky;
   top: 0; left: 0; right: 0;
   width: 100%;
   z-index: 85;
@@ -2810,41 +2807,6 @@ body.net-base .chainBtn.active{ background: linear-gradient(90deg, rgba(0,82,255
  // Year
  document.getElementById("y").textContent = new Date().getFullYear();
 
-// --- FIX: iOS/mobile huge empty block ---
-// The topBar is fixed; we measure its real height (including safe-area) and
-// push the page content down by exactly that amount.
-(function(){
-  const topBar = document.getElementById('topBar');
-  if(!topBar) return;
-
-  let raf = 0;
-  const updateTopBar = () => {
-    raf = 0;
-    const h = Math.ceil(topBar.getBoundingClientRect().height || 0);
-    document.documentElement.style.setProperty('--topBarTotal', h + 'px');
-  };
-
-  const schedule = () => {
-    if(raf) return;
-    raf = requestAnimationFrame(updateTopBar);
-  };
-
-  // initial
-  schedule();
-  // after fonts/images settle
-  window.addEventListener('load', schedule, {passive:true});
-  if(document.fonts && document.fonts.ready){
-    document.fonts.ready.then(schedule).catch(()=>{});
-  }
-
-  // viewport changes (iOS address bar / rotation)
-  window.addEventListener('resize', schedule, {passive:true});
-  window.addEventListener('orientationchange', () => setTimeout(schedule, 120), {passive:true});
-  if(window.visualViewport){
-    window.visualViewport.addEventListener('resize', schedule, {passive:true});
-    window.visualViewport.addEventListener('scroll', schedule, {passive:true});
-  }
-})();
 
  // Copy helpers
  function setHint(el, ok){
