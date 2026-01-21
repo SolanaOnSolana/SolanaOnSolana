@@ -3655,9 +3655,40 @@ function setSearchModalOpen(open){
       if(name) curTokenName = name;
       if(imgIn) curTokenImage = imgIn;
 
-      const symN = normalizePairSymbol(sym) || 'TOKEN';
-      const quoteN = normalizePairSymbol(quote) || '';
-      const title = quoteN ? `$${symN}/${quoteN}` : `$${symN}`;
+      const symN0 = normalizePairSymbol(sym) || 'TOKEN';
+      let quoteN0 = normalizePairSymbol(quote) || '';
+      // Normalize any inconsistent quote placeholders
+      if(quoteN0==='USD' || quoteN0==='TOKEN') quoteN0 = '';
+
+      // If we have an active pool selected, derive symbols from that pool to keep header consistent
+      try{
+        const selId = String(poolSel?.value||'').trim();
+        if(selId){
+          const picked = (Array.isArray(poolChoices)?poolChoices:[]).find(x=>String(x?.id||'')===selId) || null;
+          if(picked){
+            const bSym = normalizePairSymbol(tokenSymFromPool(picked,'base') || knownSymbolFromAddr(activeNet, tokenAddrFromPool(picked,'base')) || '');
+            const qSym = normalizePairSymbol(tokenSymFromPool(picked,'quote')|| knownSymbolFromAddr(activeNet, tokenAddrFromPool(picked,'quote'))|| '');
+            if(bSym || qSym){
+              // Prefer the currently tracked token side (base/quote) if available
+              const symDerived = (tokenSide==='base') ? (bSym||symN0) : (qSym||bSym||symN0);
+              const quoteDerived = (tokenSide==='base') ? (qSym||quoteN0) : (bSym||quoteN0);
+              if(symDerived) curTokenSymbol = normalizePairSymbol(symDerived) || curTokenSymbol;
+              if(quoteDerived) curQuoteSymbol = normalizePairSymbol(quoteDerived) || curQuoteSymbol;
+            }
+          }
+        }
+      }catch(_){}
+
+      const symN = normalizePairSymbol(curTokenSymbol || symN0) || 'TOKEN';
+      let quoteN = normalizePairSymbol(curQuoteSymbol || quoteN0) || '';
+      if(quoteN==='USD' || quoteN==='TOKEN') quoteN = '';
+
+      if(!quoteN){
+        const fb = (activeNet==='solana') ? 'SOL' : ((activeNet==='bsc') ? 'BNB' : 'ETH');
+        quoteN = fb;
+      }
+
+      const title = `${symN}/${quoteN}`;
       const nameHtml = (name && name.toLowerCase()!==sym.toLowerCase())
         ? `<span class="pairNameSub">${esc(name)}</span>` : '';
       pairNameEl.innerHTML = `${esc(title)}${nameHtml ? ' ' + nameHtml : ''}`;
@@ -6287,3 +6318,83 @@ if(searchScrim){
 </body>
 </html>
 
+
+/* ================================
+   MOBILE-ONLY TRENDING TICKER COMPACT + SMOOTH (step12)
+   - Reduce height/padding, smaller cards, better readability
+   - Smooth marquee (GPU-friendly), less heavy shadows (less jank)
+   - Keeps existing click behavior
+   - Desktop unchanged
+   ================================ */
+@media (max-width: 760px){
+  /* Compact container spacing */
+  .topBarInner{ gap: 8px !important; padding: 10px 10px 10px !important; }
+
+  /* Ticker wrapper: slimmer + lighter paint cost */
+  .tickerWrap{
+    padding: 6px 8px !important;
+    border-radius: 16px !important;
+    border: 1px solid rgba(255,255,255,.10) !important;
+    background: rgba(255,255,255,.045) !important;
+    box-shadow: 0 8px 22px rgba(0,0,0,.18) !important;
+  }
+  .tickerWrap:before,
+  .tickerWrap:after{
+    width: 28px !important;
+  }
+
+  /* Smooth animation: longer duration + GPU-friendly transforms */
+  .tickerTrack{
+    gap: 8px !important;
+    animation-duration: 28s !important;
+    transform: translate3d(0,0,0);
+    will-change: transform;
+    backface-visibility: hidden;
+    contain: content;
+  }
+  .tickerWrap:hover .tickerTrack{ animation-play-state: paused; }
+
+  /* Smaller ticker items (Dexscreener vibe) */
+  .tickerItem{
+    padding: 6px 8px !important;
+    gap: 8px !important;
+    font-size: 12px !important;
+    border-radius: 999px !important;
+    background: rgba(255,255,255,.05) !important;
+    border: 1px solid rgba(255,255,255,.10) !important;
+    box-shadow: none !important; /* reduce repaint/jank */
+  }
+  .tickerItem.top1{
+    background: rgba(255,215,0,.08) !important;
+    border-color: rgba(255,215,0,.26) !important;
+    box-shadow: none !important;
+  }
+
+  /* Logo smaller + crisp */
+  .tickerLogoWrap{
+    width: 22px !important;
+    height: 22px !important;
+    flex: 0 0 22px !important;
+    border-radius: 6px !important;
+    box-shadow: none !important;
+  }
+  .tickerLogoFallback{ font-size: 11px !important; }
+
+  /* Rank + % pills tighter */
+  .tickerItem .rank{
+    min-width: 24px !important;
+    height: 18px !important;
+    padding: 0 6px !important;
+    font-size: 11px !important;
+  }
+  .tickerPct{
+    height: 18px !important;
+    padding: 0 6px !important;
+    font-size: 11px !important;
+  }
+
+  /* Prefer reduced motion */
+  @media (prefers-reduced-motion: reduce){
+    .tickerTrack{ animation: none !important; }
+  }
+}
