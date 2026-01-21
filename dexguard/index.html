@@ -2265,7 +2265,56 @@ display:none;
     max-height: 820px !important;
   }
 }
-</style>
+
+    /* ===== DexGuard Debug Panel (hidden by default) ===== */
+    .dgDebugPanel{
+      position:fixed;
+      right:12px;
+      bottom:12px;
+      width:min(420px, calc(100vw - 24px));
+      max-height:45vh;
+      overflow:auto;
+      background: rgba(0,0,0,.72);
+      border:1px solid rgba(255,255,255,.18);
+      border-radius: 14px;
+      box-shadow: 0 18px 70px rgba(0,0,0,.65);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      padding: 10px 12px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 12px;
+      line-height: 1.35;
+      color: rgba(255,255,255,.92);
+      z-index: 2147483646;
+      display:none;
+      pointer-events:auto;
+    }
+    .dgDebugPanel.show{ display:block; }
+    .dgDebugPanel .hdr{
+      display:flex; align-items:center; justify-content:space-between;
+      gap:10px;
+      font-weight: 950;
+      margin-bottom: 8px;
+    }
+    .dgDebugPanel .hdr .hint{ font-weight: 800; opacity: .72; font-size: 11px; }
+    .dgDebugPanel pre{
+      margin:0;
+      white-space: pre-wrap;
+      word-break: break-word;
+      color: rgba(255,255,255,.90);
+    }
+    .dgDebugClose{
+      width: 30px; height: 30px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      color: rgba(255,255,255,.92);
+      cursor:pointer;
+      display:grid; place-items:center;
+    }
+    .dgDebugClose:hover{ background: rgba(255,255,255,.10); }
+
+  </style>
 </head>
 <body>
   <div class="wrap">
@@ -2459,7 +2508,8 @@ display:none;
     if(typeof DBG.metrics.lastCandlesUrl==='undefined') DBG.metrics.lastCandlesUrl = '';
     if(typeof DBG.metrics.lastCandlesError==='undefined') DBG.metrics.lastCandlesError = '';
 
-    if(typeof DBG.metrics.lastClickAction==='undefined') DBG.metrics.lastClickAction = '';
+        if(typeof DBG.metrics.lastCandlesSource==='undefined') DBG.metrics.lastCandlesSource = '';
+if(typeof DBG.metrics.lastClickAction==='undefined') DBG.metrics.lastClickAction = '';
     if(typeof DBG.metrics.lastClickAt==='undefined') DBG.metrics.lastClickAt = 0;
     if(typeof DBG.metrics.lastClickError==='undefined') DBG.metrics.lastClickError = '';
 
@@ -2954,6 +3004,91 @@ display:none;
     const searchScrim = $('searchScrim');
     const btnGo = $('btnGo');
     const modeHint = $('modeHint');
+    try{ setupDebugPanel(); }catch(_){ }
+
+
+    // -------------------- Debug panel (hidden by default; press "D")
+    function setupDebugPanel(){
+      const panel = $('dgDebugPanel');
+      const pre = $('dgDebugText');
+      const btnClose = $('dgDebugClose');
+      if(!panel || !pre) return;
+
+      let _tick = null;
+
+      function fmtTime(ms){
+        try{
+          if(!ms) return '—';
+          const d = new Date(ms);
+          return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'}) + '.' + String(d.getMilliseconds()).padStart(3,'0');
+        }catch(_){ return String(ms||'—'); }
+      }
+      function render(){
+        try{
+          const DBG = window.__DG_DEBUG__ || (window.__DG_DEBUG__ = {});
+          DBG.metrics = (DBG.metrics && typeof DBG.metrics==='object') ? DBG.metrics : {};
+          const M = DBG.metrics;
+
+          const lines = [];
+          lines.push(`activeNet: ${activeNet||''}`);
+          lines.push(`poolAddr:  ${poolAddr||''}`);
+          lines.push(`tf:        ${(activeTF&&activeTF.k)||''}`);
+          lines.push('');
+          lines.push(`last candle fetch: ${fmtTime(M.lastCandlesFetchAt||0)}`);
+          lines.push(`last candles count: ${Number(M.lastCandlesCount||0)}`);
+          lines.push(`source: ${M.lastCandlesSource||'—'}`);
+          lines.push(`last error: ${(M.lastCandlesError||'') ? (M.lastCandlesError) : '—'}`);
+
+          pre.textContent = lines.join('\n');
+        }catch(_){}
+      }
+
+      function setOpen(open){
+        try{
+          panel.classList.toggle('show', !!open);
+          panel.setAttribute('aria-hidden', open ? 'false' : 'true');
+          const DBG = window.__DG_DEBUG__ || (window.__DG_DEBUG__ = {});
+          DBG.enabled = !!open;
+          render();
+
+          if(_tick){ clearInterval(_tick); _tick = null; }
+          if(open){
+            _tick = setInterval(render, 350);
+          }
+        }catch(_){}
+      }
+
+      // Close button
+      try{
+        btnClose?.addEventListener('click', ()=>setOpen(false));
+      }catch(_){}
+
+      // Key toggle (ignore typing contexts)
+      try{
+        document.addEventListener('keydown', (e)=>{
+          const k = e.key || '';
+          if(k !== 'd' && k !== 'D') return;
+          if(e.metaKey || e.ctrlKey || e.altKey) return;
+          const t = e.target;
+          const tag = (t && t.tagName) ? String(t.tagName).toUpperCase() : '';
+          const typing = (tag === 'INPUT' || tag === 'TEXTAREA' || (t && t.isContentEditable));
+          if(typing) return;
+
+          e.preventDefault();
+          setOpen(!panel.classList.contains('show'));
+        }, {passive:false});
+      }catch(_){}
+
+      // Expose a lightweight hook for internal updates
+      try{
+        const DBG = window.__DG_DEBUG__ || (window.__DG_DEBUG__ = {});
+        DBG.render = render;
+      }catch(_){}
+
+      // Start closed
+      setOpen(false);
+    }
+
 
     const pairNameEl = $('pairName');
     const pairMetaEl = $('pairMeta');
@@ -4558,6 +4693,23 @@ function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
       return `${GECKO}/networks/${encodeURIComponent(geckoNet())}/pools/${encodeURIComponent(geckoPoolApiId()||poolAddr)}/ohlcv/${encodeURIComponent(gran)}?`+params.toString();
     }
 
+    // Parameterized Gecko candle URL builder (for background prefetch)
+    function geckoCandlesUrlFor(net, pool, tfObj, before){
+      // /networks/{network}/pools/{pool}/ohlcv/{timeframe}?aggregate=...&before_timestamp=...&limit=1000&currency=usd
+      const tf = tfObj || activeTF || {k:'', gecko:'day', agg:86400};
+      const gran = tf.gecko || 'day';
+      const agg = (tf.k==='ALL' ? 1 : Math.max(1, Math.floor((tf.agg||0) / (gran==='minute'?60:(gran==='hour'?3600:86400)))));
+      const params = new URLSearchParams();
+      params.set('aggregate', String(agg));
+      params.set('limit', String(CANDLE_LIMIT));
+      params.set('currency', 'usd');
+      if(before) params.set('before_timestamp', String(before));
+      const n = String(net||activeNet||'');
+      const p = String(pool||'');
+      return `${GECKO}/networks/${encodeURIComponent(n)}/pools/${encodeURIComponent(p)}/ohlcv/${encodeURIComponent(gran)}?${params.toString()}`;
+    }
+
+
     function mapGeckoOhlcv(j){
       const list = j?.data?.attributes?.ohlcv_list;
       if(!Array.isArray(list)) return [];
@@ -4897,6 +5049,9 @@ function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
               window.__DG_DEBUG__.metrics.lastCandlesTf = activeTF?.k||'';
               window.__DG_DEBUG__.metrics.lastCandlesUrl = cached.url || '';
               window.__DG_DEBUG__.metrics.lastCandlesError = '';
+              window.__DG_DEBUG__.metrics.lastCandlesSource = 'cache';
+              try{ if(window.__DG_DEBUG__.enabled && window.__DG_DEBUG__.render) window.__DG_DEBUG__.render(); }catch(_){ }
+
             }
           }catch(_){}
           try{ statusEl.textContent = rawCandles.length ? '' : 'Loading chart…'; }catch(_){}
@@ -4942,6 +5097,8 @@ function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
             window.__DG_DEBUG__.metrics.lastCandlesUrl = '';
             window.__DG_DEBUG__.metrics.lastCandlesCount = 0;
             window.__DG_DEBUG__.metrics.lastCandlesError = '';
+            window.__DG_DEBUG__.metrics.lastCandlesSource = 'network';
+            try{ if(window.__DG_DEBUG__.enabled && window.__DG_DEBUG__.render) window.__DG_DEBUG__.render(); }catch(_){ }
           }
         }catch(_){}
 
@@ -4965,7 +5122,10 @@ function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
 
         let part0 = mapGeckoOhlcv(j0);
         if(!part0.length){
-          try{ if(window.__DG_DEBUG__){ window.__DG_DEBUG__.metrics = window.__DG_DEBUG__.metrics || {}; window.__DG_DEBUG__.metrics.lastCandlesError = 'Empty candle data'; } }catch(_){ }
+          try{ if(window.__DG_DEBUG__){ window.__DG_DEBUG__.metrics = window.__DG_DEBUG__.metrics || {}; window.__DG_DEBUG__.metrics.lastCandlesError = 'Empty candle data';
+              window.__DG_DEBUG__.metrics.lastCandlesSource = 'error';
+              try{ if(window.__DG_DEBUG__.enabled && window.__DG_DEBUG__.render) window.__DG_DEBUG__.render(); }catch(_){ }
+ } }catch(_){ }
           // If we already have something on screen (cache), keep it and retry silently once.
           const hasVisible = Array.isArray(rawCandles) && rawCandles.length>0;
           if(!hasVisible){
@@ -5929,6 +6089,7 @@ function startLiveLoops(){
         const baseType = baseRef?.type ? String(baseRef.type) : '';
         const baseT = baseId ? ((incMap?.get(baseType+':' + baseId) || incMap?.get(baseId))?.attributes || {}) : {};
         const tokenAddr = String((baseT?.address || baseId || '')).trim();
+      const poolAddr = String((a?.address || p?.id || '')).trim();
         return tokenAddr ? tokenAddr : null;
       }catch(_){ return null; }
     }
@@ -6026,7 +6187,7 @@ function startLiveLoops(){
         ? `<span class="tickerLogoWrap"><img class="tickerLogo" src="${esc(logoUrl)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove(); var w=this.closest('.tickerLogoWrap'); if(w){w.innerHTML='<span class=tickerLogoFallback>${esc(first)}</span>';}\"></span>`
         : `<span class="tickerLogoWrap"><span class="tickerLogoFallback">${esc(first)}</span></span>`;
 
-      return `<a class="${cls}" href="#" data-addr="${esc(tokenAddr)}" title="Open ${esc(symDisp)}">
+      return `<a class="${cls}" href="#" data-addr="${esc(tokenAddr)}" data-pool="${esc(poolAddr)}" title="Open ${esc(symDisp)}">
         <span class="rank">${esc(rankTxt)}</span>
         ${logo}
         <span class="sym">${esc(symDisp)}</span>
@@ -6068,7 +6229,173 @@ function startLiveLoops(){
       const items = top.map((p,i)=>poolToTickerItem(p,i,incMap)).join('');
       tickerTrack.innerHTML = items + items;
       syncTickerMarquee();
+      try{ scheduleTrendingCandlePrefetch(); }catch(_){ }
     }
+
+    // =============================
+    // Step 7 — Trending candle prefetch (idle + 2-concurrency)
+    // Prefetches candles for currently visible trending ticker items on the active chain tab.
+    // Stores results into the same in-memory candleCache used by loadCandles.
+    // =============================
+    const PREFETCH_CANDLE_CONCURRENCY = 2;
+    const PREFETCH_CANDLE_TIMEOUT_MS = 10000;
+    const PREFETCH_FRESH_MS = 20000; // skip if cached within last 20s
+
+    let _pfQ = [];
+    let _pfRunning = 0;
+    let _pfScheduled = false;
+    let _pfGen = 0;
+    const _pfInFlight = new Set();
+
+    function _runIdle(fn){
+      try{
+        if('requestIdleCallback' in window){
+          requestIdleCallback(()=>{ try{ fn(); }catch(_){} }, {timeout: 900});
+        }else{
+          setTimeout(()=>{ try{ fn(); }catch(_){} }, 160);
+        }
+      }catch(_){
+        setTimeout(()=>{ try{ fn(); }catch(__){} }, 220);
+      }
+    }
+
+    function scheduleTrendingCandlePrefetch(){
+      // Only for active chain tab (ticker belongs to activeNet)
+      const net = String(activeNet||'');
+      if(!net) return;
+      const tfObj = activeTF || null;
+      if(!tfObj || !tfObj.k) return;
+
+      const track = document.getElementById('tickerTrack');
+      if(!track) return;
+
+      // Build a list of currently visible ticker items (unique pools)
+      const wrap = track.parentElement || track;
+      const wrapRect = wrap.getBoundingClientRect();
+      const items = Array.from(track.querySelectorAll('.tickerItem[data-pool]'));
+      const visible = [];
+      for(const el of items){
+        const r = el.getBoundingClientRect();
+        if(r.right <= wrapRect.left || r.left >= wrapRect.right) continue;
+        const pool = String(el.getAttribute('data-pool')||'').trim();
+        if(!pool) continue;
+        visible.push({pool, left:r.left});
+      }
+      visible.sort((a,b)=>a.left-b.left);
+
+      // Increment generation to invalidate older scheduled batches
+      const gen = ++_pfGen;
+      try{ _pfQ = []; }catch(_){}
+
+      // Enqueue up to ~8 visible unique pools (enough for the top row)
+      const seen = new Set();
+      const todo = [];
+      for(const v of visible){
+        if(seen.has(v.pool)) continue;
+        seen.add(v.pool);
+        todo.push(v.pool);
+        if(todo.length >= 8) break;
+      }
+
+      if(!todo.length) return;
+
+      _runIdle(()=>{
+        // If chain/tab changed since schedule, drop this batch
+        if(gen !== _pfGen) return;
+        if(String(activeNet||'') !== net) return;
+
+        for(const pool of todo){
+          _enqueueCandlePrefetch(net, pool, tfObj, gen);
+        }
+        _pumpPrefetch();
+      });
+    }
+
+    function _enqueueCandlePrefetch(net, pool, tfObj, gen){
+      const tfKey = `${net}|${pool}|${tfObj?.k||''}`;
+
+      // Skip if cached fresh
+      try{
+        const cached = candleCache && candleCache.get ? candleCache.get(tfKey) : null;
+        if(cached && Array.isArray(cached.candles) && cached.candles.length){
+          const age = cached.ts ? (Date.now() - cached.ts) : 1e9;
+          if(age < PREFETCH_FRESH_MS) return;
+        }
+      }catch(_){}
+
+      if(_pfInFlight.has(tfKey)) return;
+      _pfQ.push({net, pool, tfObj:{k:tfObj.k, gecko:tfObj.gecko, agg:tfObj.agg}, gen, tfKey});
+    }
+
+    function _pumpPrefetch(){
+      if(_pfScheduled) return;
+      _pfScheduled = true;
+      _runIdle(()=>{ _pfScheduled = false; _pumpPrefetchNow(); });
+    }
+
+    function _pumpPrefetchNow(){
+      while(_pfRunning < PREFETCH_CANDLE_CONCURRENCY && _pfQ.length){
+        const job = _pfQ.shift();
+        if(!job) continue;
+
+        // Drop stale jobs if generation/tab changed
+        if(job.gen !== _pfGen) continue;
+        if(String(activeNet||'') !== String(job.net||'')) continue;
+
+        // Skip if cached fresh (re-check at execution time)
+        try{
+          const cached = candleCache && candleCache.get ? candleCache.get(job.tfKey) : null;
+          if(cached && Array.isArray(cached.candles) && cached.candles.length){
+            const age = cached.ts ? (Date.now() - cached.ts) : 1e9;
+            if(age < PREFETCH_FRESH_MS) continue;
+          }
+        }catch(_){}
+
+        if(_pfInFlight.has(job.tfKey)) continue;
+        _pfInFlight.add(job.tfKey);
+        _pfRunning++;
+
+        (async ()=>{
+          let t = null;
+          const ac = new AbortController();
+          try{
+            t = setTimeout(()=>{ try{ ac.abort(new Error('prefetch-timeout')); }catch(_){} }, PREFETCH_CANDLE_TIMEOUT_MS);
+
+            const url = geckoCandlesUrlFor(job.net, job.pool, job.tfObj, null);
+            // Keep retries minimal to avoid rate-limit stress
+            const j = await fetchJson(url, {timeout: PREFETCH_CANDLE_TIMEOUT_MS, retries: 0, signal: ac.signal});
+            if(job.gen !== _pfGen) return;
+            if(String(activeNet||'') !== String(job.net||'')) return;
+
+            const part = mapGeckoOhlcv(j);
+            if(!part || !part.length) return;
+            part.sort((a,b)=>a.time-b.time);
+
+            // Store into the same cache structure used by loadCandles (enables instant render on click)
+            try{
+              if(candleCache && candleCache.set){
+                candleCache.set(job.tfKey, {
+                  ts: Date.now(),
+                  candles: part.slice(),
+                  before: (part[0]?.time ? (part[0].time - 1) : null),
+                  hasMore: (part.length >= (CANDLE_LIMIT - 10)),
+                  url,
+                  tf: job.tfObj?.k||''
+                });
+              }
+            }catch(_){}
+          }catch(_){
+            // ignore prefetch errors (never impact UI)
+          }finally{
+            try{ if(t) clearTimeout(t); }catch(_){}
+            _pfInFlight.delete(job.tfKey);
+            _pfRunning = Math.max(0, _pfRunning - 1);
+            _pumpPrefetch();
+          }
+        })();
+      }
+    }
+
     async function startTrending(){
       const gen = ++trendingGen;
       stopTrendingInterval();
@@ -7604,5 +7931,16 @@ if(searchScrim){
 })();
 </script>
 
+
+  <!-- DexGuard Debug Panel (press "D" to toggle) -->
+  <div id="dgDebugPanel" class="dgDebugPanel" aria-hidden="true">
+    <div class="hdr">
+      <div>Debug <span class="hint">Press D to toggle</span></div>
+      <button id="dgDebugClose" class="dgDebugClose" title="Close">×</button>
+    </div>
+    <pre id="dgDebugText"></pre>
+  </div>
+
 </body>
 </html>
+
