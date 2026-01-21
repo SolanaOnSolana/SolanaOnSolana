@@ -1623,6 +1623,60 @@ display:none;
   .topBarInner{ scroll-margin-top: calc(env(safe-area-inset-top) + var(--appbarH, 56px) + 16px) !important; }
 }
 
+/* ================================
+   MOBILE-ONLY SEARCH MODAL / SHEET (step05)
+   - Dark backdrop blocks chart bleed-through
+   - Results sit above EVERYTHING (z-index)
+   - Backdrop tap closes results (existing handler)
+   - Disables body scroll while open
+   - Desktop unchanged
+   ================================ */
+@media (max-width: 760px){
+  body.searchModalOpen{
+    overflow: hidden !important;
+    touch-action: none;
+  }
+
+  /* Backdrop (reuse existing #searchScrim so IDs/handlers stay the same) */
+  #searchScrim.searchScrim{
+    display: none;
+    position: fixed !important;
+    inset: 0 !important;
+    background: rgba(0,0,0,.72) !important;
+    backdrop-filter: blur(10px) !important;
+    -webkit-backdrop-filter: blur(10px) !important;
+    z-index: 1000000 !important;
+  }
+  .dexSearch.open #searchScrim.searchScrim{
+    display: block !important;
+  }
+
+  /* Results as modal/sheet overlay */
+  #results.results{
+    position: fixed !important;
+    left: 12px !important;
+    right: 12px !important;
+    bottom: calc(env(safe-area-inset-bottom) + 12px) !important;
+    top: auto !important;
+    width: auto !important;
+
+    max-height: min(72vh, calc(100vh - (env(safe-area-inset-top) + var(--appbarH, 56px) + 120px))) !important;
+
+    border-radius: 18px !important;
+    background: rgba(12,16,40,.98) !important;
+    box-shadow: 0 26px 90px rgba(0,0,0,.78) !important;
+
+    z-index: 1000001 !important;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Make sure the sticky search stays above content but below the modal stack */
+  .dexSearch{
+    z-index: 9999 !important;
+  }
+}
+
 </style>
 </head>
 <body>
@@ -2241,18 +2295,50 @@ function setMobileTab(which){
     let searchTimer=null;
     let searchReq=0;
 
+
+
+// Mobile-only: lock page scroll when search modal is open (Dexscreener-style)
+let __searchLockY = 0;
+function setSearchModalOpen(open){
+  try{
+    if(!window.matchMedia || !window.matchMedia('(max-width: 760px)').matches) return;
+    if(open){
+      __searchLockY = window.scrollY || document.documentElement.scrollTop || 0;
+      document.body.classList.add('searchModalOpen');
+      // iOS-friendly scroll lock
+      document.body.style.position = 'fixed';
+      document.body.style.top = `-${__searchLockY}px`;
+      document.body.style.left = '0';
+      document.body.style.right = '0';
+      document.body.style.width = '100%';
+    }else{
+      if(document.body.classList.contains('searchModalOpen')){
+        document.body.classList.remove('searchModalOpen');
+        document.body.style.position = '';
+        document.body.style.top = '';
+        document.body.style.left = '';
+        document.body.style.right = '';
+        document.body.style.width = '';
+        window.scrollTo(0, __searchLockY || 0);
+      }
+    }
+  }catch(_){}
+}
+
     function showResults(html){
       results.innerHTML = html;
       const open = !!html;
       results.style.display = open ? 'block' : 'none';
       if(searchScrim) searchScrim.style.display = open ? 'block' : 'none';
       if(dexSearch) dexSearch.classList.toggle('open', open);
+          setSearchModalOpen(open);
     }
 
     function hideResults(){
       results.style.display = 'none';
       if(searchScrim) searchScrim.style.display = 'none';
       if(dexSearch) dexSearch.classList.remove('open');
+          setSearchModalOpen(false);
     }
 
     if(searchScrim){
