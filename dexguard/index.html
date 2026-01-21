@@ -2119,6 +2119,115 @@ display:none;
     padding-top: 18px !important; /* normal desktop spacing */
   }
 }
+
+/* ===== DexGuard Micro 01: Runtime Error Banner (non-blocking) ===== */
+#rtErrBanner{
+  position:fixed;
+  top: calc(env(safe-area-inset-top) + 10px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2147483647;
+  max-width: min(560px, calc(100vw - 24px));
+  display:none;
+  align-items:center;
+  gap:10px;
+  padding: 10px 12px;
+  border-radius: 999px;
+  background: rgba(255,77,109,.14);
+  border: 1px solid rgba(255,77,109,.30);
+  color: rgba(255,255,255,.92);
+  box-shadow: 0 14px 60px rgba(0,0,0,.55);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  pointer-events: auto;
+  user-select: none;
+}
+#rtErrBanner.show{ display:flex; }
+#rtErrBanner .rtDot{
+  width: 10px; height: 10px; border-radius: 50%;
+  background: rgba(255,77,109,.95);
+  box-shadow: 0 0 0 3px rgba(255,77,109,.20);
+  flex: 0 0 10px;
+}
+#rtErrBanner .rtTxt{
+  font-weight: 900;
+  font-size: 13px;
+  letter-spacing: .1px;
+  line-height: 1.25;
+  overflow:hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#rtErrBanner .rtClose{
+  margin-left:auto;
+  width: 28px; height: 28px;
+  display:grid; place-items:center;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.14);
+  background: rgba(255,255,255,.06);
+  color: rgba(255,255,255,.92);
+  cursor:pointer;
+  pointer-events:auto;
+}
+#rtErrBanner .rtClose:hover{ background: rgba(255,255,255,.10); }
+@media (max-width: 520px){
+  #rtErrBanner .rtTxt{ font-size: 12px; }
+}
+/* ===== /Micro 01 ===== */
+
+
+/* ===== DexGuard Micro 02: Critical Render Guard Banner ===== */
+#rtStatusBanner{
+  position:fixed;
+  top: calc(env(safe-area-inset-top) + 56px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2147483646;
+  max-width: min(560px, calc(100vw - 24px));
+  display:none;
+  align-items:center;
+  gap:10px;
+  padding: 10px 12px;
+  border-radius: 999px;
+  background: rgba(255,184,0,.14);
+  border: 1px solid rgba(255,184,0,.30);
+  color: rgba(255,255,255,.92);
+  box-shadow: 0 14px 60px rgba(0,0,0,.55);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  pointer-events: auto;
+  user-select: none;
+}
+#rtStatusBanner.show{ display:flex; }
+#rtStatusBanner .rtDot{
+  width: 10px; height: 10px; border-radius: 50%;
+  background: rgba(255,184,0,.95);
+  box-shadow: 0 0 0 3px rgba(255,184,0,.20);
+  flex: 0 0 10px;
+}
+#rtStatusBanner .rtTxt{
+  font-weight: 900;
+  font-size: 13px;
+  letter-spacing: .1px;
+  line-height: 1.25;
+  overflow:hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#rtStatusBanner .rtClose{
+  margin-left:auto;
+  width: 28px; height: 28px;
+  display:grid; place-items:center;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.14);
+  background: rgba(255,255,255,.06);
+  color: rgba(255,255,255,.92);
+  cursor:pointer;
+  pointer-events:auto;
+}
+#rtStatusBanner .rtClose:hover{ background: rgba(255,255,255,.10); }
+/* ===== /Micro 02 ===== */
+
 </style>
 </head>
 <body>
@@ -4884,5 +4993,412 @@ if(searchScrim){
     splitHandle.addEventListener('touchstart', onDown, {passive:false});
   }catch(_){}
 })();</script>
+
+<script>
+/* ===== DexGuard Micro 01: Hard Safety (global error catcher + banner) ===== */
+(function(){
+  try{
+    var DG_RT_BANNER_ID = "rtErrBanner";
+    var dg_rt_hideTimer = null;
+    var dg_rt_lastShown = 0;
+
+    function dgEnsureRuntimeBanner(){
+      var b = document.getElementById(DG_RT_BANNER_ID);
+      if(b) return b;
+
+      b = document.createElement("div");
+      b.id = DG_RT_BANNER_ID;
+      b.setAttribute("role","status");
+      b.setAttribute("aria-live","polite");
+
+      var dot = document.createElement("div");
+      dot.className = "rtDot";
+
+      var txt = document.createElement("div");
+      txt.className = "rtTxt";
+      txt.textContent = "Runtime error — retrying…";
+
+      var close = document.createElement("button");
+      close.type = "button";
+      close.className = "rtClose";
+      close.setAttribute("aria-label","Dismiss");
+      close.textContent = "×";
+      close.addEventListener("click", function(ev){
+        try{
+          ev.preventDefault();
+          ev.stopPropagation();
+          b.classList.remove("show");
+        }catch(_){}
+      }, {passive:false});
+
+      b.addEventListener("click", function(){
+        try{ b.classList.remove("show"); }catch(_){}
+      }, {passive:true});
+
+      b.appendChild(dot);
+      b.appendChild(txt);
+      b.appendChild(close);
+
+      document.addEventListener("DOMContentLoaded", function(){
+        try{ document.body && document.body.appendChild(b); }catch(_){}
+      }, {once:true});
+
+      if(document.body){
+        try{ document.body.appendChild(b); }catch(_){}
+      }
+      return b;
+    }
+
+    function dgShowRuntimeBanner(reason){
+      try{
+        var now = Date.now();
+        // throttle repeated errors
+        if(now - dg_rt_lastShown < 500) return;
+        dg_rt_lastShown = now;
+
+        var b = dgEnsureRuntimeBanner();
+        if(!b) return;
+
+        var t = b.querySelector(".rtTxt");
+        if(t){
+          // keep text stable; optionally add short hint
+          t.textContent = "Runtime error — retrying…";
+        }
+
+        b.classList.add("show");
+        if(dg_rt_hideTimer) clearTimeout(dg_rt_hideTimer);
+        dg_rt_hideTimer = setTimeout(function(){
+          try{ b.classList.remove("show"); }catch(_){}
+        }, 5200);
+      }catch(_){}
+    }
+
+    function dgLogFullError(tag, payload){
+      try{
+        // Make sure we never throw from logger
+        console.error(tag, payload);
+      }catch(_){}
+    }
+
+    // window.onerror (sync errors)
+    var prevOnError = window.onerror;
+    window.onerror = function(message, source, lineno, colno, error){
+      try{
+        dgLogFullError("GlobalError", {
+          message: message,
+          source: source,
+          lineno: lineno,
+          colno: colno,
+          error: error,
+          stack: error && error.stack ? String(error.stack) : undefined
+        });
+        dgShowRuntimeBanner(error || message);
+      }catch(_){}
+      // Never block default handling
+      if(typeof prevOnError === "function"){
+        try{ return prevOnError.apply(this, arguments); }catch(_){}
+      }
+      return false;
+    };
+
+    // Error events (resource errors, etc.)
+    window.addEventListener("error", function(ev){
+      try{
+        // Resource errors may not have ev.error
+        var payload = {
+          message: ev && ev.message,
+          filename: ev && ev.filename,
+          lineno: ev && ev.lineno,
+          colno: ev && ev.colno,
+          error: ev && ev.error,
+          stack: ev && ev.error && ev.error.stack ? String(ev.error.stack) : undefined,
+          target: ev && ev.target ? (ev.target.tagName || ev.target.nodeName || ev.target.toString()) : undefined
+        };
+        dgLogFullError("UnhandledErrorEvent", payload);
+        dgShowRuntimeBanner(ev && (ev.error || ev.message));
+      }catch(_){}
+    }, true);
+
+    // Promise rejections
+    var prevOnRej = window.onunhandledrejection;
+    window.onunhandledrejection = function(ev){
+      try{
+        var r = ev && ev.reason;
+        dgLogFullError("UnhandledRejection", {
+          reason: r,
+          reasonType: (r && r.constructor && r.constructor.name) ? r.constructor.name : typeof r,
+          stack: r && r.stack ? String(r.stack) : undefined
+        });
+        dgShowRuntimeBanner(r);
+      }catch(_){}
+      if(typeof prevOnRej === "function"){
+        try{ return prevOnRej.apply(this, arguments); }catch(_){}
+      }
+      return false;
+    };
+
+    window.addEventListener("unhandledrejection", function(ev){
+      try{
+        var r = ev && ev.reason;
+        dgLogFullError("UnhandledRejectionEvent", {
+          reason: r,
+          reasonType: (r && r.constructor && r.constructor.name) ? r.constructor.name : typeof r,
+          stack: r && r.stack ? String(r.stack) : undefined
+        });
+        dgShowRuntimeBanner(r);
+      }catch(_){}
+    }, true);
+
+    // Ensure banner exists early without blocking execution
+    dgEnsureRuntimeBanner();
+  }catch(_){}
+})();
+</script>
+
+
+<script>
+/* ===== DexGuard Micro 02: Critical Render Guard (blank screen prevention) ===== */
+(function(){
+  try{
+    var DG_GUARD = window.__DG_RENDER_GUARD__ || (window.__DG_RENDER_GUARD__ = {
+      lastAction: null,
+      retrying: false,
+      attempts: 0,
+      lastRetryAt: 0,
+      lastCheckAt: 0
+    });
+
+    var DG_STATUS_ID = "rtStatusBanner";
+    var dg_status_hideTimer = null;
+
+    function dgEnsureStatusBanner(){
+      var b = document.getElementById(DG_STATUS_ID);
+      if(b) return b;
+
+      b = document.createElement("div");
+      b.id = DG_STATUS_ID;
+      b.setAttribute("role","status");
+      b.setAttribute("aria-live","polite");
+
+      var dot = document.createElement("div");
+      dot.className = "rtDot";
+
+      var txt = document.createElement("div");
+      txt.className = "rtTxt";
+      txt.textContent = "Loading failed — retrying…";
+
+      var close = document.createElement("button");
+      close.type = "button";
+      close.className = "rtClose";
+      close.setAttribute("aria-label","Dismiss");
+      close.textContent = "×";
+      close.addEventListener("click", function(ev){
+        try{
+          ev.preventDefault();
+          ev.stopPropagation();
+          b.classList.remove("show");
+        }catch(_){}
+      }, {passive:false});
+
+      b.appendChild(dot);
+      b.appendChild(txt);
+      b.appendChild(close);
+
+      document.addEventListener("DOMContentLoaded", function(){
+        try{ document.body && document.body.appendChild(b); }catch(_){}
+      }, {once:true});
+
+      if(document.body){
+        try{ document.body.appendChild(b); }catch(_){}
+      }
+      return b;
+    }
+
+    function dgShowStatusBanner(){
+      try{
+        var b = dgEnsureStatusBanner();
+        if(!b) return;
+        b.classList.add("show");
+        if(dg_status_hideTimer) clearTimeout(dg_status_hideTimer);
+        dg_status_hideTimer = setTimeout(function(){
+          try{ b.classList.remove("show"); }catch(_){}
+        }, 6000);
+      }catch(_){}
+    }
+
+    function dgHasMeaningfulText(el){
+      try{
+        if(!el) return false;
+        var t = (el.textContent || "").replace(/\s+/g," ").trim();
+        return t.length > 0;
+      }catch(_){ return false; }
+    }
+
+    function dgIsEmpty(el){
+      try{
+        if(!el) return true;
+        // If element is hidden but exists, still counts as present
+        if(el.children && el.children.length > 0) return false;
+        return !dgHasMeaningfulText(el);
+      }catch(_){ return true; }
+    }
+
+    function dgCriticalState(){
+      var misses = [];
+      try{
+        // trending ticker
+        var tr = document.getElementById("tickerTrack");
+        if(dgIsEmpty(tr)) misses.push("trending");
+
+        // token header area
+        var pn = document.getElementById("pairName");
+        var pm = document.getElementById("pairMeta");
+        if(!pn || !dgHasMeaningfulText(pn)){
+          // also consider header container
+          var cc = document.getElementById("chartCard");
+          var hd = cc ? cc.querySelector(".cardHd") : null;
+          if(dgIsEmpty(hd)) misses.push("tokenHeader");
+        }
+
+        // chart container
+        var cw = document.getElementById("chartWrap");
+        var c = document.getElementById("chart");
+        var hasCanvas = false;
+        try{
+          hasCanvas = !!(c && (c.querySelector("canvas") || c.querySelector("svg") || c.querySelector("iframe") || (c.children && c.children.length>0)));
+        }catch(_){}
+        if(!cw || (!hasCanvas && dgIsEmpty(cw) && dgIsEmpty(c))) misses.push("chart");
+
+        // trades container
+        var t = document.getElementById("trades");
+        var hasRows = false;
+        try{
+          hasRows = !!(t && (t.querySelector(".tradeRow") || t.querySelector(".tradeHead")));
+        }catch(_){}
+        if(!t || (!hasRows && dgIsEmpty(t))) misses.push("trades");
+      }catch(_){}
+      return misses;
+    }
+
+    function dgRetryLastAction(reason){
+      try{
+        var now = Date.now();
+        if(DG_GUARD.retrying && (now - DG_GUARD.lastRetryAt) < 1200) return;
+        DG_GUARD.retrying = true;
+        DG_GUARD.lastRetryAt = now;
+        DG_GUARD.attempts = Math.min((DG_GUARD.attempts || 0) + 1, 6);
+
+        var delay = 850 + (DG_GUARD.attempts * 350);
+        setTimeout(function(){
+          try{
+            var act = DG_GUARD.lastAction;
+            // Prefer re-running last explicit action
+            if(act && act.type === "token" && typeof window.openToken === "function"){
+              var inp = act.input;
+              var opts = act.opts || {};
+              // keep silent + avoid altering user input box
+              var merged = {};
+              for(var k in opts) merged[k] = opts[k];
+              merged.silent = true;
+              merged.skipInput = true;
+              try{ window.openToken(inp, merged); }catch(e){ try{ console.error("guard retry openToken failed", e); }catch(_){ } }
+            }else if(act && act.type === "trending" && typeof window.startTrending === "function"){
+              try{ window.startTrending(); }catch(e){ try{ console.error("guard retry startTrending failed", e); }catch(_){ } }
+            }else{
+              // Fallback: if input has a token/address, try openToken
+              var q = document.getElementById("q");
+              var v = q ? String(q.value||"").trim() : "";
+              if(v && typeof window.openToken === "function"){
+                try{ window.openToken(v, {silent:true, skipInput:true}); }catch(e){ try{ console.error("guard retry fallback openToken failed", e); }catch(_){ } }
+              }else if(typeof window.startTrending === "function"){
+                try{ window.startTrending(); }catch(e){ try{ console.error("guard retry fallback startTrending failed", e); }catch(_){ } }
+              }
+            }
+          }catch(_){}
+          DG_GUARD.retrying = false;
+        }, delay);
+      }catch(_){}
+    }
+
+    function dgRunGuardCheck(reason){
+      try{
+        var now = Date.now();
+        if(now - (DG_GUARD.lastCheckAt||0) < 350) return;
+        DG_GUARD.lastCheckAt = now;
+
+        var misses = dgCriticalState();
+        if(misses && misses.length){
+          try{ console.warn("RenderGuard: missing/empty sections", misses, "reason:", reason); }catch(_){}
+          dgShowStatusBanner();
+          dgRetryLastAction(reason);
+        }else{
+          // Reset attempts on success so backoff doesn't keep growing
+          DG_GUARD.attempts = 0;
+        }
+      }catch(_){}
+    }
+
+    function dgScheduleChecks(reason){
+      try{
+        // Grace periods: allow content to render
+        setTimeout(function(){ dgRunGuardCheck(reason || "post"); }, 1600);
+        setTimeout(function(){ dgRunGuardCheck(reason || "post"); }, 3200);
+      }catch(_){}
+    }
+
+    // Hook token switches (openToken)
+    try{
+      if(typeof window.openToken === "function" && !window.openToken.__dg_wrapped){
+        var _openToken = window.openToken;
+        var wrapped = function(input, opts){
+          try{
+            DG_GUARD.lastAction = { type:"token", input: String(input||""), opts: (opts||{}) };
+            dgScheduleChecks("tokenSwitch");
+          }catch(_){}
+          return _openToken.apply(this, arguments);
+        };
+        wrapped.__dg_wrapped = true;
+        window.openToken = wrapped;
+      }
+    }catch(_){}
+
+    // Hook trending refreshes
+    try{
+      if(typeof window.startTrending === "function" && !window.startTrending.__dg_wrapped){
+        var _st = window.startTrending;
+        var w2 = function(){
+          try{ DG_GUARD.lastAction = { type:"trending" }; dgScheduleChecks("trending"); }catch(_){}
+          return _st.apply(this, arguments);
+        };
+        w2.__dg_wrapped = true;
+        window.startTrending = w2;
+      }
+    }catch(_){}
+
+    // Run after initial load
+    dgEnsureStatusBanner();
+    document.addEventListener("DOMContentLoaded", function(){
+      try{
+        // Seed lastAction from existing input, if any
+        var q = document.getElementById("q");
+        var v = q ? String(q.value||"").trim() : "";
+        if(v && !DG_GUARD.lastAction){
+          DG_GUARD.lastAction = { type:"token", input: v, opts: {silent:true, skipInput:true} };
+        }
+      }catch(_){}
+      dgScheduleChecks("boot");
+      // Periodic lightweight check (rare) to prevent blank screen persisting
+      try{
+        setInterval(function(){ dgRunGuardCheck("interval"); }, 12000);
+      }catch(_){}
+    }, {once:true});
+
+    // Also check after navigation events that often imply token changes
+    window.addEventListener("hashchange", function(){ dgScheduleChecks("hashchange"); }, {passive:true});
+    window.addEventListener("popstate", function(){ dgScheduleChecks("popstate"); }, {passive:true});
+  }catch(_){}
+})();
+</script>
+
 </body>
 </html>
