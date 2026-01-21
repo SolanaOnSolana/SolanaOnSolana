@@ -3440,47 +3440,84 @@ if(searchScrim){
     tabTxnsOnly.onclick = ()=>setMode('txns');
     setMode('both');
 
-    // Drag handle behavior
-    let dragging=false, startY=0, startBottom=0;
-    const onMove = (e)=>{
-      if(!dragging) return;
-      const y = (e.touches && e.touches[0]) ? e.touches[0].clientY : e.clientY;
+    // Drag handle behavior (pointer capture; mouse + touch; no scroll blocking unless dragging)
+    let dragging=false;
+    let activePointerId = null;
+    let startY=0, startBottom=0;
+    let rafPending=false;
+
+    const getY = (e)=> (typeof e.clientY === 'number' ? e.clientY : 0);
+
+    const updateChartSize = ()=>{
+      rafPending=false;
+      try{
+        if(chart && chartEl){
+          chart.applyOptions({ width: chartEl.clientWidth, height: chartEl.clientHeight });
+        }
+      }catch(_){}
+    };
+
+    const onPointerMove = (e)=>{
+      if(!dragging || e.pointerId !== activePointerId) return;
+      const y = getY(e);
       const dy = y - startY;
+
       const total = splitRoot.clientHeight || 0;
       const minBottom = 160;
-      const maxBottom = Math.max(minBottom, total - 240);
+      const minTop = 220;
+      const handleH = splitHandle.offsetHeight || 14;
+      const maxBottom = Math.max(minBottom, total - minTop - handleH);
+
       const next = clamp(startBottom - dy, minBottom, maxBottom);
       splitRoot.style.setProperty('--split-bottom', next + 'px');
-      requestAnimationFrame(()=>{ try{ chart.applyOptions({ width: chartEl.clientWidth, height: chartEl.clientHeight }); }catch(_){ } });
+
+      if(!rafPending){
+        rafPending=true;
+        requestAnimationFrame(updateChartSize);
+      }
       e.preventDefault?.();
     };
-    const onUp = ()=>{
+
+    const endDrag = ()=>{
       if(!dragging) return;
       dragging=false;
       document.body.classList.remove('dragging');
-      window.removeEventListener('pointermove', onMove, {passive:false});
-      window.removeEventListener('pointerup', onUp);
-      window.removeEventListener('touchmove', onMove, {passive:false});
-      window.removeEventListener('touchend', onUp);
+      try{
+        if(activePointerId != null && splitHandle.releasePointerCapture){
+          try{ splitHandle.releasePointerCapture(activePointerId); }catch(_){}
+        }
+      }catch(_){}
+      activePointerId = null;
+
+      splitHandle.removeEventListener('pointermove', onPointerMove);
+      splitHandle.removeEventListener('pointerup', endDrag);
+      splitHandle.removeEventListener('pointercancel', endDrag);
+      splitHandle.removeEventListener('lostpointercapture', endDrag);
     };
 
-    const onDown = (e)=>{
+    const onPointerDown = (e)=>{
+      if(e.button != null && e.button !== 0) return; // left click only
       if(tabChartOnly.classList.contains('active') || tabTxnsOnly.classList.contains('active')) return;
+
       dragging=true;
-      startY = (e.touches && e.touches[0]) ? e.touches[0].clientY : e.clientY;
+      activePointerId = e.pointerId;
+      startY = getY(e);
       startBottom = parseFloat(getComputedStyle(splitRoot).getPropertyValue('--split-bottom')) || 260;
+
       document.body.classList.add('dragging');
-      if(e.pointerId && splitHandle.setPointerCapture) try{ splitHandle.setPointerCapture(e.pointerId); }catch(_){}
-      window.addEventListener('pointermove', onMove, {passive:false});
-      window.addEventListener('pointerup', onUp);
-      window.addEventListener('touchmove', onMove, {passive:false});
-      window.addEventListener('touchend', onUp);
+
+      try{ splitHandle.setPointerCapture(activePointerId); }catch(_){}
+
+      splitHandle.addEventListener('pointermove', onPointerMove, {passive:false});
+      splitHandle.addEventListener('pointerup', endDrag, {passive:true});
+      splitHandle.addEventListener('pointercancel', endDrag, {passive:true});
+      splitHandle.addEventListener('lostpointercapture', endDrag, {passive:true});
+
       e.preventDefault?.();
     };
 
-    splitHandle.addEventListener('pointerdown', onDown, {passive:false});
-    splitHandle.addEventListener('touchstart', onDown, {passive:false});
-  }catch(_){}
+    splitHandle.addEventListener('pointerdown', onPointerDown, {passive:false});
+}catch(_){}
 })();
 </script>
 </body>
