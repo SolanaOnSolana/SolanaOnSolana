@@ -2468,6 +2468,8 @@ display:none;
         if(v == null) return '';
         if(typeof v === 'string') return v;
         if(typeof v === 'number' || typeof v === 'boolean') return String(v);
+    DBG.checks = Array.isArray(DBG.checks) ? DBG.checks : [];
+    DBG.pushCheck = function(entry){ try{ _push(DBG.checks, entry); }catch(_){ } };
         if(v && typeof v.message === 'string') return v.message;
         try{ return JSON.stringify(v); }catch(_){}
         return String(v);
@@ -2639,6 +2641,20 @@ display:none;
       }else{
         out.push('(none)');
       }
+      out.push('');
+      out.push('self-check (last ' + (DBG.checks.length||0) + '):');
+      if(DBG.checks.length){
+        for(var sc=DBG.checks.length-1; sc>=0; sc--){
+          var c = DBG.checks[sc] || {};
+          out.push('- ' + _fmtTime(c.time) + ' | ' + _safeStr(c.reason) + ' | ' + _safeStr(c.misses));
+          if(c.state){ out.push('  state: ' + _safeStr(c.state)); }
+          if(c.action){ out.push('  action: ' + _safeStr(c.action)); }
+          if(c.stack){ out.push('  stack: ' + String(c.stack).split('\n').slice(0,4).join(' | ')); }
+        }
+      }else{
+        out.push('(none)');
+      }
+
       return out.join('\n');
     }
 
@@ -7006,11 +7022,54 @@ if(searchScrim){
       retrying: false,
       attempts: 0,
       lastRetryAt: 0,
-      lastCheckAt: 0
+      lastCheckAt: 0,
+      recovered: {},
+      lastRecoverSig: '',
+      userFailCount: 0,
+      firstUserFailAt: 0,
+      lastBannerAt: 0,
+      lastBannerMsg: ''
     });
 
     var DG_STATUS_ID = "rtStatusBanner";
     var dg_status_hideTimer = null;
+    // Debug logging (safe even when debug overlay is disabled)
+    var DBG = window.__DG_DEBUG__ || (window.__DG_DEBUG__ = {});
+    function dgPushCheck(entry){
+      try{
+        if(!entry) entry = {};
+        if(!entry.time) entry.time = Date.now();
+        if(DBG && typeof DBG.pushCheck === "function"){
+          DBG.pushCheck(entry);
+        }else{
+          DBG.checks = Array.isArray(DBG.checks) ? DBG.checks : [];
+          DBG.checks.push(entry);
+          while(DBG.checks.length > 10) DBG.checks.shift();
+        }
+      }catch(_){}
+    }
+
+    function dgActionSig(){
+      try{
+        var an = (typeof window.activeNet!=="undefined") ? String(window.activeNet||"") : "";
+        var ad = (typeof window.addr!=="undefined") ? String(window.addr||"") : "";
+        var pa = (typeof window.poolAddr!=="undefined") ? String(window.poolAddr||"") : "";
+        var pid = (typeof window.poolId!=="undefined") ? String(window.poolId||"") : "";
+        return (an+"|"+ad+"|"+pa+"|"+pid).toLowerCase();
+      }catch(_){ return ""; }
+    }
+
+    function dgIsUserTriggered(){
+      try{
+        var act = DG_GUARD.lastAction;
+        if(!act) return false;
+        var o = act.opts || {};
+        // Consider silent/boot/programmatic as NOT user-triggered
+        if(o && (o.silent || o.boot)) return false;
+        return true;
+      }catch(_){ return false; }
+    }
+
 
     function dgEnsureStatusBanner(){
       var b = document.getElementById(DG_STATUS_ID);
@@ -7020,6 +7079,8 @@ if(searchScrim){
       b.id = DG_STATUS_ID;
       b.setAttribute("role","status");
       b.setAttribute("aria-live","polite");
+
+      try{ b.style.display = \"none\"; }catch(_){ }
 
       var dot = document.createElement("div");
       dot.className = "rtDot";
@@ -7057,84 +7118,56 @@ if(searchScrim){
 
     function dgShowStatusBanner(meta){
       try{
-        var msg = "Loading failed — retrying…";
-        var now = dgNow();
+        var now = Date.now();
+        var msg = (meta && meta.msg) ? String(meta.msg) : "Loading failed — retrying…";
 
-        // Determine if this looks like a real app failure (not just slow render)
-        var recent = dgRecentCriticalFetchFail();
-        var misses = meta && meta.misses ? meta.misses : null;
-
-        // Treat pure transient network hiccups as non-toast unless persisting
-        var isNetOnly = false;
-        try{
-          if(recent){
-            var em = String(recent.error||'').toLowerCase();
-            isNetOnly = (em.includes('failed to fetch') || em.includes('network') || em.includes('cors'));
-          }
-        }catch(_){}
-
-        // Require either repeated misses or a recent critical fetch failure; otherwise stay silent
-        var missCount = 0;
-        try{ var g = window.DG_RENDER_GUARD__; missCount = (g && g.missCount) ? g.missCount : 0; }catch(_){}
-        var persisting = false;
-        try{
-          if(!dg_guard_firstMissAt) dg_guard_firstMissAt = now;
-          persisting = (now - dg_guard_firstMissAt) > 25000;
-        }catch(_){}
-
-        var att = 0; try{ var gg = window.DG_RENDER_GUARD__; att = gg && gg.attempts ? gg.attempts : 0; }catch(_){}
-
-        if(!(recent || (persisting) || ((misses && missCount >= 2) && att >= 2))){
-          dgPushToastDebug({time: now, kind:"loading_drop", msg: msg, reason: (meta && meta.reason) ? String(meta.reason) : "", url: recent ? String(recent.url||"") : "", stack: (meta && meta.stack) ? String(meta.stack) : undefined});
-          return;
-        }
-        if(isNetOnly && !persisting){
-          dgPushToastDebug({time: now, kind:"loading_drop_net", msg: msg, reason: (meta && meta.reason) ? String(meta.reason) : "", url: recent ? String(recent.url||"") : "", stack: (meta && meta.stack) ? String(meta.stack) : undefined});
+        // Rate-limit + dedupe: at most once per 8s, one banner only (text replace)
+        if((now - (DG_GUARD.lastBannerAt||0)) < 8000 && msg === (DG_GUARD.lastBannerMsg||"")){
           return;
         }
 
-        var gate = dgToastGate(msg);
-        var visEl = gate.vis;
-        if(gate.action === 'replace' && visEl){
-          try{
-            var t0 = visEl.querySelector ? visEl.querySelector(".rtTxt") : null;
-            if(t0) t0.textContent = msg;
-          }catch(_){}
-          dgPushToastDebug({time: now, kind:"loading_update", msg: msg, reason: (meta && meta.reason) ? String(meta.reason) : "", url: recent ? String(recent.url||"") : "", stack: (meta && meta.stack) ? String(meta.stack) : undefined});
-          return;
-        }
-        if(gate.action === 'drop'){
-          dgPushToastDebug({time: now, kind:"loading_drop", msg: msg, reason: (meta && meta.reason) ? String(meta.reason) : "", url: recent ? String(recent.url||"") : "", stack: (meta && meta.stack) ? String(meta.stack) : undefined});
-          return;
+        // Only show when a user-triggered action has failed repeatedly AND we already tried one silent recovery.
+        var user = dgIsUserTriggered();
+        var sig = dgActionSig();
+        var recoveredOnce = !!(DG_GUARD.recovered && DG_GUARD.recovered[sig]);
+        var hardFail = !!dgRecentCriticalFetchFail();
+
+        // Needs persistence: at least 2 guard misses within 30s for user actions, and evidence of real fetch failure.
+        var windowOk = (DG_GUARD.firstUserFailAt && (now - DG_GUARD.firstUserFailAt) <= 30000);
+        if(!(user && recoveredOnce && hardFail && windowOk && (DG_GUARD.userFailCount||0) >= 2)){
+          return; // stay silent
         }
 
-        // Hide runtime banner if present (single visible toast)
-        try{
-          var rb = document.getElementById("rtErrBanner");
-          if(rb && rb.classList) rb.classList.remove("show");
-        }catch(_){}
+        DG_GUARD.lastBannerAt = now;
+        DG_GUARD.lastBannerMsg = msg;
 
         var b = dgEnsureStatusBanner();
-        if(!b) return;
+        var t = b ? b.querySelector(".rtTxt") : null;
+        if(t) t.textContent = msg;
+        try{ b.style.display = "flex"; }catch(_){}
 
-        b.classList.add("show");
-        dg_toast_visibleId = b.id;
+        // Auto-hide after 6 seconds (never stacks)
+        try{
+          if(dg_status_hideTimer) clearTimeout(dg_status_hideTimer);
+          dg_status_hideTimer = setTimeout(function(){
+            try{
+              var bb = document.getElementById(DG_STATUS_ID);
+              if(bb) bb.style.display = "none";
+            }catch(_){}
+          }, 6000);
+        }catch(_){}
 
-        if(dg_toast_timer) clearTimeout(dg_toast_timer);
-        dg_toast_timer = setTimeout(function(){
-          try{ b.classList.remove("show"); }catch(_){}
-        }, 6000);
-
-        dgPushToastDebug({time: now, kind:"loading_show", msg: msg, reason: (meta && meta.reason) ? String(meta.reason) : "", url: recent ? String(recent.url||"") : "", stack: (meta && meta.stack) ? String(meta.stack) : undefined});
+        // Log why banner was shown
+        try{
+          dgPushCheck({
+            reason: (meta && meta.reason) ? meta.reason : "statusBanner",
+            misses: (meta && meta.misses) ? meta.misses.join(",") : "",
+            state: sig,
+            action: (DG_GUARD.lastAction && DG_GUARD.lastAction.type) ? (DG_GUARD.lastAction.type + ":" + String(DG_GUARD.lastAction.input||"")) : "",
+            stack: (meta && meta.stack) ? meta.stack : (new Error("statusBanner")).stack
+          });
+        }catch(_){}
       }catch(_){}
-    }
-
-    function dgHasMeaningfulText(el){
-      try{
-        if(!el) return false;
-        var t = (el.textContent || "").replace(/\s+/g," ").trim();
-        return t.length > 0;
-      }catch(_){ return false; }
     }
 
     function dgIsEmpty(el){
@@ -7188,46 +7221,80 @@ if(searchScrim){
           if(!hasRows && !dgHasMeaningfulText(t) && dgIsEmpty(t)) misses.push("trades");
         }
       }catch(_){}
+
+      try{
+        // State consistency
+        var an = (typeof activeNet!=='undefined') ? String(activeNet||'') : '';
+        var ad = (typeof addr!=='undefined') ? String(addr||'') : '';
+        var pa = (typeof poolAddr!=='undefined') ? String(poolAddr||'') : '';
+        var pid = (typeof poolId!=='undefined') ? String(poolId||'') : '';
+        if((ad || pa || pid) && !an) misses.push("stateNet");
+        if(ad && !pa && !pid) misses.push("statePool");
+        // Live loop sanity: if we have a pool selected, trades polling should be on
+        try{
+          if(pa && typeof TRADES_POLL!=='undefined' && TRADES_POLL && TRADES_POLL.running===false){
+            misses.push("tradesLoop");
+          }
+        }catch(_){}
+      }catch(_){}
       return misses;
     }
 
     function dgRetryLastAction(reason){
       try{
         var now = Date.now();
-        if(DG_GUARD.retrying && (now - DG_GUARD.lastRetryAt) < 1200) return;
-        DG_GUARD.retrying = true;
-        DG_GUARD.lastRetryAt = now;
-        DG_GUARD.attempts = Math.min((DG_GUARD.attempts || 0) + 1, 6);
+        var sig = dgActionSig();
 
-        var delay = 850 + (DG_GUARD.attempts * 350);
-        setTimeout(function(){
-          try{
-            var act = DG_GUARD.lastAction;
-            // Prefer re-running last explicit action
-            if(act && act.type === "token" && typeof window.openToken === "function"){
-              var inp = act.input;
-              var opts = act.opts || {};
-              // keep silent + avoid altering user input box
-              var merged = {};
-              for(var k in opts) merged[k] = opts[k];
-              merged.silent = true;
-              merged.skipInput = true;
-              try{ window.openToken(inp, merged); }catch(e){ try{ console.error("guard retry openToken failed", e); }catch(_){ } }
-            }else if(act && act.type === "trending" && typeof window.startTrending === "function"){
-              try{ window.startTrending(); }catch(e){ try{ console.error("guard retry startTrending failed", e); }catch(_){ } }
-            }else{
-              // Fallback: if input has a token/address, try openToken
-              var q = document.getElementById("q");
-              var v = q ? String(q.value||"").trim() : "";
-              if(v && typeof window.openToken === "function"){
-                try{ window.openToken(v, {silent:true, skipInput:true}); }catch(e){ try{ console.error("guard retry fallback openToken failed", e); }catch(_){ } }
-              }else if(typeof window.startTrending === "function"){
-                try{ window.startTrending(); }catch(e){ try{ console.error("guard retry fallback startTrending failed", e); }catch(_){ } }
-              }
-            }
-          }catch(_){}
-          DG_GUARD.retrying = false;
-        }, delay);
+        // One silent recovery attempt per signature within a short window
+        if(!sig) sig = "nosig";
+        if(DG_GUARD.recovered && DG_GUARD.recovered[sig] && (now - DG_GUARD.recovered[sig]) < 45000){
+          return;
+        }
+
+        DG_GUARD.recovered = DG_GUARD.recovered || {};
+        DG_GUARD.recovered[sig] = now;
+        DG_GUARD.lastRecoverSig = sig;
+
+        // Keep map small
+        try{
+          var keys = Object.keys(DG_GUARD.recovered);
+          if(keys.length > 20){
+            keys.sort(function(a,b){ return (DG_GUARD.recovered[a]||0) - (DG_GUARD.recovered[b]||0); });
+            for(var i=0;i<10;i++) delete DG_GUARD.recovered[keys[i]];
+          }
+        }catch(_){}
+
+        // Prefer restarting live loops first (lightweight)
+        try{
+          if(typeof stopLiveLoops === "function") stopLiveLoops();
+          if(typeof startLiveLoops === "function") startLiveLoops();
+        }catch(_){}
+
+        // If we have a last token action, silently retry token load ONCE
+        try{
+          var act = DG_GUARD.lastAction;
+          if(act && act.type === "token" && typeof window.openToken === "function"){
+            var o = act.opts || {};
+            var retryOpts = Object.assign({}, o, {silent:true, boot:true, skipInput:true});
+            window.openToken(act.input, retryOpts);
+          }
+        }catch(_){}
+
+        // Attempt trending recovery if needed
+        try{
+          if(typeof startTrending === "function") startTrending();
+        }catch(_){}
+
+        // Log recovery attempt
+        try{
+          dgPushCheck({
+            reason: "selfRecover:" + String(reason||""),
+            misses: "",
+            state: sig,
+            action: (DG_GUARD.lastAction && DG_GUARD.lastAction.type) ? (DG_GUARD.lastAction.type + ":" + String(DG_GUARD.lastAction.input||"")) : "",
+            stack: (new Error("selfRecover")).stack
+          });
+        }catch(_){}
       }catch(_){}
     }
 
@@ -7238,20 +7305,42 @@ if(searchScrim){
         DG_GUARD.lastCheckAt = now;
 
         var misses = dgCriticalState();
+        var sig = dgActionSig();
         if(misses && misses.length){
-          try{ console.warn("RenderGuard: missing/empty sections", misses, "reason:", reason); }catch(_){}
+          // Log to debug panel store
           try{
-            DG_GUARD.missCount = (DG_GUARD.missCount || 0) + 1;
-            if(!dg_guard_firstMissAt) dg_guard_firstMissAt = dgNow();
+            dgPushCheck({
+              reason: String(reason||"guard"),
+              misses: misses.join(","),
+              state: sig,
+              action: (DG_GUARD.lastAction && DG_GUARD.lastAction.type) ? (DG_GUARD.lastAction.type + ":" + String(DG_GUARD.lastAction.input||"")) : "",
+              stack: (new Error("dgRunGuardCheck")).stack
+            });
           }catch(_){}
-          // Only show status toast for real/persisting app failures (not transient hiccups)
+
+          // Track user-triggered persistent failures (for potential banner show)
+          try{
+            if(dgIsUserTriggered() && dgRecentCriticalFetchFail()){
+              if(!DG_GUARD.firstUserFailAt || (now - DG_GUARD.firstUserFailAt) > 30000){
+                DG_GUARD.firstUserFailAt = now;
+                DG_GUARD.userFailCount = 0;
+              }
+              DG_GUARD.userFailCount = (DG_GUARD.userFailCount||0) + 1;
+            }
+          }catch(_){}
+
+          // ONE silent recovery attempt (loops restart / one token reload)
           dgRetryLastAction(reason);
-          dgShowStatusBanner({reason: reason, misses: misses});
+
+          // Banner is rate-limited and will only show for real repeated user-triggered failures
+          dgShowStatusBanner({reason: reason, misses: misses, stack: (new Error("guardBanner")).stack});
         }else{
-          // Reset attempts on success so backoff doesn't keep growing
+          // Reset counters on success
           DG_GUARD.attempts = 0;
           DG_GUARD.missCount = 0;
           dg_guard_firstMissAt = 0;
+          DG_GUARD.userFailCount = 0;
+          DG_GUARD.firstUserFailAt = 0;
         }
       }catch(_){}
     }
@@ -7273,7 +7362,16 @@ if(searchScrim){
             DG_GUARD.lastAction = { type:"token", input: String(input||""), opts: (opts||{}) };
             dgScheduleChecks("tokenSwitch");
           }catch(_){}
-          return _openToken.apply(this, arguments);
+          var p = null;
+          try{ p = _openToken.apply(this, arguments); }catch(e){ throw e; }
+          try{
+            if(p && typeof p.then === "function"){
+              p.then(function(){ dgScheduleChecks("tokenLoaded"); }, function(){ dgScheduleChecks("tokenLoadFail"); });
+            }else{
+              dgScheduleChecks("tokenLoaded");
+            }
+          }catch(_){}
+          return p;
         };
         wrapped.__dg_wrapped = true;
         window.openToken = wrapped;
@@ -7320,84 +7418,3 @@ if(searchScrim){
 
 </body>
 </html>
-
-
-/* ================================
-   MOBILE-ONLY TRENDING TICKER COMPACT + SMOOTH (step12)
-   - Reduce height/padding, smaller cards, better readability
-   - Smooth marquee (GPU-friendly), less heavy shadows (less jank)
-   - Keeps existing click behavior
-   - Desktop unchanged
-   ================================ */
-@media (max-width: 760px){
-  /* Compact container spacing */
-  .topBarInner{ gap: 8px !important; padding: 10px 10px 10px !important; }
-
-  /* Ticker wrapper: slimmer + lighter paint cost */
-  .tickerWrap{
-    padding: 6px 8px !important;
-    border-radius: 16px !important;
-    border: 1px solid rgba(255,255,255,.10) !important;
-    background: rgba(255,255,255,.045) !important;
-    box-shadow: 0 8px 22px rgba(0,0,0,.18) !important;
-  }
-  .tickerWrap:before,
-  .tickerWrap:after{
-    width: 28px !important;
-  }
-
-  /* Smooth animation: longer duration + GPU-friendly transforms */
-  .tickerTrack{
-    gap: 8px !important;
-    animation-duration: 28s !important;
-    transform: translate3d(0,0,0);
-    will-change: transform;
-    backface-visibility: hidden;
-    contain: content;
-  }
-  .tickerWrap:hover .tickerTrack{ animation-play-state: paused; }
-
-  /* Smaller ticker items (Dexscreener vibe) */
-  .tickerItem{
-    padding: 6px 8px !important;
-    gap: 8px !important;
-    font-size: 12px !important;
-    border-radius: 999px !important;
-    background: rgba(255,255,255,.05) !important;
-    border: 1px solid rgba(255,255,255,.10) !important;
-    box-shadow: none !important; /* reduce repaint/jank */
-  }
-  .tickerItem.top1{
-    background: rgba(255,215,0,.08) !important;
-    border-color: rgba(255,215,0,.26) !important;
-    box-shadow: none !important;
-  }
-
-  /* Logo smaller + crisp */
-  .tickerLogoWrap{
-    width: 22px !important;
-    height: 22px !important;
-    flex: 0 0 22px !important;
-    border-radius: 6px !important;
-    box-shadow: none !important;
-  }
-  .tickerLogoFallback{ font-size: 11px !important; }
-
-  /* Rank + % pills tighter */
-  .tickerItem .rank{
-    min-width: 24px !important;
-    height: 18px !important;
-    padding: 0 6px !important;
-    font-size: 11px !important;
-  }
-  .tickerPct{
-    height: 18px !important;
-    padding: 0 6px !important;
-    font-size: 11px !important;
-  }
-
-  /* Prefer reduced motion */
-  @media (prefers-reduced-motion: reduce){
-    .tickerTrack{ animation: none !important; }
-  }
-}
