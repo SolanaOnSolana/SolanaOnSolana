@@ -3751,33 +3751,80 @@ function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
         if(!tr || !Number.isFinite(tr.price)) return;
         if(!rawCandles || !rawCandles.length) return;
         if(!candleSeries) return;
+        if(!Number.isFinite(activeTF?.agg) || activeTF.agg<=0) return;
+        if(!Number.isFinite(tr.tsMs)) return;
 
-        const last = rawCandles[rawCandles.length-1];
+        const tsSec = Math.floor(tr.tsMs/1000);
+        const bucket = Math.floor(tsSec / activeTF.agg) * activeTF.agg;
+
+        let last = rawCandles[rawCandles.length-1];
         if(!last || !(last.time>0)) return;
 
+        // Ignore very old or out-of-order trades (keeps chart stable)
+        if(bucket < last.time - activeTF.agg*3) return;
+
         const p = tr.price;
-
-        // Update current candle only (no timeframe rollover)
-        last.close = p;
-        if(Number.isFinite(last.high)) last.high = Math.max(last.high, p);
-        else last.high = p;
-        if(Number.isFinite(last.low)) last.low = Math.min(last.low, p);
-        else last.low = p;
-
-        // Optional: accumulate volume if present (doesn't create new candle)
         const usdVol = Number.isFinite(tr.usd) ? tr.usd : 0;
-        if(usdVol){
-          last.volume = (Number.isFinite(last.volume)?last.volume:0) + usdVol;
+
+        // Same candle -> update OHLCV
+        if(bucket === last.time){
+          last.close = p;
+          if(Number.isFinite(last.high)) last.high = Math.max(last.high, p);
+          else last.high = p;
+          if(Number.isFinite(last.low)) last.low = Math.min(last.low, p);
+          else last.low = p;
+          if(usdVol){
+            last.volume = (Number.isFinite(last.volume)?last.volume:0) + usdVol;
+          }
+
+          candleSeries.update({time:last.time, open:last.open, high:last.high, low:last.low, close:last.close});
+          try{
+            if(volumeSeries){
+              const v = Number.isFinite(last.volume) ? last.volume : 0;
+              volumeSeries.update({time:last.time, value:v, color:(last.close>=last.open)?'rgba(20,241,149,.35)':'rgba(255,77,109,.35)'});
+            }
+          }catch(_){}
+          return;
         }
 
-        candleSeries.update({time:last.time, open:last.open, high:last.high, low:last.low, close:last.close});
-
-        try{
-          if(volumeSeries){
-            const v = Number.isFinite(last.volume) ? last.volume : 0;
-            volumeSeries.update({time:last.time, value:v, color:(last.close>=last.open)?'rgba(20,241,149,.35)':'rgba(255,77,109,.35)'});
+        // New timeframe bucket -> create new candle(s) on boundary
+        if(bucket > last.time){
+          // Fill missing buckets with flat candles so the series never breaks
+          let prev = last;
+          let t = prev.time + activeTF.agg;
+          let guard = 0;
+          while(t < bucket && guard < 500){
+            const o = Number.isFinite(prev.close) ? prev.close : (Number.isFinite(prev.open)?prev.open:tr.price);
+            const flat = {time:t, open:o, high:o, low:o, close:o, volume:0};
+            rawCandles.push(flat);
+            candleSeries.update({time:flat.time, open:flat.open, high:flat.high, low:flat.low, close:flat.close});
+            try{
+              if(volumeSeries){
+                volumeSeries.update({time:flat.time, value:0, color:'rgba(20,241,149,.18)'});
+              }
+            }catch(_){}
+            prev = flat;
+            t += activeTF.agg;
+            guard++;
           }
-        }catch(_){}
+
+          const open = Number.isFinite(prev.close) ? prev.close : (Number.isFinite(prev.open)?prev.open:p);
+          const c = {
+            time: bucket,
+            open,
+            high: Math.max(open, p),
+            low: Math.min(open, p),
+            close: p,
+            volume: usdVol
+          };
+          rawCandles.push(c);
+          candleSeries.update({time:c.time, open:c.open, high:c.high, low:c.low, close:c.close});
+          try{
+            if(volumeSeries){
+              volumeSeries.update({time:c.time, value:(Number.isFinite(c.volume)?c.volume:0), color:(c.close>=c.open)?'rgba(20,241,149,.35)':'rgba(255,77,109,.35)'});
+            }
+          }catch(_){}
+        }
       }catch(_){}
     }
     /* ===== /Micro 14 ===== */
@@ -6071,83 +6118,3 @@ if(searchScrim){
 </body>
 </html>
 
-
-/* ================================
-   MOBILE-ONLY TRENDING TICKER COMPACT + SMOOTH (step12)
-   - Reduce height/padding, smaller cards, better readability
-   - Smooth marquee (GPU-friendly), less heavy shadows (less jank)
-   - Keeps existing click behavior
-   - Desktop unchanged
-   ================================ */
-@media (max-width: 760px){
-  /* Compact container spacing */
-  .topBarInner{ gap: 8px !important; padding: 10px 10px 10px !important; }
-
-  /* Ticker wrapper: slimmer + lighter paint cost */
-  .tickerWrap{
-    padding: 6px 8px !important;
-    border-radius: 16px !important;
-    border: 1px solid rgba(255,255,255,.10) !important;
-    background: rgba(255,255,255,.045) !important;
-    box-shadow: 0 8px 22px rgba(0,0,0,.18) !important;
-  }
-  .tickerWrap:before,
-  .tickerWrap:after{
-    width: 28px !important;
-  }
-
-  /* Smooth animation: longer duration + GPU-friendly transforms */
-  .tickerTrack{
-    gap: 8px !important;
-    animation-duration: 28s !important;
-    transform: translate3d(0,0,0);
-    will-change: transform;
-    backface-visibility: hidden;
-    contain: content;
-  }
-  .tickerWrap:hover .tickerTrack{ animation-play-state: paused; }
-
-  /* Smaller ticker items (Dexscreener vibe) */
-  .tickerItem{
-    padding: 6px 8px !important;
-    gap: 8px !important;
-    font-size: 12px !important;
-    border-radius: 999px !important;
-    background: rgba(255,255,255,.05) !important;
-    border: 1px solid rgba(255,255,255,.10) !important;
-    box-shadow: none !important; /* reduce repaint/jank */
-  }
-  .tickerItem.top1{
-    background: rgba(255,215,0,.08) !important;
-    border-color: rgba(255,215,0,.26) !important;
-    box-shadow: none !important;
-  }
-
-  /* Logo smaller + crisp */
-  .tickerLogoWrap{
-    width: 22px !important;
-    height: 22px !important;
-    flex: 0 0 22px !important;
-    border-radius: 6px !important;
-    box-shadow: none !important;
-  }
-  .tickerLogoFallback{ font-size: 11px !important; }
-
-  /* Rank + % pills tighter */
-  .tickerItem .rank{
-    min-width: 24px !important;
-    height: 18px !important;
-    padding: 0 6px !important;
-    font-size: 11px !important;
-  }
-  .tickerPct{
-    height: 18px !important;
-    padding: 0 6px !important;
-    font-size: 11px !important;
-  }
-
-  /* Prefer reduced motion */
-  @media (prefers-reduced-motion: reduce){
-    .tickerTrack{ animation: none !important; }
-  }
-}
