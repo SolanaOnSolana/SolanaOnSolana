@@ -1208,6 +1208,28 @@ display:none;
   #tradesCard.open .trades{ max-height: clamp(220px, 42vh, 520px); }
 }
 
+
+/* ===== DexGuard Live Terminal Patch: Split Panel + Live Txns ===== */
+#btnRefresh,#btnFit{display:none !important;}
+.splitRoot{display:flex; flex-direction:column; height:clamp(520px,70vh,780px); min-height:480px; max-height:820px; margin-top:10px;}
+.splitChart{flex:1 1 auto; min-height:220px; position:relative; display:flex; flex-direction:column;}
+.splitChart #chartWrap{flex:1 1 auto; height:100% !important; min-height:220px;}
+.splitHandle{flex:0 0 14px; height:14px; cursor:ns-resize; touch-action:none; user-select:none; display:flex; align-items:center; justify-content:center;
+  background:rgba(255,255,255,.03); border-top:1px solid rgba(255,255,255,.06); border-bottom:1px solid rgba(255,255,255,.06);}
+.splitHandle::before{content:""; width:52px; height:4px; border-radius:999px; background:rgba(255,255,255,.18);}
+.splitPanel{flex:0 0 var(--split-bottom,260px); min-height:160px; max-height:calc(100% - 220px); overflow:hidden; display:flex; flex-direction:column;
+  background:rgba(0,0,0,.12); border-radius:16px;}
+.splitTabs{display:flex; gap:8px; padding:10px 10px 8px; align-items:center; border-bottom:1px solid rgba(255,255,255,.07); background:rgba(0,0,0,.16);}
+.splitTab{appearance:none; border:1px solid rgba(255,255,255,.10); background:rgba(255,255,255,.03); color:rgba(255,255,255,.88); padding:8px 10px; border-radius:12px;
+  font-weight:650; font-size:12px; letter-spacing:.2px; cursor:pointer;}
+.splitTab.active{background:rgba(255,184,0,.14); border-color:rgba(255,184,0,.22); color:#ffd37a;}
+.splitBody{flex:1; overflow:auto; -webkit-overflow-scrolling:touch;}
+.tradeRow.enter{animation:tradeEnter .26s ease-out both;}
+@keyframes tradeEnter{from{opacity:0; transform:translateY(-10px);}to{opacity:1; transform:translateY(0);}}
+/* Hide legacy mobile chart/trades tabs (split panel replaces them) */
+.mobileTabs{display:none !important;}
+#mobileTradesWrap{display:none !important;}
+
 </style>
 </head>
 <body>
@@ -1382,6 +1404,13 @@ display:none;
       base:   '0x833589fCD6eDb6E08f4c7C32D4f71b54bda02913'   // USDC
     };
 
+    const DEFAULT_MARKET_TOKEN = {
+      solana: 'So11111111111111111111111111111111111111112', // wSOL
+      eth:    '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',   // WETH
+      bsc:    '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c',   // WBNB
+      base:   '0x4200000000000000000000000000000000000006'    // WETH on Base
+    };
+
     // Prefer stable quote pools for chart correctness
     const STABLE_QUOTES = {
       solana: ['EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'],
@@ -1397,6 +1426,7 @@ display:none;
       {k:'15m', gecko:'minute',   agg:900},
       {k:'1h',  gecko:'hour',     agg:3600},
       {k:'4h',  gecko:'hour',     agg:14400},
+      {k:'1w',  gecko:'day',      agg:604800},
       {k:'1d',  gecko:'day',      agg:86400},
       {k:'ALL', gecko:'day',      agg:86400}
     ];
@@ -1670,7 +1700,7 @@ display:none;
     let activeNet = normalizeChain(qs.get('chain') || 'solana');
     let addr = String(qs.get('addr')||'').trim();
 
-    let activeTF = TF.find(x=>x.k==='ALL');
+    let activeTF = TF.find(x=>x.k==='15m') || TF[0];
     let poolChoices = [];
     let poolId = '';
     let poolAddr = '';
@@ -1709,6 +1739,20 @@ let seenMakers = new Set();
       wickUpColor:'rgba(20,241,149,.95)',
       wickDownColor:'rgba(255,77,109,.95)',
       borderVisible:false,
+      autoscaleInfoProvider: (original) => {
+        const res = original();
+        try{
+          const pr = res && res.priceRange;
+          if(pr && Number.isFinite(pr.minValue) && Number.isFinite(pr.maxValue)){
+            const min = pr.minValue;
+            const max = pr.maxValue;
+            const span = (max - min) || Math.max(Math.abs(max), Math.abs(min), 1);
+            const pad = span * 0.04;
+            return { ...res, priceRange: { minValue: min - pad, maxValue: max + pad } };
+          }
+        }catch(_){ }
+        return res;
+      },
       priceFormat:{ type:'price', precision: 10, minMove: 1e-10 }
     });
 
@@ -1725,7 +1769,7 @@ let seenMakers = new Set();
     });
     ro.observe(chartEl);
 
-    btnFit.onclick = ()=>chart.timeScale().fitContent();
+    /* Fit button removed (auto-fit handled) */
 
     // -------------------- UI boot
     function renderNetPills(){
@@ -1740,7 +1784,7 @@ let seenMakers = new Set();
           renderNetPills();
           toast('Chain: '+n.label);
           // keep current addr if it matches chain type; otherwise default
-          if(!addr){ addr = DEFAULT_TOKEN[activeNet]; }
+          if(!addr || (activeNet==='solana' ? !isSolAddr(addr) : !isEvmAddr(addr))){ addr = DEFAULT_MARKET_TOKEN[activeNet]; }
           navigate(activeNet, addr);
         };
         netPills.appendChild(b);
@@ -1757,14 +1801,26 @@ let seenMakers = new Set();
           activeTF=t;
           [...tfRow.children].forEach(x=>x.classList.toggle('active', x.textContent===t.k));
           if(poolAddr){
+            try{ if(typeof stopLiveLoops==='function') stopLiveLoops(); }catch(_){ }
             loadCandles(true);
+            loadTrades(true);
+            startLiveLoops();
           }
         };
         tfRow.appendChild(b);
       });
     }
 
-    function setMobileTab(which){
+    
+    function setActiveTFKey(key){
+      const t = TF.find(x=>x.k===key) || TF.find(x=>x.k==='15m') || TF[0];
+      activeTF = t;
+      if(tfRow && tfRow.children && tfRow.children.length){
+        [...tfRow.children].forEach(x=>x.classList.toggle('active', x.textContent===t.k));
+      }
+      return t;
+    }
+function setMobileTab(which){
       if(!tabChart || !tabTrades) return;
       const isTrades = which==='trades';
       tabChart.classList.toggle('active', !isTrades);
@@ -1787,15 +1843,8 @@ let seenMakers = new Set();
         if(tb) tb.scrollIntoView({behavior:'smooth', block:'start'});
       };
     }
-
-    btnRefresh.onclick=()=>{
-      if(!poolAddr){ toast('Pick a token first'); return; }
-      loadCandles(true);
-      loadTrades(true);
-      loadMeta(true);
-    };
-
-    // -------------------- Search
+    /* Refresh button removed (auto updates) */
+// -------------------- Search
     let searchTimer=null;
     let searchReq=0;
 
@@ -2139,6 +2188,68 @@ let seenMakers = new Set();
     // -------------------- Candles
     let rawCandles=[];
 
+    // Candles paging + viewport normalization
+    const CANDLE_LIMIT = 1000;
+    const candlePager = { loading:false, hasMore:true, before:null, key:'' };
+    let _pagingAttached = false;
+
+    function desiredViewportBars(){
+      const k = activeTF?.k || '15m';
+      if(k==='1m') return 320;
+      if(k==='5m') return 300;
+      if(k==='15m') return 260;
+      if(k==='1h') return 240;
+      if(k==='4h') return 220;
+      if(k==='1d') return 200;
+      if(k==='1w') return 180;
+      if(k==='ALL') return 260;
+      return 260;
+    }
+
+    function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
+
+    function syncBarSpacing(){
+      try{
+        const r = chart.timeScale().getVisibleLogicalRange();
+        const bars = r ? Math.max(10, Math.round(r.to - r.from)) : desiredViewportBars();
+        const w = Math.max(320, chartEl.clientWidth || 800);
+        const spacing = clamp(w / (bars * 1.15), 3.5, 18);
+        chart.timeScale().applyOptions({ barSpacing: spacing });
+      }catch(_){}
+    }
+
+    function applyDefaultViewport(){
+      try{
+        const total = (rawCandles||[]).length;
+        if(!total){ return; }
+        const bars = desiredViewportBars();
+        const from = Math.max(0, total - bars);
+        const to = Math.max(0, total - 1);
+        chart.timeScale().setVisibleLogicalRange({from, to});
+        chart.timeScale().applyOptions({ rightOffset: 6 });
+        syncBarSpacing();
+      }catch(_){}
+    }
+
+    function attachPaging(){
+      if(_pagingAttached) return;
+      _pagingAttached = true;
+
+      chart.timeScale().subscribeVisibleLogicalRangeChange((range)=>{
+        if(!range) return;
+        if(!poolAddr) return;
+        if(candlePager.loading || !candlePager.hasMore) return;
+        if(range.from < 30){
+          loadOlderCandles();
+        }
+      });
+
+      // keep candle spacing stable on resize
+      const _ro2 = new ResizeObserver(()=>{ try{ syncBarSpacing(); }catch(_){} });
+      _ro2.observe(chartEl);
+    }
+
+
     function geckoCandlesUrl(gran, before){
       // /networks/{network}/pools/{pool}/ohlcv/{timeframe}?aggregate=...&before_timestamp=...&limit=1000&currency=usd
       const agg = (activeTF.k==='ALL' ? 1 : Math.max(1, Math.floor(activeTF.agg / (gran==='minute'?60:(gran==='hour'?3600:86400)) )));
@@ -2153,25 +2264,49 @@ let seenMakers = new Set();
     function mapGeckoOhlcv(j){
       const list = j?.data?.attributes?.ohlcv_list;
       if(!Array.isArray(list)) return [];
-      // each row: [timestamp, open, high, low, close, volume]
-      // Gecko timestamps should be unix seconds, but some proxies may return ms.
-      return list.map(r=>{
-        const ts = Number(r[0]) || 0;
+      const cleanNum = (v)=>{
+        if(v==null) return NaN;
+        if(typeof v==='string') v = v.replace(/,/g,'').trim();
+        const n = Number(v);
+        return Number.isFinite(n) ? n : NaN;
+      };
+      const out = [];
+      for(const r of list){
+        if(!r || r.length<5) continue;
+        const ts = cleanNum(r[0]) || 0;
         const time = ts>1e12 ? Math.floor(ts/1000) : Math.floor(ts);
-        const open = Number(r[1]);
-        const high = Number(r[2]);
-        const low  = Number(r[3]);
-        const close= Number(r[4]);
-        const volume = Number(r[5]);
-        return {time, open, high, low, close, volume};
-      }).filter(x=>x.time>0 && Number.isFinite(x.open) && Number.isFinite(x.high) && Number.isFinite(x.low) && Number.isFinite(x.close));
+        const open = cleanNum(r[1]);
+        const high0 = cleanNum(r[2]);
+        const low0  = cleanNum(r[3]);
+        const close= cleanNum(r[4]);
+        const volume = cleanNum(r[5]);
+        if(!(time>0) || !Number.isFinite(open) || !Number.isFinite(close) || !Number.isFinite(high0) || !Number.isFinite(low0)) continue;
+        const high = Math.max(high0, open, close);
+        const low  = Math.min(low0, open, close);
+        out.push({time, open, high, low, close, volume: Number.isFinite(volume)?volume:0});
+      }
+      return out;
     }
 
     function applyCandlesToChart(fit){
+      // Ensure strictly ascending + unique by time
+      const map = new Map();
+      for(const c of (rawCandles||[])){
+        if(!c || !(c.time>0)) continue;
+        map.set(c.time, c);
+      }
+      rawCandles = Array.from(map.values()).sort((a,b)=>a.time-b.time);
       const src = rawCandles;
+
       candleSeries.setData(src.map(c=>({time:c.time, open:c.open, high:c.high, low:c.low, close:c.close})));
-      volumeSeries.setData(src.map(c=>({time:c.time, value:c.volume, color:(c.close>=c.open)?'rgba(20,241,149,.35)':'rgba(255,77,109,.35)'})));
-      if(fit) chart.timeScale().fitContent();
+      volumeSeries.setData(src.map(c=>({time:c.time, value:c.volume||0, color:(c.close>=c.open)?'rgba(20,241,149,.35)':'rgba(255,77,109,.35)'})));
+
+      if(fit){
+        applyDefaultViewport();
+      }else{
+        // keep bar spacing reasonable even during live updates
+        syncBarSpacing();
+      }
     }
 
     function applyTradeToCandles(tr){
@@ -2218,10 +2353,15 @@ let seenMakers = new Set();
 
     async function refreshLatestCandles(){
       if(!poolAddr) return;
+      const _key0 = `${activeNet}|${poolAddr}|${activeTF?.k||''}`;
+      const _reqId = (refreshLatestCandles._reqId = (refreshLatestCandles._reqId||0) + 1);
+      const _my = _reqId;
       try{
         const gran = activeTF.gecko;
         const url = geckoCandlesUrl(gran, null);
         const j = await fetchJson(url, {timeout:16000, retries:1});
+        if(_my !== refreshLatestCandles._reqId) return;
+        if(_key0 !== `${activeNet}|${poolAddr}|${activeTF?.k||''}`) return;
         const part = mapGeckoOhlcv(j);
         if(!part.length) return;
         part.sort((a,b)=>a.time-b.time);
@@ -2242,48 +2382,123 @@ let seenMakers = new Set();
 
     async function loadCandles(fit){
       if(!poolAddr) return;
+      attachPaging();
+
       statusEl.textContent = 'Loading chart…';
+      candlePager.loading = true;
+      candlePager.hasMore = true;
+      candlePager.before = null;
+      candlePager.key = `${activeNet}|${poolAddr}|${activeTF?.k||''}`;
+
       rawCandles=[];
       candleSeries.setData([]);
       volumeSeries.setData([]);
 
       try{
         const gran = activeTF.gecko;
-
-        // backfill loop to get full history (until no older candles)
+        const needBars = desiredViewportBars();
+        let pages = 0;
         let before = null;
         let all = [];
-        let guard = 0;
-        while(guard++ < (activeTF.k==='ALL' ? 12 : 4)){
+
+        while(pages++ < (activeTF.k==='ALL' ? 10 : 6)){
           const url = geckoCandlesUrl(gran, before);
-          const j = await fetchJson(url, {timeout:16000, retries:1});
-          const part = mapGeckoOhlcv(j);
-          if(!part.length) break;
-          // gecko returns newest->oldest sometimes; normalize
+          const j = await fetchJson(url, {timeout:18000, retries:1});
+          let part = mapGeckoOhlcv(j);
+          if(!part.length){
+            candlePager.hasMore = false;
+            break;
+          }
           part.sort((a,b)=>a.time-b.time);
+
           // prepend
           all = part.concat(all);
-          // next before = oldest timestamp - 1
-          before = part[0].time - 1;
-          if(part.length < 990) break; // no more pages
+
+          // continue paging older
+          const oldest = part[0].time;
+          before = oldest - 1;
+          if(part.length < (CANDLE_LIMIT - 10)) { candlePager.hasMore = false; break; }
+
+          // stop once we have enough data for a good-looking viewport + buffer
+          if(all.length >= (needBars * 2)) break;
         }
 
-        // dedupe by time
+        // dedupe + sort
         const map = new Map();
-        all.forEach(c=>map.set(c.time, c));
+        for(const c of all){ map.set(c.time, c); }
         rawCandles = Array.from(map.values()).sort((a,b)=>a.time-b.time);
 
         if(!rawCandles.length){
           statusEl.textContent = 'Chart not available for this pool.';
+          candlePager.hasMore = false;
+          candlePager.before = null;
+          candlePager.loading = false;
           return;
         }
 
-        applyCandlesToChart(fit);
+        candlePager.before = rawCandles[0].time - 1;
+        applyCandlesToChart(true);
         statusEl.textContent = 'Live.';
-
       }catch(e){
         statusEl.textContent = 'Chart error.';
         console.error(e);
+      }finally{
+        candlePager.loading = false;
+      }
+    }
+
+    async function loadOlderCandles(){
+      if(!poolAddr) return;
+      if(candlePager.loading || !candlePager.hasMore) return;
+
+      const key = `${activeNet}|${poolAddr}|${activeTF?.k||''}`;
+      if(candlePager.key && candlePager.key !== key) return; // stale
+      const before = candlePager.before;
+      if(!before) { candlePager.hasMore = false; return; }
+
+      candlePager.loading = true;
+      const prevRange = (()=>{ try{ return chart.timeScale().getVisibleLogicalRange(); }catch(_){ return null; } })();
+      const prevTimes = new Set(rawCandles.map(c=>c.time));
+
+      try{
+        const url = geckoCandlesUrl(activeTF.gecko, before);
+        const j = await fetchJson(url, {timeout:18000, retries:1});
+        let part = mapGeckoOhlcv(j);
+        if(!part.length){
+          candlePager.hasMore = false;
+          return;
+        }
+        part.sort((a,b)=>a.time-b.time);
+
+        let added = 0;
+        for(const c of part){
+          if(!prevTimes.has(c.time)) added++;
+        }
+
+        // merge + dedupe
+        const map = new Map();
+        for(const c of rawCandles) map.set(c.time, c);
+        for(const c of part) map.set(c.time, c);
+        rawCandles = Array.from(map.values()).sort((a,b)=>a.time-b.time);
+
+        // update pager
+        candlePager.before = rawCandles[0].time - 1;
+        if(part.length < (CANDLE_LIMIT - 10)) candlePager.hasMore = false;
+
+        applyCandlesToChart(false);
+
+        // keep viewport anchored after prepend
+        if(prevRange && added>0){
+          chart.timeScale().setVisibleLogicalRange({
+            from: prevRange.from + added,
+            to: prevRange.to + added
+          });
+        }
+        syncBarSpacing();
+      }catch(e){
+        // keep hasMore true; transient errors
+      }finally{
+        candlePager.loading = false;
       }
     }
 
@@ -2425,6 +2640,7 @@ let seenMakers = new Set();
           const wrapper = document.createElement('div');
           wrapper.innerHTML = html;
           const row = wrapper.firstElementChild;
+          if(row){ row.classList.add('enter'); requestAnimationFrame(()=>{ row.classList.add('enter'); }); setTimeout(()=>{ try{ row.classList.remove('enter'); }catch(_){ } }, 420); }
           // insert after head
           el.insertBefore(row, head.nextSibling);
           // cap rows
@@ -2492,20 +2708,67 @@ let seenMakers = new Set();
 
     async function loadTrades(reset=false){
       if(!poolAddr) return;
+      const _key0 = `${activeNet}|${poolAddr}`;
+      const _reqId = (loadTrades._reqId = (loadTrades._reqId||0) + 1);
+      const _my = _reqId;
       try{
         const data = await geckoTrades(80);
+        if(_my !== loadTrades._reqId) return;
+        if(_key0 !== `${activeNet}|${poolAddr}`) return;
         const newly = renderTrades(data, {reset}) || [];
         if(newly.length){
           // Apply oldest->newest so candle updates are correct
           newly.slice().sort((a,b)=>a.tsMs-b.tsMs).forEach(applyTradeToCandles);
         }
 
-    function startLiveLoops(){
-      if(tradesTimer) clearInterval(tradesTimer);
-      tradesTimer = setInterval(async ()=>{ try{ await loadTrades(false); }catch(_){ } }, 2500);
+    function stopLiveLoops(){
+      LIVE.gen++;
+      const st = LIVE;
+      if(st.tTrades){ clearTimeout(st.tTrades); st.tTrades=null; }
+      if(st.tCandles){ clearTimeout(st.tCandles); st.tCandles=null; }
+      if(st.tMeta){ clearTimeout(st.tMeta); st.tMeta=null; }
+      if(st.tAges){ clearInterval(st.tAges); st.tAges=null; }
+    }
 
-      if(candlesTimer) clearInterval(candlesTimer);
-      candlesTimer = setInterval(async ()=>{ try{ await refreshLatestCandles(); }catch(_){ } }, 5000);
+    const LIVE = { gen:0, tTrades:null, tCandles:null, tMeta:null, tAges:null, failTrades:0, tradeDelay:1500 };
+
+    function startLiveLoops(){
+      stopLiveLoops();
+      const gen = LIVE.gen;
+      LIVE.failTrades = 0;
+      LIVE.tradeDelay = 1500;
+
+      const scheduleTrades = async ()=>{
+        if(gen !== LIVE.gen) return;
+        try{
+          await loadTrades(false);
+          LIVE.failTrades = 0;
+          LIVE.tradeDelay = 1500;
+        }catch(_){
+          LIVE.failTrades = (LIVE.failTrades||0) + 1;
+          LIVE.tradeDelay = Math.min(5000, Math.round(1500 * Math.pow(1.25, LIVE.failTrades)));
+        }
+        LIVE.tTrades = setTimeout(scheduleTrades, LIVE.tradeDelay);
+      };
+
+      const scheduleCandles = async ()=>{
+        if(gen !== LIVE.gen) return;
+        try{ await refreshLatestCandles(); }catch(_){}
+        LIVE.tCandles = setTimeout(scheduleCandles, 9000);
+      };
+
+      const scheduleMeta = async ()=>{
+        if(gen !== LIVE.gen) return;
+        try{ await loadMeta(); }catch(_){}
+        LIVE.tMeta = setTimeout(scheduleMeta, 15000);
+      };
+
+      LIVE.tAges = setInterval(()=>{ if(gen === LIVE.gen) updateAges(); }, 1000);
+
+      scheduleTrades();
+      scheduleCandles();
+      scheduleMeta();
+    }catch(_){ } }, 5000);
     }
         statusEl.textContent = 'Live.';
       }catch(e){
@@ -2698,7 +2961,7 @@ let seenMakers = new Set();
           applyNetTheme();
           syncTrendToggle();
           renderNetPills();
-          if(!addr) addr = DEFAULT_TOKEN[activeNet];
+          if(!addr || (activeNet==='solana' ? !isSolAddr(addr) : !isEvmAddr(addr))) addr = DEFAULT_MARKET_TOKEN[activeNet];
           navigate(activeNet, addr);
         };
       }
@@ -2726,7 +2989,12 @@ let seenMakers = new Set();
       }
     }
 
-    async function openToken(input, {skipInput=false}={}){
+    async function openToken(input, opts={}){
+      try{ if(typeof stopLiveLoops==='function') stopLiveLoops(); }catch(_){ }
+      const skipInput = !!opts.skipInput;
+      const silent = !!opts.silent;
+      const boot = !!opts.boot;
+
       let v = String(input||'').trim();
       if(!v){ toast('Paste a token name or address'); return; }
       if(!skipInput) q.value = v;
@@ -2736,6 +3004,10 @@ let seenMakers = new Set();
       pairNameEl.textContent = 'Loading…';
       pairMetaEl.textContent = 'Resolving best pool…';
       results.innerHTML = '';
+
+      // Force default chart timeframe on every token selection
+      setActiveTFKey('15m');
+
 
       let dsPair = null;
 
@@ -2879,22 +3151,28 @@ let seenMakers = new Set();
         console.error(e);
         statusEl.textContent = 'Load error.';
         // Avoid noisy toast on first load / auto-open. Show toast only after user actions.
-        if(!opts || (!opts.silent && !opts.boot)){
+        if(!silent && !boot){
           toast('Failed to load chart/trades. API blocked or pool unsupported.');
         }
         // One gentle auto-retry on boot (sometimes APIs are rate-limited on initial load)
-        if(opts && opts.boot && !openToken._bootRetried){
+        if(boot && !openToken._bootRetried){
           openToken._bootRetried = true;
           setTimeout(()=>openToken(addr, {skipInput:true, silent:true}), 1200);
         }
 }
     }
 
-    // Boot trending
+    
+    // Boot UI
+    renderNetPills();
+    renderTimeframes();
+    applyNetTheme();
+
+// Boot trending
     startTrending();
 
     // Open initial token if present
-    if(!addr) addr = DEFAULT_TOKEN[activeNet];
+    if(!addr || (activeNet==='solana' ? !isSolAddr(addr) : !isEvmAddr(addr))) addr = DEFAULT_MARKET_TOKEN[activeNet];
     // auto-open default
     openToken(addr, {skipInput:true, silent:true, boot:true});
 
@@ -2983,6 +3261,179 @@ if(searchScrim){
   }catch(_){}
 })();
   })();
-  </script>
+  
+
+// ================================
+//  DexGuard Split Panel (Chart + Txns) + Drag Handle
+// ================================
+(function initSplitPanel(){
+  try{
+    const rootId = 'splitRoot';
+    if(document.getElementById(rootId)) return;
+    if(!chartCard || !tradesCard) return;
+
+    // Remove legacy buttons completely
+    try{ if(btnFit) btnFit.remove(); }catch(_){}
+    try{ if(btnRefresh) btnRefresh.remove(); }catch(_){}
+
+    // Hide legacy mobile tab wrapper + mobile trades wrapper (split replaces)
+    try{ const mt = chartCard.querySelector('.mobileTabs'); if(mt) mt.remove(); }catch(_){}
+    try{ if(mobileTradesWrap) mobileTradesWrap.style.display='none'; }catch(_){}
+
+    // Build split DOM
+    const splitRoot = document.createElement('div');
+    splitRoot.id = rootId;
+    splitRoot.className = 'splitRoot';
+
+    const splitChart = document.createElement('div');
+    splitChart.className = 'splitChart';
+
+    const splitHandle = document.createElement('div');
+    splitHandle.className = 'splitHandle';
+    splitHandle.setAttribute('role','separator');
+    splitHandle.setAttribute('aria-orientation','horizontal');
+    splitHandle.title = 'Drag to resize';
+
+    const splitPanel = document.createElement('div');
+    splitPanel.className = 'splitPanel';
+
+    const splitTabs = document.createElement('div');
+    splitTabs.className = 'splitTabs';
+
+    const mkTab = (key, label)=>{
+      const b=document.createElement('button');
+      b.type='button';
+      b.className='splitTab';
+      b.dataset.key=key;
+      b.textContent=label;
+      return b;
+    };
+
+    const tabBoth = mkTab('both','Chart+Txns');
+    const tabChartOnly = mkTab('chart','Chart');
+    const tabTxnsOnly = mkTab('txns','Txns');
+    splitTabs.appendChild(tabBoth);
+    splitTabs.appendChild(tabChartOnly);
+    splitTabs.appendChild(tabTxnsOnly);
+
+    const splitBody = document.createElement('div');
+    splitBody.className = 'splitBody';
+
+    splitPanel.appendChild(splitTabs);
+    splitPanel.appendChild(splitBody);
+
+    // Move chartWrap + controls into splitChart
+    const chartWrapEl = document.getElementById('chartWrap');
+    const controlsEl = chartCard.querySelector('.controls');
+    if(chartWrapEl) splitChart.appendChild(chartWrapEl);
+    if(controlsEl) splitChart.appendChild(controlsEl);
+
+    // Move trades card into splitBody
+    tradesCard.classList.remove('desktopOnly');
+    splitBody.appendChild(tradesCard);
+
+    // Insert into chartCard (after header)
+    const hd = chartCard.querySelector('.cardHd');
+    if(hd && hd.parentNode){
+      hd.parentNode.insertBefore(splitRoot, hd.nextSibling);
+    }else{
+      chartCard.appendChild(splitRoot);
+    }
+    splitRoot.appendChild(splitChart);
+    splitRoot.appendChild(splitHandle);
+    splitRoot.appendChild(splitPanel);
+
+    // Default heights
+    const clamp = (v,min,max)=>Math.max(min,Math.min(max,v));
+    const recompute = ()=>{
+      const total = splitRoot.clientHeight || 0;
+      const minBottom = 160;
+      const maxBottom = Math.max(minBottom, total - 240);
+      const cur = parseFloat(getComputedStyle(splitRoot).getPropertyValue('--split-bottom')) || 260;
+      const next = clamp(cur, minBottom, maxBottom);
+      splitRoot.style.setProperty('--split-bottom', next + 'px');
+      requestAnimationFrame(()=>{ try{ chart.applyOptions({ width: chartEl.clientWidth, height: chartEl.clientHeight }); }catch(_){ } });
+    };
+    window.addEventListener('resize', recompute, {passive:true});
+    requestAnimationFrame(recompute);
+
+    // Tabs behavior
+    const setMode = (mode)=>{
+      tabBoth.classList.toggle('active', mode==='both');
+      tabChartOnly.classList.toggle('active', mode==='chart');
+      tabTxnsOnly.classList.toggle('active', mode==='txns');
+
+      if(mode==='chart'){
+        splitPanel.style.display = 'none';
+        splitHandle.style.display = 'none';
+        splitChart.style.flex = '1 1 auto';
+      }else if(mode==='txns'){
+        splitChart.style.display = 'none';
+        splitHandle.style.display = 'none';
+        splitPanel.style.display = 'flex';
+      }else{
+        splitChart.style.display = 'flex';
+        splitPanel.style.display = 'flex';
+        splitHandle.style.display = 'flex';
+      }
+
+      requestAnimationFrame(()=>{
+        try{
+          if(mode!=='txns'){
+            chart.applyOptions({ width: chartEl.clientWidth, height: chartEl.clientHeight });
+            chart.timeScale().fitContent();
+          }
+        }catch(_){}
+      });
+    };
+
+    tabBoth.onclick = ()=>setMode('both');
+    tabChartOnly.onclick = ()=>setMode('chart');
+    tabTxnsOnly.onclick = ()=>setMode('txns');
+    setMode('both');
+
+    // Drag handle behavior
+    let dragging=false, startY=0, startBottom=0;
+    const onMove = (e)=>{
+      if(!dragging) return;
+      const y = (e.touches && e.touches[0]) ? e.touches[0].clientY : e.clientY;
+      const dy = y - startY;
+      const total = splitRoot.clientHeight || 0;
+      const minBottom = 160;
+      const maxBottom = Math.max(minBottom, total - 240);
+      const next = clamp(startBottom - dy, minBottom, maxBottom);
+      splitRoot.style.setProperty('--split-bottom', next + 'px');
+      requestAnimationFrame(()=>{ try{ chart.applyOptions({ width: chartEl.clientWidth, height: chartEl.clientHeight }); }catch(_){ } });
+      e.preventDefault?.();
+    };
+    const onUp = ()=>{
+      if(!dragging) return;
+      dragging=false;
+      document.body.classList.remove('dragging');
+      window.removeEventListener('pointermove', onMove, {passive:false});
+      window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('touchmove', onMove, {passive:false});
+      window.removeEventListener('touchend', onUp);
+    };
+
+    const onDown = (e)=>{
+      if(tabChartOnly.classList.contains('active') || tabTxnsOnly.classList.contains('active')) return;
+      dragging=true;
+      startY = (e.touches && e.touches[0]) ? e.touches[0].clientY : e.clientY;
+      startBottom = parseFloat(getComputedStyle(splitRoot).getPropertyValue('--split-bottom')) || 260;
+      document.body.classList.add('dragging');
+      if(e.pointerId && splitHandle.setPointerCapture) try{ splitHandle.setPointerCapture(e.pointerId); }catch(_){}
+      window.addEventListener('pointermove', onMove, {passive:false});
+      window.addEventListener('pointerup', onUp);
+      window.addEventListener('touchmove', onMove, {passive:false});
+      window.addEventListener('touchend', onUp);
+      e.preventDefault?.();
+    };
+
+    splitHandle.addEventListener('pointerdown', onDown, {passive:false});
+    splitHandle.addEventListener('touchstart', onDown, {passive:false});
+  }catch(_){}
+})();
+</script>
 </body>
 </html>
