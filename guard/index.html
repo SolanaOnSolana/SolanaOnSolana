@@ -3702,31 +3702,6 @@ function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
         syncBarSpacing();
       }
     }
-    // ===== DexGuard Micro 14: Chart Update Hook (update last candle close/high/low from newest trade) =====
-    function updateLastCandleFromTrade(tr){
-      try{
-        if(!rawCandles || !rawCandles.length) return;
-        const p = Number(tr?.price);
-        if(!Number.isFinite(p) || p<=0) return;
-
-        const last = rawCandles[rawCandles.length-1];
-        if(!last || last.time==null) return;
-
-        last.close = p;
-        last.high = Number.isFinite(last.high) ? Math.max(last.high, p) : p;
-        last.low  = Number.isFinite(last.low)  ? Math.min(last.low,  p) : p;
-
-        // Update only current candle (no timeframe rollover here)
-        try{
-          candleSeries.update({time:last.time, open:last.open, high:last.high, low:last.low, close:last.close});
-        }catch(_){}
-      }catch(e){
-        try{ console.warn('updateLastCandleFromTrade failed', e); }catch(_){}
-      }
-    }
-    // ===== /Micro 14 =====
-
-
 
     function applyTradeToCandles(tr){
       if(!rawCandles || !rawCandles.length) return;
@@ -4248,9 +4223,6 @@ function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
           }
         }
 
-        // Micro 14: update chart last candle from newest accepted trade (post-dedupe)
-        try{ if(newOnes.length) updateLastCandleFromTrade(newOnes[0]); }catch(_){ }
-
         // If nothing new, ensure panel is never blank
         if(!newOnes.length){
           if(!el.querySelector('.tradeRow')){
@@ -4290,7 +4262,7 @@ function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
           S.keys.add(tr.k);
 
           const row = document.createElement('div');
-          row.className = 'tradeRow dg-new';
+          row.className = 'tradeRow dg-new enter';
           row.dataset.k = tr.k;
 
           const tbadge = `<span class="typeBadge ${tr.type==='buy'?'buy':'sell'}">${tr.type.toUpperCase()}</span>`;
@@ -4318,6 +4290,7 @@ function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
           `;
 
           el.insertBefore(row, insertBefore);
+            try{ row.addEventListener('animationend', ()=>row.classList.remove('enter'), {once:true}); }catch(_){ setTimeout(()=>row.classList.remove('enter'), 400); }
           requestAnimationFrame(()=>{ try{ row.classList.add('dg-in'); }catch(_){} });
         }
 
@@ -4367,89 +4340,6 @@ function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
       }catch(_){
         try{ setTradesFallback('Trades retrying…'); }catch(__){}
       }
-    }
-={}){
-      try{
-        if(!Array.isArray(trades)){
-          setTradesFallback('Trades retrying…');
-          return;
-        }
-        if(trades.length===0){
-          setTradesFallback('No recent trades');
-          return;
-        }
-      }catch(_){}
-const parsed = (trades||[]).map(parseTrade).filter(x=>x.id && Number.isFinite(x.tsMs));
-      parsed.sort((a,b)=>b.tsMs-a.tsMs);
-
-      if(reset){
-        tradesSeen = new Set();
-        seenMakers = new Set();
-        // clear existing rows (keep header)
-        tradesContainer().forEach(el=>{
-          const head = el.querySelector('.tradeHead');
-          el.innerHTML='';
-          el.appendChild(head);
-        });
-      }
-
-      const newly = [];
-
-      // Only add unseen trades (prepend)
-      const newRowsHtml = [];
-      for(const tr of parsed){
-        const _k = tradeDedupeKey(tr);
-        if(tradesSeen.has(_k)) continue;
-        tradesSeen.add(_k);
-        // prevent unbounded growth across long sessions
-        if(tradesSeen.size > 5000){
-          try{
-            const keep = new Set();
-            for(let i=0;i<Math.min(240, trades.length);i++){
-              keep.add(tradeDedupeKey(trades[i]));
-            }
-            tradesSeen = keep;
-          }catch(_){ }
-        }
-        newly.push(tr);
-        newRowsHtml.push(tradeRowHtml(tr));
-      }
-
-      if(newRowsHtml.length){
-        const htmlStr = newRowsHtml.join('');
-        tradesContainer().forEach(el=>{
-          const head = el.querySelector('.tradeHead');
-          const wrapper = document.createElement('div');
-          wrapper.innerHTML = htmlStr;
-          const frag = document.createDocumentFragment();
-          const rows = [];
-          while(wrapper.firstElementChild){
-            const row = wrapper.firstElementChild;
-            rows.push(row);
-            frag.appendChild(row);
-          }
-          if(rows.length){
-            // insert after head in a single batch
-            el.insertBefore(frag, head.nextSibling);
-            if(reset && newRowsHtml.length) perfMarkTrades(perfToken.id);
-            // animate new rows (batched)
-            rows.forEach(r=>{ try{ r.classList.add('enter'); }catch(_){ } });
-            requestAnimationFrame(()=>{ setTimeout(()=>{ rows.forEach(r=>{ try{ r.classList.remove('enter'); }catch(_){ } }); }, 420); });
-          }
-          // cap rows
-          const rowsAll = [...el.querySelectorAll('.tradeRow')];
-          if(rowsAll.length>120){
-            rowsAll.slice(120).forEach(r=>r.remove());
-          }
-        });
-      }
-
-      const total = tradesDesk.querySelectorAll('.tradeRow').length;
-      tradesStat.textContent = `${total} trades`;
-      tradesStatM.textContent = `${total} trades`;
-
-      updateAges();
-      return newly;
     }
 
     function updateAges(){
