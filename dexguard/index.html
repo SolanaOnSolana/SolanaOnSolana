@@ -1064,79 +1064,77 @@ display:none;
 }
 
 /* ================================
-   DexGuard Targeted UI PATCH (A/B/C)
+   DexGuard Targeted UI PATCH (A/B/C) — FIXED (no nested @media)
    ================================ */
 @media (max-width: 760px){
-/* Header pills stay single-row with horizontal scroll if needed (no wrapping) */
-#netPills{
-  display:flex;
-  flex-wrap: nowrap !important;
-  gap: 8px;
-  overflow-x: auto;
-  overflow-y: hidden;
-  scrollbar-width: none;
-  max-width: 52vw;
+  /* Header pills stay single-row with horizontal scroll if needed (no wrapping) */
+  #netPills{
+    display:flex;
+    flex-wrap: nowrap !important;
+    gap: 8px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    max-width: 52vw;
+  }
+  #netPills::-webkit-scrollbar{ display:none; }
+
+  /* TASK C — Search dropdown never clipped */
+  .panel{ overflow: visible !important; }
+  .topBar{ z-index: 5000 !important; }
+  .dexSearch{ z-index: 6000 !important; }
+  .results{ z-index: 7000 !important; }
+  .grid{ position: relative; z-index: 1; }
+
+  /* TASK B — Live Trades stays under chart, expands downward only (accordion) */
+  #tradesCard{
+    position: relative !important;
+    left: auto !important; right: auto !important; bottom: auto !important;
+    transform: none !important;
+    height: auto !important;
+    max-height: none !important;
+    margin: 0 !important;
+  }
+  #tradesCard .tableHd{
+    cursor: pointer;
+    user-select: none;
+  }
+  #tradesCard .tableHd .sheetRight{ display:flex; align-items:center; gap:10px; }
+  #tradesCard .accToggleBtn{
+    width: 40px;
+    height: 40px;
+    display: grid;
+    place-items: center;
+    border-radius: 999px;
+    border: 1px solid rgba(255,255,255,.12);
+    background: rgba(255,255,255,.05);
+  }
+  #tradesCard .accToggleBtn:hover{ background: rgba(255,255,255,.08); }
+  #tradesCard .accToggleBtn svg{ transition: transform var(--t); }
+  #tradesCard.open .accToggleBtn svg{ transform: rotate(180deg); }
+
+  /* collapsed: header only */
+  #tradesCard:not(.open) .trades{ display:none !important; }
+
+  /* expanded: internal scrolling region, still in page flow */
+  #tradesCard.open .trades{
+    display:block !important;
+    height: auto !important;
+    max-height: clamp(240px, 45vh, 600px);
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+  }
 }
-#netPills::-webkit-scrollbar{ display:none; }
+
 @media (max-width: 640px){
   #netPills{ max-width: 44vw; }
   .pill{ min-height: 40px; padding: 8px 10px; }
 }
 
-
-@media (max-width: 760px){
-/* TASK C — Search dropdown never clipped */
-.panel{ overflow: visible !important; }
-.topBar{ z-index: 5000 !important; }
-.dexSearch{ z-index: 6000 !important; }
-.results{ z-index: 7000 !important; }
-.grid{ position: relative; z-index: 1; }
-
-/* TASK B — Live Trades stays under chart, expands downward only */
-#tradesCard{
-  position: relative !important;
-  left: auto !important; right: auto !important; bottom: auto !important;
-  transform: none !important;
-  height: auto !important;
-  max-height: none !important;
-  margin: 0 !important;
-}
-#tradesCard .tableHd{
-  cursor: pointer;
-  user-select: none;
-}
-#tradesCard .tableHd .sheetRight{ display:flex; align-items:center; gap:10px; }
-#tradesCard .accToggleBtn{
-  width: 40px;
-  height: 40px;
-  display: grid;
-  place-items: center;
-  border-radius: 999px;
-  border: 1px solid rgba(255,255,255,.12);
-  background: rgba(255,255,255,.05);
-}
-#tradesCard .accToggleBtn:hover{ background: rgba(255,255,255,.08); }
-#tradesCard .accToggleBtn svg{ transition: transform var(--t); }
-#tradesCard.open .accToggleBtn svg{ transform: rotate(180deg); }
-
-/* collapsed: header only */
-#tradesCard:not(.open) .trades{ display:none !important; }
-
-/* expanded: internal scrolling region, still in page flow */
-#tradesCard.open .trades{
-  display:block !important;
-  height: auto !important;
-  max-height: clamp(240px, 45vh, 600px);
-  overflow: auto;
-  -webkit-overflow-scrolling: touch;
-}
 @media (max-width: 980px){
   #tradesCard.open .trades{ max-height: clamp(220px, 42vh, 520px); }
 }
 
-
-
-}
 /* ===== DexGuard Live Terminal Patch: Split Panel + Live Txns ===== */
 @media (max-width: 760px){
   #btnRefresh,#btnFit{display:none !important;}
@@ -2265,55 +2263,6 @@ display:none;
     max-height: 820px !important;
   }
 }
-
-    /* ===== DexGuard Debug Panel (hidden by default) ===== */
-    .dgDebugPanel{
-      position:fixed;
-      right:12px;
-      bottom:12px;
-      width:min(420px, calc(100vw - 24px));
-      max-height:45vh;
-      overflow:auto;
-      background: rgba(0,0,0,.72);
-      border:1px solid rgba(255,255,255,.18);
-      border-radius: 14px;
-      box-shadow: 0 18px 70px rgba(0,0,0,.65);
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
-      padding: 10px 12px;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-      font-size: 12px;
-      line-height: 1.35;
-      color: rgba(255,255,255,.92);
-      z-index: 2147483646;
-      display:none;
-      pointer-events:auto;
-    }
-    .dgDebugPanel.show{ display:block; }
-    .dgDebugPanel .hdr{
-      display:flex; align-items:center; justify-content:space-between;
-      gap:10px;
-      font-weight: 950;
-      margin-bottom: 8px;
-    }
-    .dgDebugPanel .hdr .hint{ font-weight: 800; opacity: .72; font-size: 11px; }
-    .dgDebugPanel pre{
-      margin:0;
-      white-space: pre-wrap;
-      word-break: break-word;
-      color: rgba(255,255,255,.90);
-    }
-    .dgDebugClose{
-      width: 30px; height: 30px;
-      border-radius: 999px;
-      border: 1px solid rgba(255,255,255,.14);
-      background: rgba(255,255,255,.06);
-      color: rgba(255,255,255,.92);
-      cursor:pointer;
-      display:grid; place-items:center;
-    }
-    .dgDebugClose:hover{ background: rgba(255,255,255,.10); }
-
   </style>
 </head>
 <body>
@@ -2713,7 +2662,9 @@ if(typeof DBG.metrics.lastClickAction==='undefined') DBG.metrics.lastClickAction
         if(!txt) txt = '';
         if(navigator && navigator.clipboard && typeof navigator.clipboard.writeText === 'function'){
           try{
-            navigator.clipboard.writeText(txt).catch(function(){});
+            navigator.clipboard.writeText(txt).catch(function(){
+  try{ if(typeof DG_DEBUG==="undefined" || !DG_DEBUG) return; }catch(_){ return; }
+});
             return;
           }catch(_){}
         }
@@ -2803,6 +2754,9 @@ if(typeof DBG.metrics.lastClickAction==='undefined') DBG.metrics.lastClickAction
 })();
 </script>
 <script>
+  const DG_PROD = true;
+  const DG_DEBUG = (!DG_PROD) || (new URLSearchParams(location.search).get("debug")==="1") || (localStorage.getItem("dg_debug")==="1");
+
   (function(){
     // SPEEDFIX PATCH START
     function isMobile(){ return window.matchMedia("(max-width:760px)").matches; }
@@ -3004,11 +2958,12 @@ if(typeof DBG.metrics.lastClickAction==='undefined') DBG.metrics.lastClickAction
     const searchScrim = $('searchScrim');
     const btnGo = $('btnGo');
     const modeHint = $('modeHint');
-    try{ setupDebugPanel(); }catch(_){ }
+    try{ if(typeof DG_DEBUG!=="undefined" && DG_DEBUG) setupDebugPanel(); }catch(_){ }
 
 
     // -------------------- Debug panel (hidden by default; press "D")
     function setupDebugPanel(){
+      try{ if(typeof DG_DEBUG==="undefined" || !DG_DEBUG) return; }catch(_){ return; }
       const panel = $('dgDebugPanel');
       const pre = $('dgDebugText');
       const btnClose = $('dgDebugClose');
@@ -3065,6 +3020,7 @@ if(typeof DBG.metrics.lastClickAction==='undefined') DBG.metrics.lastClickAction
 
       // Key toggle (ignore typing contexts)
       try{
+        if(typeof DG_DEBUG!=="undefined" && DG_DEBUG){
         document.addEventListener('keydown', (e)=>{
           const k = e.key || '';
           if(k !== 'd' && k !== 'D') return;
@@ -3077,7 +3033,8 @@ if(typeof DBG.metrics.lastClickAction==='undefined') DBG.metrics.lastClickAction
           e.preventDefault();
           setOpen(!panel.classList.contains('show'));
         }, {passive:false});
-      }catch(_){}
+        }
+      }catch(_){ }
 
       // Expose a lightweight hook for internal updates
       try{
@@ -3586,17 +3543,47 @@ let seenMakers = new Set();
       let visCb = null;
       let visRange = null;
 
+      let __dg_nrs_raf = 0;
+      let __dg_nrs_retried = 0;
+
       function _resize(){
+        // Throttle into next frame to avoid ResizeObserver loop noise
         try{
-          w = container.clientWidth || 800;
-          h = container.clientHeight || 520;
-          const dpr = window.devicePixelRatio || 1;
-          cvs.width = Math.max(1, Math.floor(w * dpr));
-          cvs.height = Math.max(1, Math.floor(h * dpr));
-          if(ctx) ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+          if(__dg_nrs_raf) return;
+          __dg_nrs_raf = requestAnimationFrame(()=>{ __dg_nrs_raf = 0; try{ _resizeNow(); }catch(_){ } });
+        }catch(_){
+          try{ _resizeNow(); }catch(__){}
+        }
+      }
+
+      function _resizeNow(){
+        try{
+          if(!container) return;
+          const rr = (container.getBoundingClientRect && container.getBoundingClientRect()) || {width:container.clientWidth||0, height:container.clientHeight||0};
+          const ww = Math.floor(rr.width || container.clientWidth || 0);
+          const hh = Math.floor(rr.height || container.clientHeight || 0);
+
+          // If hidden/0-size, retry once shortly (common on mobile Safari during layout)
+          if(!(Number.isFinite(ww) && Number.isFinite(hh)) || ww < 10 || hh < 10){
+            if(__dg_nrs_retried) return;
+            __dg_nrs_retried = 1;
+            try{ setTimeout(_resize, 50); }catch(_){}
+            return;
+          }
+
+          w = ww;
+          h = hh;
+
+          const dpr = (window.devicePixelRatio || 1);
+          const d = (Number.isFinite(dpr) && dpr > 0) ? dpr : 1;
+
+          cvs.width = Math.max(1, Math.floor(w * d));
+          cvs.height = Math.max(1, Math.floor(h * d));
+          if(ctx) ctx.setTransform(d, 0, 0, d, 0, 0);
           _draw();
         }catch(_){}
       }
+
       function _draw(){
         try{
           if(!ctx) return;
@@ -3701,63 +3688,106 @@ let seenMakers = new Set();
       };
     }
 
-    try{
-      if(window.LightweightCharts && typeof LightweightCharts.createChart==='function'){
-        chart = LightweightCharts.createChart(chartEl, {
-          width: chartEl.clientWidth || 800,
-          height: chartEl.clientHeight || 520,
-          layout: { background: { type:'solid', color:'rgba(0,0,0,0)' }, textColor:'rgba(255,255,255,.86)' },
-          grid: { vertLines:{color:'rgba(255,255,255,.06)'}, horzLines:{color:'rgba(255,255,255,.06)'} },
-          rightPriceScale: { borderColor:'rgba(255,255,255,.12)' },
-          timeScale: { borderColor:'rgba(255,255,255,.12)', timeVisible:true, secondsVisible:false },
-          crosshair: { mode: 1 },
-          handleScroll: { mouseWheel:true, pressedMouseMove:true, horzTouchDrag:true, vertTouchDrag:true },
-          handleScale: { axisPressedMouseMove:true, mouseWheel:true, pinch:true },
-        });
-      }else{
-        throw new Error('LightweightCharts missing');
-      }
-    }catch(_e){
-      _dgChartMode = 'native';
-      try{ chart = dgCreateNativeChart(chartEl); }catch(_){ chart = dgCreateNativeChart(chartEl); }
+    
+function dgChartMeasureSize(){
+      try{
+        if(!chartEl) return null;
+        const r = (chartEl.getBoundingClientRect && chartEl.getBoundingClientRect()) || {width:chartEl.clientWidth||0, height:chartEl.clientHeight||0};
+        const w = Math.floor(r.width || chartEl.clientWidth || 0);
+        const h = Math.floor(r.height || chartEl.clientHeight || 0);
+        if(!Number.isFinite(w) || !Number.isFinite(h)) return null;
+        return {w, h};
+      }catch(_){ return null; }
     }
 
-    // Unified number formatting for chart scale (auto precision applied after data load)
-    try{ chart.applyOptions({ localization:{ priceFormatter:(p)=>DG_FMT.price(p) } }); }catch(_){ }
+    let __dgChartReady = false;
+    function dgInitChartOnce(_retried){
+      try{
+        if(__dgChartReady) return true;
+        if(!chartEl) return false;
 
-candleSeries = chart.addCandlestickSeries({
-      upColor: 'rgba(20,241,149,.95)',
-      downColor:'rgba(255,77,109,.95)',
-      wickUpColor:'rgba(20,241,149,.95)',
-      wickDownColor:'rgba(255,77,109,.95)',
-      borderVisible:false,
-      autoscaleInfoProvider: (original) => {
-        const res = original();
-        try{
-          const pr = res && res.priceRange;
-          if(pr && Number.isFinite(pr.minValue) && Number.isFinite(pr.maxValue)){
-            const min = pr.minValue;
-            const max = pr.maxValue;
-            const span = (max - min) || Math.max(Math.abs(max), Math.abs(min), 1);
-            const pad = span * 0.04;
-            return { ...res, priceRange: { minValue: min - pad, maxValue: max + pad } };
+        const sz = dgChartMeasureSize();
+        if(!sz || sz.w < 10 || sz.h < 10){
+          if(_retried) return false;
+          try{
+            requestAnimationFrame(()=>{ setTimeout(()=>{ try{ dgInitChartOnce(true); }catch(_){} }, 50); });
+          }catch(_){
+            try{ setTimeout(()=>{ try{ dgInitChartOnce(true); }catch(_){} }, 50); }catch(__){}
           }
-        }catch(_){ }
-        return res;
-      },
-      priceFormat:{ type:'price', precision: 10, minMove: 1e-10 }
-    });
+          return false;
+        }
 
-    volumeSeries = chart.addHistogramSeries({
-      priceFormat: { type:'volume' },
-      priceScaleId: '',
-      lastValueVisible:false,
-      base:0,
-    });
-    try{ chart.priceScale('').applyOptions({ scaleMargins:{ top:0.84, bottom:0 } }); }catch(_){ }
+        try{
+          if(window.LightweightCharts && typeof LightweightCharts.createChart==='function'){
+            chart = LightweightCharts.createChart(chartEl, {
+              width: sz.w,
+              height: sz.h,
+              layout: { background: { type:'solid', color:'rgba(0,0,0,0)' }, textColor:'rgba(255,255,255,.86)' },
+              grid: { vertLines:{color:'rgba(255,255,255,.06)'}, horzLines:{color:'rgba(255,255,255,.06)'} },
+              rightPriceScale: { borderColor:'rgba(255,255,255,.12)' },
+              timeScale: { borderColor:'rgba(255,255,255,.12)', timeVisible:true, secondsVisible:false },
+              crosshair: { mode: 1 },
+              handleScroll: { mouseWheel:true, pressedMouseMove:true, horzTouchDrag:true, vertTouchDrag:true },
+              handleScale: { axisPressedMouseMove:true, mouseWheel:true, pinch:true },
+            });
+          }else{
+            throw new Error('LightweightCharts missing');
+          }
+        }catch(_e){
+          _dgChartMode = 'native';
+          try{ chart = dgCreateNativeChart(chartEl); }catch(_){ chart = dgCreateNativeChart(chartEl); }
+        }
 
+        // Unified number formatting for chart scale (auto precision applied after data load)
+        try{ chart && chart.applyOptions && chart.applyOptions({ localization:{ priceFormatter:(p)=>DG_FMT.price(p) } }); }catch(_){ }
 
-    
+        try{
+          if(chart && chart.addCandlestickSeries){
+            candleSeries = chart.addCandlestickSeries({
+              upColor: 'rgba(20,241,149,.95)',
+              downColor:'rgba(255,77,109,.95)',
+              wickUpColor:'rgba(20,241,149,.95)',
+              wickDownColor:'rgba(255,77,109,.95)',
+              borderVisible:false,
+              autoscaleInfoProvider: (original) => {
+                const res = original();
+                try{
+                  const pr = res && res.priceRange;
+                  if(pr && Number.isFinite(pr.minValue) && Number.isFinite(pr.maxValue)){
+                    const min = pr.minValue;
+                    const max = pr.maxValue;
+                    const span = (max - min) || Math.max(Math.abs(max), Math.abs(min), 1);
+                    const pad = span * 0.04;
+                    return { ...res, priceRange: { minValue: min - pad, maxValue: max + pad } };
+                  }
+                }catch(_){}
+                return res;
+              },
+              priceFormat:{ type:'price', precision: 10, minMove: 1e-10 }
+            });
+          }
+        }catch(_){}
+
+        try{
+          if(chart && chart.addHistogramSeries){
+            volumeSeries = chart.addHistogramSeries({
+              priceFormat: { type:'volume' },
+              priceScaleId: '',
+              lastValueVisible:false,
+              base:0,
+            });
+            try{ chart.priceScale && chart.priceScale('').applyOptions({ scaleMargins:{ top:0.84, bottom:0 } }); }catch(_){ }
+          }
+        }catch(_){}
+
+        __dgChartReady = true;
+        return true;
+      }catch(_){ return false; }
+    }
+
+    // Init chart (safe; retries once if container not ready)
+    dgInitChartOnce(false);
+
 // ===== Micro Smooth Update (interpolate last close) =====
     let _dgCloseTween = { raf:0, barTime:0, from:NaN, to:NaN, start:0, dur:120, open:NaN, high:NaN, low:NaN };
     let _dgRendered = { time:0, close:NaN };
@@ -3835,19 +3865,40 @@ candleSeries = chart.addCandlestickSeries({
 
 
     let _chartResizeT = 0;
+    let _chartResizeRAF = 0;
     const debounceChartResize = ()=>{
       clearTimeout(_chartResizeT);
       _chartResizeT = setTimeout(()=>{
+        // Throttle resize work into the next animation frame (prevents ResizeObserver loop noise)
         try{
-          if(chart && chartEl){
-            const w = chartEl.clientWidth || chartEl.getBoundingClientRect().width;
-            const h = chartEl.clientHeight || chartEl.getBoundingClientRect().height;
-            if(w && h){
-              chart.applyOptions({ width: Math.floor(w), height: Math.floor(h) });
-              // Keep view stable; fitContent only if needed elsewhere
+          if(_chartResizeRAF) return;
+          _chartResizeRAF = requestAnimationFrame(()=>{
+            _chartResizeRAF = 0;
+            try{
+              // Ensure chart exists (safe retry if init was delayed due to 0-size container)
+              try{ dgInitChartOnce && dgInitChartOnce(false); }catch(_){}
+              if(chart && chartEl && chart.applyOptions){
+                const r = (chartEl.getBoundingClientRect && chartEl.getBoundingClientRect()) || {width:chartEl.clientWidth||0, height:chartEl.clientHeight||0};
+                const w = Math.floor(r.width || chartEl.clientWidth || 0);
+                const h = Math.floor(r.height || chartEl.clientHeight || 0);
+                if(Number.isFinite(w) && Number.isFinite(h) && w >= 10 && h >= 10){
+                  chart.applyOptions({ width: w, height: h });
+                }
+              }
+            }catch(_){}
+          });
+        }catch(_){
+          // Fallback without rAF
+          try{
+            if(chart && chartEl && chart.applyOptions){
+              const w = Math.floor(chartEl.clientWidth || 0);
+              const h = Math.floor(chartEl.clientHeight || 0);
+              if(Number.isFinite(w) && Number.isFinite(h) && w >= 10 && h >= 10){
+                chart.applyOptions({ width: w, height: h });
+              }
             }
-          }
-        }catch(_){}
+          }catch(__){}
+        }
       }, 120);
     };
 
@@ -3958,7 +4009,7 @@ function setMobileTab(which){
       if(mode!=='txns'){
         try{
           requestAnimationFrame(()=>{
-            try{ chart.resize(chartEl.clientWidth, chartEl.clientHeight); }catch(_e){}            // SPEEDFIX step07: no auto-fit on mode switching
+            try{ if(chart && chart.resize && chartEl){ const r=(chartEl.getBoundingClientRect&&chartEl.getBoundingClientRect())||{width:chartEl.clientWidth||0,height:chartEl.clientHeight||0}; const w=Math.floor(r.width||chartEl.clientWidth||0); const h=Math.floor(r.height||chartEl.clientHeight||0); if(Number.isFinite(w)&&Number.isFinite(h)&&w>=10&&h>=10) chart.resize(w,h); } }catch(_){ }
           });
         }catch(_e){}
       }
@@ -4677,7 +4728,15 @@ function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
       });
 
       // keep candle spacing stable on resize
-      const _ro2 = new ResizeObserver(()=>{ try{ syncBarSpacing(); }catch(_){} });
+      let __dg_syncRAF = 0;
+      const _ro2 = new ResizeObserver(()=>{
+        try{
+          if(__dg_syncRAF) return;
+          __dg_syncRAF = requestAnimationFrame(()=>{ __dg_syncRAF = 0; try{ syncBarSpacing(); }catch(_){ } });
+        }catch(_){
+          try{ syncBarSpacing(); }catch(__){}
+        }
+      });
       _ro2.observe(chartEl);
     }
 
@@ -7322,6 +7381,7 @@ if(searchScrim){
     }
 
     function dgEnsureRuntimeBanner(){
+      try{ if(typeof DG_DEBUG==="undefined" || !DG_DEBUG) return null; }catch(_){ return null; }
       var b = document.getElementById(DG_RT_BANNER_ID);
       if(b) return b;
 
@@ -7370,6 +7430,7 @@ if(searchScrim){
 
     function dgShowRuntimeBanner(reason, meta){
       try{
+        try{ if(typeof DG_DEBUG==="undefined" || !DG_DEBUG) return; }catch(_){ return; }
         // Only surface to user for real app failures (avoid third-party/script/resource noise)
         if(dgIsNoiseError(reason)) return;
 
@@ -7442,6 +7503,8 @@ if(searchScrim){
         if(msg.includes('failed to fetch') || msg.includes('networkerror') || msg.includes('cors')) return true;
         if(msg.includes('load failed') || msg.includes('fetch failed') || msg.includes('load error')) return true;
         if(msg.includes('timeout') || msg.includes('timed out')) return true;
+        if(msg.includes('resizeobserver loop limit exceeded')) return true;
+        if(msg.includes('resizeobserver loop completed with undelivered notifications')) return true;
         return false;
       }catch(_){ return false; }
     }
@@ -7930,14 +7993,6 @@ if(searchScrim){
   }catch(_){}
 })();
 </script>
-
-
-  <!-- DexGuard Debug Panel (press "D" to toggle) -->
-  <div id="dgDebugPanel" class="dgDebugPanel" aria-hidden="true">
-    <div class="hdr">
-      <div>Debug <span class="hint">Press D to toggle</span></div>
-      <button id="dgDebugClose" class="dgDebugClose" title="Close">×</button>
-    </div>
     <pre id="dgDebugText"></pre>
   </div>
 
