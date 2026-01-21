@@ -1677,6 +1677,80 @@ display:none;
   }
 }
 
+
+
+/* ================================
+   MOBILE-ONLY TOKEN STATS GRID (step06)
+   - Price / Liq / MCap / 24h as a 2x2 Dexscreener-style grid
+   - Uses existing rendered values (no data fetching changes)
+   - Desktop unchanged
+   ================================ */
+@media (max-width: 760px){
+  /* Stack token header + stats for readability */
+  #chartCard .cardHd{
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+  }
+  #chartCard .pair{ width: 100% !important; }
+
+  /* 2x2 grid */
+  #stats.stats{
+    width: 100% !important;
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+    justify-content: stretch !important;
+    align-items: stretch !important;
+  }
+
+  /* Small cards/pills */
+  #stats .statPill{
+    white-space: normal !important;
+    border-radius: 14px !important;
+    padding: 10px 10px !important;
+    min-height: 44px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    justify-content: center !important;
+    gap: 2px !important;
+    background: rgba(255,255,255,.05) !important;
+    border: 1px solid rgba(255,255,255,.12) !important;
+  }
+  #stats .statPill:only-child{
+    grid-column: 1 / -1 !important;
+  }
+
+  #stats .statPill .k{
+    font-size: 11px !important;
+    font-weight: 900 !important;
+    letter-spacing: .18px !important;
+    color: rgba(255,255,255,.62) !important;
+    line-height: 1.1 !important;
+  }
+  #stats .statPill .v{
+    font-size: 13px !important;
+    font-weight: 1050 !important;
+    letter-spacing: -.01em !important;
+    color: rgba(255,255,255,.92) !important;
+    line-height: 1.15 !important;
+  }
+
+  /* Up/Down tint like Dexscreener */
+  #stats .statPill.up{
+    border-color: rgba(20,241,149,.30) !important;
+    background: rgba(20,241,149,.10) !important;
+  }
+  #stats .statPill.up .v{ color: rgba(20,241,149,.96) !important; }
+
+  #stats .statPill.down{
+    border-color: rgba(255,77,109,.28) !important;
+    background: rgba(255,77,109,.10) !important;
+  }
+  #stats .statPill.down .v{ color: rgba(255,77,109,.96) !important; }
+}
+
 </style>
 </head>
 <body>
@@ -2625,11 +2699,11 @@ function setSearchModalOpen(open){
 
     function applyStats(st){
       const pills=[];
-      if(Number.isFinite(st.price)) pills.push(`<span class="statPill">Price $${esc(formatPrice(st.price))}</span>`);
-      if(Number.isFinite(st.liq)) pills.push(`<span class="statPill">Liq $${esc(formatCompact(st.liq))}</span>`);
-      if(Number.isFinite(st.mcap)) pills.push(`<span class="statPill">MCap $${esc(formatCompact(st.mcap))}</span>`);
-      if(Number.isFinite(st.h24)) pills.push(`<span class="statPill ${st.h24>0?'up':(st.h24<0?'down':'')}">24h ${esc((st.h24>0?'+':'')+st.h24.toFixed(2)+'%')}</span>`);
-      statsEl.innerHTML = pills.join('') || `<span class="statPill">—</span>`;
+      if(Number.isFinite(st.price)) pills.push(`<span class="statPill"><span class="k">Price</span><span class="v">$${esc(formatPrice(st.price))}</span></span>`);
+      if(Number.isFinite(st.liq)) pills.push(`<span class="statPill"><span class="k">Liq</span><span class="v">$${esc(formatCompact(st.liq))}</span></span>`);
+      if(Number.isFinite(st.mcap)) pills.push(`<span class="statPill"><span class="k">MCap</span><span class="v">${esc(formatCompact(st.mcap))}</span></span>`);
+      if(Number.isFinite(st.h24)) pills.push(`<span class="statPill ${st.h24>0?'up':(st.h24<0?'down':'')}"><span class="k">24h</span><span class="v">${esc((st.h24>0?'+':'')+st.h24.toFixed(2)+'%')}</span></span>`);
+      statsEl.innerHTML = pills.join('') || `<span class="statPill"><span class="k">—</span><span class="v">—</span></span>`;
     }
 
     function applyPool(p){
