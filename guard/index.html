@@ -2511,7 +2511,15 @@ display:none;
       base:['0x833589fCD6eDb6E08f4c7C32D4f71b54bda02913']
     };
 
-    // Chart timeframes -> Gecko candle granularity
+    
+    // Prefer native quote pools first (wSOL / WETH / WBNB)
+    const NATIVE_QUOTES = {
+      solana: ['So11111111111111111111111111111111111111112'],
+      eth:   ['0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2'],  // WETH
+      bsc:   ['0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c'],  // WBNB
+      base:  ['0x4200000000000000000000000000000000000006']   // WETH (Base)
+    };
+// Chart timeframes -> Gecko candle granularity
     const TF = [
       {k:'1m',  gecko:'minute',   agg:60,    live:true},
       {k:'5m',  gecko:'minute',   agg:300},
@@ -3335,26 +3343,39 @@ function setSearchModalOpen(open){
 
     function chooseBestPool(pools, tokenAddr){
       const tok = lc(tokenAddr);
-      const preferSet = new Set((STABLE_QUOTES[activeNet]||[]).map(lc));
+      const nativeSet = new Set((NATIVE_QUOTES[activeNet]||[]).map(lc));
+      const stableSet = new Set((STABLE_QUOTES[activeNet]||[]).map(lc));
 
-      // rank pools
       const ranked = (pools||[]).map(p=>{
-        const a = p?.attributes || {};
         const base = lc(tokenAddrFromPool(p,'base'));
         const quote = lc(tokenAddrFromPool(p,'quote'));
         const liq = poolLiqUsd(p);
         const created = poolCreatedMs(p);
         const isBase = base===tok;
         const isQuote = quote===tok;
-        const stableQuote = isBase && preferSet.has(quote);
-        const score =
-          (stableQuote? 9e15 : 0) +
-          (isBase? 7e15 : 0) +
-          (isQuote? 4e15 : 0) +
-          (Number.isFinite(liq)? liq*1e6 : 0) +
-          (Number.isFinite(created)? created : 0);
-        return {p, score, isBase, isQuote, liq};
-      }).sort((a,b)=>b.score-a.score);
+
+        // Only consider "quote preference" when the token is the base side, so charts/stats align with TOKEN/QUOTE
+        const nativeQuote = isBase && nativeSet.has(quote);
+        const stableQuote = isBase && stableSet.has(quote);
+
+        // Priority: 2=native, 1=stable, 0=other
+        const tier = nativeQuote ? 2 : (stableQuote ? 1 : 0);
+
+        return {p, tier, liq: (liq||0), isBase, isQuote, created: (created||0)};
+      }).filter(x=>!!x.p);
+
+      ranked.sort((A,B)=>{
+        // 1) native quote
+        if(B.tier !== A.tier) return B.tier - A.tier;
+        // 2) stable quote (already in tier)
+        // 3) highest liquidity
+        if((B.liq||0) !== (A.liq||0)) return (B.liq||0) - (A.liq||0);
+        // Tiebreakers (keep deterministic)
+        if(!!B.isBase !== !!A.isBase) return (B.isBase?1:0) - (A.isBase?1:0);
+        if(!!B.isQuote !== !!A.isQuote) return (B.isQuote?1:0) - (A.isQuote?1:0);
+        if(A.created && B.created && A.created !== B.created) return A.created - B.created; // older first
+        return 0;
+      });
 
       return ranked[0]?.p || null;
     }
