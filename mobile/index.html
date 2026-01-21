@@ -826,16 +826,20 @@ display:none;
   outline: 2px solid rgba(0,209,255,.55);
   outline-offset: 2px;
 }
-.panel{
-  /* Avoid expensive blur on large surfaces */
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-  box-shadow: var(--e-2);
-}
-.topBar{
-  /* Keep glass subtle (no heavy blur on wide area) */
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
+/* Mobile-only performance: reduce expensive blur on large surfaces */
+@media (max-width: 760px){
+  .panel{
+    /* Avoid expensive blur on large surfaces */
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    /* Avoid heavy shadows on full-width panels */
+    box-shadow: var(--e-1) !important;
+  }
+  .topBar{
+    /* Keep glass subtle (no heavy blur on wide area) */
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
 }
 
 /* Make typography feel more terminal-grade */
@@ -2179,6 +2183,41 @@ display:none;
   }
 }
 
+
+/* ================================
+   MOBILE-ONLY PERFORMANCE OPTIMIZATIONS (step15)
+   - Reduce expensive blurs and heavy shadows on large surfaces
+   - Keep core behavior unchanged
+   ================================ */
+@media (max-width: 760px){
+  /* Reduce blur cost on large overlays/panels */
+  .results,
+  #searchScrim.searchScrim,
+  .tickerWrap,
+  .card{
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  /* Soften big drop-shadows on full-width surfaces */
+  .results{
+    box-shadow: 0 18px 56px rgba(0,0,0,.74) !important;
+  }
+  .tickerWrap{
+    box-shadow: 0 8px 22px rgba(0,0,0,.22) !important;
+  }
+  .card{
+    box-shadow: none !important;
+  }
+}
+
+/* Respect reduced motion (disable marquee + other non-essential animations) */
+@media (prefers-reduced-motion: reduce){
+  .tickerTrack{ animation: none !important; }
+  .dexguardBtn::after{ animation: none !important; }
+  .tradeRow.enter{ animation: none !important; }
+}
+
 </style>
 </head>
 <body>
@@ -2725,12 +2764,17 @@ let seenMakers = new Set();
     });
     chart.priceScale('').applyOptions({ scaleMargins:{ top:0.84, bottom:0 } });
 
-    const ro = new ResizeObserver(()=>{
-      chart.applyOptions({ width: chartEl.clientWidth, height: chartEl.clientHeight });
-    });
-    ro.observe(chartEl);
+    let _chartResizeT=0;
+    const debounceChartResize = ()=>{
+      clearTimeout(_chartResizeT);
+      _chartResizeT = setTimeout(()=>{
+        debounceChartResize();
+      }, 120);
+    };
 
-    /* Fit button removed (auto-fit handled) */
+    const ro = new ResizeObserver(debounceChartResize);
+    ro.observe(chartEl);
+/* Fit button removed (auto-fit handled) */
 
     // -------------------- UI boot
     function renderNetPills(){
@@ -4438,9 +4482,9 @@ if(searchScrim){
       const cur = parseFloat(getComputedStyle(splitRoot).getPropertyValue('--split-bottom')) || 260;
       const next = clamp(cur, minBottom, maxBottom);
       splitRoot.style.setProperty('--split-bottom', next + 'px');
-      requestAnimationFrame(()=>{ try{ chart.applyOptions({ width: chartEl.clientWidth, height: chartEl.clientHeight }); }catch(_){ } });
-    };
-    window.addEventListener('resize', recompute, {passive:true});
+      debounceChartResize();
+      };
+    window.addEventListener('resize', ()=>{ debounceChartResize(); recompute(); }, {passive:true});
     requestAnimationFrame(recompute);
 
     // Tabs behavior
@@ -4489,7 +4533,7 @@ if(searchScrim){
       const maxBottom = Math.max(minBottom, total - 240);
       const next = clamp(startBottom - dy, minBottom, maxBottom);
       splitRoot.style.setProperty('--split-bottom', next + 'px');
-      requestAnimationFrame(()=>{ try{ chart.applyOptions({ width: chartEl.clientWidth, height: chartEl.clientHeight }); }catch(_){ } });
+      debounceChartResize();
       e.preventDefault?.();
     };
     const onUp = ()=>{
