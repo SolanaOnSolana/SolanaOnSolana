@@ -2717,6 +2717,32 @@ display:none;
       requestControllers.set(key, ac);
       return ac;
     }
+
+    // Abort helpers: ensure old in-flight requests cannot overwrite new state
+    function abortRequestsByPrefix(prefix){
+      try{
+        const keys = [];
+        for(const [k] of requestControllers){ keys.push(k); }
+        for(const k of keys){
+          try{
+            if(prefix==null || k===prefix || (typeof prefix==='string' && String(k).startsWith(prefix))){
+              try{ requestControllers.get(k)?.abort(); }catch(_){}
+              try{ requestControllers.delete(k); }catch(_){}
+            }
+          }catch(_){}
+        }
+      }catch(_){}
+    }
+
+    function abortAllRequests(){
+      try{
+        for(const [,ac] of requestControllers){
+          try{ ac.abort(); }catch(_){}
+        }
+      }catch(_){}
+      try{ requestControllers.clear(); }catch(_){}
+    }
+
     // Lightweight perf logs (console only)
     const perfToken = { id:0, t0:0, paint:0, candles:0, trades:0, logged:false };
     function perfStartToken(id){
@@ -3014,18 +3040,37 @@ function formatPrice(v){ return DG_FMT.price(v); }
     // fetch with timeout + retry + CORS fallback via allorigins
     async function fetchJson(url, {timeout=12000, retries=1, signal}={}){
       const proxy = (u)=>'https://api.allorigins.win/raw?url=' + encodeURIComponent(u);
+      // Hardened: never throw outward; bounded retries; AbortError treated as normal cancel when external signal aborts.
       let lastErr=null;
       let lastStatus=null;
+
+      // Normalize opts safely
+      try{
+        timeout = Number(timeout);
+        if(!Number.isFinite(timeout) || timeout<=0) timeout = 12000;
+      }catch(_){ timeout = 12000; }
+      try{
+        retries = (retries|0);
+        if(retries<0) retries = 0;
+        if(retries>2) retries = 2;
+      }catch(_){ retries = 1; }
+      if(signal && signal.aborted) return null;
+
       for(let i=0;i<=retries;i++){
+        if(signal && signal.aborted) return null;
+
         const ctl = new AbortController();
-        // allow external cancellation + internal timeout
-        if(signal){
-          try{
-            if(signal.aborted) ctl.abort();
-            else signal.addEventListener('abort', ()=>{ try{ ctl.abort(); }catch(e){} }, {once:true});
-          }catch(e){}
-        }
-        const t = setTimeout(()=>{ try{ ctl.abort(); }catch(e){} }, timeout);
+        let onAbort = null;
+        try{
+          if(signal){
+            if(signal.aborted){ try{ ctl.abort(); }catch(_){ } return null; }
+            onAbort = ()=>{ try{ ctl.abort(); }catch(_){ } };
+            try{ signal.addEventListener('abort', onAbort, {once:true}); }catch(_){}
+          }
+        }catch(_){}
+
+        const t = setTimeout(()=>{ try{ ctl.abort(); }catch(_){ } }, Math.min(Math.max(800, timeout), 45000));
+
         try{
           const r = await fetch(url, {
             headers:{'accept':'application/json'},
@@ -3033,43 +3078,75 @@ function formatPrice(v){ return DG_FMT.price(v); }
             cache: 'no-store'
           });
           clearTimeout(t);
-          if(!r.ok){ lastStatus = r.status; throw new Error('HTTP '+r.status); }
-          return await r.json();
+          if(onAbort && signal) try{ signal.removeEventListener('abort', onAbort); }catch(_){}
+          if(!r || !r.ok){
+            try{ lastStatus = r ? r.status : lastStatus; }catch(_){}
+            lastErr = new Error('HTTP '+(r ? r.status : ''));
+          }else{
+            try{
+              return await r.json();
+            }catch(e){
+              lastErr = e;
+              try{ lastStatus = r.status; }catch(_){}
+            }
+          }
         }catch(e){
           clearTimeout(t);
-          lastErr=e;
-          // abort requested externally -> stop immediately
-          if(signal && signal.aborted) throw e;
-          if(e && e.name==='AbortError' && signal) throw e;
-          // try proxy for CORS / network error
+          if(onAbort && signal) try{ signal.removeEventListener('abort', onAbort); }catch(_){}
+          lastErr = e;
+          // external cancel -> normal
+          if(signal && signal.aborted) return null;
+
+          // try proxy for CORS / network error (do NOT proxy on explicit abort)
           try{
             const msg = String(e&&e.message||e||'');
-            const isCors = (e instanceof TypeError) || /Failed to fetch|NetworkError|CORS/i.test(msg);
+            const isAbort = (e && e.name==='AbortError');
+            const isCors = (!isAbort) && ((e instanceof TypeError) || /Failed to fetch|NetworkError|CORS/i.test(msg));
             if(isCors){
               const r2 = await fetch(proxy(url), {cache:'no-store', signal: ctl.signal});
-              if(r2.ok){
-                const txt = await r2.text();
-                return JSON.parse(txt);
+              if(r2 && r2.ok){
+                const txt2 = await r2.text();
+                try{ return JSON.parse(txt2); }catch(e2){ lastErr = e2; }
               }else{
-                try{ lastStatus = r2.status; }catch(_){ }
-                try{ if(!lastErr) lastErr = new Error('HTTP '+r2.status); }catch(_){ }
+                try{ lastStatus = r2 ? r2.status : lastStatus; }catch(_){ }
+                try{ lastErr = new Error('HTTP '+(r2 ? r2.status : '')); }catch(_){ }
               }
             }
-          }catch(_){ }
-          if(i<retries) await sleep(250*(i+1));
+          }catch(e2){
+            // keep lastErr as the most relevant if it has a message
+            try{
+              if(!lastErr || !lastErr.message) lastErr = e2;
+            }catch(_){}
+          }
+        }
+
+        if(signal && signal.aborted) return null;
+
+        // bounded exponential backoff (no infinite retries)
+        if(i < retries){
+          const base = 320; // ms
+          const wait = Math.min(1600, base * Math.pow(2, i)); // 320, 640, 1280
+          try{ await sleep(wait); }catch(_){}
         }
       }
+
+      // Log final failure (exclude external cancellations)
       try{
-        if(window.__DG_DEBUG__ && typeof window.__DG_DEBUG__.pushFetchFail === 'function'){
+        if(!(signal && signal.aborted) && window.__DG_DEBUG__ && typeof window.__DG_DEBUG__.pushFetchFail === 'function'){
+          let msg = '';
+          try{ msg = (lastErr && (lastErr.message||String(lastErr))) || 'Network'; }catch(_){ msg = 'Network'; }
+          let st = '';
+          try{ st = (lastStatus==null?'':String(lastStatus)); }catch(_){ st = ''; }
           window.__DG_DEBUG__.pushFetchFail({
             time: Date.now(),
             url: url,
-            status: (lastStatus==null?'':lastStatus),
-            error: (lastErr && (lastErr.message||String(lastErr))) || 'Network'
+            status: st,
+            error: msg
           });
         }
       }catch(_){}
-      throw lastErr || new Error('Network');
+
+      return null;
     }
 
     function normalizeChain(x){
@@ -3436,6 +3513,7 @@ let seenMakers = new Set();
           _lastLogicalRange = null;
           if(poolAddr){
             try{ if(typeof stopLiveLoops==='function') stopLiveLoops(); }catch(_){ }
+          try{ if(typeof abortAllRequests==='function') abortAllRequests(); }catch(_){ }
             (async()=>{
               await Promise.all([loadCandles(true), loadTrades(true)]);
               startLiveLoops();
@@ -5673,6 +5751,7 @@ function startLiveLoops(){
 
     async function openToken(input, opts={}){
           try{ if(typeof stopLiveLoops==='function') stopLiveLoops(); }catch(_){ }
+          try{ if(typeof abortRequestsByPrefix==='function'){ abortRequestsByPrefix('token:'); abortRequestsByPrefix('candles:'); abortRequestsByPrefix('trades:'); abortRequestsByPrefix('search:'); } }catch(_){ }
           const skipInput = !!opts.skipInput;
           const silent = !!opts.silent;
           const boot = !!opts.boot;
