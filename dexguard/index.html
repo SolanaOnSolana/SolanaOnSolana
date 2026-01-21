@@ -2426,7 +2426,300 @@ display:none;
   </div>
 
   <script src="https://unpkg.com/lightweight-charts@4.2.1/dist/lightweight-charts.standalone.production.js"></script>
-  <script>
+  
+<script>
+/* ===== DG Debug Overlay (debug=1) ===== */
+(function(){
+  try{
+    var _qs = '';
+    try{ _qs = String(location.search || ''); }catch(_){}
+    var _enabled = false;
+    try{
+      var _sp = new URLSearchParams(_qs);
+      _enabled = (_sp.get('debug') === '1');
+    }catch(_){
+      _enabled = /(?:\?|&)debug=1(?:&|$)/.test(_qs);
+    }
+
+    var DBG = window.__DG_DEBUG__ || (window.__DG_DEBUG__ = {});
+    DBG.enabled = !!_enabled;
+    DBG.max = 10;
+    DBG.errors = Array.isArray(DBG.errors) ? DBG.errors : [];
+    DBG.rejections = Array.isArray(DBG.rejections) ? DBG.rejections : [];
+    DBG.fetchFails = Array.isArray(DBG.fetchFails) ? DBG.fetchFails : [];
+    DBG.toasts = Array.isArray(DBG.toasts) ? DBG.toasts : [];
+    DBG.metrics = (DBG.metrics && typeof DBG.metrics==='object') ? DBG.metrics : {};
+    if(typeof DBG.metrics.lastTradesFetchAt==='undefined') DBG.metrics.lastTradesFetchAt = 0;
+    if(typeof DBG.metrics.lastTradesCount==='undefined') DBG.metrics.lastTradesCount = 0;
+    if(typeof DBG.metrics.lastTradesUrl==='undefined') DBG.metrics.lastTradesUrl = '';
+    if(typeof DBG.metrics.lastTradesError==='undefined') DBG.metrics.lastTradesError = '';
+
+    function _safeStr(v){
+      try{
+        if(v == null) return '';
+        if(typeof v === 'string') return v;
+        if(typeof v === 'number' || typeof v === 'boolean') return String(v);
+        if(v && typeof v.message === 'string') return v.message;
+        try{ return JSON.stringify(v); }catch(_){}
+        return String(v);
+      }catch(_){ return ''; }
+    }
+    function _push(arr, item){
+      try{
+        arr.push(item);
+        while(arr.length > (DBG.max||10)) arr.shift();
+      }catch(_){}
+    }
+    DBG.pushError = function(entry){ try{ _push(DBG.errors, entry); }catch(_){ } };
+    DBG.pushRejection = function(entry){ try{ _push(DBG.rejections, entry); }catch(_){ } };
+    DBG.pushFetchFail = function(entry){ try{ _push(DBG.fetchFails, entry); }catch(_){ } };
+
+    // Capture window.onerror entries without interfering with app logic
+    var _prevOnErr = window.onerror;
+    window.onerror = function(message, source, lineno, colno, error){
+      try{
+        DBG.pushError({
+          time: Date.now(),
+          message: _safeStr(message),
+          source: _safeStr(source),
+          line: (lineno==null?'':lineno),
+          col: (colno==null?'':colno),
+          stack: (error && error.stack) ? String(error.stack) : ''
+        });
+      }catch(_){}
+      if(typeof _prevOnErr === 'function'){
+        try{ return _prevOnErr.apply(this, arguments); }catch(_){}
+      }
+      return false;
+    };
+
+    // Capture unhandled promise rejections
+    var _prevOnRej = window.onunhandledrejection;
+    window.onunhandledrejection = function(ev){
+      try{
+        var r = ev && ev.reason;
+        DBG.pushRejection({
+          time: Date.now(),
+          reason: _safeStr(r),
+          stack: (r && r.stack) ? String(r.stack) : ''
+        });
+      }catch(_){}
+      if(typeof _prevOnRej === 'function'){
+        try{ return _prevOnRej.apply(this, arguments); }catch(_){}
+      }
+      return false;
+    };
+
+    function _mkEl(tag, cssText){
+      var el = document.createElement(tag);
+      if(cssText) el.style.cssText = cssText;
+      return el;
+    }
+
+    function _bool(v){ try{ return !!v; }catch(_){ return false; } }
+
+    function _liveState(){
+      var st = { liveLoops:false, tradesPolling:false };
+      try{
+        if(typeof LIVE !== 'undefined'){
+          st.liveLoops = _bool(LIVE && (LIVE.tTrades || LIVE.tCandles || LIVE.tMeta || LIVE.tAges));
+        }
+      }catch(_){}
+      try{
+        if(typeof TRADES_POLL !== 'undefined'){
+          st.tradesPolling = _bool(TRADES_POLL && TRADES_POLL.running);
+        }
+      }catch(_){}
+      return st;
+    }
+
+    function _fmtTime(ms){
+      try{
+        var d = new Date(ms || Date.now());
+        return d.toLocaleString();
+      }catch(_){ return String(ms||''); }
+    }
+
+    function _buildText(){
+      var out = [];
+      out.push('DG Debug');
+      out.push('Time: ' + _fmtTime(Date.now()));
+      try{
+        var an = (function(){ try{ return (typeof activeNet!=='undefined') ? activeNet : undefined; }catch(_){ return undefined; } })();
+        var ad = (function(){ try{ return (typeof addr!=='undefined') ? addr : undefined; }catch(_){ return undefined; } })();
+        var pa = (function(){ try{ return (typeof poolAddr!=='undefined') ? poolAddr : undefined; }catch(_){ return undefined; } })();
+        var pid = (function(){ try{ return (typeof poolId!=='undefined') ? poolId : undefined; }catch(_){ return undefined; } })();
+        out.push('State:');
+        out.push('  activeNet: ' + _safeStr(an));
+        out.push('  addr: ' + _safeStr(ad));
+        out.push('  poolAddr: ' + _safeStr(pa));
+        out.push('  poolId: ' + _safeStr(pid));
+      }catch(_){}
+
+      try{
+        var ls = _liveState();
+        out.push('Loops:');
+        out.push('  liveLoopsRunning: ' + (ls.liveLoops ? 'YES' : 'NO'));
+        out.push('  tradesPollingRunning: ' + (ls.tradesPolling ? 'YES' : 'NO'));
+      }catch(_){}
+
+      try{
+        out.push('Trades:');
+        var mt = (DBG && DBG.metrics) ? DBG.metrics : {};
+        out.push('  lastTradesFetchAt: ' + (mt.lastTradesFetchAt ? _fmtTime(mt.lastTradesFetchAt) : '(never)'));
+        out.push('  lastTradesCount: ' + _safeStr(mt.lastTradesCount));
+        out.push('  lastTradesUrl: ' + _safeStr(mt.lastTradesUrl));
+        out.push('  lastTradesError: ' + _safeStr(mt.lastTradesError));
+      }catch(_){ }
+
+      out.push('');
+      out.push('window.onerror (last ' + (DBG.errors.length||0) + '):');
+      if(DBG.errors.length){
+        for(var i=DBG.errors.length-1;i>=0;i--){
+          var e = DBG.errors[i] || {};
+          out.push('- ' + _fmtTime(e.time) + ' | ' + _safeStr(e.message) + ' @ ' + _safeStr(e.source) + ':' + _safeStr(e.line) + ':' + _safeStr(e.col));
+          if(e.stack){ out.push('  stack: ' + String(e.stack).split('\n').slice(0,4).join(' | ')); }
+        }
+      }else{
+        out.push('(none)');
+      }
+
+      out.push('');
+      out.push('unhandledrejection (last ' + (DBG.rejections.length||0) + '):');
+      if(DBG.rejections.length){
+        for(var j=DBG.rejections.length-1;j>=0;j--){
+          var r = DBG.rejections[j] || {};
+          out.push('- ' + _fmtTime(r.time) + ' | ' + _safeStr(r.reason));
+          if(r.stack){ out.push('  stack: ' + String(r.stack).split('\n').slice(0,4).join(' | ')); }
+        }
+      }else{
+        out.push('(none)');
+      }
+
+      out.push('');
+      out.push('fetch failures (last ' + (DBG.fetchFails.length||0) + '):');
+      if(DBG.fetchFails.length){
+        for(var k=DBG.fetchFails.length-1;k>=0;k--){
+          var f = DBG.fetchFails[k] || {};
+          var st = (f.status==null || f.status==='') ? '' : (' status=' + f.status);
+          out.push('- ' + _fmtTime(f.time) + ' | ' + _safeStr(f.url) + st + ' | ' + _safeStr(f.error));
+        }
+      }else{
+        out.push('(none)');
+      }
+
+
+      out.push('');
+      out.push('toasts (last ' + (DBG.toasts.length||0) + '):');
+      if(DBG.toasts.length){
+        for(var k=DBG.toasts.length-1;k>=0;k--){
+          var t = DBG.toasts[k] || {};
+          out.push('- ' + _fmtTime(t.time) + ' | ' + _safeStr(t.kind) + ' | ' + _safeStr(t.msg));
+          if(t.url){ out.push('  url: ' + _safeStr(t.url)); }
+          if(t.reason){ out.push('  reason: ' + _safeStr(t.reason)); }
+          if(t.stack){ out.push('  stack: ' + String(t.stack).split('\n').slice(0,4).join(' | ')); }
+        }
+      }else{
+        out.push('(none)');
+      }
+      return out.join('\n');
+    }
+
+    function _safeCopyText(txt){
+      try{
+        if(!txt) txt = '';
+        if(navigator && navigator.clipboard && typeof navigator.clipboard.writeText === 'function'){
+          try{
+            navigator.clipboard.writeText(txt).catch(function(){});
+            return;
+          }catch(_){}
+        }
+        // fallback
+        try{
+          var ta = document.createElement('textarea');
+          ta.value = txt;
+          ta.setAttribute('readonly', '');
+          ta.style.cssText = 'position:fixed;left:-9999px;top:-9999px;opacity:0;';
+          document.body.appendChild(ta);
+          ta.select();
+          try{ document.execCommand('copy'); }catch(_){}
+          try{ document.body.removeChild(ta); }catch(_){}
+        }catch(_){}
+      }catch(_){}
+    }
+
+    function _mountPanel(){
+      try{
+        if(!DBG.enabled) return;
+        if(document.getElementById('dgDebugPanel')) return;
+
+        var panel = _mkEl('div',
+          'position:fixed;right:10px;bottom:10px;z-index:2147483647;'+
+          'width:360px;max-width:calc(100vw - 20px);max-height:45vh;'+
+          'background:rgba(0,0,0,.82);color:rgba(255,255,255,.92);'+
+          'font:12px/1.3 ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;'+
+          'border:1px solid rgba(255,255,255,.18);border-radius:10px;'+
+          'box-shadow:0 10px 25px rgba(0,0,0,.35);overflow:hidden;'
+        );
+        panel.id = 'dgDebugPanel';
+
+        var head = _mkEl('div',
+          'display:flex;align-items:center;gap:8px;padding:8px 10px;'+
+          'border-bottom:1px solid rgba(255,255,255,.12);'
+        );
+
+        var title = _mkEl('div', 'font-weight:800;letter-spacing:.2px;');
+        title.textContent = 'DG Debug';
+
+        var btn = _mkEl('button',
+          'margin-left:auto;cursor:pointer;'+
+          'background:rgba(255,255,255,.10);color:rgba(255,255,255,.92);'+
+          'border:1px solid rgba(255,255,255,.18);border-radius:8px;'+
+          'padding:6px 10px;font:12px/1 ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;'
+        );
+        btn.type = 'button';
+        btn.textContent = 'Copy Debug';
+        btn.addEventListener('click', function(ev){
+          try{ ev.preventDefault(); ev.stopPropagation(); }catch(_){}
+          try{ _safeCopyText(_buildText()); }catch(_){}
+        }, {passive:false});
+
+        head.appendChild(title);
+        head.appendChild(btn);
+
+        var body = _mkEl('pre',
+          'margin:0;padding:10px;white-space:pre-wrap;word-break:break-word;'+
+          'overflow:auto;max-height:calc(45vh - 42px);'
+        );
+        body.id = 'dgDebugText';
+        body.textContent = _buildText();
+
+        panel.appendChild(head);
+        panel.appendChild(body);
+
+        (document.body || document.documentElement).appendChild(panel);
+
+        // live refresh
+        setInterval(function(){
+          try{
+            var el = document.getElementById('dgDebugText');
+            if(el) el.textContent = _buildText();
+          }catch(_){}
+        }, 800);
+      }catch(_){}
+    }
+
+    if(DBG.enabled){
+      if(document.readyState === 'loading'){
+        document.addEventListener('DOMContentLoaded', _mountPanel, {once:true});
+      }else{
+        _mountPanel();
+      }
+    }
+  }catch(_){}
+})();
+</script>
+<script>
   (function(){
     // SPEEDFIX PATCH START
     function isMobile(){ return window.matchMedia("(max-width:760px)").matches; }
@@ -2438,6 +2731,32 @@ display:none;
       requestControllers.set(key, ac);
       return ac;
     }
+
+    // Abort helpers: ensure old in-flight requests cannot overwrite new state
+    function abortRequestsByPrefix(prefix){
+      try{
+        const keys = [];
+        for(const [k] of requestControllers){ keys.push(k); }
+        for(const k of keys){
+          try{
+            if(prefix==null || k===prefix || (typeof prefix==='string' && String(k).startsWith(prefix))){
+              try{ requestControllers.get(k)?.abort(); }catch(_){}
+              try{ requestControllers.delete(k); }catch(_){}
+            }
+          }catch(_){}
+        }
+      }catch(_){}
+    }
+
+    function abortAllRequests(){
+      try{
+        for(const [,ac] of requestControllers){
+          try{ ac.abort(); }catch(_){}
+        }
+      }catch(_){}
+      try{ requestControllers.clear(); }catch(_){}
+    }
+
     // Lightweight perf logs (console only)
     const perfToken = { id:0, t0:0, paint:0, candles:0, trades:0, logged:false };
     function perfStartToken(id){
@@ -2735,17 +3054,37 @@ function formatPrice(v){ return DG_FMT.price(v); }
     // fetch with timeout + retry + CORS fallback via allorigins
     async function fetchJson(url, {timeout=12000, retries=1, signal}={}){
       const proxy = (u)=>'https://api.allorigins.win/raw?url=' + encodeURIComponent(u);
+      // Hardened: never throw outward; bounded retries; AbortError treated as normal cancel when external signal aborts.
       let lastErr=null;
+      let lastStatus=null;
+
+      // Normalize opts safely
+      try{
+        timeout = Number(timeout);
+        if(!Number.isFinite(timeout) || timeout<=0) timeout = 12000;
+      }catch(_){ timeout = 12000; }
+      try{
+        retries = (retries|0);
+        if(retries<0) retries = 0;
+        if(retries>2) retries = 2;
+      }catch(_){ retries = 1; }
+      if(signal && signal.aborted) return null;
+
       for(let i=0;i<=retries;i++){
+        if(signal && signal.aborted) return null;
+
         const ctl = new AbortController();
-        // allow external cancellation + internal timeout
-        if(signal){
-          try{
-            if(signal.aborted) ctl.abort();
-            else signal.addEventListener('abort', ()=>{ try{ ctl.abort(); }catch(e){} }, {once:true});
-          }catch(e){}
-        }
-        const t = setTimeout(()=>{ try{ ctl.abort(); }catch(e){} }, timeout);
+        let onAbort = null;
+        try{
+          if(signal){
+            if(signal.aborted){ try{ ctl.abort(); }catch(_){ } return null; }
+            onAbort = ()=>{ try{ ctl.abort(); }catch(_){ } };
+            try{ signal.addEventListener('abort', onAbort, {once:true}); }catch(_){}
+          }
+        }catch(_){}
+
+        const t = setTimeout(()=>{ try{ ctl.abort(); }catch(_){ } }, Math.min(Math.max(800, timeout), 45000));
+
         try{
           const r = await fetch(url, {
             headers:{'accept':'application/json'},
@@ -2753,30 +3092,75 @@ function formatPrice(v){ return DG_FMT.price(v); }
             cache: 'no-store'
           });
           clearTimeout(t);
-          if(!r.ok) throw new Error('HTTP '+r.status);
-          return await r.json();
+          if(onAbort && signal) try{ signal.removeEventListener('abort', onAbort); }catch(_){}
+          if(!r || !r.ok){
+            try{ lastStatus = r ? r.status : lastStatus; }catch(_){}
+            lastErr = new Error('HTTP '+(r ? r.status : ''));
+          }else{
+            try{
+              return await r.json();
+            }catch(e){
+              lastErr = e;
+              try{ lastStatus = r.status; }catch(_){}
+            }
+          }
         }catch(e){
           clearTimeout(t);
-          lastErr=e;
-          // abort requested externally -> stop immediately
-          if(signal && signal.aborted) throw e;
-          if(e && e.name==='AbortError' && signal) throw e;
-          // try proxy for CORS / network error
+          if(onAbort && signal) try{ signal.removeEventListener('abort', onAbort); }catch(_){}
+          lastErr = e;
+          // external cancel -> normal
+          if(signal && signal.aborted) return null;
+
+          // try proxy for CORS / network error (do NOT proxy on explicit abort)
           try{
             const msg = String(e&&e.message||e||'');
-            const isCors = (e instanceof TypeError) || /Failed to fetch|NetworkError|CORS/i.test(msg);
+            const isAbort = (e && e.name==='AbortError');
+            const isCors = (!isAbort) && ((e instanceof TypeError) || /Failed to fetch|NetworkError|CORS/i.test(msg));
             if(isCors){
               const r2 = await fetch(proxy(url), {cache:'no-store', signal: ctl.signal});
-              if(r2.ok){
-                const txt = await r2.text();
-                return JSON.parse(txt);
+              if(r2 && r2.ok){
+                const txt2 = await r2.text();
+                try{ return JSON.parse(txt2); }catch(e2){ lastErr = e2; }
+              }else{
+                try{ lastStatus = r2 ? r2.status : lastStatus; }catch(_){ }
+                try{ lastErr = new Error('HTTP '+(r2 ? r2.status : '')); }catch(_){ }
               }
             }
-          }catch(_){ }
-          if(i<retries) await sleep(250*(i+1));
+          }catch(e2){
+            // keep lastErr as the most relevant if it has a message
+            try{
+              if(!lastErr || !lastErr.message) lastErr = e2;
+            }catch(_){}
+          }
+        }
+
+        if(signal && signal.aborted) return null;
+
+        // bounded exponential backoff (no infinite retries)
+        if(i < retries){
+          const base = 320; // ms
+          const wait = Math.min(1600, base * Math.pow(2, i)); // 320, 640, 1280
+          try{ await sleep(wait); }catch(_){}
         }
       }
-      throw lastErr || new Error('Network');
+
+      // Log final failure (exclude external cancellations)
+      try{
+        if(!(signal && signal.aborted) && window.__DG_DEBUG__ && typeof window.__DG_DEBUG__.pushFetchFail === 'function'){
+          let msg = '';
+          try{ msg = (lastErr && (lastErr.message||String(lastErr))) || 'Network'; }catch(_){ msg = 'Network'; }
+          let st = '';
+          try{ st = (lastStatus==null?'':String(lastStatus)); }catch(_){ st = ''; }
+          window.__DG_DEBUG__.pushFetchFail({
+            time: Date.now(),
+            url: url,
+            status: st,
+            error: msg
+          });
+        }
+      }catch(_){}
+
+      return null;
     }
 
     function normalizeChain(x){
@@ -3143,6 +3527,7 @@ let seenMakers = new Set();
           _lastLogicalRange = null;
           if(poolAddr){
             try{ if(typeof stopLiveLoops==='function') stopLiveLoops(); }catch(_){ }
+          try{ if(typeof abortAllRequests==='function') abortAllRequests(); }catch(_){ }
             (async()=>{
               await Promise.all([loadCandles(true), loadTrades(true)]);
               startLiveLoops();
@@ -3714,6 +4099,7 @@ function setSearchModalOpen(open){
       const a = p?.attributes || {};
       poolId = String(p?.id||'');
       poolAddr = poolAddressFromPool(p);
+      try{ if(activeNet !== 'solana') poolAddr = String(poolAddr||'').toLowerCase(); }catch(_){ }
 
       // Determine side: if token matches base -> buys are quote->base? We use Gecko trade_type.
       const base = lc(tokenAddrFromPool(p,'base'));
@@ -4319,7 +4705,7 @@ function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
       `;
     }
 
-    async function geckoPoolApiId(){
+    function geckoPoolApiId(){
       try{
         // Prefer explicit pool address; normalize EVM to lowercase
         let pid = String(poolAddr||'').trim();
@@ -4366,41 +4752,59 @@ function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
           tries.push(base2 + `?limit=${encodeURIComponent(limit)}`);
         }
       }catch(_){}
-let lastErr = null;
+
+      let lastMsg = '';
+      let sawResponse = false;
+
       for(const url of tries){
         try{
-          const j = await fetchJson(url, {timeout:14000, retries:1, signal: fetchOpts.signal});
-          // GeckoTerminal: usually { data: [...] }, but some proxies wrap JSON or return raw arrays
-          const arr =
-            (Array.isArray(j?.data) ? j.data :
-            (Array.isArray(j?.data?.data) ? j.data.data :
-            (Array.isArray(j) ? j : null)));
-          if(arr) return arr;
-        }catch(e){
-          lastErr = e;
+          if(window.__DG_DEBUG__ && window.__DG_DEBUG__.metrics){
+            window.__DG_DEBUG__.metrics.lastTradesUrl = url;
+            window.__DG_DEBUG__.metrics.lastTradesFetchAt = Date.now();
+          }
+        }catch(_){}
+
+        const j = await fetchJson(url, {timeout:14000, retries:1, signal: fetchOpts.signal});
+        if(fetchOpts && fetchOpts.signal && fetchOpts.signal.aborted){
+          try{ if(window.__DG_DEBUG__ && window.__DG_DEBUG__.metrics){ window.__DG_DEBUG__.metrics.lastTradesError = 'AbortError'; } }catch(_){}
+          return null;
         }
+        if(j == null){
+          lastMsg = 'Fetch failed';
+          continue;
+        }
+
+        sawResponse = true;
+
+        // GeckoTerminal: usually { data: [...] }, but some proxies wrap JSON or return raw arrays
+        const arr =
+          (Array.isArray(j?.data) ? j.data :
+          (Array.isArray(j?.data?.data) ? j.data.data :
+          (Array.isArray(j) ? j : null)));
+
+        if(arr){
+          try{
+            if(window.__DG_DEBUG__ && window.__DG_DEBUG__.metrics){
+              window.__DG_DEBUG__.metrics.lastTradesFetchAt = Date.now();
+              window.__DG_DEBUG__.metrics.lastTradesCount = arr.length || 0;
+              window.__DG_DEBUG__.metrics.lastTradesError = '';
+            }
+          }catch(_){}
+          return arr;
+        }
+
+        lastMsg = 'Bad response';
       }
 
-      // If every attempt failed, surface the error so the poller can show "retrying" instead of "no trades"
-      if(lastErr) throw lastErr;
-      return [];
-    }
-    // ===== DexGuard Micro 11: Trades UI fallback states (empty vs error) =====
-    function tradesHasAnyRows(){
       try{
-        const el = document.getElementById('trades');
-        if(!el) return false;
-        return !!(el.querySelector('.tradeRow') || el.querySelector('.tradeHead'));
-      }catch(_){ return false; }
-    }
-
-    function setTradesFallback(msg){
-      try{
-        const el = document.getElementById('trades');
-        if(!el) return;
-        const safe = String(msg||'').replace(/[<>&]/g, s=>({ '<':'&lt;','>':'&gt;','&':'&amp;' }[s]));
-        el.innerHTML = `<div style="padding:14px 12px;color:rgba(255,255,255,.70);font-weight:900;font-size:13px;letter-spacing:.1px;">${safe}</div>`;
+        if(window.__DG_DEBUG__ && window.__DG_DEBUG__.metrics){
+          window.__DG_DEBUG__.metrics.lastTradesFetchAt = Date.now();
+          window.__DG_DEBUG__.metrics.lastTradesCount = 0;
+          window.__DG_DEBUG__.metrics.lastTradesError = lastMsg || (sawResponse ? 'No data array' : 'Fetch failed');
+        }
       }catch(_){}
+
+      return null;
     }
 
     function showTradesRetrying(){
@@ -4703,6 +5107,7 @@ const insertBefore = head.nextSibling;
       const _my = _reqId;
       try{
         const data = await geckoTrades(80, {signal: ac.signal});
+        if(data==null){ try{ showTradesRetrying(); }catch(_){ } return; }
         if(id !== reqIds.trades) return;
         if(_my !== loadTrades._reqId) return;
         if(_key0 !== `${activeNet}|${poolAddr}`) return;
@@ -4787,6 +5192,10 @@ LIVE.gen++;
         TRADES_POLL.ctrl = new AbortController();
 
         const data = await geckoTrades(80, {signal: TRADES_POLL.ctrl.signal});
+        // Guard against stale responses after token/pool switch
+        const sigAfter = tradesPollSig();
+        if(!TRADES_POLL.running) return;
+        if(TRADES_POLL.sig && sigAfter !== TRADES_POLL.sig) return;
         if(Array.isArray(data)){
           try{ renderTrades(data); }catch(_){}
           TRADES_POLL.failCount = 0;
@@ -4833,16 +5242,8 @@ function startLiveLoops(){
 
       const scheduleTrades = async ()=>{
         if(gen !== LIVE.gen) return;
-        try{
-          await loadTrades(false);
-          LIVE.failTrades = 0;
-          LIVE.tradeDelay = 1500;
-      try{ startTradesPolling(); }catch(_){ }
-        }catch(_){
-          LIVE.failTrades = (LIVE.failTrades||0) + 1;
-          LIVE.tradeDelay = Math.min(7000, Math.round(1500 * Math.pow(1.25, LIVE.failTrades)));
-        }
-        LIVE.tTrades = setTimeout(scheduleTrades, LIVE.tradeDelay);
+        try{ startTradesPolling(); }catch(_){ }
+        // Legacy self-loop disabled; TRADES_POLL manages retries/backoff.
       };
 
       const scheduleCandles = async ()=>{
@@ -4867,7 +5268,9 @@ function startLiveLoops(){
 
 // -------------------- Meta (refresh price/liquidity/24h)
     async function geckoPool(fetchOpts={}){
-      const url = `${GECKO}/networks/${encodeURIComponent(geckoNet())}/pools/${encodeURIComponent(poolAddr)}?include=base_token,quote_token`;
+      const pid = await geckoPoolApiId();
+      if(!pid) return null;
+      const url = `${GECKO}/networks/${encodeURIComponent(geckoNet())}/pools/${encodeURIComponent(pid)}?include=base_token,quote_token`;
       const j = await fetchJson(url, {timeout:14000, retries:1, signal: fetchOpts.signal});
       return j?.data || null;
     }
@@ -5380,6 +5783,7 @@ function startLiveLoops(){
 
     async function openToken(input, opts={}){
           try{ if(typeof stopLiveLoops==='function') stopLiveLoops(); }catch(_){ }
+          try{ if(typeof abortRequestsByPrefix==='function'){ abortRequestsByPrefix('token:'); abortRequestsByPrefix('candles:'); abortRequestsByPrefix('trades:'); abortRequestsByPrefix('search:'); } }catch(_){ }
           const skipInput = !!opts.skipInput;
           const silent = !!opts.silent;
           const boot = !!opts.boot;
@@ -5926,6 +6330,101 @@ if(searchScrim){
     var dg_rt_hideTimer = null;
     var dg_rt_lastShown = 0;
 
+    // Unified toast/banner gate to prevent spam (shared by runtime + loading banners)
+    var dg_toast_lastAt = 0;
+    var dg_toast_lastMsg = "";
+    var dg_toast_timer = null;
+    var dg_toast_visibleId = null;
+    var dg_guard_firstMissAt = 0;
+
+    function dgNow(){
+      try{ return Date.now(); }catch(_){ return (+new Date()); }
+    }
+
+    function dgPushToastDebug(entry){
+      try{
+        var DBG = window.__DG_DEBUG__ || (window.__DG_DEBUG__ = {});
+        var max = (DBG.max && +DBG.max) ? +DBG.max : 10;
+        DBG.toasts = Array.isArray(DBG.toasts) ? DBG.toasts : [];
+        DBG.toasts.push(entry || {});
+        if(DBG.toasts.length > max) DBG.toasts.splice(0, DBG.toasts.length - max);
+      }catch(_){}
+    }
+
+    function dgIsOurSource(src){
+      try{
+        if(!src) return false;
+        var ss = String(src);
+        if(location && location.origin && ss.indexOf(location.origin) === 0) return true;
+        if(location && location.pathname && ss.indexOf(location.pathname) !== -1) return true;
+        if(ss.indexOf('dexguard') !== -1 || ss.indexOf('DexGuard') !== -1) return true;
+      }catch(_){}
+      return false;
+    }
+
+    function dgIsOurStack(stack){
+      try{
+        var st = String(stack||'');
+        if(!st) return false;
+        if(st.indexOf('openToken') !== -1) return true;
+        if(st.indexOf('startTrending') !== -1) return true;
+        if(st.indexOf('fetchJson') !== -1) return true;
+        if(st.indexOf('loadTrades') !== -1) return true;
+        if(st.indexOf('loadCandles') !== -1) return true;
+        if(st.indexOf('DexGuard') !== -1 || st.indexOf('DG_') !== -1) return true;
+      }catch(_){}
+      return false;
+    }
+
+    function dgToastGate(msg){
+      try{
+        var now = dgNow();
+        var m = String(msg||'');
+        var same = (m === String(dg_toast_lastMsg||''));
+        var vis = null;
+        try{
+          if(dg_toast_visibleId){
+            vis = document.getElementById(dg_toast_visibleId);
+            if(vis && vis.classList && !vis.classList.contains('show')) vis = null;
+          }
+        }catch(_){ vis = null; }
+
+        if(same && (now - dg_toast_lastAt) < 8000){
+          return {action:'drop', now:now, vis:vis};
+        }
+
+        if((now - dg_toast_lastAt) < 8000){
+          // rate-limited: if something is already visible, allow text replacement; else drop
+          if(vis) return {action:'replace', now:now, vis:vis};
+          return {action:'drop', now:now, vis:null};
+        }
+
+        dg_toast_lastAt = now;
+        dg_toast_lastMsg = m;
+        return {action:'show', now:now, vis:vis};
+      }catch(_){}
+      return {action:'show', now:(+new Date()), vis:null};
+    }
+
+    function dgRecentCriticalFetchFail(){
+      try{
+        var DBG = window.__DG_DEBUG__;
+        var arr = DBG && Array.isArray(DBG.fetchFails) ? DBG.fetchFails : null;
+        if(!arr || !arr.length) return null;
+        var now = dgNow();
+        for(var i=arr.length-1;i>=0;i--){
+          var f = arr[i] || {};
+          if(!f.time) continue;
+          if(now - f.time > 45000) break;
+          var em = String(f.error||'');
+          if(/aborterror|aborted/i.test(em)) continue;
+          var u = String(f.url||'');
+          if(/trades|candles|ohlc|kline|klines|chart|pair|pairs|token|search|trending/i.test(u)) return f;
+        }
+      }catch(_){}
+      return null;
+    }
+
     function dgEnsureRuntimeBanner(){
       var b = document.getElementById(DG_RT_BANNER_ID);
       if(b) return b;
@@ -5973,27 +6472,60 @@ if(searchScrim){
       return b;
     }
 
-    function dgShowRuntimeBanner(reason){
+    function dgShowRuntimeBanner(reason, meta){
       try{
-        var now = Date.now();
-        // throttle repeated errors
-        if(now - dg_rt_lastShown < 500) return;
-        dg_rt_lastShown = now;
+        // Only surface to user for real app failures (avoid third-party/script/resource noise)
+        if(dgIsNoiseError(reason)) return;
+
+        var msg = "Runtime error — retrying…";
+        var now = dgNow();
+        var st = meta && meta.stack ? String(meta.stack) : (reason && reason.stack ? String(reason.stack) : undefined);
+        var src = meta && (meta.filename || meta.source || meta.src || meta.url) ? (meta.filename || meta.source || meta.src || meta.url) : undefined;
+
+        // If we can't attribute to our app, don't toast (still logged to console/debug panel)
+        if(!(dgIsOurSource(src) || dgIsOurStack(st))){
+          dgPushToastDebug({time: now, kind: "runtime_drop", msg: msg, reason: String((reason && (reason.message||reason.name)) || reason || ""), url: src, stack: st});
+          return;
+        }
+
+        var gate = dgToastGate(msg);
+
+        // If something else is visible, replace text instead of stacking (single visible toast)
+        var visEl = gate.vis;
+        if(gate.action === 'replace' && visEl){
+          try{
+            var t0 = visEl.querySelector ? visEl.querySelector(".rtTxt") : null;
+            if(t0) t0.textContent = msg;
+          }catch(_){}
+          dgPushToastDebug({time: now, kind: "runtime_update", msg: msg, reason: String((reason && (reason.message||reason.name)) || reason || ""), url: src, stack: st});
+          return;
+        }
+        if(gate.action === 'drop'){
+          dgPushToastDebug({time: now, kind: "runtime_drop", msg: msg, reason: String((reason && (reason.message||reason.name)) || reason || ""), url: src, stack: st});
+          return;
+        }
+
+        // Hide status banner if present
+        try{
+          var sb = document.getElementById("rtStatusBanner");
+          if(sb && sb.classList) sb.classList.remove("show");
+        }catch(_){}
 
         var b = dgEnsureRuntimeBanner();
         if(!b) return;
 
-        var t = b.querySelector(".rtTxt");
-        if(t){
-          // keep text stable; optionally add short hint
-          t.textContent = "Runtime error — retrying…";
-        }
+        var t = b.querySelector ? b.querySelector(".rtTxt") : null;
+        if(t) t.textContent = msg;
 
         b.classList.add("show");
-        if(dg_rt_hideTimer) clearTimeout(dg_rt_hideTimer);
-        dg_rt_hideTimer = setTimeout(function(){
+        dg_toast_visibleId = b.id;
+
+        if(dg_toast_timer) clearTimeout(dg_toast_timer);
+        dg_toast_timer = setTimeout(function(){
           try{ b.classList.remove("show"); }catch(_){}
-        }, 5200);
+        }, 6000);
+
+        dgPushToastDebug({time: now, kind: "runtime_show", msg: msg, reason: String((reason && (reason.message||reason.name)) || reason || ""), url: src, stack: st});
       }catch(_){}
     }
 
@@ -6012,6 +6544,7 @@ if(searchScrim){
         // Ignore expected network/abort noise that shouldn't be treated as a "runtime error"
         if(msg.includes('aborterror') || msg.includes('aborted') || msg.includes('the user aborted') ) return true;
         if(msg.includes('failed to fetch') || msg.includes('networkerror') || msg.includes('cors')) return true;
+        if(msg.includes('load failed') || msg.includes('fetch failed') || msg.includes('load error')) return true;
         if(msg.includes('timeout') || msg.includes('timed out')) return true;
         return false;
       }catch(_){ return false; }
@@ -6028,7 +6561,7 @@ if(searchScrim){
           error: error,
           stack: error && error.stack ? String(error.stack) : undefined
         });
-        if(!dgIsNoiseError(error || message)) dgShowRuntimeBanner(error || message);
+        if(!dgIsNoiseError(error || message)) dgShowRuntimeBanner(error || message, {source: source, filename: source, line: lineno, col: colno, stack: (error && error.stack) ? String(error.stack) : undefined});
 }catch(_){}
       // Never block default handling
       if(typeof prevOnError === "function"){
@@ -6051,7 +6584,14 @@ if(searchScrim){
           target: ev && ev.target ? (ev.target.tagName || ev.target.nodeName || ev.target.toString()) : undefined
         };
         dgLogFullError("UnhandledErrorEvent", payload);
-        dgShowRuntimeBanner(ev && (ev.error || ev.message));
+        var r = ev && (ev.error || ev.message);
+        var isRes = false;
+        try{
+          var tg = ev && ev.target && (ev.target.tagName || ev.target.nodeName);
+          if(tg){ tg = String(tg).toUpperCase(); }
+          isRes = (tg === "IMG" || tg === "SCRIPT" || tg === "LINK" || tg === "IFRAME");
+        }catch(_){}
+        if(!isRes && !dgIsNoiseError(r)) dgShowRuntimeBanner(r, payload);
       }catch(_){}
     }, true);
 
@@ -6065,7 +6605,7 @@ if(searchScrim){
           reasonType: (r && r.constructor && r.constructor.name) ? r.constructor.name : typeof r,
           stack: r && r.stack ? String(r.stack) : undefined
         });
-        if(!dgIsNoiseError(r)) dgShowRuntimeBanner(r);
+        if(!dgIsNoiseError(r)) dgShowRuntimeBanner(r, {stack: (r && r.stack) ? String(r.stack) : undefined});
 }catch(_){}
       if(typeof prevOnRej === "function"){
         try{ return prevOnRej.apply(this, arguments); }catch(_){}
@@ -6081,7 +6621,7 @@ if(searchScrim){
           reasonType: (r && r.constructor && r.constructor.name) ? r.constructor.name : typeof r,
           stack: r && r.stack ? String(r.stack) : undefined
         });
-        dgShowRuntimeBanner(r);
+        if(!dgIsNoiseError(r)) dgShowRuntimeBanner(r, {stack: (r && r.stack) ? String(r.stack) : undefined});
       }catch(_){}
     }, true);
 
@@ -6150,15 +6690,77 @@ if(searchScrim){
       return b;
     }
 
-    function dgShowStatusBanner(){
+    function dgShowStatusBanner(meta){
       try{
+        var msg = "Loading failed — retrying…";
+        var now = dgNow();
+
+        // Determine if this looks like a real app failure (not just slow render)
+        var recent = dgRecentCriticalFetchFail();
+        var misses = meta && meta.misses ? meta.misses : null;
+
+        // Treat pure transient network hiccups as non-toast unless persisting
+        var isNetOnly = false;
+        try{
+          if(recent){
+            var em = String(recent.error||'').toLowerCase();
+            isNetOnly = (em.includes('failed to fetch') || em.includes('network') || em.includes('cors'));
+          }
+        }catch(_){}
+
+        // Require either repeated misses or a recent critical fetch failure; otherwise stay silent
+        var missCount = 0;
+        try{ var g = window.DG_RENDER_GUARD__; missCount = (g && g.missCount) ? g.missCount : 0; }catch(_){}
+        var persisting = false;
+        try{
+          if(!dg_guard_firstMissAt) dg_guard_firstMissAt = now;
+          persisting = (now - dg_guard_firstMissAt) > 25000;
+        }catch(_){}
+
+        var att = 0; try{ var gg = window.DG_RENDER_GUARD__; att = gg && gg.attempts ? gg.attempts : 0; }catch(_){}
+
+        if(!(recent || (persisting) || ((misses && missCount >= 2) && att >= 2))){
+          dgPushToastDebug({time: now, kind:"loading_drop", msg: msg, reason: (meta && meta.reason) ? String(meta.reason) : "", url: recent ? String(recent.url||"") : "", stack: (meta && meta.stack) ? String(meta.stack) : undefined});
+          return;
+        }
+        if(isNetOnly && !persisting){
+          dgPushToastDebug({time: now, kind:"loading_drop_net", msg: msg, reason: (meta && meta.reason) ? String(meta.reason) : "", url: recent ? String(recent.url||"") : "", stack: (meta && meta.stack) ? String(meta.stack) : undefined});
+          return;
+        }
+
+        var gate = dgToastGate(msg);
+        var visEl = gate.vis;
+        if(gate.action === 'replace' && visEl){
+          try{
+            var t0 = visEl.querySelector ? visEl.querySelector(".rtTxt") : null;
+            if(t0) t0.textContent = msg;
+          }catch(_){}
+          dgPushToastDebug({time: now, kind:"loading_update", msg: msg, reason: (meta && meta.reason) ? String(meta.reason) : "", url: recent ? String(recent.url||"") : "", stack: (meta && meta.stack) ? String(meta.stack) : undefined});
+          return;
+        }
+        if(gate.action === 'drop'){
+          dgPushToastDebug({time: now, kind:"loading_drop", msg: msg, reason: (meta && meta.reason) ? String(meta.reason) : "", url: recent ? String(recent.url||"") : "", stack: (meta && meta.stack) ? String(meta.stack) : undefined});
+          return;
+        }
+
+        // Hide runtime banner if present (single visible toast)
+        try{
+          var rb = document.getElementById("rtErrBanner");
+          if(rb && rb.classList) rb.classList.remove("show");
+        }catch(_){}
+
         var b = dgEnsureStatusBanner();
         if(!b) return;
+
         b.classList.add("show");
-        if(dg_status_hideTimer) clearTimeout(dg_status_hideTimer);
-        dg_status_hideTimer = setTimeout(function(){
+        dg_toast_visibleId = b.id;
+
+        if(dg_toast_timer) clearTimeout(dg_toast_timer);
+        dg_toast_timer = setTimeout(function(){
           try{ b.classList.remove("show"); }catch(_){}
         }, 6000);
+
+        dgPushToastDebug({time: now, kind:"loading_show", msg: msg, reason: (meta && meta.reason) ? String(meta.reason) : "", url: recent ? String(recent.url||"") : "", stack: (meta && meta.stack) ? String(meta.stack) : undefined});
       }catch(_){}
     }
 
@@ -6205,13 +6807,21 @@ if(searchScrim){
         }catch(_){}
         if(!cw || (!hasCanvas && dgIsEmpty(cw) && dgIsEmpty(c))) misses.push("chart");
 
-        // trades container
+        // trades container (NOT fatal if collapsed/hidden on mobile)
         var t = document.getElementById("trades");
         var hasRows = false;
+        var hidden = false;
         try{
+          hidden = !!(t && t.offsetParent === null);
           hasRows = !!(t && (t.querySelector(".tradeRow") || t.querySelector(".tradeHead")));
         }catch(_){}
-        if(!t || (!hasRows && dgIsEmpty(t))) misses.push("trades");
+        // Only treat as missing if the element itself is missing.
+        // If it's present but empty while loading, allow normal loaders/empty states without triggering the guard.
+        if(!t) misses.push("trades");
+        else if(!hidden){
+          // visible: require either rows/head or some meaningful text (e.g. "No recent trades" / "Trades retrying…")
+          if(!hasRows && !dgHasMeaningfulText(t) && dgIsEmpty(t)) misses.push("trades");
+        }
       }catch(_){}
       return misses;
     }
@@ -6265,11 +6875,18 @@ if(searchScrim){
         var misses = dgCriticalState();
         if(misses && misses.length){
           try{ console.warn("RenderGuard: missing/empty sections", misses, "reason:", reason); }catch(_){}
-          dgShowStatusBanner();
+          try{
+            DG_GUARD.missCount = (DG_GUARD.missCount || 0) + 1;
+            if(!dg_guard_firstMissAt) dg_guard_firstMissAt = dgNow();
+          }catch(_){}
+          // Only show status toast for real/persisting app failures (not transient hiccups)
           dgRetryLastAction(reason);
+          dgShowStatusBanner({reason: reason, misses: misses});
         }else{
           // Reset attempts on success so backoff doesn't keep growing
           DG_GUARD.attempts = 0;
+          DG_GUARD.missCount = 0;
+          dg_guard_firstMissAt = 0;
         }
       }catch(_){}
     }
@@ -6338,4 +6955,5 @@ if(searchScrim){
 
 </body>
 </html>
+
 
