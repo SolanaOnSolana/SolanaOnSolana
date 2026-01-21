@@ -2448,6 +2448,11 @@ display:none;
     DBG.rejections = Array.isArray(DBG.rejections) ? DBG.rejections : [];
     DBG.fetchFails = Array.isArray(DBG.fetchFails) ? DBG.fetchFails : [];
     DBG.toasts = Array.isArray(DBG.toasts) ? DBG.toasts : [];
+    DBG.metrics = (DBG.metrics && typeof DBG.metrics==='object') ? DBG.metrics : {};
+    if(typeof DBG.metrics.lastTradesFetchAt==='undefined') DBG.metrics.lastTradesFetchAt = 0;
+    if(typeof DBG.metrics.lastTradesCount==='undefined') DBG.metrics.lastTradesCount = 0;
+    if(typeof DBG.metrics.lastTradesUrl==='undefined') DBG.metrics.lastTradesUrl = '';
+    if(typeof DBG.metrics.lastTradesError==='undefined') DBG.metrics.lastTradesError = '';
 
     function _safeStr(v){
       try{
@@ -2557,6 +2562,15 @@ display:none;
         out.push('  liveLoopsRunning: ' + (ls.liveLoops ? 'YES' : 'NO'));
         out.push('  tradesPollingRunning: ' + (ls.tradesPolling ? 'YES' : 'NO'));
       }catch(_){}
+
+      try{
+        out.push('Trades:');
+        var mt = (DBG && DBG.metrics) ? DBG.metrics : {};
+        out.push('  lastTradesFetchAt: ' + (mt.lastTradesFetchAt ? _fmtTime(mt.lastTradesFetchAt) : '(never)'));
+        out.push('  lastTradesCount: ' + _safeStr(mt.lastTradesCount));
+        out.push('  lastTradesUrl: ' + _safeStr(mt.lastTradesUrl));
+        out.push('  lastTradesError: ' + _safeStr(mt.lastTradesError));
+      }catch(_){ }
 
       out.push('');
       out.push('window.onerror (last ' + (DBG.errors.length||0) + '):');
@@ -4085,6 +4099,7 @@ function setSearchModalOpen(open){
       const a = p?.attributes || {};
       poolId = String(p?.id||'');
       poolAddr = poolAddressFromPool(p);
+      try{ if(activeNet !== 'solana') poolAddr = String(poolAddr||'').toLowerCase(); }catch(_){ }
 
       // Determine side: if token matches base -> buys are quote->base? We use Gecko trade_type.
       const base = lc(tokenAddrFromPool(p,'base'));
@@ -4690,7 +4705,7 @@ function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
       `;
     }
 
-    async function geckoPoolApiId(){
+    function geckoPoolApiId(){
       try{
         // Prefer explicit pool address; normalize EVM to lowercase
         let pid = String(poolAddr||'').trim();
@@ -4737,41 +4752,59 @@ function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
           tries.push(base2 + `?limit=${encodeURIComponent(limit)}`);
         }
       }catch(_){}
-let lastErr = null;
+
+      let lastMsg = '';
+      let sawResponse = false;
+
       for(const url of tries){
         try{
-          const j = await fetchJson(url, {timeout:14000, retries:1, signal: fetchOpts.signal});
-          // GeckoTerminal: usually { data: [...] }, but some proxies wrap JSON or return raw arrays
-          const arr =
-            (Array.isArray(j?.data) ? j.data :
-            (Array.isArray(j?.data?.data) ? j.data.data :
-            (Array.isArray(j) ? j : null)));
-          if(arr) return arr;
-        }catch(e){
-          lastErr = e;
+          if(window.__DG_DEBUG__ && window.__DG_DEBUG__.metrics){
+            window.__DG_DEBUG__.metrics.lastTradesUrl = url;
+            window.__DG_DEBUG__.metrics.lastTradesFetchAt = Date.now();
+          }
+        }catch(_){}
+
+        const j = await fetchJson(url, {timeout:14000, retries:1, signal: fetchOpts.signal});
+        if(fetchOpts && fetchOpts.signal && fetchOpts.signal.aborted){
+          try{ if(window.__DG_DEBUG__ && window.__DG_DEBUG__.metrics){ window.__DG_DEBUG__.metrics.lastTradesError = 'AbortError'; } }catch(_){}
+          return null;
         }
+        if(j == null){
+          lastMsg = 'Fetch failed';
+          continue;
+        }
+
+        sawResponse = true;
+
+        // GeckoTerminal: usually { data: [...] }, but some proxies wrap JSON or return raw arrays
+        const arr =
+          (Array.isArray(j?.data) ? j.data :
+          (Array.isArray(j?.data?.data) ? j.data.data :
+          (Array.isArray(j) ? j : null)));
+
+        if(arr){
+          try{
+            if(window.__DG_DEBUG__ && window.__DG_DEBUG__.metrics){
+              window.__DG_DEBUG__.metrics.lastTradesFetchAt = Date.now();
+              window.__DG_DEBUG__.metrics.lastTradesCount = arr.length || 0;
+              window.__DG_DEBUG__.metrics.lastTradesError = '';
+            }
+          }catch(_){}
+          return arr;
+        }
+
+        lastMsg = 'Bad response';
       }
 
-      // If every attempt failed, surface the error so the poller can show "retrying" instead of "no trades"
-      if(lastErr) throw lastErr;
-      return [];
-    }
-    // ===== DexGuard Micro 11: Trades UI fallback states (empty vs error) =====
-    function tradesHasAnyRows(){
       try{
-        const el = document.getElementById('trades');
-        if(!el) return false;
-        return !!(el.querySelector('.tradeRow') || el.querySelector('.tradeHead'));
-      }catch(_){ return false; }
-    }
-
-    function setTradesFallback(msg){
-      try{
-        const el = document.getElementById('trades');
-        if(!el) return;
-        const safe = String(msg||'').replace(/[<>&]/g, s=>({ '<':'&lt;','>':'&gt;','&':'&amp;' }[s]));
-        el.innerHTML = `<div style="padding:14px 12px;color:rgba(255,255,255,.70);font-weight:900;font-size:13px;letter-spacing:.1px;">${safe}</div>`;
+        if(window.__DG_DEBUG__ && window.__DG_DEBUG__.metrics){
+          window.__DG_DEBUG__.metrics.lastTradesFetchAt = Date.now();
+          window.__DG_DEBUG__.metrics.lastTradesCount = 0;
+          window.__DG_DEBUG__.metrics.lastTradesError = lastMsg || (sawResponse ? 'No data array' : 'Fetch failed');
+        }
       }catch(_){}
+
+      return null;
     }
 
     function showTradesRetrying(){
@@ -5074,6 +5107,7 @@ const insertBefore = head.nextSibling;
       const _my = _reqId;
       try{
         const data = await geckoTrades(80, {signal: ac.signal});
+        if(data==null){ try{ showTradesRetrying(); }catch(_){ } return; }
         if(id !== reqIds.trades) return;
         if(_my !== loadTrades._reqId) return;
         if(_key0 !== `${activeNet}|${poolAddr}`) return;
@@ -5158,6 +5192,10 @@ LIVE.gen++;
         TRADES_POLL.ctrl = new AbortController();
 
         const data = await geckoTrades(80, {signal: TRADES_POLL.ctrl.signal});
+        // Guard against stale responses after token/pool switch
+        const sigAfter = tradesPollSig();
+        if(!TRADES_POLL.running) return;
+        if(TRADES_POLL.sig && sigAfter !== TRADES_POLL.sig) return;
         if(Array.isArray(data)){
           try{ renderTrades(data); }catch(_){}
           TRADES_POLL.failCount = 0;
@@ -5204,16 +5242,8 @@ function startLiveLoops(){
 
       const scheduleTrades = async ()=>{
         if(gen !== LIVE.gen) return;
-        try{
-          await loadTrades(false);
-          LIVE.failTrades = 0;
-          LIVE.tradeDelay = 1500;
-      try{ startTradesPolling(); }catch(_){ }
-        }catch(_){
-          LIVE.failTrades = (LIVE.failTrades||0) + 1;
-          LIVE.tradeDelay = Math.min(7000, Math.round(1500 * Math.pow(1.25, LIVE.failTrades)));
-        }
-        LIVE.tTrades = setTimeout(scheduleTrades, LIVE.tradeDelay);
+        try{ startTradesPolling(); }catch(_){ }
+        // Legacy self-loop disabled; TRADES_POLL manages retries/backoff.
       };
 
       const scheduleCandles = async ()=>{
@@ -5238,7 +5268,9 @@ function startLiveLoops(){
 
 // -------------------- Meta (refresh price/liquidity/24h)
     async function geckoPool(fetchOpts={}){
-      const url = `${GECKO}/networks/${encodeURIComponent(geckoNet())}/pools/${encodeURIComponent(poolAddr)}?include=base_token,quote_token`;
+      const pid = await geckoPoolApiId();
+      if(!pid) return null;
+      const url = `${GECKO}/networks/${encodeURIComponent(geckoNet())}/pools/${encodeURIComponent(pid)}?include=base_token,quote_token`;
       const j = await fetchJson(url, {timeout:14000, retries:1, signal: fetchOpts.signal});
       return j?.data || null;
     }
@@ -6923,3 +6955,84 @@ if(searchScrim){
 
 </body>
 </html>
+
+
+/* ================================
+   MOBILE-ONLY TRENDING TICKER COMPACT + SMOOTH (step12)
+   - Reduce height/padding, smaller cards, better readability
+   - Smooth marquee (GPU-friendly), less heavy shadows (less jank)
+   - Keeps existing click behavior
+   - Desktop unchanged
+   ================================ */
+@media (max-width: 760px){
+  /* Compact container spacing */
+  .topBarInner{ gap: 8px !important; padding: 10px 10px 10px !important; }
+
+  /* Ticker wrapper: slimmer + lighter paint cost */
+  .tickerWrap{
+    padding: 6px 8px !important;
+    border-radius: 16px !important;
+    border: 1px solid rgba(255,255,255,.10) !important;
+    background: rgba(255,255,255,.045) !important;
+    box-shadow: 0 8px 22px rgba(0,0,0,.18) !important;
+  }
+  .tickerWrap:before,
+  .tickerWrap:after{
+    width: 28px !important;
+  }
+
+  /* Smooth animation: longer duration + GPU-friendly transforms */
+  .tickerTrack{
+    gap: 8px !important;
+    animation-duration: 28s !important;
+    transform: translate3d(0,0,0);
+    will-change: transform;
+    backface-visibility: hidden;
+    contain: content;
+  }
+  .tickerWrap:hover .tickerTrack{ animation-play-state: paused; }
+
+  /* Smaller ticker items (Dexscreener vibe) */
+  .tickerItem{
+    padding: 6px 8px !important;
+    gap: 8px !important;
+    font-size: 12px !important;
+    border-radius: 999px !important;
+    background: rgba(255,255,255,.05) !important;
+    border: 1px solid rgba(255,255,255,.10) !important;
+    box-shadow: none !important; /* reduce repaint/jank */
+  }
+  .tickerItem.top1{
+    background: rgba(255,215,0,.08) !important;
+    border-color: rgba(255,215,0,.26) !important;
+    box-shadow: none !important;
+  }
+
+  /* Logo smaller + crisp */
+  .tickerLogoWrap{
+    width: 22px !important;
+    height: 22px !important;
+    flex: 0 0 22px !important;
+    border-radius: 6px !important;
+    box-shadow: none !important;
+  }
+  .tickerLogoFallback{ font-size: 11px !important; }
+
+  /* Rank + % pills tighter */
+  .tickerItem .rank{
+    min-width: 24px !important;
+    height: 18px !important;
+    padding: 0 6px !important;
+    font-size: 11px !important;
+  }
+  .tickerPct{
+    height: 18px !important;
+    padding: 0 6px !important;
+    font-size: 11px !important;
+  }
+
+  /* Prefer reduced motion */
+  @media (prefers-reduced-motion: reduce){
+    .tickerTrack{ animation: none !important; }
+  }
+}
