@@ -1550,6 +1550,79 @@ display:none;
   }
 }
 
+
+
+/* ================================
+   MOBILE-ONLY SEARCH APP BAR (step04)
+   - Full-width, Dexscreener-style search
+   - Sticky ONLY on mobile (no overlap; stays in flow)
+   - Respects safe areas + fixed app bar
+   - Keeps existing input id/name + JS handlers unchanged
+   ================================ */
+@media (max-width: 760px){
+  /* Put search first in the bottom row for an app-like hierarchy */
+  .bottomRow{ position: relative !important; }
+  .bottomRow .dexSearch{ order: 0 !important; }
+  .bottomRow .tickerWrap{ order: 1 !important; }
+
+  /* Sticky search under the fixed top app bar */
+  .dexSearch{
+    width: 100% !important;
+    max-width: 100% !important;
+    position: sticky !important;
+    top: calc(env(safe-area-inset-top) + var(--appbarH, 56px) + 8px) !important;
+    z-index: 9000 !important;
+
+    /* keep spacing consistent and prevent "floating overlap" feel */
+    margin: 0 !important;
+  }
+
+  /* Give the sticky region a subtle backing so content never reads "under" it */
+  .dexSearch::before{
+    content:"";
+    position:absolute;
+    left:-12px; right:-12px;
+    top:-10px;
+    height: calc(100% + 20px);
+    background: rgba(7,7,17,.92);
+    border-bottom: 1px solid rgba(255,255,255,.08);
+    border-radius: 0 0 16px 16px;
+    z-index: -1;
+    pointer-events:none;
+  }
+
+  .dexSearchInner{
+    width: 100% !important;
+    min-height: 48px !important;
+    padding: 10px 12px !important;
+    border-radius: 16px !important;
+    background: rgba(12,16,40,.92) !important;
+    border: 1px solid rgba(255,255,255,.14) !important;
+    box-shadow: 0 12px 34px rgba(0,0,0,.34) !important;
+    backdrop-filter: blur(14px) !important;
+    -webkit-backdrop-filter: blur(14px) !important;
+  }
+
+  .dexInput{
+    font-size: 14px !important;
+    font-weight: 950 !important;
+    letter-spacing: -.01em !important;
+  }
+
+  /* Results dropdown: keep anchored to sticky search and fully readable */
+  .dexSearch .results{
+    top: calc(100% + 10px) !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: calc(100vw - 24px) !important; /* matches wrap side padding (12px) */
+    max-height: 62vh !important;
+    border-radius: 18px !important;
+  }
+
+  /* Ensure sticky search never causes hidden content behind it */
+  .topBarInner{ scroll-margin-top: calc(env(safe-area-inset-top) + var(--appbarH, 56px) + 16px) !important; }
+}
+
 </style>
 </head>
 <body>
