@@ -3702,6 +3702,31 @@ function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
         syncBarSpacing();
       }
     }
+    // ===== DexGuard Micro 14: Chart Update Hook (update last candle close/high/low from newest trade) =====
+    function updateLastCandleFromTrade(tr){
+      try{
+        if(!rawCandles || !rawCandles.length) return;
+        const p = Number(tr?.price);
+        if(!Number.isFinite(p) || p<=0) return;
+
+        const last = rawCandles[rawCandles.length-1];
+        if(!last || last.time==null) return;
+
+        last.close = p;
+        last.high = Number.isFinite(last.high) ? Math.max(last.high, p) : p;
+        last.low  = Number.isFinite(last.low)  ? Math.min(last.low,  p) : p;
+
+        // Update only current candle (no timeframe rollover here)
+        try{
+          candleSeries.update({time:last.time, open:last.open, high:last.high, low:last.low, close:last.close});
+        }catch(_){}
+      }catch(e){
+        try{ console.warn('updateLastCandleFromTrade failed', e); }catch(_){}
+      }
+    }
+    // ===== /Micro 14 =====
+
+
 
     function applyTradeToCandles(tr){
       if(!rawCandles || !rawCandles.length) return;
@@ -4222,6 +4247,9 @@ function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
             newOnes.push(tr);
           }
         }
+
+        // Micro 14: update chart last candle from newest accepted trade (post-dedupe)
+        try{ if(newOnes.length) updateLastCandleFromTrade(newOnes[0]); }catch(_){ }
 
         // If nothing new, ensure panel is never blank
         if(!newOnes.length){
