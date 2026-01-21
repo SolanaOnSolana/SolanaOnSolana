@@ -2176,15 +2176,6 @@ display:none;
 @media (max-width: 520px){
   #rtErrBanner .rtTxt{ font-size: 12px; }
 }
-
-
-/* PROD: hard-disable runtime banners/toasts UI */
-#rtErrBanner, #rtStatusBanner{
-  display:none !important;
-  opacity:0 !important;
-  pointer-events:none !important;
-}
-#rtErrBanner.show, #rtStatusBanner.show{ display:none !important; }
 /* ===== /Micro 01 ===== */
 
 
@@ -2438,8 +2429,6 @@ display:none;
 /* ===== DG Debug Overlay (debug=1) ===== */
 (function(){
   try{
-    // PROD: debug overlay hard-disabled
-    return;
     var _qs = '';
     try{ _qs = String(location.search || ''); }catch(_){}
     var _enabled = false;
@@ -2766,7 +2755,7 @@ if(typeof DBG.metrics.lastClickAction==='undefined') DBG.metrics.lastClickAction
 </script>
 <script>
   const DG_PROD = true;
-  const DG_DEBUG = false;
+  const DG_DEBUG = (!DG_PROD) || (new URLSearchParams(location.search).get("debug")==="1") || (localStorage.getItem("dg_debug")==="1");
 
   (function(){
     // SPEEDFIX PATCH START
@@ -3031,7 +3020,7 @@ if(typeof DBG.metrics.lastClickAction==='undefined') DBG.metrics.lastClickAction
 
       // Key toggle (ignore typing contexts)
       try{
-        if(false){
+        if(typeof DG_DEBUG!=="undefined" && DG_DEBUG){
         document.addEventListener('keydown', (e)=>{
           const k = e.key || '';
           if(k !== 'd' && k !== 'D') return;
@@ -7441,8 +7430,6 @@ if(searchScrim){
 
     function dgShowRuntimeBanner(reason, meta){
       try{
-        // PROD: runtime UI banner/toast hard-disabled (keep console.error + retry logic)
-        return;
         try{ if(typeof DG_DEBUG==="undefined" || !DG_DEBUG) return; }catch(_){ return; }
         // Only surface to user for real app failures (avoid third-party/script/resource noise)
         if(dgIsNoiseError(reason)) return;
