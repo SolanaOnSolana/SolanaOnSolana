@@ -1107,16 +1107,114 @@ display:none;
   .controls{ padding: 12px 14px; }
   .trades{ height: 560px; }
 }
+
+/* ================================
+   DexGuard Targeted UI PATCH (A/B/C)
+   ================================ */
+/* Header pills stay single-row with horizontal scroll if needed (no wrapping) */
+#netPills{
+  display:flex;
+  flex-wrap: nowrap !important;
+  gap: 8px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  max-width: 52vw;
+}
+#netPills::-webkit-scrollbar{ display:none; }
+@media (max-width: 640px){
+  #netPills{ max-width: 44vw; }
+  .pill{ min-height: 40px; padding: 8px 10px; }
+}
+
+
+/* TASK A — Fixed top header single-row + logo */
+.topbar{ flex-wrap: nowrap !important; }
+.topbar .brand{ flex: 0 0 auto; min-width: 0; }
+.topLogo{
+  height: 34px;
+  width: auto;
+  max-width: 180px;
+  display: block;
+  object-fit: contain;
+}
+.actions{ flex-wrap: nowrap !important; white-space: nowrap; min-width: 0; }
+.actions > *{ flex: 0 0 auto; }
+#btnBack{ white-space: nowrap; }
+#btnX{ white-space: nowrap; }
+@media (max-width: 740px){
+  /* remove bottom-sheet reserved space */
+  .wrap{ padding: calc(var(--topbar-space, 84px) + 10px) 10px 18px !important; }
+}
+@media (max-width: 640px){
+  /* force single-row header (no stacking) */
+  .topbar{ flex-direction: row !important; align-items: center !important; gap: 10px !important; }
+  .actions{ width: auto !important; justify-content: flex-end !important; gap: 8px !important; }
+  .topLogo{ height: 30px; max-width: 150px; }
+  #btnBack{ font-size: 12px; padding: 9px 10px; }
+  #btnX{ width: 42px; height: 42px; }
+}
+@media (max-width: 360px){
+  .topLogo{ height: 28px; max-width: 130px; }
+  #btnBack{ font-size: 11px; padding: 8px 9px; }
+}
+
+/* TASK C — Search dropdown never clipped */
+.panel{ overflow: visible !important; }
+.topBar{ z-index: 5000 !important; }
+.dexSearch{ z-index: 6000 !important; }
+.results{ z-index: 7000 !important; }
+.grid{ position: relative; z-index: 1; }
+
+/* TASK B — Live Trades stays under chart, expands downward only */
+#tradesCard{
+  position: relative !important;
+  left: auto !important; right: auto !important; bottom: auto !important;
+  transform: none !important;
+  height: auto !important;
+  max-height: none !important;
+  margin: 0 !important;
+}
+#tradesCard .tableHd{
+  cursor: pointer;
+  user-select: none;
+}
+#tradesCard .tableHd .sheetRight{ display:flex; align-items:center; gap:10px; }
+#tradesCard .accToggleBtn{
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(255,255,255,.05);
+}
+#tradesCard .accToggleBtn:hover{ background: rgba(255,255,255,.08); }
+#tradesCard .accToggleBtn svg{ transition: transform var(--t); }
+#tradesCard.open .accToggleBtn svg{ transform: rotate(180deg); }
+
+/* collapsed: header only */
+#tradesCard:not(.open) .trades{ display:none !important; }
+
+/* expanded: internal scrolling region, still in page flow */
+#tradesCard.open .trades{
+  display:block !important;
+  height: auto !important;
+  max-height: clamp(240px, 45vh, 600px);
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+}
+@media (max-width: 980px){
+  #tradesCard.open .trades{ max-height: clamp(220px, 42vh, 520px); }
+}
+
 </style>
 </head>
 <body>
   <div class="wrap">
     <div class="topbar">
       <div class="brand">
-        <button class="dexguardBtn" id="topDexguardBtn" type="button" aria-label="DexGuard">
-          <span class="dexguardChip" aria-hidden="true">DEX</span>
-          <span class="dexguardText">DexGuard</span>
-        </button>
+        <img class="topLogo" id="topLogo" src="dexguard.png" alt="DexGuard" loading="eager" decoding="async" />
       </div>
 
       <div class="actions">
@@ -2841,62 +2939,49 @@ if(searchScrim){
   searchScrim.style.display = 'none';
 }
 
-// Mobile: make Live Trades a bottom sheet (accordion)
-let tradesSheetOpen = false;
-const tradesMq = window.matchMedia('(max-width: 740px)');
 
-function setTradesSheet(open){
-  tradesSheetOpen = !!open;
-  if(!tradesCard) return;
-  tradesCard.classList.toggle('sheetOpen', tradesSheetOpen);
+// Live Trades accordion (in-page; expands downward; never overlays chart)
+(function initTradesAccordion(){
   try{
+    if(!tradesCard) return;
     const hd = tradesCard.querySelector('.tableHd');
-    if(hd) hd.setAttribute('aria-expanded', tradesSheetOpen ? 'true' : 'false');
-  }catch(_){ }
-}
-function toggleTradesSheet(){
-  setTradesSheet(!(tradesCard && tradesCard.classList.contains('sheetOpen')));
-}
+    if(!hd) return;
 
-function ensureTradesSheetUI(){
-  if(!tradesCard) return;
-  const hd = tradesCard.querySelector('.tableHd');
-  if(!hd) return;
-
-  // Add a subtle toggle affordance (button) without changing existing IDs/features
-  if(!tradesCard.querySelector('.sheetToggleBtn')){
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'iconBtn sheetToggleBtn';
-    btn.setAttribute('aria-label','Toggle Live Trades');
-    btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M7.41 8.58 12 13.17l4.59-4.59L18 10l-6 6-6-6z"/></svg>';
-    btn.addEventListener('click', (e)=>{ e.preventDefault(); e.stopPropagation(); if(tradesMq.matches) toggleTradesSheet(); });
-    // place to the right side
-    const right = hd.querySelector('.sheetRight') || hd;
-    right.appendChild(btn);
-  }
-
-  // Tap header toggles on mobile only
-  hd.addEventListener('click', ()=>{
-    if(tradesMq.matches) toggleTradesSheet();
-  }, {passive:true});
-
-  // Escape closes
-  document.addEventListener('keydown', (e)=>{
-    if(e.key === 'Escape' && tradesMq.matches){
-      setTradesSheet(false);
+    // Toggle button (chevron) for affordance
+    let btn = tradesCard.querySelector('.accToggleBtn');
+    if(!btn){
+      btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'accToggleBtn';
+      btn.setAttribute('aria-label','Toggle Live Trades');
+      btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M7.41 8.58 12 13.17l4.59-4.59L18 10l-6 6-6-6z"/></svg>';
+      const right = hd.querySelector('.sheetRight') || hd;
+      right.appendChild(btn);
     }
-  });
-}
 
-ensureTradesSheetUI();
-setTradesSheet(false);
+    function setOpen(open){
+      const isOpen = !!open;
+      tradesCard.classList.toggle('open', isOpen);
+      hd.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+    }
 
-tradesMq.addEventListener('change', ()=>{
-  // reset sheet state when leaving mobile
-  if(!tradesMq.matches) setTradesSheet(false);
-});
+    function toggle(){
+      setOpen(!tradesCard.classList.contains('open'));
+    }
 
+    // Default: open on desktop, collapsed on mobile
+    const mq = window.matchMedia('(max-width: 740px)');
+    setOpen(!mq.matches);
+    if(mq && mq.addEventListener){ mq.addEventListener('change', ()=>{ setOpen(!mq.matches); }); }
+
+    btn.addEventListener('click', (e)=>{ e.preventDefault(); e.stopPropagation(); toggle(); });
+    hd.addEventListener('click', (e)=>{ e.preventDefault(); toggle(); });
+
+    document.addEventListener('keydown', (e)=>{
+      if(e.key === 'Escape') setOpen(false);
+    });
+  }catch(_){}
+})();
   })();
   </script>
 </body>
