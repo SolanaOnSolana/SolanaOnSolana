@@ -2739,6 +2739,12 @@ let seenMakers = new Set();
         b.onclick=()=>{
           activeTF=t;
           [...tfRow.children].forEach(x=>x.classList.toggle('active', x.textContent===t.k));
+          // reset viewport flags on timeframe change
+          userInteracted = false;
+          programmaticRangeChange = false;
+          didInitialViewport = false;
+          didFitOnce = false;
+          _lastLogicalRange = null;
           if(poolAddr){
             try{ if(typeof stopLiveLoops==='function') stopLiveLoops(); }catch(_){ }
             loadCandles(true);
@@ -2802,7 +2808,7 @@ function setMobileTab(which){
         try{
           requestAnimationFrame(()=>{
             try{ chart.resize(chartEl.clientWidth, chartEl.clientHeight); }catch(_e){}
-            try{ chart.timeScale().fitContent(); }catch(_e){}
+            try{ if(!userInteracted && !didInitialViewport){ withProgrammaticRangeChange(()=>{ try{ if(!userInteracted && !didInitialViewport){ withProgrammaticRangeChange(()=>{ try{ chart.timeScale().fitContent(); }catch(_e){} }); didInitialViewport = true; didFitOnce = true; } }catch(_e){} }); didInitialViewport = true; didFitOnce = true; } }catch(_e){}
           });
         }catch(_e){}
       }
@@ -3091,11 +3097,11 @@ function setSearchModalOpen(open){
       searchTimer = setTimeout(async ()=>{
         const id = ++searchReq;
         try{
-          const pairs = await dsSearch(v, {signal: ac.signal});
-          if(id!==reqIds.search) return;
+          const pairs = await dsSearch(v);
+          if(id!==searchReq) return;
           renderSearchResults(pairs);
         }catch(e){
-          if(id!==reqIds.search) return;
+          if(id!==searchReq) return;
           if(e && e.name==='AbortError') return;
           showResults(`<div style="padding:12px; color:rgba(255,255,255,.75)">Search error. Try again.</div>`);
         }
@@ -3259,6 +3265,7 @@ function setSearchModalOpen(open){
     // Candles paging + viewport normalization
     const CANDLE_LIMIT = 1000;
     const candlePager = { loading:false, hasMore:true, before:null, key:'' };
+    let _lastCandleFitKey = '';
     let _pagingAttached = false;
 
     function desiredViewportBars(){
@@ -3274,15 +3281,29 @@ function setSearchModalOpen(open){
       return 260;
     }
 
-    function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
+    
+    // -------------------- Viewport stability flags (SPEEDFIX step06)
+    let userInteracted = false;
+    let programmaticRangeChange = false;
+    let didInitialViewport = false;
+    let didFitOnce = false;  // per token+timeframe
+    let _lastLogicalRange = null;
+
+    function withProgrammaticRangeChange(fn){
+      programmaticRangeChange = true;
+      try{ fn && fn(); }catch(_e){}
+      requestAnimationFrame(()=>{ programmaticRangeChange = false; });
+    }
+function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
 
     function syncBarSpacing(){
       try{
+        if(userInteracted) return;
         const r = chart.timeScale().getVisibleLogicalRange();
         const bars = r ? Math.max(10, Math.round(r.to - r.from)) : desiredViewportBars();
         const w = Math.max(320, chartEl.clientWidth || 800);
         const spacing = clamp(w / (bars * 1.15), 3.5, 18);
-        chart.timeScale().applyOptions({ barSpacing: spacing });
+        withProgrammaticRangeChange(()=>{ chart.timeScale().applyOptions({ barSpacing: spacing }); });
       }catch(_){}
     }
 
@@ -3293,8 +3314,10 @@ function setSearchModalOpen(open){
         const bars = desiredViewportBars();
         const from = Math.max(0, total - bars);
         const to = Math.max(0, total - 1);
-        chart.timeScale().setVisibleLogicalRange({from, to});
-        chart.timeScale().applyOptions({ rightOffset: 6 });
+        withProgrammaticRangeChange(()=>{ 
+          chart.timeScale().setVisibleLogicalRange({from, to});
+          chart.timeScale().applyOptions({ rightOffset: 6 });
+        });
         syncBarSpacing();
       }catch(_){}
     }
@@ -3305,6 +3328,15 @@ function setSearchModalOpen(open){
 
       chart.timeScale().subscribeVisibleLogicalRangeChange((range)=>{
         if(!range) return;
+        // detect user-driven range changes to prevent viewport resets
+        if(!programmaticRangeChange){
+          if(_lastLogicalRange){
+            const df = Math.abs((range.from||0) - (_lastLogicalRange.from||0));
+            const dt = Math.abs((range.to||0) - (_lastLogicalRange.to||0));
+            if(df > 2 || dt > 2){ userInteracted = true; }
+          }
+          _lastLogicalRange = { from: range.from, to: range.to };
+        }
         if(!poolAddr) return;
         if(candlePager.loading || !candlePager.hasMore) return;
         if(range.from < 30){
@@ -3456,13 +3488,14 @@ function setSearchModalOpen(open){
       attachPaging();
 
       const id = ++reqIds.candles;
+      const tfKey = `${activeNet}|${poolAddr}|${activeTF?.k||''}`;
       const ac = startRequest(`candles:${activeNet}:${poolAddr}:${activeTF?.k||''}`);
 
       statusEl.textContent = 'Loading chart…';
       candlePager.loading = true;
       candlePager.hasMore = true;
       candlePager.before = null;
-      candlePager.key = `${activeNet}|${poolAddr}|${activeTF?.k||''}`;
+      candlePager.key = tfKey;
 
       rawCandles=[];
       candleSeries.setData([]);
@@ -3471,54 +3504,88 @@ function setSearchModalOpen(open){
       try{
         const gran = activeTF.gecko;
         const needBars = desiredViewportBars();
-        let pages = 0;
+        const maxPages = (activeTF.k==='ALL' ? 6 : 3);
+
+        // 1) Fetch newest page first and render immediately
         let before = null;
-        let all = [];
+        let pages = 0;
 
-        while(pages++ < (activeTF.k==='ALL' ? 10 : 6)){
-          const url = geckoCandlesUrl(gran, before);
-          const j = await fetchJson(url, {timeout:18000, retries:1, signal: ac.signal});
-          if(id !== reqIds.candles) return;
-          let part = mapGeckoOhlcv(j);
-          if(!part.length){
-            candlePager.hasMore = false;
-            break;
-          }
-          part.sort((a,b)=>a.time-b.time);
+        const url0 = geckoCandlesUrl(gran, before);
+        const j0 = await fetchJson(url0, {timeout:18000, retries:1, signal: ac.signal});
+        if(id !== reqIds.candles) return;
 
-          // prepend
-          all = part.concat(all);
-
-          // continue paging older
-          const oldest = part[0].time;
-          before = oldest - 1;
-          if(part.length < (CANDLE_LIMIT - 10)) { candlePager.hasMore = false; break; }
-
-          // stop once we have enough data for a good-looking viewport + buffer
-          if(all.length >= (needBars * 2)) break;
-        }
-
-        // dedupe + sort
-        const map = new Map();
-        for(const c of all){ map.set(c.time, c); }
-        rawCandles = Array.from(map.values()).sort((a,b)=>a.time-b.time);
-
-        if(!rawCandles.length){
+        let part0 = mapGeckoOhlcv(j0);
+        if(!part0.length){
           statusEl.textContent = 'Chart not available for this pool.';
           candlePager.hasMore = false;
           candlePager.before = null;
           candlePager.loading = false;
           return;
         }
+        part0.sort((a,b)=>a.time-b.time);
 
-        candlePager.before = rawCandles[0].time - 1;
-        applyCandlesToChart(true);
+        // Set pager for older
+        before = part0[0].time - 1;
+        pages = 1;
+
+        // Initial render
+        rawCandles = part0;
+        candlePager.before = before;
+
+        const shouldFit = !!fit && (_lastCandleFitKey !== tfKey);
+        applyCandlesToChart(shouldFit);
+        if(shouldFit) _lastCandleFitKey = tfKey;
+
         statusEl.textContent = 'Live.';
+        candlePager.loading = false;
+
+        // 2) Backfill older pages in background until enough bars exist
+        requestAnimationFrame(()=>{ (async ()=>{
+          try{
+            const targetBars = Math.floor(needBars * 1.6);
+            let fetched = pages;
+            let localBefore = before;
+
+            while(id === reqIds.candles && fetched < maxPages && candlePager.hasMore && localBefore && rawCandles.length < targetBars){
+              candlePager.loading = true;
+
+              const url = geckoCandlesUrl(gran, localBefore);
+              const j = await fetchJson(url, {timeout:18000, retries:1, signal: ac.signal});
+              if(id !== reqIds.candles) return;
+
+              const part = mapGeckoOhlcv(j);
+              if(!part.length){
+                candlePager.hasMore = false;
+                break;
+              }
+              part.sort((a,b)=>a.time-b.time);
+
+              // Merge by time, keep unique
+              const map = new Map();
+              for(const c of rawCandles) map.set(c.time, c);
+              for(const c of part) map.set(c.time, c);
+              rawCandles = Array.from(map.values()).sort((a,b)=>a.time-b.time);
+
+              // Continue paging older
+              localBefore = part[0].time - 1;
+              candlePager.before = localBefore;
+
+              if(part.length < (CANDLE_LIMIT - 10)) candlePager.hasMore = false;
+
+              applyCandlesToChart(false);
+              fetched++;
+            }
+          }catch(e){
+            // ignore background errors
+          }finally{
+            if(id === reqIds.candles) candlePager.loading = false;
+          }
+        })(); });
       }catch(e){
         statusEl.textContent = 'Chart error.';
         console.error(e);
       }finally{
-        candlePager.loading = false;
+        if(id === reqIds.candles) candlePager.loading = false;
       }
     }
 
@@ -3568,10 +3635,10 @@ function setSearchModalOpen(open){
 
         // keep viewport anchored after prepend
         if(prevRange && added>0){
-          chart.timeScale().setVisibleLogicalRange({
+          withProgrammaticRangeChange(()=>{ chart.timeScale().setVisibleLogicalRange({
             from: prevRange.from + added,
             to: prevRange.to + added
-          });
+          }); });
         }
         syncBarSpacing();
       }catch(e){
@@ -4244,6 +4311,12 @@ function setSearchModalOpen(open){
 
           // Force default chart timeframe on every token selection
           setActiveTFKey('15m');
+          // reset viewport flags on token selection
+          userInteracted = false;
+          programmaticRangeChange = false;
+          didInitialViewport = false;
+          didFitOnce = false;
+          _lastLogicalRange = null;
 
           // Instant UI feedback (must render before any network)
           setTokenLoadingUI();
@@ -4650,7 +4723,7 @@ if(searchScrim){
         try{
           if(mode!=='txns'){
             chart.applyOptions({ width: chartEl.clientWidth, height: chartEl.clientHeight });
-            chart.timeScale().fitContent();
+            if(!userInteracted && !didInitialViewport){ withProgrammaticRangeChange(()=>{ try{ chart.timeScale().fitContent(); }catch(_e){} }); didInitialViewport = true; didFitOnce = true; }
           }
         }catch(_){}
       });
@@ -4706,3 +4779,84 @@ if(searchScrim){
 </script>
 </body>
 </html>
+
+
+/* ================================
+   MOBILE-ONLY TRENDING TICKER COMPACT + SMOOTH (step12)
+   - Reduce height/padding, smaller cards, better readability
+   - Smooth marquee (GPU-friendly), less heavy shadows (less jank)
+   - Keeps existing click behavior
+   - Desktop unchanged
+   ================================ */
+@media (max-width: 760px){
+  /* Compact container spacing */
+  .topBarInner{ gap: 8px !important; padding: 10px 10px 10px !important; }
+
+  /* Ticker wrapper: slimmer + lighter paint cost */
+  .tickerWrap{
+    padding: 6px 8px !important;
+    border-radius: 16px !important;
+    border: 1px solid rgba(255,255,255,.10) !important;
+    background: rgba(255,255,255,.045) !important;
+    box-shadow: 0 8px 22px rgba(0,0,0,.18) !important;
+  }
+  .tickerWrap:before,
+  .tickerWrap:after{
+    width: 28px !important;
+  }
+
+  /* Smooth animation: longer duration + GPU-friendly transforms */
+  .tickerTrack{
+    gap: 8px !important;
+    animation-duration: 28s !important;
+    transform: translate3d(0,0,0);
+    will-change: transform;
+    backface-visibility: hidden;
+    contain: content;
+  }
+  .tickerWrap:hover .tickerTrack{ animation-play-state: paused; }
+
+  /* Smaller ticker items (Dexscreener vibe) */
+  .tickerItem{
+    padding: 6px 8px !important;
+    gap: 8px !important;
+    font-size: 12px !important;
+    border-radius: 999px !important;
+    background: rgba(255,255,255,.05) !important;
+    border: 1px solid rgba(255,255,255,.10) !important;
+    box-shadow: none !important; /* reduce repaint/jank */
+  }
+  .tickerItem.top1{
+    background: rgba(255,215,0,.08) !important;
+    border-color: rgba(255,215,0,.26) !important;
+    box-shadow: none !important;
+  }
+
+  /* Logo smaller + crisp */
+  .tickerLogoWrap{
+    width: 22px !important;
+    height: 22px !important;
+    flex: 0 0 22px !important;
+    border-radius: 6px !important;
+    box-shadow: none !important;
+  }
+  .tickerLogoFallback{ font-size: 11px !important; }
+
+  /* Rank + % pills tighter */
+  .tickerItem .rank{
+    min-width: 24px !important;
+    height: 18px !important;
+    padding: 0 6px !important;
+    font-size: 11px !important;
+  }
+  .tickerPct{
+    height: 18px !important;
+    padding: 0 6px !important;
+    font-size: 11px !important;
+  }
+
+  /* Prefer reduced motion */
+  @media (prefers-reduced-motion: reduce){
+    .tickerTrack{ animation: none !important; }
+  }
+}
