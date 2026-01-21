@@ -2765,6 +2765,28 @@ display:none;
       return ac;
     }
 
+
+    // Candle load resilience
+    const CANDLE_FETCH_TIMEOUT_MS = 10000; // strict timeout for Gecko candle fetch
+    const CANDLE_AUTORETRY_DELAY_MS = 1200;
+    const candleRetryState = new Map(); // key: net|pool|tf -> {count:number, t:number}
+    function makeTimeoutSignal(parentSignal, ms){
+      const ctrl = new AbortController();
+      let t = setTimeout(()=>{ try{ ctrl.abort(new DOMException('Timeout','TimeoutError')); }catch(_){ try{ ctrl.abort(); }catch(__){} } }, ms);
+      const onAbort = ()=>{ try{ ctrl.abort(parentSignal?.reason); }catch(_){ try{ ctrl.abort(); }catch(__){} } cleanup(); };
+      const cleanup = ()=>{
+        try{ clearTimeout(t); }catch(_){}
+        try{ parentSignal && parentSignal.removeEventListener && parentSignal.removeEventListener('abort', onAbort); }catch(_){}
+      };
+      try{
+        if(parentSignal){
+          if(parentSignal.aborted) onAbort();
+          else parentSignal.addEventListener('abort', onAbort, {once:true});
+        }
+      }catch(_){}
+      return { signal: ctrl.signal, cleanup };
+    }
+
     // Abort helpers: ensure old in-flight requests cannot overwrite new state
     function abortRequestsByPrefix(prefix){
       try{
@@ -4636,7 +4658,11 @@ function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
       try{ if(clean && clean.length) perfMarkCandles(perfToken.id); }catch(_){}
 
       if(fit){
-        try{ applyDefaultViewport(); }catch(_){}
+        if(!userInteracted){
+          try{ applyDefaultViewport(); }catch(_){ }
+        }else{
+          try{ syncBarSpacing(); }catch(_){ }
+        }
       }else{
         try{ syncBarSpacing(); }catch(_){}
       }
@@ -4817,11 +4843,47 @@ function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
       try{ window.__DG_LAST_CANDLES_REQ_KEY = _reqKey; }catch(_){ }
       const ac = startRequest(_reqKey);
 
-      // Fast path: short-term cache (instant chart when revisiting same pool/tf)
+
+      // Retry + tap-to-retry state (per token/timeframe)
+      const retryKey = tfKey;
+      const isStillCurrent = (expectedId)=> (expectedId === reqIds.candles && retryKey === `${activeNet}|${poolAddr}|${activeTF?.k||''}`);
+      const clearRetryUI = ()=>{
+        try{ if(statusEl){ statusEl.onclick = null; statusEl.style.cursor = ''; statusEl.style.pointerEvents = ''; } }catch(_){}
+      };
+      const showTapToRetry = (msg)=>{
+        try{
+          if(!statusEl) return;
+          statusEl.textContent = msg || 'Tap to retry';
+          statusEl.style.cursor = 'pointer';
+          statusEl.style.pointerEvents = 'auto';
+          statusEl.onclick = ()=>{
+            try{ candleRetryState.set(retryKey, {count:0, t:Date.now()}); }catch(_){}
+            try{ statusEl.onclick = null; statusEl.style.cursor=''; }catch(_){}
+            try{ requestCandlesImmediate(true); }catch(_){ try{ loadCandles(true); }catch(__){} }
+          };
+        }catch(_){}
+      };
+      const scheduleAutoRetryOnce = ()=>{
+        try{
+          const st = candleRetryState.get(retryKey) || {count:0, t:0};
+          if(st.count >= 1) return false;
+          candleRetryState.set(retryKey, {count: st.count + 1, t: Date.now()});
+          const expectedId = id;
+          setTimeout(()=>{
+            if(!isStillCurrent(expectedId)) return;
+            try{ requestCandlesImmediate(true); }catch(_){ try{ loadCandles(true); }catch(__){} }
+          }, CANDLE_AUTORETRY_DELAY_MS);
+          return true;
+        }catch(_){}
+        return false;
+      };
+
+      // Fast path: memory cache (render instantly) then background refresh
+      let _renderedFromCache = false;
       try{
         const now = Date.now();
         const cached = candleCache && candleCache.get ? candleCache.get(tfKey) : null;
-        if(cached && cached.ts && (now - cached.ts) < CANDLE_CACHE_TTL && Array.isArray(cached.candles)){
+        if(cached && Array.isArray(cached.candles)){
           rawCandles = cached.candles.slice();
           candlePager.loading = false;
           candlePager.hasMore = !!cached.hasMore;
@@ -4837,21 +4899,38 @@ function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
               window.__DG_DEBUG__.metrics.lastCandlesError = '';
             }
           }catch(_){}
-          try{ statusEl.textContent = rawCandles.length ? '' : 'No candle data'; }catch(_){}
-          try{ applyCandlesToChart(!!fit); }catch(_){}
-          return;
+          try{ statusEl.textContent = rawCandles.length ? '' : 'Loading chart…'; }catch(_){}
+          try{ if(rawCandles.length){ clearRetryUI(); candleRetryState.delete(retryKey); } }catch(_){}
+          try{
+            const shouldFit = !!fit && !userInteracted && (_lastCandleFitKey !== tfKey);
+            applyCandlesToChart(shouldFit);
+            if(shouldFit) _lastCandleFitKey = tfKey;
+          }catch(_){}
+          _renderedFromCache = rawCandles.length>0;
+
+          // If cache is very fresh, skip background refresh
+          const age = (cached.ts ? (now - cached.ts) : 1e9);
+          if(_renderedFromCache && age < 5000){
+            return;
+          }
         }
       }catch(_){}
 
-      statusEl.textContent = 'Loading chart…';
-      candlePager.loading = true;
-      candlePager.hasMore = true;
-      candlePager.before = null;
-      candlePager.key = tfKey;
+      if(!_renderedFromCache){
+        statusEl.textContent = 'Loading chart…';
+        candlePager.loading = true;
+        candlePager.hasMore = true;
+        candlePager.before = null;
+        candlePager.key = tfKey;
 
-      rawCandles=[];
-      candleSeries.setData([]);
-      volumeSeries.setData([]);
+        rawCandles=[];
+        candleSeries.setData([]);
+        volumeSeries.setData([]);
+      }else{
+        // Background refresh: keep existing series visible, do not clear/fit again here
+        candlePager.loading = true;
+        try{ if(statusEl && statusEl.textContent === 'Loading chart…') statusEl.textContent = ''; }catch(_){}
+      }
 
       try{
         const gran = activeTF.gecko;
@@ -4875,13 +4954,24 @@ function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
 
         const url0 = geckoCandlesUrl(gran, before);
         try{ if(window.__DG_DEBUG__){ window.__DG_DEBUG__.metrics = window.__DG_DEBUG__.metrics || {}; window.__DG_DEBUG__.metrics.lastCandlesUrl = url0; } }catch(_){ }
-        const j0 = await fetchJson(url0, {timeout:18000, retries:1, signal: ac.signal});
+        const tSig0 = makeTimeoutSignal(ac.signal, CANDLE_FETCH_TIMEOUT_MS);
+        let j0;
+        try{
+          j0 = await fetchJson(url0, {timeout:(CANDLE_FETCH_TIMEOUT_MS+2000), retries:1, signal: tSig0.signal});
+        }finally{
+          tSig0.cleanup();
+        }
         if(id !== reqIds.candles) return;
 
         let part0 = mapGeckoOhlcv(j0);
         if(!part0.length){
-          try{ if(window.__DG_DEBUG__){ window.__DG_DEBUG__.metrics = window.__DG_DEBUG__.metrics || {}; window.__DG_DEBUG__.metrics.lastCandlesCount = 0; window.__DG_DEBUG__.metrics.lastCandlesError = 'No candle data'; } }catch(_){ }
-          statusEl.textContent = 'No candle data';
+          try{ if(window.__DG_DEBUG__){ window.__DG_DEBUG__.metrics = window.__DG_DEBUG__.metrics || {}; window.__DG_DEBUG__.metrics.lastCandlesError = 'Empty candle data'; } }catch(_){ }
+          // If we already have something on screen (cache), keep it and retry silently once.
+          const hasVisible = Array.isArray(rawCandles) && rawCandles.length>0;
+          if(!hasVisible){
+            showTapToRetry('Tap to retry');
+          }
+          scheduleAutoRetryOnce();
           candlePager.hasMore = false;
           candlePager.before = null;
           candlePager.loading = false;
@@ -4897,7 +4987,7 @@ function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
         rawCandles = part0;
         candlePager.before = before;
 
-        const shouldFit = !!fit && (_lastCandleFitKey !== tfKey);
+        const shouldFit = !!fit && !userInteracted && (_lastCandleFitKey !== tfKey);
         applyCandlesToChart(shouldFit);
         if(shouldFit) _lastCandleFitKey = tfKey;
 
@@ -4921,6 +5011,8 @@ function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
           }
         }catch(_){ }
 
+        clearRetryUI();
+        try{ candleRetryState.delete(retryKey); }catch(_){ }
         statusEl.textContent = 'Live.';
         candlePager.loading = false;
 
@@ -4935,7 +5027,13 @@ function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
               candlePager.loading = true;
 
               const url = geckoCandlesUrl(gran, localBefore);
-              const j = await fetchJson(url, {timeout:18000, retries:1, signal: ac.signal});
+              const tSig = makeTimeoutSignal(ac.signal, CANDLE_FETCH_TIMEOUT_MS);
+              let j;
+              try{
+                j = await fetchJson(url, {timeout:(CANDLE_FETCH_TIMEOUT_MS+2000), retries:1, signal: tSig.signal});
+              }finally{
+                tSig.cleanup();
+              }
               if(id !== reqIds.candles) return;
 
               const part = mapGeckoOhlcv(j);
@@ -4984,7 +5082,16 @@ function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
             window.__DG_DEBUG__.metrics.lastCandlesError = (e && (e.name||e.message)) ? (String(e.name||'') + (e.message?(': '+e.message):'')) : String(e||'');
           }
         }catch(_){ }
-        try{ statusEl.textContent = 'No candle data'; }catch(_){ }
+        try{
+          const critical = !(Array.isArray(rawCandles) && rawCandles.length>0);
+          if(critical){
+            showTapToRetry('Tap to retry');
+            scheduleAutoRetryOnce();
+          }else{
+            // Keep existing candles visible; avoid leaving a stale loading label
+            if(statusEl && statusEl.textContent === 'Loading chart…') statusEl.textContent = '';
+          }
+        }catch(_){ }
         try{ console.error(e); }catch(_){ }
       }finally{
         if(id === reqIds.candles) candlePager.loading = false;
@@ -6213,9 +6320,39 @@ function startLiveLoops(){
 
 
 
-    async function openToken(input, opts={}){
+    
+
+    function resetChartForNewToken(){
+      // Ensure chart never looks "frozen" while switching tokens/pools
+      try{
+        if(candleSeries && typeof candleSeries.setData==='function') candleSeries.setData([]);
+      }catch(_){}
+      try{
+        if(volumeSeries && typeof volumeSeries.setData==='function') volumeSeries.setData([]);
+      }catch(_){}
+      try{ rawCandles = []; }catch(_){}
+      try{
+        if(typeof candlePager === 'object' && candlePager){
+          candlePager.loading = false;
+          candlePager.hasMore = true;
+          candlePager.before = null;
+          candlePager.key = '';
+        }
+      }catch(_){}
+      try{ _lastCandleFitKey = ''; }catch(_){}
+      try{ statusEl.textContent = 'Loading chart…'; }catch(_){}
+      try{
+        didInitialViewport = false;
+        didFitOnce = false;
+        _lastLogicalRange = null;
+      }catch(_){}
+    }
+
+async function openToken(input, opts={}){
           try{ if(typeof stopLiveLoops==='function') stopLiveLoops(); }catch(_){ }
           try{ if(typeof abortRequestsByPrefix==='function'){ abortRequestsByPrefix('token:'); abortRequestsByPrefix('candles:'); abortRequestsByPrefix('trades:'); abortRequestsByPrefix('search:'); } }catch(_){ }
+          try{ resetChartForNewToken(); }catch(_){ }
+
           const skipInput = !!opts.skipInput;
           const silent = !!opts.silent;
           const boot = !!opts.boot;
@@ -7470,83 +7607,3 @@ if(searchScrim){
 </body>
 </html>
 
-
-/* ================================
-   MOBILE-ONLY TRENDING TICKER COMPACT + SMOOTH (step12)
-   - Reduce height/padding, smaller cards, better readability
-   - Smooth marquee (GPU-friendly), less heavy shadows (less jank)
-   - Keeps existing click behavior
-   - Desktop unchanged
-   ================================ */
-@media (max-width: 760px){
-  /* Compact container spacing */
-  .topBarInner{ gap: 8px !important; padding: 10px 10px 10px !important; }
-
-  /* Ticker wrapper: slimmer + lighter paint cost */
-  .tickerWrap{
-    padding: 6px 8px !important;
-    border-radius: 16px !important;
-    border: 1px solid rgba(255,255,255,.10) !important;
-    background: rgba(255,255,255,.045) !important;
-    box-shadow: 0 8px 22px rgba(0,0,0,.18) !important;
-  }
-  .tickerWrap:before,
-  .tickerWrap:after{
-    width: 28px !important;
-  }
-
-  /* Smooth animation: longer duration + GPU-friendly transforms */
-  .tickerTrack{
-    gap: 8px !important;
-    animation-duration: 28s !important;
-    transform: translate3d(0,0,0);
-    will-change: transform;
-    backface-visibility: hidden;
-    contain: content;
-  }
-  .tickerWrap:hover .tickerTrack{ animation-play-state: paused; }
-
-  /* Smaller ticker items (Dexscreener vibe) */
-  .tickerItem{
-    padding: 6px 8px !important;
-    gap: 8px !important;
-    font-size: 12px !important;
-    border-radius: 999px !important;
-    background: rgba(255,255,255,.05) !important;
-    border: 1px solid rgba(255,255,255,.10) !important;
-    box-shadow: none !important; /* reduce repaint/jank */
-  }
-  .tickerItem.top1{
-    background: rgba(255,215,0,.08) !important;
-    border-color: rgba(255,215,0,.26) !important;
-    box-shadow: none !important;
-  }
-
-  /* Logo smaller + crisp */
-  .tickerLogoWrap{
-    width: 22px !important;
-    height: 22px !important;
-    flex: 0 0 22px !important;
-    border-radius: 6px !important;
-    box-shadow: none !important;
-  }
-  .tickerLogoFallback{ font-size: 11px !important; }
-
-  /* Rank + % pills tighter */
-  .tickerItem .rank{
-    min-width: 24px !important;
-    height: 18px !important;
-    padding: 0 6px !important;
-    font-size: 11px !important;
-  }
-  .tickerPct{
-    height: 18px !important;
-    padding: 0 6px !important;
-    font-size: 11px !important;
-  }
-
-  /* Prefer reduced motion */
-  @media (prefers-reduced-motion: reduce){
-    .tickerTrack{ animation: none !important; }
-  }
-}
