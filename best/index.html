@@ -4184,7 +4184,7 @@ document.addEventListener('click', (e)=>{
         const picked = pools.find(x=>String(x?.id||'')===id);
         if(picked){
           applyPool(picked);
-          requestCandles(true);
+          requestCandlesImmediate(true);
           loadTrades(true);
           loadMeta(true);
         }
@@ -4406,6 +4406,40 @@ document.addEventListener('click', (e)=>{
         return p;
       }catch(_){ return Promise.resolve(false); }
     }
+
+    function requestCandlesImmediate(fit){
+      // Immediate candle loader for token/pair switching:
+      // cancels any pending debounce timer and calls loadCandles() directly.
+      try{
+        const key = `${activeNet}|${poolAddr}|${activeTF?.k||''}`;
+        _dgCandlesDebKey = key;
+        _dgCandlesDebFit = !!fit;
+        const myVer = ++_dgCandlesDebVer;
+
+        // Cancel any pending debounced run (we're going immediate).
+        if(_dgCandlesDebT){
+          try{ clearTimeout(_dgCandlesDebT); }catch(_){}
+          _dgCandlesDebT = 0;
+        }
+
+        return (async ()=>{
+          let ok = true;
+          try{
+            await loadCandles(!!fit);
+          }catch(_e){ ok = false; }
+
+          // Resolve any pending debounced waiters if this is still the latest request.
+          if(myVer === _dgCandlesDebVer){
+            const w = _dgCandlesDebWaiters.splice(0, _dgCandlesDebWaiters.length);
+            for(const it of w){
+              try{ it.res(ok); }catch(_e){}
+            }
+          }
+          return ok;
+        })();
+      }catch(_){ return Promise.resolve(false); }
+    }
+
 
     function desiredViewportBars(){
       const k = activeTF?.k || '15m';
@@ -6338,7 +6372,7 @@ function startLiveLoops(){
                 if(id !== reqIds.token) return;
                 applyPool(p);
                 statusEl.textContent = 'Loading…';
-                await Promise.all([requestCandles(true), loadTrades(true)]);
+                await Promise.all([requestCandlesImmediate(true), loadTrades(true)]);
                 if(id !== reqIds.token) return;
                 clearTokenLoadingUI();
                 if(id !== reqIds.token) return;
@@ -6368,7 +6402,7 @@ return;
             poolChoices = pools;
             poolAddr = poolAddressFromPool(best);
 
-            const _cP = requestCandles(true);
+            const _cP = requestCandlesImmediate(true);
             const _tP = loadTrades(true);
             const p = await geckoPool({signal: _tokenAC.signal});
             if(id !== reqIds.token) return;
@@ -7435,3 +7469,84 @@ if(searchScrim){
 
 </body>
 </html>
+
+
+/* ================================
+   MOBILE-ONLY TRENDING TICKER COMPACT + SMOOTH (step12)
+   - Reduce height/padding, smaller cards, better readability
+   - Smooth marquee (GPU-friendly), less heavy shadows (less jank)
+   - Keeps existing click behavior
+   - Desktop unchanged
+   ================================ */
+@media (max-width: 760px){
+  /* Compact container spacing */
+  .topBarInner{ gap: 8px !important; padding: 10px 10px 10px !important; }
+
+  /* Ticker wrapper: slimmer + lighter paint cost */
+  .tickerWrap{
+    padding: 6px 8px !important;
+    border-radius: 16px !important;
+    border: 1px solid rgba(255,255,255,.10) !important;
+    background: rgba(255,255,255,.045) !important;
+    box-shadow: 0 8px 22px rgba(0,0,0,.18) !important;
+  }
+  .tickerWrap:before,
+  .tickerWrap:after{
+    width: 28px !important;
+  }
+
+  /* Smooth animation: longer duration + GPU-friendly transforms */
+  .tickerTrack{
+    gap: 8px !important;
+    animation-duration: 28s !important;
+    transform: translate3d(0,0,0);
+    will-change: transform;
+    backface-visibility: hidden;
+    contain: content;
+  }
+  .tickerWrap:hover .tickerTrack{ animation-play-state: paused; }
+
+  /* Smaller ticker items (Dexscreener vibe) */
+  .tickerItem{
+    padding: 6px 8px !important;
+    gap: 8px !important;
+    font-size: 12px !important;
+    border-radius: 999px !important;
+    background: rgba(255,255,255,.05) !important;
+    border: 1px solid rgba(255,255,255,.10) !important;
+    box-shadow: none !important; /* reduce repaint/jank */
+  }
+  .tickerItem.top1{
+    background: rgba(255,215,0,.08) !important;
+    border-color: rgba(255,215,0,.26) !important;
+    box-shadow: none !important;
+  }
+
+  /* Logo smaller + crisp */
+  .tickerLogoWrap{
+    width: 22px !important;
+    height: 22px !important;
+    flex: 0 0 22px !important;
+    border-radius: 6px !important;
+    box-shadow: none !important;
+  }
+  .tickerLogoFallback{ font-size: 11px !important; }
+
+  /* Rank + % pills tighter */
+  .tickerItem .rank{
+    min-width: 24px !important;
+    height: 18px !important;
+    padding: 0 6px !important;
+    font-size: 11px !important;
+  }
+  .tickerPct{
+    height: 18px !important;
+    padding: 0 6px !important;
+    font-size: 11px !important;
+  }
+
+  /* Prefer reduced motion */
+  @media (prefers-reduced-motion: reduce){
+    .tickerTrack{ animation: none !important; }
+  }
+}
