@@ -4240,6 +4240,42 @@ function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
       return (b && trendIsValidList(b.data)) ? b.data : null;
     }
 
+    // -------------------- Last-success token (per chain)
+    const LAST_TOKEN_LS_PREFIX = 'dexguard_last_token_v1:';
+    function lastTokenKey(chain){ return LAST_TOKEN_LS_PREFIX + String(chain||''); }
+    function setLastToken(chain, address){
+      try{
+        const ck = String(chain||'');
+        const a = String(address||'').trim();
+        if(!a) return;
+        localStorage.setItem(lastTokenKey(ck), a);
+      }catch(_){}
+    }
+    function getLastToken(chain){
+      try{
+        const ck = String(chain||'');
+        const a = String(localStorage.getItem(lastTokenKey(ck))||'').trim();
+        if(!a) return null;
+        // validate type by chain
+        if(ck==='solana'){ if(typeof isSolAddr==='function' && !isSolAddr(a)) return null; }
+        else { if(typeof isEvmAddr==='function' && !isEvmAddr(a)) return null; }
+        return a;
+      }catch(_){ return null; }
+    }
+
+    function extractTrendingTokenAddr(p, incMap){
+      try{
+        if(!p) return null;
+        const rel = p?.relationships || {};
+        const baseRef = rel?.base_token?.data || null;
+        const baseId = baseRef?.id ? String(baseRef.id) : '';
+        const baseType = baseRef?.type ? String(baseRef.type) : '';
+        const baseT = baseId ? ((incMap?.get(baseType+':' + baseId) || incMap?.get(baseId))?.attributes || {}) : {};
+        const tokenAddr = String((baseT?.address || baseId || '')).trim();
+        return tokenAddr ? tokenAddr : null;
+      }catch(_){ return null; }
+    }
+
     function stopTrendingInterval(){
       if(trendingTimer){ try{ clearInterval(trendingTimer); }catch(e){} trendingTimer = null; }
     }
@@ -4729,7 +4765,11 @@ function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
                 if(id !== reqIds.token) return;
                 statusEl.textContent = 'Live.';
                 startLiveLoops();
-                return;
+                
+                try{ addr = v; }catch(_){ }
+                try{ updateUrl(); }catch(_){ }
+                try{ setLastToken(activeNet, v); }catch(_){ }
+return;
               }
             }
 
@@ -4764,7 +4804,11 @@ function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
                 if(id !== reqIds.token) return;
             statusEl.textContent = 'Live.';
             startLiveLoops();
-          }catch(e){
+          
+                try{ addr = v; }catch(_){ }
+                try{ updateUrl(); }catch(_){ }
+                try{ setLastToken(activeNet, v); }catch(_){ }
+}catch(e){
             console.error(e);
             statusEl.textContent = 'Load error.';
             clearTokenLoadingUI();
@@ -4789,10 +4833,52 @@ function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
 // Boot trending
     startTrending();
 
-    // Open initial token if present
-    if(!addr || (activeNet==='solana' ? !isSolAddr(addr) : !isEvmAddr(addr))) addr = DEFAULT_MARKET_TOKEN[activeNet];
-    // auto-open default
-    openToken(addr, {skipInput:true, silent:true, boot:true});
+    // Auto-Open Logic (URL > #1 trending > last-success > fallback)
+    (function bootAutoOpen(){
+      const BOOT = { done:false, pendingTrending:false, startedNet: activeNet, fromUrl: !!(addr && String(addr).trim()) };
+      try{ window.__DG_BOOT_AUTO = BOOT; }catch(_){}
+      const openNow = (a)=>{
+        if(BOOT.done) return true;
+        const t = String(a||'').trim();
+        if(!t) return false;
+        BOOT.done = true;
+        try{ BOOT.pendingTrending = false; }catch(_){}
+        try{ addr = t; }catch(_){}
+        try{ updateUrl(); }catch(_){}
+        openToken(t, {skipInput:true, silent:true, boot:true});
+        return true;
+      };
+
+      // 1) URL param token
+      if(BOOT.fromUrl){
+        openNow(addr);
+        return;
+      }
+
+      // 2) #1 trending (cache immediate)
+      try{
+        const b = getCachedTrendingBundle(activeNet);
+        if(b){
+          const im = trendBuildIncMap(b.included);
+          const a0 = extractTrendingTokenAddr((b.data||[])[0], im);
+          if(openNow(a0)) return;
+        }
+      }catch(_){}
+
+      // 2b) Wait briefly for fresh trending fetch to arrive, then open #1
+      BOOT.pendingTrending = true;
+
+      // 3) last-success token (after short wait)
+      setTimeout(()=>{
+        if(BOOT.done) return;
+        BOOT.pendingTrending = false;
+        const last = getLastToken(activeNet);
+        if(openNow(last)) return;
+
+        // 4) existing default fallback
+        openNow(DEFAULT_MARKET_TOKEN[activeNet]);
+      }, 2600);
+    })();
 
 // ================================
 //  UI/UX Premium Patch (Design-only)
@@ -5463,84 +5549,3 @@ if(searchScrim){
 
 </body>
 </html>
-
-
-/* ================================
-   MOBILE-ONLY TRENDING TICKER COMPACT + SMOOTH (step12)
-   - Reduce height/padding, smaller cards, better readability
-   - Smooth marquee (GPU-friendly), less heavy shadows (less jank)
-   - Keeps existing click behavior
-   - Desktop unchanged
-   ================================ */
-@media (max-width: 760px){
-  /* Compact container spacing */
-  .topBarInner{ gap: 8px !important; padding: 10px 10px 10px !important; }
-
-  /* Ticker wrapper: slimmer + lighter paint cost */
-  .tickerWrap{
-    padding: 6px 8px !important;
-    border-radius: 16px !important;
-    border: 1px solid rgba(255,255,255,.10) !important;
-    background: rgba(255,255,255,.045) !important;
-    box-shadow: 0 8px 22px rgba(0,0,0,.18) !important;
-  }
-  .tickerWrap:before,
-  .tickerWrap:after{
-    width: 28px !important;
-  }
-
-  /* Smooth animation: longer duration + GPU-friendly transforms */
-  .tickerTrack{
-    gap: 8px !important;
-    animation-duration: 28s !important;
-    transform: translate3d(0,0,0);
-    will-change: transform;
-    backface-visibility: hidden;
-    contain: content;
-  }
-  .tickerWrap:hover .tickerTrack{ animation-play-state: paused; }
-
-  /* Smaller ticker items (Dexscreener vibe) */
-  .tickerItem{
-    padding: 6px 8px !important;
-    gap: 8px !important;
-    font-size: 12px !important;
-    border-radius: 999px !important;
-    background: rgba(255,255,255,.05) !important;
-    border: 1px solid rgba(255,255,255,.10) !important;
-    box-shadow: none !important; /* reduce repaint/jank */
-  }
-  .tickerItem.top1{
-    background: rgba(255,215,0,.08) !important;
-    border-color: rgba(255,215,0,.26) !important;
-    box-shadow: none !important;
-  }
-
-  /* Logo smaller + crisp */
-  .tickerLogoWrap{
-    width: 22px !important;
-    height: 22px !important;
-    flex: 0 0 22px !important;
-    border-radius: 6px !important;
-    box-shadow: none !important;
-  }
-  .tickerLogoFallback{ font-size: 11px !important; }
-
-  /* Rank + % pills tighter */
-  .tickerItem .rank{
-    min-width: 24px !important;
-    height: 18px !important;
-    padding: 0 6px !important;
-    font-size: 11px !important;
-  }
-  .tickerPct{
-    height: 18px !important;
-    padding: 0 6px !important;
-    font-size: 11px !important;
-  }
-
-  /* Prefer reduced motion */
-  @media (prefers-reduced-motion: reduce){
-    .tickerTrack{ animation: none !important; }
-  }
-}
