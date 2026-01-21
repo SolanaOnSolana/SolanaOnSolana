@@ -2246,6 +2246,20 @@ display:none;
 }
 /* ===== /Micro 13 ===== */
 
+
+
+/* ================================
+   MOBILE CHART HEIGHT BOOST (micro_18)
+   - Increase chart height on mobile only
+   - Desktop unchanged
+   ================================ */
+@media (max-width: 760px){
+  #chartWrap{
+    height: clamp(520px, 70vh, 820px) !important;
+    min-height: 520px !important;
+    max-height: 820px !important;
+  }
+}
 </style>
 </head>
 <body>
@@ -2617,28 +2631,96 @@ display:none;
       return Number.isFinite(n) ? n : NaN;
     }
 
-    function formatCompact(n){
-      n = Number(n);
-      if(!Number.isFinite(n)) return '—';
-      const abs = Math.abs(n);
-      const s = (x)=> (Math.round(x*100)/100).toString();
-      if(abs>=1e12) return s(n/1e12)+'T';
-      if(abs>=1e9)  return s(n/1e9)+'B';
-      if(abs>=1e6)  return s(n/1e6)+'M';
-      if(abs>=1e3)  return s(n/1e3)+'K';
-      if(abs>=1)    return (Math.round(n*10000)/10000).toString();
-      return n.toPrecision(3);
-    }
+    const DG_FMT = (()=> {
+  const hasIntl = (typeof Intl !== 'undefined' && Intl && Intl.NumberFormat);
+  const nfCache = new Map();
 
-    function formatPrice(v){
-      v = Number(v);
-      if(!Number.isFinite(v)) return '—';
-      if(v===0) return '0';
-      if(v>=1) return v.toFixed(6).replace(/0+$/,'').replace(/\.$/,'');
-      // small price
-      const s = v.toPrecision(6);
-      return s;
+  function _key(opts){
+    try{ return JSON.stringify(opts||{}); }catch(_){ return String(Math.random()); }
+  }
+  function _nf(opts){
+    const k = _key(opts);
+    if(nfCache.has(k)) return nfCache.get(k);
+    let nf = null;
+    if(hasIntl){
+      try{ nf = new Intl.NumberFormat(undefined, opts); }catch(_){ nf = null; }
     }
+    nfCache.set(k, nf);
+    return nf;
+  }
+  function _trimZeros(s){
+    if(!s) return s;
+    // Only trim for dot-decimal; Intl with minFractionDigits=0 won't add ugly zeros anyway.
+    if(s.indexOf('.')>-1) return s.replace(/(\.\d*?)0+$/,'$1').replace(/\.$/,'');
+    return s;
+  }
+  function format(n, {maxDp=2, minDp=0, grouping=true}={}){
+    n = Number(n);
+    if(!Number.isFinite(n)) return '—';
+    if(!hasIntl){
+      const s = n.toFixed(maxDp);
+      return _trimZeros(s);
+    }
+    const nf = _nf({useGrouping: grouping, minimumFractionDigits: minDp, maximumFractionDigits: maxDp});
+    const out = nf ? nf.format(n) : String(n);
+    return _trimZeros(out);
+  }
+
+  function price(v){
+    v = Number(v);
+    if(!Number.isFinite(v)) return '—';
+    if(v===0) return '0';
+    const abs = Math.abs(v);
+
+    // Dynamic decimals: large vs tiny (avoid ugly zeros)
+    if(abs >= 1000) return format(v, {maxDp:2,  minDp:0, grouping:true});
+    if(abs >= 1)    return format(v, {maxDp:6,  minDp:0, grouping:false});
+    if(abs >= 0.01) return format(v, {maxDp:8,  minDp:0, grouping:false});
+    if(abs >= 0.0001) return format(v, {maxDp:10, minDp:0, grouping:false});
+    if(abs >= 1e-8) return format(v, {maxDp:12, minDp:0, grouping:false});
+
+    // Ultra tiny: exponential (readable, no trailing zeros)
+    try{ return v.toExponential(4).replace(/e\+?/,'e'); }catch(_){ return String(v); }
+  }
+
+  function compact(n){
+    n = Number(n);
+    if(!Number.isFinite(n)) return '—';
+    const abs = Math.abs(n);
+    const sign = n < 0 ? '-' : '';
+    const val = Math.abs(n);
+
+    const pick = (div, suf, dp)=>{
+      const x = val/div;
+      const s = format(x, {maxDp: dp, minDp:0, grouping:false});
+      return sign + s + suf;
+    };
+
+    if(abs >= 1e12) return pick(1e12,'T',2);
+    if(abs >= 1e9)  return pick(1e9,'B',2);
+    if(abs >= 1e6)  return pick(1e6,'M',2);
+    if(abs >= 1e3)  return pick(1e3,'K',2);
+    if(abs === 0)   return '0';
+    if(abs >= 1)    return format(n, {maxDp:4, minDp:0, grouping:false});
+    return format(n, {maxDp:6, minDp:0, grouping:false});
+  }
+
+  function usdCompact(n){ return '$' + compact(n); }
+  function usdPrice(v){ return '$' + price(v); }
+
+  function pct(p){
+    p = Number(p);
+    if(!Number.isFinite(p)) return '—';
+    const s = format(p, {maxDp:2, minDp:0, grouping:false});
+    return (p>0?'+':'') + s + '%';
+  }
+
+  return { format, price, compact, usdCompact, usdPrice, pct };
+})();
+
+function formatCompact(n){ return DG_FMT.compact(n); }
+
+function formatPrice(v){ return DG_FMT.price(v); }
 
     function nowClock(){
       const d = new Date();
@@ -2884,6 +2966,11 @@ let seenMakers = new Set();
       handleScroll: { mouseWheel:true, pressedMouseMove:true, horzTouchDrag:true, vertTouchDrag:true },
       handleScale: { axisPressedMouseMove:true, mouseWheel:true, pinch:true },
     });
+
+
+    // Unified number formatting for chart scale
+    try{ chart.applyOptions({ localization:{ priceFormatter:(p)=>DG_FMT.price(p) } }); }catch(_){ }
+
 
     const candleSeries = chart.addCandlestickSeries({
       upColor: 'rgba(20,241,149,.95)',
@@ -3356,7 +3443,7 @@ function setSearchModalOpen(open){
         const img = p?.info?.imageUrl || p?.info?.image_url || '';
         const pct = num(p?.priceChange?.h24);
         const mc = num(p?.marketCap || p?.fdv);
-        const pctTxt = Number.isFinite(pct) ? (pct>0?'+':'')+pct.toFixed(2)+'%' : '—';
+        const pctTxt = Number.isFinite(pct) ? DG_FMT.pct(pct) : '—';
         const pctClass = Number.isFinite(pct) ? (pct>0?'up':(pct<0?'down':'')) : '';
         const logo = img ? `<img src="${esc(img)}" referrerpolicy="no-referrer" onerror="this.remove();"/>` : `<span class="fb">${esc(sym.slice(0,1).toUpperCase())}</span>`;
         return `
@@ -3583,7 +3670,7 @@ function setSearchModalOpen(open){
       if(Number.isFinite(st.price)) pills.push(`<span class="statPill"><span class="k">Price</span><span class="v">$${esc(formatPrice(st.price))}</span></span>`);
       if(Number.isFinite(st.liq)) pills.push(`<span class="statPill"><span class="k">Liq</span><span class="v">$${esc(formatCompact(st.liq))}</span></span>`);
       if(Number.isFinite(st.mcap)) pills.push(`<span class="statPill"><span class="k">MCap</span><span class="v">${esc(formatCompact(st.mcap))}</span></span>`);
-      if(Number.isFinite(st.h24)) pills.push(`<span class="statPill ${st.h24>0?'up':(st.h24<0?'down':'')}"><span class="k">24h</span><span class="v">${esc((st.h24>0?'+':'')+st.h24.toFixed(2)+'%')}</span></span>`);
+      if(Number.isFinite(st.h24)) pills.push(`<span class="statPill ${st.h24>0?'up':(st.h24<0?'down':'')}"><span class="k">24h</span><span class="v">${esc(DG_FMT.pct(st.h24))}</span></span>`);
       statsEl.innerHTML = pills.join('') || `<span class="statPill"><span class="k">—</span><span class="v">—</span></span>`;
     }
 
@@ -4437,9 +4524,9 @@ const insertBefore = head.nextSibling;
           row.dataset.k = tr.k;
 
           const tbadge = `<span class="typeBadge ${tr.type==='buy'?'buy':'sell'}">${tr.type.toUpperCase()}</span>`;
-          const usdTxt = tr.usd ? ('$'+fmtNum(tr.usd, 2)) : '—';
-          const amtTxt = tr.amount ? fmtNum(tr.amount, 4) : '—';
-          const priceTxt = tr.price ? ('$'+fmtNum(tr.price, 8)) : '—';
+          const usdTxt = Number.isFinite(tr.usd) ? DG_FMT.usdCompact(tr.usd) : '—';
+          const amtTxt = Number.isFinite(tr.amount) ? DG_FMT.compact(tr.amount) : '—';
+          const priceTxt = Number.isFinite(tr.price) ? DG_FMT.usdPrice(tr.price) : '—';
 
           const makerHtml = `<div class="maker"><span class="addr mono">${shortAddr(tr.maker)}</span></div>`;
           const txLink = tr.tx ? `<a class="iconBtn" href="${explorerTxUrl(tr.tx)}" target="_blank" rel="noopener" title="Tx">
@@ -4924,7 +5011,7 @@ function startLiveLoops(){
 
       const pctRaw = ((a?.price_change_percentage && (a.price_change_percentage.h24 ?? a.price_change_percentage['h24'] ?? a.price_change_percentage['24h'])) ?? a?.price_change_percentage_24h ?? a?.price_change_percentage_h24 ?? null);
       const pctNum = (pctRaw===null || pctRaw===undefined || pctRaw==='') ? NaN : Number(pctRaw);
-      const pctTxt = Number.isFinite(pctNum) ? `${pctNum>0?'+':''}${pctNum.toFixed(2)}%` : '';
+      const pctTxt = Number.isFinite(pctNum) ? DG_FMT.pct(pctNum) : '';
       const pctCls = Number.isFinite(pctNum) ? (pctNum>0?'up':(pctNum<0?'down':'')) : '';
 
       const logoUrlRaw = String(
@@ -6194,5 +6281,4 @@ if(searchScrim){
 
 </body>
 </html>
-
 
