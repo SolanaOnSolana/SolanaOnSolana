@@ -2640,6 +2640,8 @@ let seenMakers = new Set();
     let pollMetaTimer = null;
     let pollCandleTimer = null;
     let trendingTimer = null;
+    let trendingGen = 0;
+    let trendingLoadFn = null;
     let ageTimer = null;
 
     // -------------------- Chart
@@ -3875,6 +3877,35 @@ function setSearchModalOpen(open){
     
     // -------------------- Trending (match main site)
     const TREND_CACHE = new Map();
+    const TREND_LS_PREFIX = 'dexguard_trending_cache_v1:';
+    function trendLsKey(chain){ return TREND_LS_PREFIX + String(chain||''); }
+    function trendBuildIncMap(included){
+      const m = new Map();
+      for(const it of (included||[])){
+        if(!it || !it.id) continue;
+        const id = String(it.id);
+        if(it.type) m.set(String(it.type)+':' + id, it);
+        m.set(id, it);
+      }
+      return m;
+    }
+    function trendReadCache(chain){
+      try{
+        const raw = localStorage.getItem(trendLsKey(chain));
+        if(!raw) return null;
+        const obj = JSON.parse(raw);
+        if(!obj || !Array.isArray(obj.data) || !Array.isArray(obj.included)) return null;
+        return obj;
+      }catch(e){ return null; }
+    }
+    function trendWriteCache(chain, data, included){
+      try{
+        localStorage.setItem(trendLsKey(chain), JSON.stringify({ts: Date.now(), chain: String(chain||''), data, included}));
+      }catch(e){}
+    }
+    function stopTrendingInterval(){
+      if(trendingTimer){ try{ clearInterval(trendingTimer); }catch(e){} trendingTimer = null; }
+    }
 
     function applyNetTheme(){
       document.body.classList.remove('net-sol','net-eth','net-bnb','net-base');
@@ -3893,22 +3924,29 @@ function setSearchModalOpen(open){
     }
 
     async function fetchTrendingPools(net){
+      const chainKey = activeNet;
       const id = ++reqIds.trending;
-      const ac = startRequest(`trending:${net}`);
-      const key = String(net||'');
+      const ac = startRequest(`trending:${chainKey}`);
+      const key = String(chainKey||net||'');
       const cached = TREND_CACHE.get(key);
       const now = Date.now();
       if(cached && (now - cached.ts) < 45000) return cached.data;
 
       const url = `${GECKO}/networks/${encodeURIComponent(net)}/trending_pools?include=base_token,quote_token,dex`;
-      const j = await fetchJson(url, {timeout:14000, retries:1, signal: ac.signal});
+      const j = await fetchJson(url, {timeout:14000, retries:0, signal: ac.signal});
       if(id !== reqIds.trending) return null;
       const data = Array.isArray(j?.data) ? j.data : [];
       const inc  = Array.isArray(j?.included) ? j.included : [];
       const incMap = new Map();
-      for(const it of inc){ if(it?.id) incMap.set(it.id, it); }
+      for(const it of inc){
+        if(!it?.id) continue;
+        const iid = String(it.id);
+        if(it?.type) incMap.set(String(it.type)+':' + iid, it);
+        incMap.set(iid, it);
+      }
       const out = { data, incMap };
       TREND_CACHE.set(key, {ts: now, data: out});
+      try{ trendWriteCache(chainKey, data, inc); }catch(e){}
       return out;
     }
 
@@ -4001,27 +4039,79 @@ function setSearchModalOpen(open){
       tickerTrack.innerHTML = items + items;
       syncTickerMarquee();
     }
-
     async function startTrending(){
+      const gen = ++trendingGen;
+      stopTrendingInterval();
       applyNetTheme();
       syncTrendToggle();
 
-      const load = async ()=>{
-        try{
-          const net = geckoNet();
-          const res = await fetchTrendingPools(net);
-          if(!res) return;
-          renderTrendingTicker(res.data, res.incMap);
-        }catch(e){
-          console.error('trending failed', e);
-          tickerTrack.innerHTML = `<div class="tickerEmpty">Trending unavailable.</div>`;
+      // Render immediately from localStorage cache (per chain), then refresh in background
+      try{
+        const c = trendReadCache(activeNet);
+        if(c){
+          const im = trendBuildIncMap(c.included);
+          renderTrendingTicker(c.data, im);
         }
+      }catch(e){}
+
+      const load = async ()=>{
+        if(gen !== trendingGen) return;
+        const net = geckoNet();
+        const delays = [0, 600, 1200];
+        let lastErr = null;
+        for(let attempt=0; attempt<delays.length; attempt++){
+          if(gen !== trendingGen) return;
+          if(attempt>0) await sleep(delays[attempt]);
+          if(gen !== trendingGen) return;
+          try{
+            const res = await fetchTrendingPools(net);
+            if(gen !== trendingGen) return;
+            if(!res) return; // stale
+            renderTrendingTicker(res.data, res.incMap);
+            statusEl.textContent = 'Live.';
+            return;
+          }catch(e){
+            if(e && e.name==='AbortError') return;
+            lastErr = e;
+          }
+        }
+        if(gen !== trendingGen) return;
+        statusEl.textContent = 'Temporarily unavailable';
+        try{
+          if(!tickerTrack.querySelector('.tickerItem')){
+            tickerTrack.innerHTML = `<div class="tickerEmpty">Temporarily unavailable.</div>`;
+            syncTickerMarquee();
+          }
+        }catch(_){ }
+        try{ console.error('trending failed', lastErr); }catch(_){ }
       };
 
-      await load();
-      statusEl.textContent = 'Live.';
-      if(trendingTimer) clearInterval(trendingTimer);
-      trendingTimer = setInterval(load, 25000);
+      trendingLoadFn = load;
+      // Initial refresh (background)
+      load();
+
+      // Ensure only one trending interval exists, pause/resume on visibility
+      stopTrendingInterval();
+      trendingTimer = setInterval(()=>{
+        if(document.hidden) return;
+        try{ trendingLoadFn && trendingLoadFn(); }catch(_){ }
+      }, 25000);
+
+      if(!startTrending._visBound){
+        startTrending._visBound = true;
+        document.addEventListener('visibilitychange', ()=>{
+          if(document.hidden){
+            stopTrendingInterval();
+          }else{
+            try{ trendingLoadFn && trendingLoadFn(); }catch(_){ }
+            stopTrendingInterval();
+            trendingTimer = setInterval(()=>{
+              if(document.hidden) return;
+              try{ trendingLoadFn && trendingLoadFn(); }catch(_){ }
+            }, 25000);
+          }
+        });
+      }
 
       tickerTrack.onclick = (e)=>{
         const a = e.target.closest('.tickerItem');
@@ -4046,6 +4136,7 @@ function setSearchModalOpen(open){
           navigate(activeNet, addr);
         };
       }
+    }
     }
 
 
