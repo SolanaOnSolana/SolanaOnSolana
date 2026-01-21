@@ -68,7 +68,7 @@ a{color:inherit; text-decoration:none}
       border-radius: 26px;
       box-shadow: var(--shadow);
       backdrop-filter: var(--glass);
-      position:fixed; top: calc(env(safe-area-inset-top) + 10px); left:50%; transform: translateX(-50%); width: min(var(--max), calc(100vw - 24px)); z-index:1000;
+      position:fixed; top: calc(env(safe-area-inset-top) + 10px); left:50%; transform: translateX(-50%); width: min(var(--max), calc(100vw - 24px)); z-index:2147483500;
     }
 
     
@@ -81,6 +81,16 @@ a{color:inherit; text-decoration:none}
 
     /* Topbar brand area (legacy logo styles kept clean so CSS never breaks) */
     .brand{display:flex; align-items:center; gap:10px; min-width:0}
+
+    /* Base (desktop) logo sizing to prevent huge logo rendering on PC */
+    .topLogo{
+      height: 34px;
+      width: auto;
+      max-width: 180px;
+      display: block;
+      object-fit: contain;
+    }
+
     .logo{
       width:38px; height:38px; border-radius:14px;
       display:grid; place-items:center;
@@ -2085,6 +2095,30 @@ display:none;
   .tradeRow.enter{ animation: none !important; }
 }
 
+
+
+/* ================================
+   DESKTOP TOPBAR FLOW PATCH (non-sticky)
+   Requirement:
+   - Desktop: topbar stays above Live Trending (in normal page flow), NOT sticky/fixed.
+   - Mobile: keep current fixed app-bar behavior unchanged.
+   ================================ */
+@media (min-width: 761px){
+  :root{ --topbar-space: 0px !important; } /* remove reserved space used for fixed mobile appbar */
+  .topbar{
+    position: relative !important;
+    top: auto !important;
+    left: auto !important;
+    right: auto !important;
+    transform: none !important;
+    width: 100% !important;
+    z-index: 50 !important;
+    margin: 0 0 14px 0 !important;
+  }
+  .wrap{
+    padding-top: 18px !important; /* normal desktop spacing */
+  }
+}
 </style>
 </head>
 <body>
@@ -2248,6 +2282,18 @@ display:none;
   <script src="https://unpkg.com/lightweight-charts@4.2.1/dist/lightweight-charts.standalone.production.js"></script>
   <script>
   (function(){
+    <!-- SPEEDFIX PATCH START -->
+    function isMobile(){ return window.matchMedia("(max-width:760px)").matches; }
+    const requestControllers = new Map();
+    const reqIds = { trending:0, token:0, candles:0, trades:0, search:0 };
+    function startRequest(key){
+      try{ requestControllers.get(key)?.abort(); }catch(e){}
+      const ac = new AbortController();
+      requestControllers.set(key, ac);
+      return ac;
+    }
+    <!-- SPEEDFIX PATCH END -->
+
     // =========================================================
     //  $SOS DEX Terminal — from scratch
     //  Data sources:
@@ -2395,12 +2441,19 @@ display:none;
     }
 
     // fetch with timeout + retry + CORS fallback via allorigins
-    async function fetchJson(url, {timeout=12000, retries=1}={}){
+    async function fetchJson(url, {timeout=12000, retries=1, signal}={}){
       const proxy = (u)=>'https://api.allorigins.win/raw?url=' + encodeURIComponent(u);
       let lastErr=null;
       for(let i=0;i<=retries;i++){
         const ctl = new AbortController();
-        const t = setTimeout(()=>ctl.abort(), timeout);
+        // allow external cancellation + internal timeout
+        if(signal){
+          try{
+            if(signal.aborted) ctl.abort();
+            else signal.addEventListener('abort', ()=>{ try{ ctl.abort(); }catch(e){} }, {once:true});
+          }catch(e){}
+        }
+        const t = setTimeout(()=>{ try{ ctl.abort(); }catch(e){} }, timeout);
         try{
           const r = await fetch(url, {
             headers:{'accept':'application/json'},
@@ -2413,12 +2466,15 @@ display:none;
         }catch(e){
           clearTimeout(t);
           lastErr=e;
+          // abort requested externally -> stop immediately
+          if(signal && signal.aborted) throw e;
+          if(e && e.name==='AbortError' && signal) throw e;
           // try proxy for CORS / network error
           try{
             const msg = String(e&&e.message||e||'');
             const isCors = (e instanceof TypeError) || /Failed to fetch|NetworkError|CORS/i.test(msg);
             if(isCors){
-              const r2 = await fetch(proxy(url), {cache:'no-store'});
+              const r2 = await fetch(proxy(url), {cache:'no-store', signal: ctl.signal});
               if(r2.ok){
                 const txt = await r2.text();
                 return JSON.parse(txt);
@@ -2875,18 +2931,18 @@ function setSearchModalOpen(open){
       searchScrim.addEventListener('click', hideResults);
     }
 
-    async function dsSearch(query){
+    async function dsSearch(query, fetchOpts={}){
       // DexScreener search is used ONLY for discovery. We do not embed anything.
       const url = DS + '/search/?q=' + encodeURIComponent(query);
-      const j = await fetchJson(url, {timeout:12000, retries:1});
+      const j = await fetchJson(url, {timeout:12000, retries:1, signal: fetchOpts.signal});
       return Array.isArray(j?.pairs) ? j.pairs : [];
     }
 
-    async function dsTokenPairsV1(net, tokenAddr){
+    async function dsTokenPairsV1(net, tokenAddr, fetchOpts={}){
       const chain = NET_DS[normalizeChain(net)] || 'solana';
       const url = `https://api.dexscreener.com/token-pairs/v1/${chain}/${encodeURIComponent(tokenAddr)}`;
       try{
-        const j = await fetchJson(url, {timeout:14000, retries:1});
+        const j = await fetchJson(url, {timeout:14000, retries:1, signal: fetchOpts.signal});
         return Array.isArray(j) ? j : [];
       }catch(_){
         return [];
@@ -3033,11 +3089,12 @@ function setSearchModalOpen(open){
       searchTimer = setTimeout(async ()=>{
         const id = ++searchReq;
         try{
-          const pairs = await dsSearch(v);
-          if(id!==searchReq) return;
+          const pairs = await dsSearch(v, {signal: ac.signal});
+          if(id!==reqIds.search) return;
           renderSearchResults(pairs);
         }catch(e){
-          if(id!==searchReq) return;
+          if(id!==reqIds.search) return;
+          if(e && e.name==='AbortError') return;
           showResults(`<div style="padding:12px; color:rgba(255,255,255,.75)">Search error. Try again.</div>`);
         }
       }, 220);
@@ -3060,10 +3117,10 @@ function setSearchModalOpen(open){
     // -------------------- Gecko: pool selection
     function geckoNet(){ return NET_GECKO[activeNet]; }
 
-    async function resolvePoolsFromGecko(tokenAddr){
+    async function resolvePoolsFromGecko(tokenAddr, fetchOpts={}){
       // /networks/{network}/tokens/{token}/pools?include=base_token,quote_token&page=1
       const url = `${GECKO}/networks/${encodeURIComponent(geckoNet())}/tokens/${encodeURIComponent(tokenAddr)}/pools?include=base_token,quote_token,dex&page=1`;
-      const j = await fetchJson(url, {timeout:14000, retries:1});
+      const j = await fetchJson(url, {timeout:14000, retries:1, signal: fetchOpts.signal});
       return Array.isArray(j?.data) ? j.data : [];
     }
 
@@ -3363,12 +3420,15 @@ function setSearchModalOpen(open){
     async function refreshLatestCandles(){
       if(!poolAddr) return;
       const _key0 = `${activeNet}|${poolAddr}|${activeTF?.k||''}`;
+      const id = ++reqIds.candles;
+      const ac = startRequest(`candles:${activeNet}:${poolAddr}:${activeTF?.k||''}`);
       const _reqId = (refreshLatestCandles._reqId = (refreshLatestCandles._reqId||0) + 1);
       const _my = _reqId;
       try{
         const gran = activeTF.gecko;
         const url = geckoCandlesUrl(gran, null);
-        const j = await fetchJson(url, {timeout:16000, retries:1});
+        const j = await fetchJson(url, {timeout:16000, retries:1, signal: ac.signal});
+        if(id !== reqIds.candles) return;
         if(_my !== refreshLatestCandles._reqId) return;
         if(_key0 !== `${activeNet}|${poolAddr}|${activeTF?.k||''}`) return;
         const part = mapGeckoOhlcv(j);
@@ -3393,6 +3453,9 @@ function setSearchModalOpen(open){
       if(!poolAddr) return;
       attachPaging();
 
+      const id = ++reqIds.candles;
+      const ac = startRequest(`candles:${activeNet}:${poolAddr}:${activeTF?.k||''}`);
+
       statusEl.textContent = 'Loading chart…';
       candlePager.loading = true;
       candlePager.hasMore = true;
@@ -3412,7 +3475,8 @@ function setSearchModalOpen(open){
 
         while(pages++ < (activeTF.k==='ALL' ? 10 : 6)){
           const url = geckoCandlesUrl(gran, before);
-          const j = await fetchJson(url, {timeout:18000, retries:1});
+          const j = await fetchJson(url, {timeout:18000, retries:1, signal: ac.signal});
+          if(id !== reqIds.candles) return;
           let part = mapGeckoOhlcv(j);
           if(!part.length){
             candlePager.hasMore = false;
@@ -3469,9 +3533,13 @@ function setSearchModalOpen(open){
       const prevRange = (()=>{ try{ return chart.timeScale().getVisibleLogicalRange(); }catch(_){ return null; } })();
       const prevTimes = new Set(rawCandles.map(c=>c.time));
 
+      const id = ++reqIds.candles;
+      const ac = startRequest(`candles:${activeNet}:${poolAddr}:${activeTF?.k||''}`);
+
       try{
         const url = geckoCandlesUrl(activeTF.gecko, before);
-        const j = await fetchJson(url, {timeout:18000, retries:1});
+        const j = await fetchJson(url, {timeout:18000, retries:1, signal: ac.signal});
+        if(id !== reqIds.candles) return;
         let part = mapGeckoOhlcv(j);
         if(!part.length){
           candlePager.hasMore = false;
@@ -3602,18 +3670,18 @@ function setSearchModalOpen(open){
       `;
     }
 
-    async function geckoTrades(limit=80){
+    async function geckoTrades(limit=80, fetchOpts={}){
       const base = `${GECKO}/networks/${encodeURIComponent(geckoNet())}/pools/${encodeURIComponent(poolAddr)}/trades`;
       // GeckoTerminal often uses JSON:API pagination. Try page params first, then fallback to limit.
       try{
         const url1 = base + `?page=1&limit=${encodeURIComponent(limit)}`;
-        const j1 = await fetchJson(url1, {timeout:14000, retries:1});
+        const j1 = await fetchJson(url1, {timeout:14000, retries:1, signal: fetchOpts.signal});
         if(Array.isArray(j1?.data) && j1.data.length) return j1.data;
       }catch(e){ /* ignore */ }
 
       try{
         const url2 = base + `?limit=${encodeURIComponent(limit)}`;
-        const j2 = await fetchJson(url2, {timeout:14000, retries:1});
+        const j2 = await fetchJson(url2, {timeout:14000, retries:1, signal: fetchOpts.signal});
         if(Array.isArray(j2?.data)) return j2.data;
       }catch(e){ /* ignore */ }
 
@@ -3717,10 +3785,13 @@ function setSearchModalOpen(open){
     async function loadTrades(reset=false){
       if(!poolAddr) return;
       const _key0 = `${activeNet}|${poolAddr}`;
+      const id = ++reqIds.trades;
+      const ac = startRequest(`trades:${activeNet}:${poolAddr}`);
       const _reqId = (loadTrades._reqId = (loadTrades._reqId||0) + 1);
       const _my = _reqId;
       try{
-        const data = await geckoTrades(80);
+        const data = await geckoTrades(80, {signal: ac.signal});
+        if(id !== reqIds.trades) return;
         if(_my !== loadTrades._reqId) return;
         if(_key0 !== `${activeNet}|${poolAddr}`) return;
         const newly = renderTrades(data, {reset}) || [];
@@ -3784,9 +3855,9 @@ function setSearchModalOpen(open){
 
 
 // -------------------- Meta (refresh price/liquidity/24h)
-    async function geckoPool(){
+    async function geckoPool(fetchOpts={}){
       const url = `${GECKO}/networks/${encodeURIComponent(geckoNet())}/pools/${encodeURIComponent(poolAddr)}?include=base_token,quote_token`;
-      const j = await fetchJson(url, {timeout:14000, retries:1});
+      const j = await fetchJson(url, {timeout:14000, retries:1, signal: fetchOpts.signal});
       return j?.data || null;
     }
 
@@ -3822,13 +3893,16 @@ function setSearchModalOpen(open){
     }
 
     async function fetchTrendingPools(net){
+      const id = ++reqIds.trending;
+      const ac = startRequest(`trending:${net}`);
       const key = String(net||'');
       const cached = TREND_CACHE.get(key);
       const now = Date.now();
       if(cached && (now - cached.ts) < 45000) return cached.data;
 
       const url = `${GECKO}/networks/${encodeURIComponent(net)}/trending_pools?include=base_token,quote_token,dex`;
-      const j = await fetchJson(url, {timeout:14000, retries:1});
+      const j = await fetchJson(url, {timeout:14000, retries:1, signal: ac.signal});
+      if(id !== reqIds.trending) return null;
       const data = Array.isArray(j?.data) ? j.data : [];
       const inc  = Array.isArray(j?.included) ? j.included : [];
       const incMap = new Map();
@@ -3936,6 +4010,7 @@ function setSearchModalOpen(open){
         try{
           const net = geckoNet();
           const res = await fetchTrendingPools(net);
+          if(!res) return;
           renderTrendingTicker(res.data, res.incMap);
         }catch(e){
           console.error('trending failed', e);
@@ -4005,6 +4080,10 @@ function setSearchModalOpen(open){
       if(!v){ toast('Paste a token name or address'); return; }
       if(!skipInput) q.value = v;
 
+      const id = ++reqIds.token;
+      let _tokenKey = `token:${activeNet}:${v}`;
+      let _tokenAC = startRequest(_tokenKey);
+
       // reset view
       statusEl.textContent = 'Loading…';
       pairNameEl.textContent = 'Loading…';
@@ -4023,7 +4102,7 @@ function setSearchModalOpen(open){
         pairNameEl.textContent = 'Searching…';
         pairMetaEl.textContent = 'Finding best match…';
         try{
-          const pairs = await dsSearch(v);
+          const pairs = await dsSearch(v, {signal: ac.signal});
           if(!pairs.length){
             statusEl.textContent = 'Not found.';
             pairNameEl.textContent = 'Not found';
@@ -4044,10 +4123,14 @@ function setSearchModalOpen(open){
             renderNetPills();
             startTrending();
           }
+          _tokenKey = `token:${activeNet}:${v}`;
+          _tokenAC = startRequest(_tokenKey);
 
           dsPair = best;
           v = String(best?.baseToken?.address || '').trim() || v;
           if(!skipInput) q.value = v;
+          _tokenKey = `token:${activeNet}:${v}`;
+          _tokenAC = startRequest(_tokenKey);
         }catch(e){
           statusEl.textContent = 'Search error.';
           toast('Search failed. Try again.');
@@ -4060,7 +4143,8 @@ function setSearchModalOpen(open){
         const nets = ['eth','bsc','base'];
         let best = null;
         for(const n of nets){
-          const arr = await dsTokenPairsV1(n, v);
+          const arr = await dsTokenPairsV1(n, v, {signal: _tokenAC.signal});
+          if(id !== reqIds.token) return;
           const cand = bestPairAnyNet(arr);
           if(cand && (!best || Number(cand?.liquidity?.usd||0) > Number(best?.liquidity?.usd||0))) best = cand;
         }
@@ -4072,13 +4156,16 @@ function setSearchModalOpen(open){
             renderNetPills();
             startTrending();
           }
+          _tokenKey = `token:${activeNet}:${v}`;
+          _tokenAC = startRequest(_tokenKey);
           dsPair = best;
         }
       }
 
       // If it's Solana address and no dsPair yet, fetch DS token-pairs on Solana
       if(isSolAddr(v) && !dsPair){
-        const arr = await dsTokenPairsV1('solana', v);
+        const arr = await dsTokenPairsV1('solana', v, {signal: _tokenAC.signal});
+        if(id !== reqIds.token) return;
         const best = bestPairAnyNet(arr);
         if(best) dsPair = best;
       }
@@ -4116,13 +4203,16 @@ function setSearchModalOpen(open){
         // 1) preferred pool first (when available via DexScreener)
         if(preferredPool){
           poolAddr = preferredPool;
-          const p = await geckoPool();
+          const p = await geckoPool({signal: _tokenAC.signal});
+          if(id !== reqIds.token) return;
           if(p){
+            if(id !== reqIds.token) return;
             applyPool(p);
             statusEl.textContent = 'Loading chart…';
             await loadCandles(true);
             statusEl.textContent = 'Loading trades…';
             await loadTrades(true);
+            if(id !== reqIds.token) return;
             statusEl.textContent = 'Live.';
             startLiveLoops();
             return;
@@ -4130,7 +4220,8 @@ function setSearchModalOpen(open){
         }
 
         // 2) fallback: Gecko token pools -> choose best
-        const pools = await resolvePoolsFromGecko(v);
+        const pools = await resolvePoolsFromGecko(v, {signal: _tokenAC.signal});
+        if(id !== reqIds.token) return;
         if(!pools.length){
           statusEl.textContent = 'Not found.';
           pairNameEl.textContent = 'Not found';
@@ -4143,14 +4234,17 @@ function setSearchModalOpen(open){
         poolChoices = pools;
         poolAddr = poolAddressFromPool(best);
 
-        const p = await geckoPool();
+        const p = await geckoPool({signal: _tokenAC.signal});
+        if(id !== reqIds.token) return;
         if(!p) throw new Error('Pool fetch failed');
+        if(id !== reqIds.token) return;
         applyPool(p);
 
         statusEl.textContent = 'Loading chart…';
         await loadCandles(true);
         statusEl.textContent = 'Loading trades…';
         await loadTrades(true);
+        if(id !== reqIds.token) return;
         statusEl.textContent = 'Live.';
         startLiveLoops();
       }catch(e){
@@ -4274,6 +4368,8 @@ if(searchScrim){
 // ================================
 (function initSplitPanel(){
   try{
+    const __isMobile = (window.matchMedia && window.matchMedia('(max-width: 760px)').matches);
+    if(!__isMobile) return;
     const rootId = 'splitRoot';
     if(document.getElementById(rootId)) return;
     if(!chartCard || !tradesCard) return;
@@ -4443,3 +4539,84 @@ if(searchScrim){
 </script>
 </body>
 </html>
+
+
+/* ================================
+   MOBILE-ONLY TRENDING TICKER COMPACT + SMOOTH (step12)
+   - Reduce height/padding, smaller cards, better readability
+   - Smooth marquee (GPU-friendly), less heavy shadows (less jank)
+   - Keeps existing click behavior
+   - Desktop unchanged
+   ================================ */
+@media (max-width: 760px){
+  /* Compact container spacing */
+  .topBarInner{ gap: 8px !important; padding: 10px 10px 10px !important; }
+
+  /* Ticker wrapper: slimmer + lighter paint cost */
+  .tickerWrap{
+    padding: 6px 8px !important;
+    border-radius: 16px !important;
+    border: 1px solid rgba(255,255,255,.10) !important;
+    background: rgba(255,255,255,.045) !important;
+    box-shadow: 0 8px 22px rgba(0,0,0,.18) !important;
+  }
+  .tickerWrap:before,
+  .tickerWrap:after{
+    width: 28px !important;
+  }
+
+  /* Smooth animation: longer duration + GPU-friendly transforms */
+  .tickerTrack{
+    gap: 8px !important;
+    animation-duration: 28s !important;
+    transform: translate3d(0,0,0);
+    will-change: transform;
+    backface-visibility: hidden;
+    contain: content;
+  }
+  .tickerWrap:hover .tickerTrack{ animation-play-state: paused; }
+
+  /* Smaller ticker items (Dexscreener vibe) */
+  .tickerItem{
+    padding: 6px 8px !important;
+    gap: 8px !important;
+    font-size: 12px !important;
+    border-radius: 999px !important;
+    background: rgba(255,255,255,.05) !important;
+    border: 1px solid rgba(255,255,255,.10) !important;
+    box-shadow: none !important; /* reduce repaint/jank */
+  }
+  .tickerItem.top1{
+    background: rgba(255,215,0,.08) !important;
+    border-color: rgba(255,215,0,.26) !important;
+    box-shadow: none !important;
+  }
+
+  /* Logo smaller + crisp */
+  .tickerLogoWrap{
+    width: 22px !important;
+    height: 22px !important;
+    flex: 0 0 22px !important;
+    border-radius: 6px !important;
+    box-shadow: none !important;
+  }
+  .tickerLogoFallback{ font-size: 11px !important; }
+
+  /* Rank + % pills tighter */
+  .tickerItem .rank{
+    min-width: 24px !important;
+    height: 18px !important;
+    padding: 0 6px !important;
+    font-size: 11px !important;
+  }
+  .tickerPct{
+    height: 18px !important;
+    padding: 0 6px !important;
+    font-size: 11px !important;
+  }
+
+  /* Prefer reduced motion */
+  @media (prefers-reduced-motion: reduce){
+    .tickerTrack{ animation: none !important; }
+  }
+}
