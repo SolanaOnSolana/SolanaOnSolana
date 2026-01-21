@@ -3528,6 +3528,7 @@ function setSearchModalOpen(open){
       applyStats({price, liq, mcap, h24});
 
       btnBuy.href = buildBuyUrl(activeNet, addr);
+      try{ startTradesPolling(); }catch(_){ }
     }
 
     // -------------------- Candles
@@ -4014,25 +4015,65 @@ function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
       `;
     }
 
-    async function geckoTrades(limit=80, fetchOpts={}){
-      const base = `${GECKO}/networks/${encodeURIComponent(geckoNet())}/pools/${encodeURIComponent(poolAddr)}/trades`;
-      // GeckoTerminal often uses JSON:API pagination. Try page params first, then fallback to limit.
+    async function geckoPoolApiId(){
       try{
-        const url1 = base + `?page=1&limit=${encodeURIComponent(limit)}`;
-        const j1 = await fetchJson(url1, {timeout:14000, retries:1, signal: fetchOpts.signal});
-        if(Array.isArray(j1?.data) && j1.data.length) return j1.data;
-      }catch(e){ /* ignore */ }
+        // Prefer explicit pool address; normalize EVM to lowercase
+        let pid = String(poolAddr||'').trim();
+        if(!pid && poolId) pid = String(poolId||'').trim();
+        if(!pid) return '';
+        // If pid contains prefixes/separators, derive last segment
+        let last = pid;
+        try{
+          if(last.includes('_')) last = last.split('_').pop();
+          if(last.includes(':')) last = last.split(':').pop();
+          if(last.includes('/')) last = last.split('/').pop();
+        }catch(_){}
+        // Use parsed last segment if it looks like an address
+        let chosen = String(last||pid).trim();
+        if(!chosen) chosen = String(pid||'').trim();
 
+        // EVM pool addresses are case-insensitive; Gecko is safest with lowercase
+        if(activeNet !== 'solana') chosen = chosen.toLowerCase();
+        return chosen;
+      }catch(_){ return ''; }
+    }
+
+    async function geckoTrades(limit=80, fetchOpts={}){
+      const net = geckoNet();
+      const pid1 = geckoPoolApiId();
+      if(!pid1) return [];
+
+      const base1 = `${GECKO}/networks/${encodeURIComponent(net)}/pools/${encodeURIComponent(pid1)}/trades`;
+
+      // GeckoTerminal uses JSON:API pagination. Try page params first, then fallback to limit.
+      const tries = [];
+      tries.push(base1 + `?page=1&limit=${encodeURIComponent(limit)}`);
+      tries.push(base1 + `?page=1`);
+      tries.push(base1 + `?limit=${encodeURIComponent(limit)}`);
+
+      // If poolId differs (e.g., prefixed id), try it as well
       try{
-        const url2 = base + `?limit=${encodeURIComponent(limit)}`;
-        const j2 = await fetchJson(url2, {timeout:14000, retries:1, signal: fetchOpts.signal});
-        if(Array.isArray(j2?.data)) return j2.data;
-      }catch(e){ /* ignore */ }
+        const raw = String(poolId||'').trim();
+        if(raw && raw !== pid1){
+          const raw2 = encodeURIComponent(raw);
+          const base2 = `${GECKO}/networks/${encodeURIComponent(net)}/pools/${raw2}/trades`;
+          tries.push(base2 + `?page=1&limit=${encodeURIComponent(limit)}`);
+          tries.push(base2 + `?page=1`);
+          tries.push(base2 + `?limit=${encodeURIComponent(limit)}`);
+        }
+      }catch(_){}
+
+      for(const url of tries){
+        try{
+          const j = await fetchJson(url, {timeout:14000, retries:1, signal: fetchOpts.signal});
+          if(Array.isArray(j?.data)) return j.data;
+        }catch(e){ /* ignore */ }
+      }
 
       return [];
     }
 
-    function renderTrades(trades, {reset=false}={}){
+        function renderTrades(trades, {reset=false}={}){
       const parsed = (trades||[]).map(parseTrade).filter(x=>x.id && Number.isFinite(x.tsMs));
       parsed.sort((a,b)=>b.tsMs-a.tsMs);
 
@@ -4175,7 +4216,8 @@ function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
     }
 
     function stopLiveLoops(){
-      LIVE.gen++;
+            try{ stopTradesPolling(); }catch(_){ }
+LIVE.gen++;
       const st = LIVE;
       if(st.tTrades){ clearTimeout(st.tTrades); st.tTrades=null; }
       if(st.tCandles){ clearTimeout(st.tCandles); st.tCandles=null; }
@@ -4185,7 +4227,95 @@ function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
 
     const LIVE = { gen:0, tTrades:null, tCandles:null, tMeta:null, tAges:null, failTrades:0, tradeDelay:1500 };
 
-    function startLiveLoops(){
+    
+    // ===== DexGuard Micro 10: Trades Polling (stable interval + backoff) =====
+    const TRADES_POLL = (window.__DG_TRADES_POLL__ || (window.__DG_TRADES_POLL__ = {
+      timer: null,
+      running: false,
+      normalMs: 3000,
+      delayMs: 3000,
+      maxMs: 30000,
+      failCount: 0,
+      sig: '',
+      ctrl: null
+    }));
+
+    function tradesPollSig(){
+      try{
+        return `${activeNet}|${String(poolAddr||'').toLowerCase()}|${String(poolId||'')}`;
+      }catch(_){ return ''; }
+    }
+
+    function stopTradesPolling(){
+      try{
+        TRADES_POLL.running = false;
+        if(TRADES_POLL.timer){ clearTimeout(TRADES_POLL.timer); TRADES_POLL.timer = null; }
+        if(TRADES_POLL.ctrl){ try{ TRADES_POLL.ctrl.abort(); }catch(_){ } TRADES_POLL.ctrl = null; }
+      }catch(_){}
+    }
+
+    async function pollTradesOnce(){
+      try{
+        if(!TRADES_POLL.running) return;
+        const sigNow = tradesPollSig();
+        if(TRADES_POLL.sig && sigNow !== TRADES_POLL.sig){
+          // token/pool changed; stop this loop
+          stopTradesPolling();
+          return;
+        }
+
+        // Must have a selected pool; otherwise retry soon
+        const pid = String(poolAddr||poolId||'').trim();
+        if(!pid){
+          TRADES_POLL.failCount = Math.min(TRADES_POLL.failCount + 1, 6);
+          TRADES_POLL.delayMs = Math.min(TRADES_POLL.maxMs, Math.round(TRADES_POLL.normalMs * Math.pow(2, TRADES_POLL.failCount)));
+          TRADES_POLL.timer = setTimeout(pollTradesOnce, TRADES_POLL.delayMs);
+          return;
+        }
+
+        // Abort previous in-flight request
+        if(TRADES_POLL.ctrl){ try{ TRADES_POLL.ctrl.abort(); }catch(_){ } }
+        TRADES_POLL.ctrl = new AbortController();
+
+        const data = await geckoTrades(80, {signal: TRADES_POLL.ctrl.signal});
+        if(Array.isArray(data)){
+          try{ renderTrades(data); }catch(_){}
+          TRADES_POLL.failCount = 0;
+          TRADES_POLL.delayMs = TRADES_POLL.normalMs;
+        }else{
+          TRADES_POLL.failCount = Math.min(TRADES_POLL.failCount + 1, 6);
+          TRADES_POLL.delayMs = Math.min(TRADES_POLL.maxMs, Math.round(TRADES_POLL.normalMs * Math.pow(2, TRADES_POLL.failCount)));
+        }
+      }catch(e){
+        try{ console.warn("TradesPoll failure", e); }catch(_){}
+        TRADES_POLL.failCount = Math.min(TRADES_POLL.failCount + 1, 6);
+        TRADES_POLL.delayMs = Math.min(TRADES_POLL.maxMs, Math.round(TRADES_POLL.normalMs * Math.pow(2, TRADES_POLL.failCount)));
+      }finally{
+        try{
+          if(!TRADES_POLL.running) return;
+          const sigNow2 = tradesPollSig();
+          if(TRADES_POLL.sig && sigNow2 !== TRADES_POLL.sig) return;
+          // Ensure only one active loop
+          if(TRADES_POLL.timer){ clearTimeout(TRADES_POLL.timer); TRADES_POLL.timer = null; }
+          TRADES_POLL.timer = setTimeout(pollTradesOnce, TRADES_POLL.delayMs);
+        }catch(_){}
+      }
+    }
+
+    function startTradesPolling(){
+      try{
+        stopTradesPolling(); // guarantee no overlap
+        TRADES_POLL.running = true;
+        TRADES_POLL.failCount = 0;
+        TRADES_POLL.delayMs = TRADES_POLL.normalMs;
+        TRADES_POLL.sig = tradesPollSig();
+        try{ console.debug("TradesPoll start", TRADES_POLL.sig); }catch(_){}
+        TRADES_POLL.timer = setTimeout(pollTradesOnce, 120);
+      }catch(_){}
+    }
+    // ===== /Micro 10 =====
+
+function startLiveLoops(){
       stopLiveLoops();
       const gen = LIVE.gen;
       LIVE.failTrades = 0;
@@ -4197,6 +4327,7 @@ function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
           await loadTrades(false);
           LIVE.failTrades = 0;
           LIVE.tradeDelay = 1500;
+      try{ startTradesPolling(); }catch(_){ }
         }catch(_){
           LIVE.failTrades = (LIVE.failTrades||0) + 1;
           LIVE.tradeDelay = Math.min(7000, Math.round(1500 * Math.pow(1.25, LIVE.failTrades)));
