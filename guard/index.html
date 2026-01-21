@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <meta name="theme-color" content="#070711" />
   <title>$SOS — DEX Terminal (Multi-Chain)</title>
-  <meta name="description" content="$SOS DEX Terminal — native chart + live trades across Solana, Ethereum, BNB, Base." />
+  <meta name="description" content="$SOS DEX Terminal — across Solana, Ethereum, BNB, Base." />
 
   <style>
     :root{
@@ -3661,7 +3661,7 @@ function setSearchModalOpen(open){
       const nameHtml = (name && name.toLowerCase()!==sym.toLowerCase())
         ? `<span class="pairNameSub">${esc(name)}</span>` : '';
       pairNameEl.innerHTML = `${esc(title)}${nameHtml ? ' ' + nameHtml : ''}`;
-      pairMetaEl.textContent = `${NET_LABEL[activeNet]} • ${shortAddr(addr)} • Native chart + live trades`;
+      pairMetaEl.textContent = `${NET_LABEL[activeNet]} • ${shortAddr(addr)} • `;
 
       if(img){
         tokenLogo.innerHTML = `<img src="${esc(img)}" alt="" referrerpolicy="no-referrer" onerror="this.onerror=null; this.remove(); var p=this.parentNode; if(p){p.innerHTML='<span class=\\"fb\\">${esc(sym.slice(0,1).toUpperCase())}</span>';}" />`;
@@ -6287,83 +6287,3 @@ if(searchScrim){
 </body>
 </html>
 
-
-/* ================================
-   MOBILE-ONLY TRENDING TICKER COMPACT + SMOOTH (step12)
-   - Reduce height/padding, smaller cards, better readability
-   - Smooth marquee (GPU-friendly), less heavy shadows (less jank)
-   - Keeps existing click behavior
-   - Desktop unchanged
-   ================================ */
-@media (max-width: 760px){
-  /* Compact container spacing */
-  .topBarInner{ gap: 8px !important; padding: 10px 10px 10px !important; }
-
-  /* Ticker wrapper: slimmer + lighter paint cost */
-  .tickerWrap{
-    padding: 6px 8px !important;
-    border-radius: 16px !important;
-    border: 1px solid rgba(255,255,255,.10) !important;
-    background: rgba(255,255,255,.045) !important;
-    box-shadow: 0 8px 22px rgba(0,0,0,.18) !important;
-  }
-  .tickerWrap:before,
-  .tickerWrap:after{
-    width: 28px !important;
-  }
-
-  /* Smooth animation: longer duration + GPU-friendly transforms */
-  .tickerTrack{
-    gap: 8px !important;
-    animation-duration: 28s !important;
-    transform: translate3d(0,0,0);
-    will-change: transform;
-    backface-visibility: hidden;
-    contain: content;
-  }
-  .tickerWrap:hover .tickerTrack{ animation-play-state: paused; }
-
-  /* Smaller ticker items (Dexscreener vibe) */
-  .tickerItem{
-    padding: 6px 8px !important;
-    gap: 8px !important;
-    font-size: 12px !important;
-    border-radius: 999px !important;
-    background: rgba(255,255,255,.05) !important;
-    border: 1px solid rgba(255,255,255,.10) !important;
-    box-shadow: none !important; /* reduce repaint/jank */
-  }
-  .tickerItem.top1{
-    background: rgba(255,215,0,.08) !important;
-    border-color: rgba(255,215,0,.26) !important;
-    box-shadow: none !important;
-  }
-
-  /* Logo smaller + crisp */
-  .tickerLogoWrap{
-    width: 22px !important;
-    height: 22px !important;
-    flex: 0 0 22px !important;
-    border-radius: 6px !important;
-    box-shadow: none !important;
-  }
-  .tickerLogoFallback{ font-size: 11px !important; }
-
-  /* Rank + % pills tighter */
-  .tickerItem .rank{
-    min-width: 24px !important;
-    height: 18px !important;
-    padding: 0 6px !important;
-    font-size: 11px !important;
-  }
-  .tickerPct{
-    height: 18px !important;
-    padding: 0 6px !important;
-    font-size: 11px !important;
-  }
-
-  /* Prefer reduced motion */
-  @media (prefers-reduced-motion: reduce){
-    .tickerTrack{ animation: none !important; }
-  }
-}
