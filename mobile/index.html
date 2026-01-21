@@ -1751,6 +1751,54 @@ display:none;
   #stats .statPill.down .v{ color: rgba(255,77,109,.96) !important; }
 }
 
+
+
+/* ================================
+   MOBILE-ONLY CHART AREA (step07)
+   - Dexscreener-style: clean, full width, stable height
+   - Fixes weird scaling / overscroll issues on mobile
+   - Keeps dropdowns/menus above the chart
+   - Does NOT affect desktop
+   ================================ */
+@media (max-width: 760px){
+  /* Keep chart in a stable box so lightweight-charts can resize correctly */
+  #chartWrap{
+    width: 100% !important;
+    height: clamp(360px, 52vh, 560px) !important;
+    min-height: 360px !important;
+    max-height: 560px !important;
+
+    position: relative !important;
+    overflow: hidden !important;
+
+    /* Prevent iOS rubber-band / scroll-chaining weirdness while interacting with the chart */
+    overscroll-behavior: contain;
+    touch-action: none; /* let the chart handle touch gestures; scroll page outside the chart */
+  }
+
+  /* Ensure the chart always fills the container (prevents odd scaling) */
+  #chart{
+    position: absolute !important;
+    inset: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+  }
+  #chart > div,
+  #chart canvas{
+    width: 100% !important;
+    height: 100% !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
+  }
+
+  /* Avoid any horizontal wobble from chart internals */
+  #chartWrap, #chart, .card{ max-width: 100% !important; }
+
+  /* Keep chart beneath any dropdowns/menus/modals */
+  #chartWrap{ z-index: 0 !important; }
+  #chart, #chart canvas{ z-index: 0 !important; }
+}
+
 </style>
 </head>
 <body>
