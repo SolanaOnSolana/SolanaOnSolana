@@ -1114,7 +1114,7 @@ display:none;
 /* Header pills stay single-row with horizontal scroll if needed (no wrapping) */
 #netPills{
   display:flex;
-  flex-wrap: nowrap !important;
+  flex-wrap: wrap !important;
   gap: 8px;
   overflow-x: auto;
   overflow-y: hidden;
@@ -1281,6 +1281,354 @@ display:none;
 }
 
 
+
+
+/* =========================================================
+   DexGuard Premium Mobile Terminal — Layout/UX Refactor
+   (Design-only overrides; preserves all logic/features)
+   ========================================================= */
+
+:root{
+  --space-1: 8px;
+  --space-2: 12px;
+  --space-3: 16px;
+  --space-4: 20px;
+  --space-5: 24px;
+
+  --rad-1: 14px;
+  --rad-2: 18px;
+  --rad-3: 22px;
+
+  --cardBg: rgba(255,255,255,.045);
+  --cardStroke: rgba(255,255,255,.10);
+  --shadowSm: 0 10px 28px rgba(0,0,0,.35);
+  --shadowMd: 0 18px 54px rgba(0,0,0,.55);
+
+  --chipBlueBg: rgba(0,209,255,.12);
+  --chipBlueStroke: rgba(0,209,255,.32);
+
+  --topbarGap: 10px;
+}
+
+/* Reinstate sticky compact topbar (overrides older flow patch) */
+.wrap{
+  padding: calc(env(safe-area-inset-top) + 92px) 12px calc(env(safe-area-inset-bottom) + 18px) !important;
+}
+@media (min-width: 760px){
+  .wrap{ padding: calc(env(safe-area-inset-top) + 96px) 16px 28px !important; }
+}
+
+.topbar{
+  position: fixed !important;
+  top: calc(env(safe-area-inset-top) + 8px) !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  width: min(var(--max), calc(100vw - 20px)) !important;
+  z-index: 1000 !important;
+
+  display:flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  flex-wrap: wrap !important;
+  gap: var(--topbarGap) !important;
+
+  padding: 8px 10px !important;
+  border-radius: var(--rad-2) !important;
+  box-shadow: var(--shadowSm) !important;
+
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+}
+.brand{min-width:0}
+.topLogo{
+  height: 32px !important;
+  width: auto !important;
+  max-width: 180px !important;
+  display:block;
+  object-fit: contain;
+}
+.actions{
+  display:flex !important;
+  align-items:center !important;
+  gap: 8px !important;
+  flex-wrap: nowrap !important;
+  justify-content: flex-end !important;
+}
+#netPills, #btnBuy{ display:none !important; }
+
+#btnBack{
+  padding: 9px 12px !important;
+  min-height: 44px !important;
+  font-size: 12px !important;
+}
+#btnX{
+  width: 44px !important;
+  height: 44px !important;
+  min-height: 44px !important;
+  padding: 0 !important;
+  justify-content: center !important;
+}
+#btnX span{ display:none !important; }
+
+/* Control strip: compact, segmented, native feel */
+.topBarInner{
+  padding: 10px 10px 12px !important;
+  gap: 10px !important;
+}
+.topRow{
+  gap: 10px !important;
+  flex-wrap: wrap !important;
+  align-items:center !important;
+}
+.hotLabel{ display:none !important; }
+
+.chainToggle{
+  width: 100% !important;
+  padding: 4px !important;
+  border-radius: 16px !important;
+  background: rgba(255,255,255,.04) !important;
+  border: 1px solid rgba(255,255,255,.10) !important;
+}
+.chainBtn{
+  min-height: 40px !important;
+  padding: 10px 10px !important;
+  font-size: 12px !important;
+  flex: 1 !important;
+}
+
+/* Trending: mobile scroll w/ snap (no stretch/overflow chaos) */
+.tickerWrap{
+  border-radius: 16px !important;
+}
+@media (max-width: 740px){
+  .tickerWrap{
+    padding: 8px 10px !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x proximity;
+  }
+  .tickerWrap:before, .tickerWrap:after{ width: 28px !important; }
+  .tickerTrack{
+    animation: none !important;
+    gap: 10px !important;
+    white-space: nowrap !important;
+    scroll-snap-align: start;
+  }
+  .tickerItem{
+    flex: 0 0 auto !important;
+    scroll-snap-align: start;
+    padding: 8px 10px !important;
+    font-size: 12px !important;
+  }
+}
+
+/* Search: full width, dropdown constrained to container (no overlay) */
+.dexSearch{ width: 100% !important; max-width: 100% !important; }
+.dexSearchInner{
+  width: 100% !important;
+  border-radius: 16px !important;
+  min-height: 44px !important;
+}
+.results{
+  left: 0 !important;
+  right: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+}
+.resLogo{ width: 40px !important; height: 40px !important; border-radius: 14px !important; }
+.resItem{ min-height: 56px !important; padding: 12px 12px !important; }
+.resR{ gap: 8px !important; }
+
+/* Token Header Card */
+.card{ background: var(--cardBg) !important; border-color: var(--cardStroke) !important; box-shadow: var(--shadowSm) !important; }
+.cardHd.tokenHeader{
+  display: grid !important;
+  grid-template-columns: 56px 1fr auto;
+  gap: 12px !important;
+  align-items: center !important;
+  padding: 12px 12px !important;
+}
+@media (min-width: 760px){
+  .cardHd.tokenHeader{ padding: 14px 14px !important; grid-template-columns: 56px 1fr auto; }
+}
+.tokenLogoBig{
+  width: 56px !important;
+  height: 56px !important;
+  border-radius: 18px !important;
+  overflow:hidden;
+  box-shadow: 0 12px 30px rgba(0,0,0,.28);
+}
+@media (max-width: 640px){
+  .tokenLogoBig{ width: 52px !important; height: 52px !important; border-radius: 18px !important; }
+}
+.tokenMain{ min-width:0; }
+.pairName{
+  font-weight: 1050 !important;
+  font-size: 15px !important;
+  line-height: 1.15 !important;
+  letter-spacing: -.02em !important;
+}
+.pairNameSub{
+  display:block !important;
+  margin-top: 3px;
+  font-size: 12px !important;
+  font-weight: 850 !important;
+  color: rgba(255,255,255,.72) !important;
+  letter-spacing: 0 !important;
+}
+.pairMeta{
+  margin-top: 8px;
+  display:flex;
+  align-items:center;
+  gap: 10px;
+  min-width: 0;
+}
+
+/* Copyable CA chip */
+.caChip{
+  display:inline-flex;
+  align-items:center;
+  gap: 10px;
+  min-height: 40px;
+  padding: 8px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--chipBlueStroke);
+  background: var(--chipBlueBg);
+  color: rgba(235,252,255,.96);
+  cursor:pointer;
+  user-select:none;
+  -webkit-tap-highlight-color: transparent;
+}
+.caChip:hover{ background: rgba(0,209,255,.16); border-color: rgba(0,209,255,.40); }
+.chainTag{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: rgba(0,209,255,.18);
+  border: 1px solid rgba(0,209,255,.30);
+  font-weight: 1000;
+  font-size: 12px;
+}
+.caTxt{ white-space:nowrap; }
+.caIco{ opacity:.9; font-size: 14px; }
+
+/* Key stats (right stack) */
+.stats.keyStack{
+  display: grid !important;
+  gap: 8px !important;
+  justify-items: end;
+  align-content: center;
+}
+.stats.keyStack .statPill.k{
+  min-width: 148px;
+  justify-content: space-between;
+  background: rgba(0,0,0,.12);
+}
+@media (max-width: 640px){
+  .stats.keyStack .statPill.k{ min-width: 132px; }
+}
+
+/* Performance chips row (Dex-style) */
+.perfChips{
+  display:flex;
+  gap: 8px;
+  padding: 0 12px 12px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.perfChips::-webkit-scrollbar{ display:none; }
+
+.pctChip{
+  flex: 0 0 auto;
+  display:flex;
+  align-items:center;
+  justify-content: space-between;
+  gap: 8px;
+  height: 34px;
+  min-width: 94px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.10);
+  background: rgba(0,0,0,.10);
+  font-weight: 950;
+}
+.pctChip .pctLbl{ font-size: 12px; color: rgba(255,255,255,.70); font-weight: 900; }
+.pctChip .pctVal{ font-size: 12px; color: rgba(255,255,255,.92); }
+.pctChip.up{ border-color: rgba(20,241,149,.26); background: rgba(20,241,149,.10); }
+.pctChip.up .pctVal{ color: rgba(20,241,149,.98); }
+.pctChip.down{ border-color: rgba(255,77,109,.24); background: rgba(255,77,109,.10); }
+.pctChip.down .pctVal{ color: rgba(255,77,109,.98); }
+
+/* Chart sizing + clean controls */
+#chartWrap{
+  height: clamp(360px, 50vh, 600px) !important;
+}
+.controls{
+  padding: 10px 10px calc(10px + env(safe-area-inset-bottom)) !important;
+}
+.tfRow{
+  flex-wrap: nowrap !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.tfRow::-webkit-scrollbar{ display:none; }
+.tf{
+  flex: 0 0 auto;
+  min-width: 52px;
+}
+
+/* Live Trades: accordion panel (in flow; anchored below chart) */
+#tradesCard{
+  position: relative !important;
+  margin-top: 0 !important;
+}
+#tradesCard .tableHd{
+  padding: 10px 12px !important;
+  background: rgba(0,0,0,.14);
+  border-bottom: 1px solid rgba(255,255,255,.08);
+}
+#tradesCard .tableHd::before{
+  content:"";
+  display:block;
+  width: 46px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.16);
+  margin: 2px auto 8px;
+}
+#tradesCard .accToggleBtn{
+  width: 40px;
+  height: 40px;
+  display:grid;
+  place-items:center;
+  border-radius: 999px;
+}
+#tradesCard.open .accToggleBtn svg{ transform: rotate(180deg); }
+#tradesCard .accToggleBtn svg{ transition: transform .18s ease; }
+
+@media (max-width: 640px){
+  .tradeHead, .tradeRow{
+    grid-template-columns: 64px 64px 86px 1fr 34px !important;
+  }
+  .tradeHead .hideM, .tradeRow .hideM{ display:none !important; }
+}
+
+/* Keep dropdowns above chart */
+.results{ z-index: 999999 !important; }
+
+/* Performance: limit heavy blur on large surfaces */
+.panel{ backdrop-filter: none !important; -webkit-backdrop-filter: none !important; box-shadow: var(--shadowMd) !important; }
+.topBar{ backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
+
 </style>
 </head>
 <body>
@@ -1346,16 +1694,18 @@ display:none;
 
       <div class="grid">
         <div class="card" id="chartCard">
-          <div class="cardHd">
-            <div class="pair">
-              <div class="tlogo" id="tokenLogo"><span class="fb" id="tokenLogoFb">$</span></div>
-              <div class="pairTxt">
-                <div class="pairName" id="pairName">—</div>
-                <div class="pairMeta" id="pairMeta">Paste a token / choose a trending token</div>
-              </div>
+          <div class="cardHd tokenHeader">
+            <div class="tlogo tokenLogoBig" id="tokenLogo"><span class="fb" id="tokenLogoFb">$</span></div>
+
+            <div class="pairTxt tokenMain">
+              <div class="pairName" id="pairName">—</div>
+              <div class="pairMeta" id="pairMeta">Paste a token / choose a trending token</div>
             </div>
-            <div class="stats" id="stats"></div>
+
+            <div class="stats keyStack" id="stats"></div>
           </div>
+
+          <div class="perfChips" id="perfChips" aria-label="Performance"></div>
 
           <div id="chartWrap"><div id="chart"></div></div>
 
@@ -1384,6 +1734,11 @@ display:none;
             </div>
             <div class="sheetRight">
               <div class="sub" id="tradesStat">—</div>
+              <div class="accToggleBtn" aria-hidden="true">
+                <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                  <path fill="currentColor" d="M7.41 8.59 12 13.17l4.59-4.58L18 10l-6 6-6-6z"/>
+                </svg>
+              </div>
             </div>
           </div>
 
@@ -1447,13 +1802,6 @@ display:none;
     const NET_LABEL = { solana:'SOL', eth:'ETH', bsc:'BNB', base:'BASE' };
     const NET_DS = { solana:'solana', eth:'ethereum', bsc:'bsc', base:'base' };
     const NET_GECKO = { solana:'solana', eth:'eth', bsc:'bsc', base:'base' };
-    // Native gas/settlement unit for each chain (display only)
-    const NATIVE_UNIT = { solana:'SOL', eth:'ETH', bsc:'BNB', base:'ETH' };
-    function nativeUnit(net){
-      const n = String(net||'').toLowerCase();
-      return NATIVE_UNIT[n] || (NET_LABEL[n] || 'ETH');
-    }
-
 
     const DEFAULT_TOKEN = {
       solana: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', // USDC
@@ -1505,6 +1853,7 @@ display:none;
     const pairNameEl = $('pairName');
     const pairMetaEl = $('pairMeta');
     const statsEl = $('stats');
+    const perfChips = $('perfChips');
     const tokenLogo = $('tokenLogo');
     const tokenLogoFb = $('tokenLogoFb');
 
@@ -1531,6 +1880,17 @@ display:none;
 
     const toastEl = $('toast');
 
+    // Live Trades accordion (mobile + desktop)
+    (function(){
+      const hd = tradesCard?.querySelector?.('.tableHd');
+      if(!hd || tradesCard._dgAcc) return;
+      tradesCard._dgAcc = true;
+      const setAria = ()=>{ try{ hd.setAttribute('aria-expanded', tradesCard.classList.contains('open') ? 'true':'false'); }catch(_){} };
+      setAria();
+      hd.addEventListener('click', ()=>{ tradesCard.classList.toggle('open'); setAria(); });
+    })();
+
+
     // -------------------- Helpers
     const sleep = (ms)=>new Promise(r=>setTimeout(r, ms));
     const lc = (v)=>String(v||'').toLowerCase();
@@ -1542,7 +1902,38 @@ display:none;
       toastEl._t = setTimeout(()=>toastEl.style.display='none', ms);
     }
 
+    // Copy helper (used by contract chip + any [data-copy] element)
+    async function copyText(txt){
+      const v = String(txt||'').trim();
+      if(!v) return;
+      try{
+        if(navigator.clipboard && navigator.clipboard.writeText){
+          await navigator.clipboard.writeText(v);
+        }else{
+          const ta = document.createElement('textarea');
+          ta.value = v; ta.setAttribute('readonly','');
+          ta.style.position='fixed'; ta.style.top='-1000px'; ta.style.opacity='0';
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand('copy');
+          ta.remove();
+        }
+        toast('Copied');
+      }catch(_){
+        toast('Copy failed');
+      }
+    }
+
+    document.addEventListener('click', (e)=>{
+      const t = e.target.closest?.('[data-copy]');
+      if(t){
+        e.preventDefault();
+        copyText(t.getAttribute('data-copy'));
+      }
+    });
+
     function esc(s){
+
       return String(s??'').replace(/[&<>"]/g, m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[m]));
     }
 
@@ -2189,13 +2580,13 @@ function setMobileTab(which){
       if(name) curTokenName = name;
       if(imgIn) curTokenImage = imgIn;
 
-      const title = `$${sym}/${nativeUnit(activeNet)}`;
+      const title = quote ? `$${sym}/${quote}` : `$${sym}`;
       const nameHtml = (name && name.toLowerCase()!==sym.toLowerCase())
         ? `<span class="pairNameSub">${esc(name)}</span>` : '';
       pairNameEl.innerHTML = `${esc(title)}${nameHtml ? ' ' + nameHtml : ''}`;
-      pairMetaEl.textContent = `${NET_LABEL[activeNet]} • ${shortAddr(addr)} • Native chart + live trades`;
-
-      if(img){
+      // Premium token header chip (chain + copyable CA)
+      pairMetaEl.innerHTML = `<button type="button" class="caChip" id="caChip" data-copy="${esc(addr)}" aria-label="Copy contract address"><span class="chainTag">${esc(NET_LABEL[activeNet])}</span><span class="caTxt mono">${esc(shortAddr(addr))}</span><span class="caIco" aria-hidden="true">⧉</span></button>`;
+if(img){
         tokenLogo.innerHTML = `<img src="${esc(img)}" alt="" referrerpolicy="no-referrer" onerror="this.onerror=null; this.remove(); var p=this.parentNode; if(p){p.innerHTML='<span class=\\"fb\\">${esc(sym.slice(0,1).toUpperCase())}</span>';}" />`;
       }else{
         tokenLogo.innerHTML = `<span class="fb">${esc(sym.slice(0,1).toUpperCase())}</span>`;
@@ -2203,13 +2594,27 @@ function setMobileTab(which){
     }
 
     function applyStats(st){
-      const pills=[];
-      if(Number.isFinite(st.price)) pills.push(`<span class="statPill">Price $${esc(formatPrice(st.price))}</span>`);
-      if(Number.isFinite(st.liq)) pills.push(`<span class="statPill">Liq $${esc(formatCompact(st.liq))}</span>`);
-      if(Number.isFinite(st.mcap)) pills.push(`<span class="statPill">MCap $${esc(formatCompact(st.mcap))}</span>`);
-      if(Number.isFinite(st.h24)) pills.push(`<span class="statPill ${st.h24>0?'up':(st.h24<0?'down':'')}">24h ${esc((st.h24>0?'+':'')+st.h24.toFixed(2)+'%')}</span>`);
-      statsEl.innerHTML = pills.join('') || `<span class="statPill">—</span>`;
+      const key=[];
+      if(Number.isFinite(st.price)) key.push(`<span class="statPill k">Price <span class="mono">$${esc(formatPrice(st.price))}</span></span>`);
+      if(Number.isFinite(st.liq))   key.push(`<span class="statPill k">Liq <span class="mono">$${esc(formatCompact(st.liq))}</span></span>`);
+      if(Number.isFinite(st.mcap))  key.push(`<span class="statPill k">MCap <span class="mono">$${esc(formatCompact(st.mcap))}</span></span>`);
+
+      const perf=[];
+      const addPerf = (v,label)=>{
+        if(!Number.isFinite(v)) return;
+        const cls = v>0?'up':(v<0?'down':'');
+        const sign = v>0?'+':'';
+        perf.push(`<span class="pctChip ${cls}"><span class="pctLbl">${label}</span><span class="pctVal mono">${esc(sign+v.toFixed(2))}%</span></span>`);
+      };
+      addPerf(st.m5,'5m');
+      addPerf(st.h1,'1h');
+      addPerf(st.h6,'6h');
+      addPerf(st.h24,'24h');
+
+      statsEl.innerHTML = key.join('') || `<span class="statPill k">—</span>`;
+      if(perfChips) perfChips.innerHTML = perf.join('');
     }
+
 
     function applyPool(p){
       const a = p?.attributes || {};
@@ -2611,36 +3016,17 @@ function setMobileTab(which){
 
       const usd = num(a.volume_in_usd || a.usd_value || a.volume_usd || a.amount_usd || a.total_usd);
       const price = num(a.price_in_usd || a.price_usd || a.price);
-
       const baseAmt = num(a.base_token_amount || a.amount_base || a.base_amount || a.base_token_volume || a.base_volume);
       const quoteAmt = num(a.quote_token_amount || a.amount_quote || a.quote_amount || a.quote_token_volume || a.quote_volume);
+      const amount = Number.isFinite(baseAmt) ? baseAmt : (Number.isFinite(quoteAmt)? quoteAmt : NaN);
 
-      // Try to detect which side is the chain native asset (SOL/ETH/BNB; Base uses ETH)
-      const baseSym = String(
-        a.base_token_symbol || a.base_symbol || a.base_token?.symbol || a.base?.symbol ||
-        a.base_token?.data?.attributes?.symbol || a.base_token?.data?.attributes?.symbol?.toString?.() || ''
-      ).trim();
-      const quoteSym = String(
-        a.quote_token_symbol || a.quote_symbol || a.quote_token?.symbol || a.quote?.symbol ||
-        a.quote_token?.data?.attributes?.symbol || a.quote_token?.data?.attributes?.symbol?.toString?.() || ''
-      ).trim();
-
-      const nat = nativeUnit(activeNet);
-      const natSet = nat === 'SOL' ? ['SOL','WSOL'] : (nat === 'BNB' ? ['BNB','WBNB'] : ['ETH','WETH']);
-      const baseIsNat = baseSym && natSet.includes(baseSym.toUpperCase());
-      const quoteIsNat = quoteSym && natSet.includes(quoteSym.toUpperCase());
-
-      const nativeAmt = (baseIsNat && Number.isFinite(baseAmt)) ? baseAmt
-        : ((quoteIsNat && Number.isFinite(quoteAmt)) ? quoteAmt
-        : (Number.isFinite(baseAmt) ? baseAmt : (Number.isFinite(quoteAmt) ? quoteAmt : NaN)));
-
-      return { id, type, tx, maker, tsMs, usd, price, baseAmt, quoteAmt, baseSym, quoteSym, nativeAmt };
+      return { id, type, tx, maker, tsMs, usd, price, amount };
     }
 
     function tradeRowHtml(tr){
       const age = timeAgo(tr.tsMs);
       const usdTxt = Number.isFinite(tr.usd) ? '$'+formatCompact(tr.usd) : '—';
-      const amtTxt = Number.isFinite(tr.nativeAmt) ? formatCompact(tr.nativeAmt)+' '+esc(nativeUnit(activeNet)) : '—';
+      const amtTxt = Number.isFinite(tr.amount) ? formatCompact(tr.amount)+' '+esc(curTokenSymbol) : '—';
       const priceTxt = Number.isFinite(tr.price) ? '$'+formatPrice(tr.price) : '—';
 
       const isNew = tr.maker ? (!seenMakers.has(tr.maker)) : false;
@@ -3164,9 +3550,12 @@ function setMobileTab(which){
 
         applyStats({
           price: num(dsPair?.priceUsd),
-          liq: num(dsPair?.liquidity?.usd),
-          mcap: num(dsPair?.fdv),
-          h24: num(dsPair?.priceChange?.h24),
+          liq:   num(dsPair?.liquidity?.usd),
+          mcap:  num(dsPair?.marketCap ?? dsPair?.fdv),
+          m5:    num(dsPair?.priceChange?.m5),
+          h1:    num(dsPair?.priceChange?.h1),
+          h6:    num(dsPair?.priceChange?.h6),
+          h24:   num(dsPair?.priceChange?.h24),
         });
       }else{
         curTokenAddr = v;
