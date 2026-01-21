@@ -2898,9 +2898,116 @@ if(typeof DBG.metrics.lastClickAction==='undefined') DBG.metrics.lastClickAction
 
     // -------------------- Constants
     const GECKO = 'https://flat-grass-9c26solanaonsolana.simon-kaggwa-why.workers.dev/gecko/api/v2';
-const DS = 'https://api.dexscreener.com/latest/dex';
-const BDS = 'https://flat-grass-9c26solanaonsolana.simon-kaggwa-why.workers.dev/bds';
+    const DS = 'https://api.dexscreener.com/latest/dex';
+    const BDS = 'https://flat-grass-9c26solanaonsolana.simon-kaggwa-why.workers.dev/bds';
+    // --- SOLANA (BDS) helpers (prevents Gecko "Token not found" / "Trending unavailable") ---
+function solMintFromState(){
+  // we store Solana "poolId" as the mint address (or prefixed). Normalize here.
+  const raw = String(poolId || '').trim();
+  if(!raw) return '';
+  // if prefixed like "solana_<mint>" keep last part
+  const last = raw.split('_').pop();
+  return (last || raw).trim();
+}
 
+function tfToBirdeyeType(tfKey){
+  // your tf keys are like: 15m, 1h, 4h, 1d, 1w, ALL
+  const k = String(tfKey || '').toLowerCase();
+  if(k === '1m') return '1m';
+  if(k === '5m') return '5m';
+  if(k === '15m') return '15m';
+  if(k === '1h') return '1H';
+  if(k === '4h') return '4H';
+  if(k === '1d') return '1D';
+  if(k === '1w') return '1W';
+  // fallback
+  return '15m';
+}
+
+async function bdsTradesToken(limit=80, signal){
+  const mint = solMintFromState();
+  if(!mint) return [];
+  const url = `${BDS}/defi/txs/token?address=${encodeURIComponent(mint)}&offset=0&limit=${encodeURIComponent(limit)}`;
+  const j = await fetchJson(url, { timeout: 14000, retries: 1, signal });
+
+  const items = (j?.data?.items && Array.isArray(j.data.items)) ? j.data.items :
+                (Array.isArray(j?.data) ? j.data : (Array.isArray(j) ? j : []));
+
+  // normalize to what renderTrades() expects
+  return items.map(it => {
+    const baseUi = it?.base?.uiAmount ?? it?.base_amount ?? it?.baseAmount ?? null;
+    const quoteUi = it?.quote?.uiAmount ?? it?.quote_amount ?? it?.quoteAmount ?? null;
+    const basePrice = it?.base?.price ?? it?.tokenPrice ?? it?.price ?? null;
+    const quotePrice = it?.quote?.price ?? null;
+
+    const volUsd =
+      it?.volumeUsd ?? it?.valueUsd ??
+      (baseUi != null && basePrice != null ? (Number(baseUi) * Number(basePrice)) : null) ??
+      (quoteUi != null && quotePrice != null ? (Number(quoteUi) * Number(quotePrice)) : null);
+
+    return {
+      ...it,
+      // renderTrades() reads timestamp/time/ts/unix_time
+      time: it?.blockUnixTime ?? it?.time ?? it?.timestamp ?? it?.unix_time ?? 0,
+      timestamp: it?.blockUnixTime ?? it?.time ?? it?.timestamp ?? it?.unix_time ?? 0,
+      // renderTrades() reads kind/side/type
+      kind: it?.side ?? it?.kind ?? it?.type ?? '',
+      side: it?.side ?? it?.kind ?? it?.type ?? '',
+      // renderTrades() reads price_usd / priceUsd / price
+      price_usd: basePrice ?? null,
+      // renderTrades() reads volume_usd
+      volume_usd: volUsd ?? null,
+      // renderTrades() reads base_amount / quote_amount
+      base_amount: baseUi ?? null,
+      quote_amount: quoteUi ?? null,
+      // renderTrades() reads maker / tx_from and tx_hash
+      maker: it?.owner ?? it?.maker ?? it?.tx_from ?? null,
+      tx_from: it?.owner ?? it?.maker ?? it?.tx_from ?? null,
+      tx_hash: it?.txHash ?? it?.tx_hash ?? null
+    };
+  });
+}
+
+async function bdsOhlcvToken(tfKey, bars=500, signal){
+  const mint = solMintFromState();
+  if(!mint) return [];
+
+  const type = tfToBirdeyeType(tfKey);
+  const now = Math.floor(Date.now() / 1000);
+
+  // estimate seconds per bar for time window
+  const secPer =
+    (type === '1m') ? 60 :
+    (type === '5m') ? 300 :
+    (type === '15m') ? 900 :
+    (type === '1H') ? 3600 :
+    (type === '4H') ? 14400 :
+    (type === '1D') ? 86400 :
+    (type === '1W') ? 604800 : 900;
+
+  const from = Math.max(0, now - (secPer * bars));
+
+  const url = `${BDS}/defi/ohlcv?address=${encodeURIComponent(mint)}&type=${encodeURIComponent(type)}&time_from=${from}&time_to=${now}`;
+  const j = await fetchJson(url, { timeout: 16000, retries: 1, signal });
+
+  const items = (j?.data?.items && Array.isArray(j.data.items)) ? j.data.items :
+                (Array.isArray(j?.data) ? j.data : (Array.isArray(j) ? j : []));
+
+  // Map Birdeye OHLCV -> your internal candle format used by lightweight-charts:
+  // expects {time, open, high, low, close, volume}
+  return items
+    .map(x => ({
+      time: Number(x?.unix_time || x?.time || x?.t || 0),
+      open: Number(x?.o ?? x?.open ?? 0),
+      high: Number(x?.h ?? x?.high ?? 0),
+      low:  Number(x?.l ?? x?.low ?? 0),
+      close:Number(x?.c ?? x?.close ?? 0),
+      volume: Number(x?.v ?? x?.volume ?? x?.v_usd ?? 0)
+    }))
+    .filter(c => c.time > 0 && isFinite(c.open) && isFinite(c.close))
+    .sort((a,b) => a.time - b.time);
+}
+    
 
     const NET_LABEL = { solana:'SOL', eth:'ETH', bsc:'BNB', base:'BASE' };
     const NET_DS = { solana:'solana', eth:'ethereum', bsc:'bsc', base:'base' };
@@ -5007,8 +5114,6 @@ function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
     }
     /* ===== /Micro 14 ===== */
 
-
-
     async function refreshLatestCandles(){
       if(!poolAddr) return;
       const _key0 = `${activeNet}|${poolAddr}|${activeTF?.k||''}`;
@@ -5055,6 +5160,29 @@ function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
       }catch(_){ }
       try{ window.__DG_LAST_CANDLES_REQ_KEY = _reqKey; }catch(_){ }
       const ac = startRequest(_reqKey);
+            // SOLANA Candles via Birdeye (BDS) — bypass Gecko entirely
+      if(activeNet === 'solana'){
+        try{
+          const tf = (activeTF?.k || '15m');
+          const candles = await bdsOhlcvToken(tf, 600, ac.signal);
+
+          // still current request?
+          if(id !== reqIds.candles) return;
+
+          if(Array.isArray(candles) && candles.length){
+            rawCandles = candles;
+            applyCandlesToChart(!!fit);
+            try{ if(statusEl) statusEl.textContent = ''; }catch(_){}
+          }else{
+            try{ if(statusEl) statusEl.textContent = 'No candles'; }catch(_){}
+          }
+        }catch(e){
+          try{ console.warn("SOL candles (BDS) failed", e); }catch(_){}
+          try{ if(statusEl) statusEl.textContent = 'Candles unavailable'; }catch(_){}
+        }
+        return; // IMPORTANT: stop Gecko logic for Solana
+      }
+
 
 
       // Retry + tap-to-retry state (per token/timeframe)
@@ -5493,6 +5621,11 @@ function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
     }
 
     async function geckoTrades(limit=80, fetchOpts={}){
+      // SOLANA uses Birdeye via Worker (BDS) to avoid Gecko rate limits / pool dependency
+      if(activeNet === 'solana'){
+        return await bdsTradesToken(limit, fetchOpts?.signal);
+      }
+
   // NOTE: We keep the function name to avoid touching the rest of your UI.
   // This now pulls Solana trades from Birdeye (via your Worker) instead of Gecko.
 
