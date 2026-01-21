@@ -4014,25 +4014,65 @@ function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
       `;
     }
 
-    async function geckoTrades(limit=80, fetchOpts={}){
-      const base = `${GECKO}/networks/${encodeURIComponent(geckoNet())}/pools/${encodeURIComponent(poolAddr)}/trades`;
-      // GeckoTerminal often uses JSON:API pagination. Try page params first, then fallback to limit.
+    async function geckoPoolApiId(){
       try{
-        const url1 = base + `?page=1&limit=${encodeURIComponent(limit)}`;
-        const j1 = await fetchJson(url1, {timeout:14000, retries:1, signal: fetchOpts.signal});
-        if(Array.isArray(j1?.data) && j1.data.length) return j1.data;
-      }catch(e){ /* ignore */ }
+        // Prefer explicit pool address; normalize EVM to lowercase
+        let pid = String(poolAddr||'').trim();
+        if(!pid && poolId) pid = String(poolId||'').trim();
+        if(!pid) return '';
+        // If pid contains prefixes/separators, derive last segment
+        let last = pid;
+        try{
+          if(last.includes('_')) last = last.split('_').pop();
+          if(last.includes(':')) last = last.split(':').pop();
+          if(last.includes('/')) last = last.split('/').pop();
+        }catch(_){}
+        // Use parsed last segment if it looks like an address
+        let chosen = String(last||pid).trim();
+        if(!chosen) chosen = String(pid||'').trim();
 
+        // EVM pool addresses are case-insensitive; Gecko is safest with lowercase
+        if(activeNet !== 'solana') chosen = chosen.toLowerCase();
+        return chosen;
+      }catch(_){ return ''; }
+    }
+
+    async function geckoTrades(limit=80, fetchOpts={}){
+      const net = geckoNet();
+      const pid1 = geckoPoolApiId();
+      if(!pid1) return [];
+
+      const base1 = `${GECKO}/networks/${encodeURIComponent(net)}/pools/${encodeURIComponent(pid1)}/trades`;
+
+      // GeckoTerminal uses JSON:API pagination. Try page params first, then fallback to limit.
+      const tries = [];
+      tries.push(base1 + `?page=1&limit=${encodeURIComponent(limit)}`);
+      tries.push(base1 + `?page=1`);
+      tries.push(base1 + `?limit=${encodeURIComponent(limit)}`);
+
+      // If poolId differs (e.g., prefixed id), try it as well
       try{
-        const url2 = base + `?limit=${encodeURIComponent(limit)}`;
-        const j2 = await fetchJson(url2, {timeout:14000, retries:1, signal: fetchOpts.signal});
-        if(Array.isArray(j2?.data)) return j2.data;
-      }catch(e){ /* ignore */ }
+        const raw = String(poolId||'').trim();
+        if(raw && raw !== pid1){
+          const raw2 = encodeURIComponent(raw);
+          const base2 = `${GECKO}/networks/${encodeURIComponent(net)}/pools/${raw2}/trades`;
+          tries.push(base2 + `?page=1&limit=${encodeURIComponent(limit)}`);
+          tries.push(base2 + `?page=1`);
+          tries.push(base2 + `?limit=${encodeURIComponent(limit)}`);
+        }
+      }catch(_){}
+
+      for(const url of tries){
+        try{
+          const j = await fetchJson(url, {timeout:14000, retries:1, signal: fetchOpts.signal});
+          if(Array.isArray(j?.data)) return j.data;
+        }catch(e){ /* ignore */ }
+      }
 
       return [];
     }
 
-    function renderTrades(trades, {reset=false}={}){
+        function renderTrades(trades, {reset=false}={}){
       const parsed = (trades||[]).map(parseTrade).filter(x=>x.id && Number.isFinite(x.tsMs));
       parsed.sort((a,b)=>b.tsMs-a.tsMs);
 
