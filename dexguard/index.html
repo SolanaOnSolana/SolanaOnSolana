@@ -815,76 +815,21 @@ display:none;
   --hit:44px;
 }
 
-/* Global polish + accessibility */
-.btn, .pill, .chainBtn, .tf, .iconBtn, .tab{
-  min-height: var(--hit);
+/* Mobile-only performance: reduce expensive blur on large surfaces */
+@media (max-width: 760px){
+  .panel{
+    /* Avoid expensive blur on large surfaces */
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    /* Avoid heavy shadows on full-width panels */
+    box-shadow: var(--e-1) !important;
+  }
+  .topBar{
+    /* Keep glass subtle (no heavy blur on wide area) */
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
 }
-.btn, .pill, .chainBtn, .tf, .sel{
-  -webkit-tap-highlight-color: transparent;
-}
-.btn:focus-visible, .pill:focus-visible, .chainBtn:focus-visible, .tf:focus-visible, .dexInput:focus-visible, .iconBtn:focus-visible{
-  outline: 2px solid rgba(0,209,255,.55);
-  outline-offset: 2px;
-}
-.panel{
-  /* Avoid expensive blur on large surfaces */
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-  box-shadow: var(--e-2);
-}
-.topBar{
-  /* Keep glass subtle (no heavy blur on wide area) */
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-}
-
-/* Make typography feel more terminal-grade */
-.pairName{
-  font-size: 15px;
-  line-height: 1.25;
-}
-.pairMeta{
-  line-height: 1.35;
-}
-
-/* Search dropdown: no full-page dim/blur; keep dropdown crisp */
-.searchScrim{
-  display:none !important;
-  background: transparent !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-}
-.dexSearch.open .searchScrim{ display:none !important; }
-.results{
-  left: 0 !important;
-  right: 0 !important;
-  width: min(560px, calc(100vw - 28px)) !important;
-  transform: translateZ(0);
-}
-.resItem{
-  min-height: 56px;
-  padding: 12px 12px;
-}
-.resR .btn, .resR .iconBtn{
-  min-height: 40px;
-  height: 40px;
-}
-
-/* Token header + controls: tighter + consistent */
-.cardHd{ padding: 14px 14px; }
-.controls{
-  padding: 10px 12px;
-}
-.tf{
-  min-height: 40px;
-  padding: 10px 12px;
-  font-size: 12px;
-}
-.sel{ min-height: 40px; }
-
-/* Table rows: smoother hover/tap */
-.tradeRow{ transition: background var(--t); }
-.tradeRow:active{ background: rgba(255,255,255,.07); }
 
 /* ===== Mobile-first: compact sticky top bar + proper hierarchy ===== */
 @media (max-width: 740px){
@@ -1111,6 +1056,7 @@ display:none;
 /* ================================
    DexGuard Targeted UI PATCH (A/B/C)
    ================================ */
+@media (max-width: 760px){
 /* Header pills stay single-row with horizontal scroll if needed (no wrapping) */
 #netPills{
   display:flex;
@@ -1128,37 +1074,7 @@ display:none;
 }
 
 
-/* TASK A — Fixed top header single-row + logo */
-.topbar{ flex-wrap: nowrap !important; }
-.topbar .brand{ flex: 0 0 auto; min-width: 0; }
-.topLogo{
-  height: 34px;
-  width: auto;
-  max-width: 180px;
-  display: block;
-  object-fit: contain;
-}
-.actions{ flex-wrap: nowrap !important; white-space: nowrap; min-width: 0; }
-.actions > *{ flex: 0 0 auto; }
-#btnBack{ white-space: nowrap; }
-#btnX{ white-space: nowrap; }
-@media (max-width: 740px){
-  /* remove bottom-sheet reserved space */
-  .wrap{ padding: calc(var(--topbar-space, 84px) + 10px) 10px 18px !important; }
-}
-@media (max-width: 640px){
-  /* force single-row header (no stacking) */
-  .topbar{ flex-direction: row !important; align-items: center !important; gap: 10px !important; }
-  .actions{ width: auto !important; justify-content: flex-end !important; gap: 8px !important; }
-  .topLogo{ height: 30px; max-width: 150px; }
-  #btnBack{ font-size: 12px; padding: 9px 10px; }
-  #btnX{ width: 42px; height: 42px; }
-}
-@media (max-width: 360px){
-  .topLogo{ height: 28px; max-width: 130px; }
-  #btnBack{ font-size: 11px; padding: 8px 9px; }
-}
-
+@media (max-width: 760px){
 /* TASK C — Search dropdown never clipped */
 .panel{ overflow: visible !important; }
 .topBar{ z-index: 5000 !important; }
@@ -1209,8 +1125,12 @@ display:none;
 }
 
 
+
+}
 /* ===== DexGuard Live Terminal Patch: Split Panel + Live Txns ===== */
-#btnRefresh,#btnFit{display:none !important;}
+@media (max-width: 760px){
+  #btnRefresh,#btnFit{display:none !important;}
+}
 .splitRoot{display:flex; flex-direction:column; height:clamp(520px,70vh,780px); min-height:480px; max-height:820px; margin-top:10px;}
 .splitChart{flex:1 1 auto; min-height:220px; position:relative; display:flex; flex-direction:column;}
 .splitChart #chartWrap{flex:1 1 auto; height:100% !important; min-height:220px;}
@@ -1233,53 +1153,937 @@ display:none;
 
 
 /* ================================
-   TOP HEADER BAR FLOW PATCH (normal flow, not fixed/sticky)
+   MOBILE-ONLY GAP + APP-FEEL PATCH (step01)
+   - Tightens spacing, removes blank areas under chart/trades
+   - Keeps consistent 10–12px side padding
+   - Does NOT affect desktop
    ================================ */
-.wrap{
-  padding: 18px 16px 28px !important;
-}
-@media (max-width: 640px){
-  .wrap{ padding: 12px 10px 18px !important; }
-}
-.topbar{
-  position: static !important;
-  top: auto !important;
-  left: auto !important;
-  right: auto !important;
-  transform: none !important;
-  width: 100% !important;
-  z-index: auto !important;
-  margin: 12px 0 14px !important;
-}
-@media (max-width: 980px){
-  .topbar{
-    position: static !important;
-    top: auto !important;
-    left: auto !important;
-    transform: none !important;
-    width: 100% !important;
+@media (max-width: 760px){
+  .wrap{
+    max-width: 100% !important;
+    margin: 0 auto !important;
+    padding: 10px 12px 16px !important;
   }
-}
-@media (max-width: 740px){
+
   .topbar{
-    position: static !important;
-    top: auto !important;
-    left: auto !important;
-    transform: none !important;
-    width: 100% !important;
+    margin: 8px 0 10px !important;
+    padding: 8px 10px !important;
+    border-radius: 18px !important;
   }
+
+  .topBarInner{
+    padding: 10px 10px 10px !important;
+    gap: 8px !important;
+  }
+
+  .grid{
+    padding: 10px !important;
+    gap: 10px !important;
+  }
+
+  .card{ border-radius: 18px !important; }
+  .cardHd{ padding: 10px 12px !important; }
+  .controls{ padding: 8px 10px !important; gap: 8px !important; }
+
+  /* Prevent large blank areas under the chart */
+  #chartWrap{
+    height: clamp(280px, 46vh, 460px) !important;
+  }
+
+  /* If split layout is enabled, remove its fixed height clamps on mobile */
+  .splitRoot{
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    margin-top: 8px !important;
+  }
+  .splitChart #chartWrap{
+    height: auto !important;
+    min-height: 220px !important;
+  }
+  .splitPanel{
+    flex: 0 0 auto !important;
+    min-height: 140px !important;
+    max-height: none !important;
+  }
+
+  /* Trades: avoid huge empty space; keep it scrollable within a sensible max-height */
+  .trades{
+    height: auto !important;
+    max-height: clamp(260px, 38vh, 420px) !important;
+    overflow: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Tighten ticker/search blocks */
+  .tickerWrap{ padding: 8px 10px !important; }
+  .dexSearchInner{ padding: 10px 10px !important; }
+
+  /* Reduce extra vertical padding/margins around panels/cards */
+  .panel{ margin-top: 0 !important; }
 }
-@media (max-width: 640px){
+
+
+
+/* ================================
+   MOBILE-ONLY TOP APP BAR (step02)
+   Dexscreener-style single-row header:
+   left = logo, right = Back + X
+   Safe-area aware (iPhone notch)
+   Desktop unchanged
+   ================================ */
+@media (max-width: 760px){
+  /* Reserve space for fixed app bar (safe-area + bar height) */
+  :root{ --appbarH: 56px; }
+
+  .wrap{
+    /* keep side padding from step01, but add top space for fixed bar */
+    padding-top: calc(env(safe-area-inset-top) + var(--appbarH) + 10px) !important;
+  }
+
   .topbar{
-    position: static !important;
-    top: auto !important;
-    left: auto !important;
-    transform: none !important;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
     width: 100% !important;
-    margin: 10px 0 12px !important;
+    transform: none !important;
+    margin: 0 !important;
+
+    /* Safe-area padding for iOS */
+    padding-top: calc(env(safe-area-inset-top) + 8px) !important;
+    padding-bottom: 8px !important;
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+
+    border-radius: 0 0 18px 18px !important;
+    box-shadow: 0 10px 26px rgba(0,0,0,.55) !important;
+
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 10px !important;
+
+    /* App-bar look */
+    background: rgba(12,16,40,.92) !important;
+    backdrop-filter: blur(14px) !important;
+    -webkit-backdrop-filter: blur(14px) !important;
+    border: 1px solid rgba(255,255,255,.10) !important;
+    border-left: 0 !important;
+    border-right: 0 !important;
+    border-top: 0 !important;
+
+    z-index: 99999 !important;
+  }
+
+  .topbar .brand{
+    flex: 0 1 auto !important;
+    min-width: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+  }
+
+  /* Logo sizing like an app bar */
+  .topLogo{
+    height: 28px !important;
+    max-width: 160px !important;
+  }
+
+  .topbar .actions{
+    flex: 0 0 auto !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    flex-wrap: nowrap !important;
+    gap: 8px !important;
+    white-space: nowrap !important;
+    width: auto !important;
+    min-width: 0 !important;
+  }
+
+  /* Only show Back + X on mobile app bar (keep IDs intact) */
+  #netPills{ display: none !important; }
+  #btnBuy{ display: none !important; }
+
+  #btnBack{
+    min-height: 40px !important;
+    height: 40px !important;
+    padding: 0 12px !important;
+    font-size: 12px !important;
+    border-radius: 999px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  #btnX{
+    width: 40px !important;
+    height: 40px !important;
+    min-height: 40px !important;
+    padding: 0 !important;
+    border-radius: 999px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+  #btnX span{ display: none !important; }
+
+  /* Absolutely prevent any wrapping/stacking */
+  .topbar, .topbar *{ max-width: 100%; }
+}
+
+/* Extra small devices */
+@media (max-width: 360px){
+  .topLogo{ max-width: 140px !important; }
+  #btnBack{ padding: 0 10px !important; font-size: 11px !important; }
+}
+
+
+
+/* ================================
+   MOBILE-ONLY CHAIN SEGMENTED CONTROL (step03)
+   - Dexscreener-style segmented control under the app bar
+   - Equal-width, thumb-friendly (min 44px)
+   - Keeps existing data-net attributes + event logic intact
+   - Desktop unchanged
+   ================================ */
+@media (max-width: 760px){
+  /* Place segmented control on its own line under the header area */
+  .topRow{
+    flex-direction: column !important;
+    align-items: stretch !important;
+    justify-content: flex-start !important;
+    gap: 10px !important;
+    flex-wrap: nowrap !important;
+  }
+
+  /* Segmented control container */
+  #trendToggle.chainToggle{
+    width: 100% !important;
+    margin: 0 !important;
+    display: flex !important;
+    align-items: stretch !important;
+    justify-content: space-between !important;
+    gap: 0 !important;
+    padding: 4px !important;
+    border-radius: 16px !important;
+    background: rgba(255,255,255,.06) !important;
+    border: 1px solid rgba(255,255,255,.12) !important;
+    box-shadow: 0 10px 24px rgba(0,0,0,.28) !important;
+    overflow: hidden !important;
+  }
+
+  /* Segments */
+  #trendToggle.chainToggle .chainBtn{
+    flex: 1 1 0 !important;
+    min-height: 44px !important;
+    height: 44px !important;
+    padding: 0 10px !important;
+    margin: 0 !important;
+
+    border: 0 !important;
+    border-radius: 12px !important;
+    background: transparent !important;
+    box-shadow: none !important;
+
+    font-size: 12px !important;
+    font-weight: 1050 !important;
+    letter-spacing: .35px !important;
+    color: rgba(255,255,255,.84) !important;
+
+    transform: none !important; /* prevent bounce inside segmented control */
+  }
+
+  #trendToggle.chainToggle .chainBtn:hover{
+    background: rgba(255,255,255,.05) !important;
+  }
+  #trendToggle.chainToggle .chainBtn:active{
+    background: rgba(255,255,255,.08) !important;
+  }
+
+  /* Theme-highlight active chain (purple/blue) */
+  #trendToggle.chainToggle .chainBtn.active{
+    color: rgba(255,255,255,.98) !important;
+    text-shadow: 0 1px 0 rgba(0,0,0,.30) !important;
+    background: linear-gradient(90deg, rgba(153,69,255,.95), rgba(0,209,255,.72)) !important;
+    box-shadow: 0 12px 28px rgba(153,69,255,.18) !important;
+  }
+
+  /* Subtle dividers between segments (disabled around active) */
+  #trendToggle.chainToggle .chainBtn + .chainBtn{
+    box-shadow: inset 1px 0 0 rgba(255,255,255,.08) !important;
+  }
+  #trendToggle.chainToggle .chainBtn.active + .chainBtn,
+  #trendToggle.chainToggle .chainBtn + .chainBtn.active{
+    box-shadow: none !important;
   }
 }
 
+
+
+/* ================================
+   MOBILE-ONLY SEARCH APP BAR (step04)
+   - Full-width, Dexscreener-style search
+   - Sticky ONLY on mobile (no overlap; stays in flow)
+   - Respects safe areas + fixed app bar
+   - Keeps existing input id/name + JS handlers unchanged
+   ================================ */
+@media (max-width: 760px){
+  /* Put search first in the bottom row for an app-like hierarchy */
+  .bottomRow{ position: relative !important; }
+  .bottomRow .dexSearch{ order: 0 !important; }
+  .bottomRow .tickerWrap{ order: 1 !important; }
+
+  /* Sticky search under the fixed top app bar */
+  .dexSearch{
+    width: 100% !important;
+    max-width: 100% !important;
+    position: sticky !important;
+    top: calc(env(safe-area-inset-top) + var(--appbarH, 56px) + 8px) !important;
+    z-index: 9000 !important;
+
+    /* keep spacing consistent and prevent "floating overlap" feel */
+    margin: 0 !important;
+  }
+
+  /* Give the sticky region a subtle backing so content never reads "under" it */
+  .dexSearch::before{
+    content:"";
+    position:absolute;
+    left:-12px; right:-12px;
+    top:-10px;
+    height: calc(100% + 20px);
+    background: rgba(7,7,17,.92);
+    border-bottom: 1px solid rgba(255,255,255,.08);
+    border-radius: 0 0 16px 16px;
+    z-index: -1;
+    pointer-events:none;
+  }
+
+  .dexSearchInner{
+    width: 100% !important;
+    min-height: 48px !important;
+    padding: 10px 12px !important;
+    border-radius: 16px !important;
+    background: rgba(12,16,40,.92) !important;
+    border: 1px solid rgba(255,255,255,.14) !important;
+    box-shadow: 0 12px 34px rgba(0,0,0,.34) !important;
+    backdrop-filter: blur(14px) !important;
+    -webkit-backdrop-filter: blur(14px) !important;
+  }
+
+  .dexInput{
+    font-size: 14px !important;
+    font-weight: 950 !important;
+    letter-spacing: -.01em !important;
+  }
+
+  /* Results dropdown: keep anchored to sticky search and fully readable */
+  .dexSearch .results{
+    top: calc(100% + 10px) !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: calc(100vw - 24px) !important; /* matches wrap side padding (12px) */
+    max-height: 62vh !important;
+    border-radius: 18px !important;
+  }
+
+  /* Ensure sticky search never causes hidden content behind it */
+  .topBarInner{ scroll-margin-top: calc(env(safe-area-inset-top) + var(--appbarH, 56px) + 16px) !important; }
+}
+
+/* ================================
+   MOBILE-ONLY SEARCH MODAL / SHEET (step05)
+   - Dark backdrop blocks chart bleed-through
+   - Results sit above EVERYTHING (z-index)
+   - Backdrop tap closes results (existing handler)
+   - Disables body scroll while open
+   - Desktop unchanged
+   ================================ */
+@media (max-width: 760px){
+  body.searchModalOpen{
+    overflow: hidden !important;
+    touch-action: none;
+  }
+
+  /* Backdrop (reuse existing #searchScrim so IDs/handlers stay the same) */
+  #searchScrim.searchScrim{
+    display: none;
+    position: fixed !important;
+    inset: 0 !important;
+    background: rgba(0,0,0,.72) !important;
+    backdrop-filter: blur(10px) !important;
+    -webkit-backdrop-filter: blur(10px) !important;
+    z-index: 1000000 !important;
+  }
+  .dexSearch.open #searchScrim.searchScrim{
+    display: block !important;
+  }
+
+  /* Results as modal/sheet overlay */
+  #results.results{
+    position: fixed !important;
+    left: 12px !important;
+    right: 12px !important;
+    bottom: calc(env(safe-area-inset-bottom) + 12px) !important;
+    top: auto !important;
+    width: auto !important;
+
+    max-height: min(72vh, calc(100vh - (env(safe-area-inset-top) + var(--appbarH, 56px) + 120px))) !important;
+
+    border-radius: 18px !important;
+    background: rgba(12,16,40,.98) !important;
+    box-shadow: 0 26px 90px rgba(0,0,0,.78) !important;
+
+    z-index: 1000001 !important;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Make sure the sticky search stays above content but below the modal stack */
+  .dexSearch{
+    z-index: 9999 !important;
+  }
+}
+
+
+
+/* ================================
+   MOBILE-ONLY TOKEN STATS GRID (step06)
+   - Price / Liq / MCap / 24h as a 2x2 Dexscreener-style grid
+   - Uses existing rendered values (no data fetching changes)
+   - Desktop unchanged
+   ================================ */
+@media (max-width: 760px){
+  /* Stack token header + stats for readability */
+  #chartCard .cardHd{
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+  }
+  #chartCard .pair{ width: 100% !important; }
+
+  /* 2x2 grid */
+  #stats.stats{
+    width: 100% !important;
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+    justify-content: stretch !important;
+    align-items: stretch !important;
+  }
+
+  /* Small cards/pills */
+  #stats .statPill{
+    white-space: normal !important;
+    border-radius: 14px !important;
+    padding: 10px 10px !important;
+    min-height: 44px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    justify-content: center !important;
+    gap: 2px !important;
+    background: rgba(255,255,255,.05) !important;
+    border: 1px solid rgba(255,255,255,.12) !important;
+  }
+  #stats .statPill:only-child{
+    grid-column: 1 / -1 !important;
+  }
+
+  #stats .statPill .k{
+    font-size: 11px !important;
+    font-weight: 900 !important;
+    letter-spacing: .18px !important;
+    color: rgba(255,255,255,.62) !important;
+    line-height: 1.1 !important;
+  }
+  #stats .statPill .v{
+    font-size: 13px !important;
+    font-weight: 1050 !important;
+    letter-spacing: -.01em !important;
+    color: rgba(255,255,255,.92) !important;
+    line-height: 1.15 !important;
+  }
+
+  /* Up/Down tint like Dexscreener */
+  #stats .statPill.up{
+    border-color: rgba(20,241,149,.30) !important;
+    background: rgba(20,241,149,.10) !important;
+  }
+  #stats .statPill.up .v{ color: rgba(20,241,149,.96) !important; }
+
+  #stats .statPill.down{
+    border-color: rgba(255,77,109,.28) !important;
+    background: rgba(255,77,109,.10) !important;
+  }
+  #stats .statPill.down .v{ color: rgba(255,77,109,.96) !important; }
+}
+
+
+
+/* ================================
+   MOBILE-ONLY CHART AREA (step07)
+   - Dexscreener-style: clean, full width, stable height
+   - Fixes weird scaling / overscroll issues on mobile
+   - Keeps dropdowns/menus above the chart
+   - Does NOT affect desktop
+   ================================ */
+@media (max-width: 760px){
+  /* Keep chart in a stable box so lightweight-charts can resize correctly */
+  #chartWrap{
+    width: 100% !important;
+    height: clamp(360px, 52vh, 560px) !important;
+    min-height: 360px !important;
+    max-height: 560px !important;
+
+    position: relative !important;
+    overflow: hidden !important;
+
+    /* Prevent iOS rubber-band / scroll-chaining weirdness while interacting with the chart */
+    overscroll-behavior: contain;
+    touch-action: none; /* let the chart handle touch gestures; scroll page outside the chart */
+  }
+
+  /* Ensure the chart always fills the container (prevents odd scaling) */
+  #chart{
+    position: absolute !important;
+    inset: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+  }
+  #chart > div,
+  #chart canvas{
+    width: 100% !important;
+    height: 100% !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
+  }
+
+  /* Avoid any horizontal wobble from chart internals */
+  #chartWrap, #chart, .card{ max-width: 100% !important; }
+
+  /* Keep chart beneath any dropdowns/menus/modals */
+  #chartWrap{ z-index: 0 !important; }
+  #chart, #chart canvas{ z-index: 0 !important; }
+}
+
+
+
+/* ================================
+   MOBILE-ONLY TIMEFRAME PILL ROW (step08)
+   - Dexscreener-like pill row
+   - Horizontal scroll if needed, no wrapping
+   - Very clear active state (purple/blue theme)
+   - Keeps existing click handlers intact (CSS-only)
+   - Desktop unchanged
+   ================================ */
+@media (max-width: 760px){
+  /* Timeframes: single-line pill row with horizontal scroll */
+  #tfRow.tfRow{
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    gap: 8px !important;
+    padding: 4px 2px 2px !important;
+    margin: 0 !important;
+    white-space: nowrap;
+  }
+  #tfRow.tfRow::-webkit-scrollbar{ display:none; }
+
+  /* End padding so last pill isn't flush to the edge */
+  #tfRow.tfRow::after{
+    content:"";
+    flex: 0 0 10px;
+  }
+
+  /* Pills */
+  #tfRow.tfRow .tf{
+    flex: 0 0 auto !important;
+    min-height: 44px !important;
+    height: 44px !important;
+    padding: 0 14px !important;
+    border-radius: 999px !important;
+    border: 1px solid rgba(255,255,255,.14) !important;
+    background: rgba(255,255,255,.06) !important;
+    color: rgba(255,255,255,.88) !important;
+    font-weight: 1000 !important;
+    font-size: 12px !important;
+    letter-spacing: .25px !important;
+    cursor: pointer;
+    transform: none !important; /* avoid jitter while scrolling */
+  }
+  #tfRow.tfRow .tf:hover{ background: rgba(255,255,255,.09) !important; }
+  #tfRow.tfRow .tf:active{ background: rgba(255,255,255,.12) !important; }
+
+  /* Clear active state */
+  #tfRow.tfRow .tf.active{
+    color: rgba(255,255,255,.98) !important;
+    text-shadow: 0 1px 0 rgba(0,0,0,.30) !important;
+    background: linear-gradient(90deg, rgba(153,69,255,.95), rgba(0,209,255,.70)) !important;
+    border-color: rgba(255,255,255,.22) !important;
+    box-shadow: 0 12px 28px rgba(153,69,255,.18) !important;
+  }
+}
+
+
+/* ================================
+   MOBILE-ONLY MODE BAR (step09)
+   - Chart+Txns / Chart / Txns (Dexscreener-style)
+   - Wires to existing elements via minimal JS
+   - Desktop unchanged
+   ================================ */
+.modeBar{ display:none; }
+
+@media (max-width: 760px){
+  .modeBar{
+    display:flex;
+    gap:8px;
+    align-items:center;
+    justify-content:space-between;
+    padding: 10px 10px 12px;
+    border-top: 1px solid rgba(255,255,255,.07);
+    background: rgba(0,0,0,.10);
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .modeBar::-webkit-scrollbar{ display:none; }
+
+  .modeBtn{
+    flex: 1 0 auto;
+    min-height: 44px;
+    height: 44px;
+    padding: 0 14px;
+    border-radius: 999px;
+    border: 1px solid rgba(255,255,255,.12);
+    background: rgba(255,255,255,.05);
+    color: rgba(255,255,255,.88);
+    font-weight: 950;
+    font-size: 12px;
+    letter-spacing: .2px;
+    cursor: pointer;
+    white-space: nowrap;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    transition: transform .15s ease, background .15s ease, border-color .15s ease, box-shadow .15s ease;
+  }
+  .modeBtn:active{ transform: scale(.99); }
+
+  .modeBtn.active{
+    border-color: rgba(153,69,255,.55);
+    background: linear-gradient(90deg, rgba(153,69,255,.92), rgba(0,209,255,.62));
+    color: rgba(255,255,255,.98);
+    box-shadow: 0 12px 28px rgba(153,69,255,.16);
+    text-shadow: 0 1px 0 rgba(0,0,0,.28);
+  }
+
+  /* Mode behavior (mobile only) */
+  body[data-mmode="chart"] #tradesCard{ display:none !important; }
+  body[data-mmode="txns"] #chartWrap,
+  body[data-mmode="txns"] .controls{ display:none !important; }
+
+  body[data-mmode="txns"] #tradesCard{ display:block !important; }
+  body[data-mmode="chart"] #chartWrap,
+  body[data-mmode="chart"] .controls{ display:block !important; }
+  body[data-mmode="both"] #chartWrap,
+  body[data-mmode="both"] .controls{ display:block !important; }
+  body[data-mmode="both"] #tradesCard{ display:block !important; }
+
+  /* Ensure legacy mobile trades wrapper never conflicts */
+  #mobileTradesWrap{ display:none !important; }
+}
+
+
+
+/* ================================
+   MOBILE-ONLY LIVE TRADES ACCORDION (step10)
+   - Live Trades sits under the chart in normal page flow (NOT floating)
+   - Default collapsed; tap header to toggle
+   - When open: internal scroll with max-height clamp(240px–520px)
+   - Desktop unchanged
+   ================================ */
+@media (max-width: 760px){
+  /* Ensure the main trades card is visible on mobile (even if marked desktopOnly) */
+  #tradesCard.desktopOnly{ display: block !important; }
+
+  /* Force normal flow (override any old bottom-sheet rules) */
+  #tradesCard{
+    position: relative !important;
+    left: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    top: auto !important;
+    transform: none !important;
+
+    height: auto !important;
+    max-height: none !important;
+
+    margin: 10px 0 0 !important;
+    z-index: 2 !important;
+  }
+
+  #tradesCard .tableHd{
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 10px !important;
+
+    padding: 12px 12px !important;
+    border-bottom: 1px solid rgba(255,255,255,.10) !important;
+    cursor: pointer !important;
+    user-select: none !important;
+  }
+
+  #tradesCard .tableHd .ttl{
+    font-size: 14px !important;
+    letter-spacing: -.01em !important;
+  }
+  #tradesCard .tableHd .sub{
+    font-size: 12px !important;
+    opacity: .85 !important;
+  }
+
+  #tradesCard .sheetRight{
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+    flex: 0 0 auto !important;
+  }
+
+  #tradesCard .tradeChevron{
+    width: 40px !important;
+    height: 40px !important;
+    min-width: 40px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 999px !important;
+    background: rgba(255,255,255,.06) !important;
+    border: 1px solid rgba(255,255,255,.10) !important;
+    transition: transform .18s ease !important;
+  }
+  #tradesCard.open .tradeChevron{ transform: rotate(180deg) !important; }
+
+  /* Default collapsed */
+  #tradesCard:not(.open) .trades{ display: none !important; }
+
+  /* Open state: internal scrolling */
+  #tradesCard.open .trades{
+    display: block !important;
+    height: auto !important;
+    max-height: clamp(240px, 44vh, 520px) !important;
+    overflow: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Avoid extra gaps below the list */
+  #tradesCard .trades{ padding-bottom: 0 !important; }
+}
+
+
+
+/* ================================
+   MOBILE-ONLY TRADES COLUMN SIMPLIFY (step11)
+   - Keep: Age, Type, USD, Price (or Amount), Maker shortened, Link icon
+   - Hide nonessential columns on small screens (Amount)
+   - CSS/layout only; underlying data unchanged
+   ================================ */
+@media (max-width: 760px){
+  /* Show Price + Maker on mobile even if marked hideM */
+  .tradeHead .col.price.hideM, .tradeRow .col.price.hideM,
+  .tradeHead .col.maker.hideM, .tradeRow .col.maker.hideM{
+    display: block !important;
+  }
+
+  /* Hide Amount on mobile */
+  .tradeHead .col.amt, .tradeRow .col.amt{
+    display: none !important;
+  }
+
+  /* Dexscreener-like compact columns */
+  .tradeHead, .tradeRow{
+    grid-template-columns: 58px 64px 86px 1fr 1fr 34px !important;
+    gap: 8px !important;
+  }
+
+  /* Readability tuning */
+  .tradeRow{ font-size: 12px !important; }
+  .tradeHead{ font-size: 11px !important; }
+
+  /* Maker shortening */
+  .tradeRow .maker,
+  .tradeRow .col.maker{
+    min-width: 0 !important;
+  }
+  .tradeRow .maker .addr{
+    max-width: 10ch;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  /* In case maker is rendered as plain text inside the maker column */
+  .tradeRow .col.maker,
+  .tradeHead .col.maker{
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Keep the Type badge legible in tight rows */
+  .typeBadge{
+    padding: 6px 9px !important;
+    font-size: 11px !important;
+  }
+
+  /* Link icon remains thumb-friendly */
+  .iconBtn{
+    width: 34px !important;
+    height: 34px !important;
+  }
+}
+
+
+/* ================================
+   MOBILE-ONLY OVERLAY STACKING FIX (step13)
+   - Ensure overlays (search results, dropdowns, menus) always sit above chart canvas & panels
+   - Fix stacking contexts via isolation / z-index without changing desktop
+   ================================ */
+@media (max-width: 760px){
+  /* Create a predictable stacking root for the app */
+  body{
+    position: relative;
+    isolation: isolate; /* prevents weird stacking-context interactions */
+  }
+
+  /* Keep chart/canvas at the bottom of the local stacking order */
+  #chartCard, #chartWrap, #chart, #chart canvas{
+    position: relative;
+    z-index: 0 !important;
+  }
+
+  /* Panels/cards stay above the chart baseline but below overlays */
+  .panel, .grid, .card, .controls{
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Avoid accidental stacking contexts that trap z-index */
+  .panel, .card, .grid, #chartWrap, #chart{
+    transform: none !important;
+    filter: none !important;
+    will-change: auto !important;
+  }
+
+  /* Search overlay: always on top */
+  .searchScrim, #searchScrim{
+    position: fixed !important;
+    z-index: 2147483000 !important;
+  }
+  .results, #results{
+    z-index: 2147483001 !important;
+  }
+
+  /* Generic "overlay-ish" popups/tooltips (safe no-op if not present) */
+  [role="dialog"], [role="menu"], [role="listbox"], [role="tooltip"],
+  .dropdown, .dropdownMenu, .menu, .menuPanel, .popover, .tooltip, .contextMenu, .sheet{
+    z-index: 2147482990 !important;
+  }
+}
+
+
+/* ================================
+   MOBILE-ONLY SAFE-AREA + SCROLL POLISH (step14)
+   - Use env(safe-area-inset-top/bottom) for sticky bars + bottom spacing
+   - Prevent "rubber band" overlap on iOS
+   - Ensure overlays lock background scroll (works with existing searchModalOpen lock)
+   - Desktop unchanged
+   ================================ */
+@media (max-width: 760px){
+  :root{
+    --safeTop: env(safe-area-inset-top);
+    --safeBottom: env(safe-area-inset-bottom);
+  }
+
+  /* Give the whole page a safe bottom so nothing sits under the home indicator */
+  .wrap{
+    padding-bottom: calc(16px + var(--safeBottom)) !important;
+  }
+
+  /* Ensure fixed/sticky bars respect safe areas */
+  .topbar{
+    padding-top: calc(var(--safeTop) + 8px) !important;
+  }
+  .dexSearch{
+    top: calc(var(--safeTop) + var(--appbarH, 56px) + 8px) !important;
+  }
+
+  /* Any bottom UI (toast/sheets) should sit above the home indicator */
+  .toast{
+    bottom: calc(18px + var(--safeBottom)) !important;
+  }
+  /* Search results sheet already uses a bottom offset; enforce safe-area just in case */
+  #results.results, .results{
+    padding-bottom: max(10px, var(--safeBottom)) !important;
+  }
+
+  /* Reduce iOS rubber-band bounce that can cause fixed/sticky overlap */
+  html, body{
+    overscroll-behavior-x: none;
+    overscroll-behavior-y: none;
+  }
+
+  /* Nested scrollers stay smooth */
+  .trades, .results{
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* When an overlay is open, keep the background fully locked and non-bouncy */
+  body.searchModalOpen{
+    overscroll-behavior: none;
+    touch-action: none;
+  }
+}
+
+
+/* ================================
+   MOBILE-ONLY PERFORMANCE OPTIMIZATIONS (step15)
+   - Reduce expensive blurs and heavy shadows on large surfaces
+   - Keep core behavior unchanged
+   ================================ */
+@media (max-width: 760px){
+  /* Reduce blur cost on large overlays/panels */
+  .results,
+  #searchScrim.searchScrim,
+  .tickerWrap,
+  .card{
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  /* Soften big drop-shadows on full-width surfaces */
+  .results{
+    box-shadow: 0 18px 56px rgba(0,0,0,.74) !important;
+  }
+  .tickerWrap{
+    box-shadow: 0 8px 22px rgba(0,0,0,.22) !important;
+  }
+  .card{
+    box-shadow: none !important;
+  }
+}
+
+/* Respect reduced motion (disable marquee + other non-essential animations) */
+@media (prefers-reduced-motion: reduce){
+  .tickerTrack{ animation: none !important; }
+  .dexguardBtn::after{ animation: none !important; }
+  .tradeRow.enter{ animation: none !important; }
+}
 
 </style>
 </head>
@@ -1368,6 +2172,17 @@ display:none;
             </div>
           </div>
 
+
+          <!-- ================================
+               MOBILE MODE BAR (step09)
+               Dexscreener-like: Chart+Txns / Chart / Txns
+               ================================ -->
+          <div class="modeBar" id="modeBar" aria-label="View mode">
+            <button class="modeBtn active" type="button" data-mode="both">Chart+Txns</button>
+            <button class="modeBtn" type="button" data-mode="chart">Chart</button>
+            <button class="modeBtn" type="button" data-mode="txns">Txns</button>
+          </div>
+
           <div class="mobileTabs">
             <div class="tabBar">
               <button class="tab active" id="tabChart" type="button">Chart</button>
@@ -1384,6 +2199,7 @@ display:none;
             </div>
             <div class="sheetRight">
               <div class="sub" id="tradesStat">—</div>
+            <span class="tradeChevron" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false" style="display:block"><path fill="currentColor" d="M6.7 8.7a1 1 0 0 1 1.4 0L12 12.6l3.9-3.9a1 1 0 1 1 1.4 1.4l-4.6 4.6a1 1 0 0 1-1.4 0L6.7 10.1a1 1 0 0 1 0-1.4z"/></svg></span>
             </div>
           </div>
 
@@ -1815,12 +2631,26 @@ let seenMakers = new Set();
     });
     chart.priceScale('').applyOptions({ scaleMargins:{ top:0.84, bottom:0 } });
 
-    const ro = new ResizeObserver(()=>{
-      chart.applyOptions({ width: chartEl.clientWidth, height: chartEl.clientHeight });
-    });
-    ro.observe(chartEl);
+    let _chartResizeT = 0;
+    const debounceChartResize = ()=>{
+      clearTimeout(_chartResizeT);
+      _chartResizeT = setTimeout(()=>{
+        try{
+          if(chart && chartEl){
+            const w = chartEl.clientWidth || chartEl.getBoundingClientRect().width;
+            const h = chartEl.clientHeight || chartEl.getBoundingClientRect().height;
+            if(w && h){
+              chart.applyOptions({ width: Math.floor(w), height: Math.floor(h) });
+              // Keep view stable; fitContent only if needed elsewhere
+            }
+          }
+        }catch(_){}
+      }, 120);
+    };
 
-    /* Fit button removed (auto-fit handled) */
+    const ro = new ResizeObserver(debounceChartResize);
+    ro.observe(chartEl);
+/* Fit button removed (auto-fit handled) */
 
     // -------------------- UI boot
     function renderNetPills(){
@@ -1887,6 +2717,102 @@ function setMobileTab(which){
 
 
 
+    // ================================
+    // Mobile mode bar (step09): Chart+Txns / Chart / Txns
+    // - Minimal JS, wires to existing elements (chartCard/tradesCard)
+    // ================================
+    const modeBar = document.getElementById('modeBar');
+    const modeBtns = modeBar ? Array.from(modeBar.querySelectorAll('.modeBtn')) : [];
+    const mqMode = window.matchMedia('(max-width: 760px)');
+
+    function applyMobileMode(mode){
+      if(!mqMode.matches) return;
+      document.body.dataset.mmode = mode;
+
+      // Active state
+      modeBtns.forEach(b=>b.classList.toggle('active', b.dataset.mode===mode));
+
+      // Always keep legacy mobile wrapper hidden (we use main trades card)
+      if(mobileTradesWrap) mobileTradesWrap.style.display = 'none';
+
+      // Show/hide using existing elements (no refactor)
+      if(chartCard) chartCard.style.display = (mode==='txns') ? 'none' : 'block';
+      if(tradesCard) tradesCard.style.display = (mode==='chart') ? 'none' : 'block';
+
+      // Ensure chart reflows correctly when shown again
+      if(mode!=='txns'){
+        try{
+          requestAnimationFrame(()=>{
+            try{ chart.resize(chartEl.clientWidth, chartEl.clientHeight); }catch(_e){}
+            try{ chart.timeScale().fitContent(); }catch(_e){}
+          });
+        }catch(_e){}
+      }
+    }
+
+    if(modeBar && modeBtns.length){
+      modeBtns.forEach(btn=>{
+        btn.addEventListener('click', ()=>{
+          applyMobileMode(btn.dataset.mode || 'both');
+        }, {passive:true});
+      });
+      // Default = Chart+Txns
+      applyMobileMode(document.body.dataset.mmode || 'both');
+    }
+
+    // Keep mode consistent across rotations/resizes; restore desktop defaults when leaving mobile
+    window.addEventListener('resize', ()=>{
+      if(mqMode.matches){
+        applyMobileMode(document.body.dataset.mmode || 'both');
+      }else{
+        // Remove mobile overrides on desktop
+        if(chartCard) chartCard.style.display = '';
+        if(tradesCard) tradesCard.style.display = '';
+        delete document.body.dataset.mmode;
+      }
+    });
+
+
+    // -------------------- Mobile-only: Live Trades accordion (step10)
+    const mqTradesAcc = (window.matchMedia ? window.matchMedia('(max-width: 760px)') : {matches:false, addEventListener:()=>{}, removeEventListener:()=>{}});
+function initTradesAccordion(){
+      if(!tradesCard) return;
+      const hd = tradesCard.querySelector('.tableHd');
+      if(!hd) return;
+
+      const setOpen = (open)=>{
+        tradesCard.classList.toggle('open', !!open);
+        hd.setAttribute('aria-expanded', open ? 'true' : 'false');
+      };
+
+      if(mqTradesAcc.matches){
+        // Default collapsed on mobile
+        setOpen(false);
+
+        if(!hd.dataset.accBound){
+          hd.dataset.accBound = '1';
+          hd.addEventListener('click', ()=>{
+            if(!mqTradesAcc.matches) return;
+            setOpen(!tradesCard.classList.contains('open'));
+          }, {passive:true});
+          hd.addEventListener('keydown', (e)=>{
+            if(!mqTradesAcc.matches) return;
+            if(e.key === 'Enter' || e.key === ' '){
+              e.preventDefault();
+              setOpen(!tradesCard.classList.contains('open'));
+            }
+          });
+        }
+      }else{
+        // Desktop: keep normal behavior (no forced collapse)
+        tradesCard.classList.remove('open');
+        hd.setAttribute('aria-expanded', 'true');
+      }
+    }
+    initTradesAccordion();
+    window.addEventListener('resize', initTradesAccordion);
+
+
     // Top-left Dexguard button -> jump to trending bar
     if(topDexguardBtn){
       topDexguardBtn.onclick = ()=>{
@@ -1899,18 +2825,50 @@ function setMobileTab(which){
     let searchTimer=null;
     let searchReq=0;
 
+
+
+// Mobile-only: lock page scroll when search modal is open (Dexscreener-style)
+let __searchLockY = 0;
+function setSearchModalOpen(open){
+  try{
+    if(!window.matchMedia || !window.matchMedia('(max-width: 760px)').matches) return;
+    if(open){
+      __searchLockY = window.scrollY || document.documentElement.scrollTop || 0;
+      document.body.classList.add('searchModalOpen');
+      // iOS-friendly scroll lock
+      document.body.style.position = 'fixed';
+      document.body.style.top = `-${__searchLockY}px`;
+      document.body.style.left = '0';
+      document.body.style.right = '0';
+      document.body.style.width = '100%';
+    }else{
+      if(document.body.classList.contains('searchModalOpen')){
+        document.body.classList.remove('searchModalOpen');
+        document.body.style.position = '';
+        document.body.style.top = '';
+        document.body.style.left = '';
+        document.body.style.right = '';
+        document.body.style.width = '';
+        window.scrollTo(0, __searchLockY || 0);
+      }
+    }
+  }catch(_){}
+}
+
     function showResults(html){
       results.innerHTML = html;
       const open = !!html;
       results.style.display = open ? 'block' : 'none';
       if(searchScrim) searchScrim.style.display = open ? 'block' : 'none';
       if(dexSearch) dexSearch.classList.toggle('open', open);
+          setSearchModalOpen(open);
     }
 
     function hideResults(){
       results.style.display = 'none';
       if(searchScrim) searchScrim.style.display = 'none';
       if(dexSearch) dexSearch.classList.remove('open');
+          setSearchModalOpen(false);
     }
 
     if(searchScrim){
@@ -2197,11 +3155,11 @@ function setMobileTab(which){
 
     function applyStats(st){
       const pills=[];
-      if(Number.isFinite(st.price)) pills.push(`<span class="statPill">Price $${esc(formatPrice(st.price))}</span>`);
-      if(Number.isFinite(st.liq)) pills.push(`<span class="statPill">Liq $${esc(formatCompact(st.liq))}</span>`);
-      if(Number.isFinite(st.mcap)) pills.push(`<span class="statPill">MCap $${esc(formatCompact(st.mcap))}</span>`);
-      if(Number.isFinite(st.h24)) pills.push(`<span class="statPill ${st.h24>0?'up':(st.h24<0?'down':'')}">24h ${esc((st.h24>0?'+':'')+st.h24.toFixed(2)+'%')}</span>`);
-      statsEl.innerHTML = pills.join('') || `<span class="statPill">—</span>`;
+      if(Number.isFinite(st.price)) pills.push(`<span class="statPill"><span class="k">Price</span><span class="v">$${esc(formatPrice(st.price))}</span></span>`);
+      if(Number.isFinite(st.liq)) pills.push(`<span class="statPill"><span class="k">Liq</span><span class="v">$${esc(formatCompact(st.liq))}</span></span>`);
+      if(Number.isFinite(st.mcap)) pills.push(`<span class="statPill"><span class="k">MCap</span><span class="v">${esc(formatCompact(st.mcap))}</span></span>`);
+      if(Number.isFinite(st.h24)) pills.push(`<span class="statPill ${st.h24>0?'up':(st.h24<0?'down':'')}"><span class="k">24h</span><span class="v">${esc((st.h24>0?'+':'')+st.h24.toFixed(2)+'%')}</span></span>`);
+      statsEl.innerHTML = pills.join('') || `<span class="statPill"><span class="k">—</span><span class="v">—</span></span>`;
     }
 
     function applyPool(p){
@@ -3400,9 +4358,9 @@ if(searchScrim){
       const cur = parseFloat(getComputedStyle(splitRoot).getPropertyValue('--split-bottom')) || 260;
       const next = clamp(cur, minBottom, maxBottom);
       splitRoot.style.setProperty('--split-bottom', next + 'px');
-      requestAnimationFrame(()=>{ try{ chart.applyOptions({ width: chartEl.clientWidth, height: chartEl.clientHeight }); }catch(_){ } });
-    };
-    window.addEventListener('resize', recompute, {passive:true});
+      debounceChartResize();
+      };
+    window.addEventListener('resize', ()=>{ debounceChartResize(); recompute(); }, {passive:true});
     requestAnimationFrame(recompute);
 
     // Tabs behavior
@@ -3451,7 +4409,7 @@ if(searchScrim){
       const maxBottom = Math.max(minBottom, total - 240);
       const next = clamp(startBottom - dy, minBottom, maxBottom);
       splitRoot.style.setProperty('--split-bottom', next + 'px');
-      requestAnimationFrame(()=>{ try{ chart.applyOptions({ width: chartEl.clientWidth, height: chartEl.clientHeight }); }catch(_){ } });
+      debounceChartResize();
       e.preventDefault?.();
     };
     const onUp = ()=>{
