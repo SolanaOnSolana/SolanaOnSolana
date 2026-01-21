@@ -2511,7 +2511,15 @@ display:none;
       base:['0x833589fCD6eDb6E08f4c7C32D4f71b54bda02913']
     };
 
-    // Chart timeframes -> Gecko candle granularity
+    
+    // Prefer native quote pools first (wSOL / WETH / WBNB)
+    const NATIVE_QUOTES = {
+      solana: ['So11111111111111111111111111111111111111112'],
+      eth:   ['0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2'],  // WETH
+      bsc:   ['0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c'],  // WBNB
+      base:  ['0x4200000000000000000000000000000000000006']   // WETH (Base)
+    };
+// Chart timeframes -> Gecko candle granularity
     const TF = [
       {k:'1m',  gecko:'minute',   agg:60,    live:true},
       {k:'5m',  gecko:'minute',   agg:300},
@@ -3335,26 +3343,39 @@ function setSearchModalOpen(open){
 
     function chooseBestPool(pools, tokenAddr){
       const tok = lc(tokenAddr);
-      const preferSet = new Set((STABLE_QUOTES[activeNet]||[]).map(lc));
+      const nativeSet = new Set((NATIVE_QUOTES[activeNet]||[]).map(lc));
+      const stableSet = new Set((STABLE_QUOTES[activeNet]||[]).map(lc));
 
-      // rank pools
       const ranked = (pools||[]).map(p=>{
-        const a = p?.attributes || {};
         const base = lc(tokenAddrFromPool(p,'base'));
         const quote = lc(tokenAddrFromPool(p,'quote'));
         const liq = poolLiqUsd(p);
         const created = poolCreatedMs(p);
         const isBase = base===tok;
         const isQuote = quote===tok;
-        const stableQuote = isBase && preferSet.has(quote);
-        const score =
-          (stableQuote? 9e15 : 0) +
-          (isBase? 7e15 : 0) +
-          (isQuote? 4e15 : 0) +
-          (Number.isFinite(liq)? liq*1e6 : 0) +
-          (Number.isFinite(created)? created : 0);
-        return {p, score, isBase, isQuote, liq};
-      }).sort((a,b)=>b.score-a.score);
+
+        // Only consider "quote preference" when the token is the base side, so charts/stats align with TOKEN/QUOTE
+        const nativeQuote = isBase && nativeSet.has(quote);
+        const stableQuote = isBase && stableSet.has(quote);
+
+        // Priority: 2=native, 1=stable, 0=other
+        const tier = nativeQuote ? 2 : (stableQuote ? 1 : 0);
+
+        return {p, tier, liq: (liq||0), isBase, isQuote, created: (created||0)};
+      }).filter(x=>!!x.p);
+
+      ranked.sort((A,B)=>{
+        // 1) native quote
+        if(B.tier !== A.tier) return B.tier - A.tier;
+        // 2) stable quote (already in tier)
+        // 3) highest liquidity
+        if((B.liq||0) !== (A.liq||0)) return (B.liq||0) - (A.liq||0);
+        // Tiebreakers (keep deterministic)
+        if(!!B.isBase !== !!A.isBase) return (B.isBase?1:0) - (A.isBase?1:0);
+        if(!!B.isQuote !== !!A.isQuote) return (B.isQuote?1:0) - (A.isQuote?1:0);
+        if(A.created && B.created && A.created !== B.created) return A.created - B.created; // older first
+        return 0;
+      });
 
       return ranked[0]?.p || null;
     }
@@ -4506,12 +4527,78 @@ function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
           if(!b) return;
           const net = normalizeChain(b.dataset.net || 'solana');
           if(net===activeNet) return;
+
+          // Cancel live polling (chart/trades) immediately to prevent stale updates
+          try{ if(typeof stopLiveLoops==='function') stopLiveLoops(); }catch(_){ }
+          try{ poolAddr=''; poolId=''; }catch(_){ }
+
           activeNet = net;
           applyNetTheme();
           syncTrendToggle();
           renderNetPills();
-          if(!addr || (activeNet==='solana' ? !isSolAddr(addr) : !isEvmAddr(addr))) addr = DEFAULT_MARKET_TOKEN[activeNet];
-          navigate(activeNet, addr);
+
+          // Update URL with new chain; token will be set once we open #1 trending
+          try{ addr=''; updateUrl(); }catch(_){ }
+
+          // Chain switch auto-open: #1 trending for selected chain (cache -> fetch -> fallback)
+          try{
+            const CS = (window.__DG_CHAIN_SWITCH__ || (window.__DG_CHAIN_SWITCH__ = {}));
+            CS.net = activeNet;
+            CS.ts = Date.now();
+            CS.done = false;
+
+            const tryOpenTop = ()=>{
+              try{
+                const c = getCachedTrendingBundle(activeNet);
+                if(c){
+                  const im = trendBuildIncMap(c.included);
+                  const a0 = extractTrendingTokenAddr((c.data||[])[0], im);
+                  if(a0){
+                    CS.done = true;
+                    addr = a0;
+                    try{ updateUrl(); }catch(_){}
+                    openToken(a0, {skipInput:true, silent:true, boot:true});
+                    return true;
+                  }
+                }
+              }catch(_){}
+              return false;
+            };
+
+            // Kick off trending refresh for the selected chain (uses cache fallback internally)
+            try{ startTrending(); }catch(_){ }
+
+            // Immediate open from cache if possible
+            if(tryOpenTop()) return;
+
+            // Retry after short delay to catch freshly fetched trending
+            setTimeout(()=>{
+              try{
+                if(CS.done || CS.net!==activeNet) return;
+                if(tryOpenTop()) return;
+              }catch(_){}
+            }, 1200);
+
+            // Final fallback: last-success token for chain, else existing default
+            setTimeout(()=>{
+              try{
+                if(CS.done || CS.net!==activeNet) return;
+                const last = (typeof getLastToken==='function') ? getLastToken(activeNet) : null;
+                if(last){
+                  CS.done = true;
+                  addr = last;
+                  try{ updateUrl(); }catch(_){}
+                  openToken(last, {skipInput:true, silent:true, boot:true});
+                  return;
+                }
+                const def = DEFAULT_MARKET_TOKEN[activeNet];
+                CS.done = true;
+                addr = def;
+                try{ updateUrl(); }catch(_){}
+                openToken(def, {skipInput:true, silent:true, boot:true});
+              }catch(_){}
+            }, 2600);
+          }catch(_){}
         };
       }
     }
@@ -5549,3 +5636,84 @@ if(searchScrim){
 
 </body>
 </html>
+
+
+/* ================================
+   MOBILE-ONLY TRENDING TICKER COMPACT + SMOOTH (step12)
+   - Reduce height/padding, smaller cards, better readability
+   - Smooth marquee (GPU-friendly), less heavy shadows (less jank)
+   - Keeps existing click behavior
+   - Desktop unchanged
+   ================================ */
+@media (max-width: 760px){
+  /* Compact container spacing */
+  .topBarInner{ gap: 8px !important; padding: 10px 10px 10px !important; }
+
+  /* Ticker wrapper: slimmer + lighter paint cost */
+  .tickerWrap{
+    padding: 6px 8px !important;
+    border-radius: 16px !important;
+    border: 1px solid rgba(255,255,255,.10) !important;
+    background: rgba(255,255,255,.045) !important;
+    box-shadow: 0 8px 22px rgba(0,0,0,.18) !important;
+  }
+  .tickerWrap:before,
+  .tickerWrap:after{
+    width: 28px !important;
+  }
+
+  /* Smooth animation: longer duration + GPU-friendly transforms */
+  .tickerTrack{
+    gap: 8px !important;
+    animation-duration: 28s !important;
+    transform: translate3d(0,0,0);
+    will-change: transform;
+    backface-visibility: hidden;
+    contain: content;
+  }
+  .tickerWrap:hover .tickerTrack{ animation-play-state: paused; }
+
+  /* Smaller ticker items (Dexscreener vibe) */
+  .tickerItem{
+    padding: 6px 8px !important;
+    gap: 8px !important;
+    font-size: 12px !important;
+    border-radius: 999px !important;
+    background: rgba(255,255,255,.05) !important;
+    border: 1px solid rgba(255,255,255,.10) !important;
+    box-shadow: none !important; /* reduce repaint/jank */
+  }
+  .tickerItem.top1{
+    background: rgba(255,215,0,.08) !important;
+    border-color: rgba(255,215,0,.26) !important;
+    box-shadow: none !important;
+  }
+
+  /* Logo smaller + crisp */
+  .tickerLogoWrap{
+    width: 22px !important;
+    height: 22px !important;
+    flex: 0 0 22px !important;
+    border-radius: 6px !important;
+    box-shadow: none !important;
+  }
+  .tickerLogoFallback{ font-size: 11px !important; }
+
+  /* Rank + % pills tighter */
+  .tickerItem .rank{
+    min-width: 24px !important;
+    height: 18px !important;
+    padding: 0 6px !important;
+    font-size: 11px !important;
+  }
+  .tickerPct{
+    height: 18px !important;
+    padding: 0 6px !important;
+    font-size: 11px !important;
+  }
+
+  /* Prefer reduced motion */
+  @media (prefers-reduced-motion: reduce){
+    .tickerTrack{ animation: none !important; }
+  }
+}
