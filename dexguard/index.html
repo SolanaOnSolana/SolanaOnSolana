@@ -3850,7 +3850,7 @@ function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
       params.set('limit', '1000');
       params.set('currency','usd');
       if(before) params.set('before_timestamp', String(before));
-      return `${GECKO}/networks/${encodeURIComponent(geckoNet())}/pools/${encodeURIComponent(poolAddr)}/ohlcv/${encodeURIComponent(gran)}?`+params.toString();
+      return `${GECKO}/networks/${encodeURIComponent(geckoNet())}/pools/${encodeURIComponent(geckoPoolApiId()||poolAddr)}/ohlcv/${encodeURIComponent(gran)}?`+params.toString();
     }
 
     function mapGeckoOhlcv(j){
@@ -4366,14 +4366,23 @@ function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
           tries.push(base2 + `?limit=${encodeURIComponent(limit)}`);
         }
       }catch(_){}
-
+let lastErr = null;
       for(const url of tries){
         try{
           const j = await fetchJson(url, {timeout:14000, retries:1, signal: fetchOpts.signal});
-          if(Array.isArray(j?.data)) return j.data;
-        }catch(e){ /* ignore */ }
+          // GeckoTerminal: usually { data: [...] }, but some proxies wrap JSON or return raw arrays
+          const arr =
+            (Array.isArray(j?.data) ? j.data :
+            (Array.isArray(j?.data?.data) ? j.data.data :
+            (Array.isArray(j) ? j : null)));
+          if(arr) return arr;
+        }catch(e){
+          lastErr = e;
+        }
       }
 
+      // If every attempt failed, surface the error so the poller can show "retrying" instead of "no trades"
+      if(lastErr) throw lastErr;
       return [];
     }
     // ===== DexGuard Micro 11: Trades UI fallback states (empty vs error) =====
@@ -5995,6 +6004,18 @@ if(searchScrim){
       }catch(_){}
     }
 
+
+    function dgIsNoiseError(err){
+      try{
+        if(!err) return false;
+        const msg = String((err && (err.message||err.name)) || err).toLowerCase();
+        // Ignore expected network/abort noise that shouldn't be treated as a "runtime error"
+        if(msg.includes('aborterror') || msg.includes('aborted') || msg.includes('the user aborted') ) return true;
+        if(msg.includes('failed to fetch') || msg.includes('networkerror') || msg.includes('cors')) return true;
+        if(msg.includes('timeout') || msg.includes('timed out')) return true;
+        return false;
+      }catch(_){ return false; }
+    }
     // window.onerror (sync errors)
     var prevOnError = window.onerror;
     window.onerror = function(message, source, lineno, colno, error){
@@ -6007,8 +6028,8 @@ if(searchScrim){
           error: error,
           stack: error && error.stack ? String(error.stack) : undefined
         });
-        dgShowRuntimeBanner(error || message);
-      }catch(_){}
+        if(!dgIsNoiseError(error || message)) dgShowRuntimeBanner(error || message);
+}catch(_){}
       // Never block default handling
       if(typeof prevOnError === "function"){
         try{ return prevOnError.apply(this, arguments); }catch(_){}
@@ -6044,8 +6065,8 @@ if(searchScrim){
           reasonType: (r && r.constructor && r.constructor.name) ? r.constructor.name : typeof r,
           stack: r && r.stack ? String(r.stack) : undefined
         });
-        dgShowRuntimeBanner(r);
-      }catch(_){}
+        if(!dgIsNoiseError(r)) dgShowRuntimeBanner(r);
+}catch(_){}
       if(typeof prevOnRej === "function"){
         try{ return prevOnRej.apply(this, arguments); }catch(_){}
       }
@@ -6317,3 +6338,84 @@ if(searchScrim){
 
 </body>
 </html>
+
+
+/* ================================
+   MOBILE-ONLY TRENDING TICKER COMPACT + SMOOTH (step12)
+   - Reduce height/padding, smaller cards, better readability
+   - Smooth marquee (GPU-friendly), less heavy shadows (less jank)
+   - Keeps existing click behavior
+   - Desktop unchanged
+   ================================ */
+@media (max-width: 760px){
+  /* Compact container spacing */
+  .topBarInner{ gap: 8px !important; padding: 10px 10px 10px !important; }
+
+  /* Ticker wrapper: slimmer + lighter paint cost */
+  .tickerWrap{
+    padding: 6px 8px !important;
+    border-radius: 16px !important;
+    border: 1px solid rgba(255,255,255,.10) !important;
+    background: rgba(255,255,255,.045) !important;
+    box-shadow: 0 8px 22px rgba(0,0,0,.18) !important;
+  }
+  .tickerWrap:before,
+  .tickerWrap:after{
+    width: 28px !important;
+  }
+
+  /* Smooth animation: longer duration + GPU-friendly transforms */
+  .tickerTrack{
+    gap: 8px !important;
+    animation-duration: 28s !important;
+    transform: translate3d(0,0,0);
+    will-change: transform;
+    backface-visibility: hidden;
+    contain: content;
+  }
+  .tickerWrap:hover .tickerTrack{ animation-play-state: paused; }
+
+  /* Smaller ticker items (Dexscreener vibe) */
+  .tickerItem{
+    padding: 6px 8px !important;
+    gap: 8px !important;
+    font-size: 12px !important;
+    border-radius: 999px !important;
+    background: rgba(255,255,255,.05) !important;
+    border: 1px solid rgba(255,255,255,.10) !important;
+    box-shadow: none !important; /* reduce repaint/jank */
+  }
+  .tickerItem.top1{
+    background: rgba(255,215,0,.08) !important;
+    border-color: rgba(255,215,0,.26) !important;
+    box-shadow: none !important;
+  }
+
+  /* Logo smaller + crisp */
+  .tickerLogoWrap{
+    width: 22px !important;
+    height: 22px !important;
+    flex: 0 0 22px !important;
+    border-radius: 6px !important;
+    box-shadow: none !important;
+  }
+  .tickerLogoFallback{ font-size: 11px !important; }
+
+  /* Rank + % pills tighter */
+  .tickerItem .rank{
+    min-width: 24px !important;
+    height: 18px !important;
+    padding: 0 6px !important;
+    font-size: 11px !important;
+  }
+  .tickerPct{
+    height: 18px !important;
+    padding: 0 6px !important;
+    font-size: 11px !important;
+  }
+
+  /* Prefer reduced motion */
+  @media (prefers-reduced-motion: reduce){
+    .tickerTrack{ animation: none !important; }
+  }
+}
