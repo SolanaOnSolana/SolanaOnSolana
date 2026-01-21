@@ -1482,7 +1482,7 @@ display:none;
  <script src="https://unpkg.com/lightweight-charts@4.2.1/dist/lightweight-charts.standalone.production.js"></script>
  <script>
 
- (function(){
+ (async function(){
   // =========================================================
   // $SOS DEX Terminal — from scratch
   // Data sources:
@@ -1893,7 +1893,31 @@ display:none;
    return '#';
   }
 
-  // -------------------- State
+  
+  // -------------------- Ensure Lightweight-Charts is available (fallback CDN)
+  async function ensureChartsLib(){
+   if(window.LightweightCharts) return true;
+   const urls = [
+    'https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.1/dist/lightweight-charts.standalone.production.js',
+    'https://unpkg.com/lightweight-charts@4.2.1/dist/lightweight-charts.standalone.production.js'
+   ];
+   for(const u of urls){
+    try{
+     await new Promise((resolve, reject)=>{
+      const s = document.createElement('script');
+      s.src = u;
+      s.async = true;
+      s.onload = resolve;
+      s.onerror = reject;
+      document.head.appendChild(s);
+     });
+     if(window.LightweightCharts) return true;
+    }catch(_){}
+   }
+   return !!window.LightweightCharts;
+  }
+
+// -------------------- State
   const qs = new URLSearchParams(location.search);
   let activeNet = normalizeChain(qs.get('chain') || 'solana');
   let addr = String(qs.get('addr')||'').trim();
@@ -1918,8 +1942,16 @@ let seenMakers = new Set();
   let ageTimer = null;
 
   // -------------------- Chart
+  await ensureChartsLib();
+
   const chartEl = $('chart');
-  const chart = LightweightCharts.createChart(chartEl, {
+  let chart = null;
+  let candleSeries = null;
+  let volumeSeries = null;
+  let ro = null;
+  try{
+   if(!window.LightweightCharts) throw new Error('LightweightCharts not loaded');
+   chart = LightweightCharts.createChart(chartEl, {
    width: chartEl.clientWidth || 800,
    height: chartEl.clientHeight || 520,
    layout: { background: { type:'solid', color:'rgba(0,0,0,0)' }, textColor:'rgba(255,255,255,.86)' },
@@ -1931,7 +1963,7 @@ let seenMakers = new Set();
    handleScale: { axisPressedMouseMove:true, mouseWheel:true, pinch:true },
   });
 
-  const candleSeries = chart.addCandlestickSeries({
+  candleSeries = chart.addCandlestickSeries({
    upColor: 'rgba(20,241,149,.95)',
    downColor:'rgba(255,77,109,.95)',
    wickUpColor:'rgba(20,241,149,.95)',
@@ -1954,7 +1986,7 @@ let seenMakers = new Set();
    priceFormat:{ type:'price', precision: 10, minMove: 1e-10 }
   });
 
-  const volumeSeries = chart.addHistogramSeries({
+  volumeSeries = chart.addHistogramSeries({
    priceFormat: { type:'volume' },
    priceScaleId: '',
    lastValueVisible:false,
@@ -1962,10 +1994,16 @@ let seenMakers = new Set();
   });
   chart.priceScale('').applyOptions({ scaleMargins:{ top:0.84, bottom:0 } });
 
-  const ro = new ResizeObserver(()=>{
+  ro = new ResizeObserver(()=>{
    chart.applyOptions({ width: chartEl.clientWidth, height: chartEl.clientHeight });
   });
   ro.observe(chartEl);
+
+  }catch(e){
+   console.error('Chart init failed:', e);
+   try{ ro && ro.disconnect && ro.disconnect(); }catch(_){ }
+   chart = null; candleSeries = null; volumeSeries = null; ro = null;
+  }
 
   /* Fit button removed (auto-fit handled) */
 
@@ -2483,6 +2521,8 @@ function setMobileTab(which){
   function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
 
   function syncBarSpacing(){
+   if(!chart) return;
+
    try{
     const r = chart.timeScale().getVisibleLogicalRange();
     const bars = r ? Math.max(10, Math.round(r.to - r.from)) : desiredViewportBars();
@@ -2506,6 +2546,8 @@ function setMobileTab(which){
   }
 
   function attachPaging(){
+   if(!chart) return;
+
    if(_pagingAttached) return;
    _pagingAttached = true;
 
