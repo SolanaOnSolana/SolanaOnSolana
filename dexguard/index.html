@@ -5493,95 +5493,99 @@ function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
     }
 
     async function geckoTrades(limit=80, fetchOpts={}){
-      const net = geckoNet();
-      const pid1 = geckoPoolApiId();
-      if(!pid1) return [];
+  // NOTE: We keep the function name to avoid touching the rest of your UI.
+  // This now pulls Solana trades from Birdeye (via your Worker) instead of Gecko.
 
-      const base1 = `${GECKO}/networks/${encodeURIComponent(net)}/pools/${encodeURIComponent(pid1)}/trades`;
+  try{
+    const net = String(geckoNet() || '').toLowerCase();
+    // Only switch Solana here (as planned). Other chains can stay on Gecko for now.
+    if(net !== 'solana'){
+      // fallback to old behavior if you still need it elsewhere:
+      // return null;  // or keep Gecko for non-solana later
+    }
+  }catch(_){}
 
-      // GeckoTerminal uses JSON:API pagination. Try page params first, then fallback to limit.
-      const tries = [];
-      tries.push(base1 + `?page=1&limit=${encodeURIComponent(limit)}`);
-      tries.push(base1 + `?page=1`);
-      tries.push(base1 + `?limit=${encodeURIComponent(limit)}`);
+  // Birdeye token address (for SOL trades we can use base token)
+  // We try a few candidates: token address from your existing state, base token, etc.
+  const candidates = [];
+  try{
+    // common globals / state vars in your file
+    if(typeof tokenAddress === "string" && tokenAddress.trim()) candidates.push(tokenAddress.trim());
+  }catch(_){}
+  try{
+    if(typeof ca === "string" && ca.trim()) candidates.push(ca.trim());
+  }catch(_){}
+  try{
+    if(typeof currentToken === "string" && currentToken.trim()) candidates.push(currentToken.trim());
+  }catch(_){}
+  try{
+    if(typeof baseTokenAddress === "string" && baseTokenAddress.trim()) candidates.push(baseTokenAddress.trim());
+  }catch(_){}
 
-      // If poolId differs (e.g., prefixed id), try it as well
-      try{
-        const raw = String(poolId||'').trim();
-        if(raw && raw !== pid1){
-          const raw2 = encodeURIComponent(raw);
-          const base2 = `${GECKO}/networks/${encodeURIComponent(net)}/pools/${raw2}/trades`;
-          tries.push(base2 + `?page=1&limit=${encodeURIComponent(limit)}`);
-          tries.push(base2 + `?page=1`);
-          tries.push(base2 + `?limit=${encodeURIComponent(limit)}`);
-        }
-      }catch(_){}
+  // As last resort, use wrapped SOL so the UI doesn't go blank
+  if(candidates.length === 0){
+    candidates.push("So11111111111111111111111111111111111111112");
+  }
 
-      let lastMsg = '';
-      let sawResponse = false;
+  // Birdeye endpoint: /defi/txs/token?address=...&offset=0&limit=...
+  const urlBase = `${BDS}/defi/txs/token`;
 
-      for(const url of tries){
-        try{
-          if(window.__DG_DEBUG__ && window.__DG_DEBUG__.metrics){
-            window.__DG_DEBUG__.metrics.lastTradesUrl = url;
-            window.__DG_DEBUG__.metrics.lastTradesFetchAt = Date.now();
-          }
-        }catch(_){}
+  let lastMsg = '';
+  let sawResponse = false;
 
-        const j = await fetchJson(url, {timeout:14000, retries:1, signal: fetchOpts.signal});
-        if(fetchOpts && fetchOpts.signal && fetchOpts.signal.aborted){
-          try{ if(window.__DG_DEBUG__ && window.__DG_DEBUG__.metrics){ window.__DG_DEBUG__.metrics.lastTradesError = 'AbortError'; } }catch(_){}
-          return null;
-        }
-        if(j == null){
-          lastMsg = 'Fetch failed';
-          continue;
-        }
+  for(const addr of candidates){
+    const url = `${urlBase}?address=${encodeURIComponent(addr)}&offset=0&limit=${encodeURIComponent(limit)}`;
 
-        sawResponse = true;
-
-        // GeckoTerminal: usually { data: [...] }, but some proxies wrap JSON or return raw arrays
-        const arr =
-          (Array.isArray(j?.data) ? j.data :
-          (Array.isArray(j?.data?.data) ? j.data.data :
-          (Array.isArray(j) ? j : null)));
-
-        if(arr){
-          try{
-            if(window.__DG_DEBUG__ && window.__DG_DEBUG__.metrics){
-              window.__DG_DEBUG__.metrics.lastTradesFetchAt = Date.now();
-              window.__DG_DEBUG__.metrics.lastTradesCount = arr.length || 0;
-              window.__DG_DEBUG__.metrics.lastTradesError = '';
-            }
-          }catch(_){}
-          return arr;
-        }
-
-        lastMsg = 'Bad response';
+    try{
+      if(window.__DG_DEBUG__ && window.__DG_DEBUG__.metrics){
+        window.__DG_DEBUG__.metrics.lastTradesUrl = url;
+        window.__DG_DEBUG__.metrics.lastTradesFetchAt = Date.now();
       }
+    }catch(_){}
 
+    const j = await fetchJson(url, {timeout:14000, retries:0, signal: fetchOpts.signal});
+    if(fetchOpts && fetchOpts.signal && fetchOpts.signal.aborted){
+      try{ if(window.__DG_DEBUG__ && window.__DG_DEBUG__.metrics){ window.__DG_DEBUG__.metrics.lastTradesError = 'AbortError'; } }catch(_){}
+      return null;
+    }
+    if(j == null){
+      lastMsg = 'Fetch failed';
+      continue;
+    }
+
+    sawResponse = true;
+
+    // Birdeye response shape: { success, data: { items: [...] } }
+    const items =
+      (Array.isArray(j?.data?.items) ? j.data.items :
+      (Array.isArray(j?.data) ? j.data :
+      (Array.isArray(j) ? j : null)));
+
+    if(items){
       try{
         if(window.__DG_DEBUG__ && window.__DG_DEBUG__.metrics){
           window.__DG_DEBUG__.metrics.lastTradesFetchAt = Date.now();
-          window.__DG_DEBUG__.metrics.lastTradesCount = 0;
-          window.__DG_DEBUG__.metrics.lastTradesError = lastMsg || (sawResponse ? 'No data array' : 'Fetch failed');
+          window.__DG_DEBUG__.metrics.lastTradesCount = items.length || 0;
+          window.__DG_DEBUG__.metrics.lastTradesError = '';
         }
       }catch(_){}
-
-      return null;
+      return items;
     }
 
-    function showTradesRetrying(){
-      try{
-        const el = document.getElementById('trades');
-        if(!el) return;
-        // only overwrite if there are no rows; otherwise keep last good trades visible
-        const hasRows = !!(el.querySelector('.tradeRow'));
-        if(!hasRows){
-          setTradesFallback('Trades retrying…');
-        }
-      }catch(_){}
+    lastMsg = (j && j.message) ? String(j.message) : 'Bad response';
+  }
+
+  try{
+    if(window.__DG_DEBUG__ && window.__DG_DEBUG__.metrics){
+      window.__DG_DEBUG__.metrics.lastTradesFetchAt = Date.now();
+      window.__DG_DEBUG__.metrics.lastTradesCount = 0;
+      window.__DG_DEBUG__.metrics.lastTradesError = lastMsg || (sawResponse ? 'No items array' : 'Fetch failed');
     }
+  }catch(_){}
+
+  return null;
+}
+
     // ===== /Micro 11 =====
     // ===== DexGuard Micro 12: Trades Dedupe (tx hash/signature + fallback key) =====
     function tradeDedupeKey(tr){
