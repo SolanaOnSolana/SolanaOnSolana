@@ -5147,6 +5147,29 @@ function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
           }
           return; // IMPORTANT: stop Gecko logic for Solana
         }
+              // SOLANA: load candles via Birdeye (BDS) instead of Gecko
+      if(activeNet === 'solana'){
+        try{
+          const tf = (activeTF?.k || '15m');
+          const candles = await bdsOhlcvToken(tf, 600, ac.signal);
+
+          // keep your existing request guards consistent
+          if(id !== reqIds.candles) return;
+          if(retryKey !== `${activeNet}|${poolAddr}|${activeTF?.k||''}`) return;
+
+          if(Array.isArray(candles) && candles.length){
+            rawCandles = candles;
+            applyCandlesToChart(!!fit);
+            clearRetryUI?.();
+          }else{
+            // optional: keep your existing retry UI behavior
+            showTapToRetry?.('Candles unavailable (SOL). Tap to retry');
+          }
+        }catch(e){
+          try{ showTapToRetry?.('Candles failed (SOL). Tap to retry'); }catch(_){}
+        }
+        return; // IMPORTANT: stop Gecko logic for Solana
+      }
 
         const gran = activeTF.gecko;
         const url = geckoCandlesUrl(gran, null);
