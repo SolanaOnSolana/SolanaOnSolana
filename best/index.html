@@ -2459,6 +2459,10 @@ display:none;
     if(typeof DBG.metrics.lastCandlesUrl==='undefined') DBG.metrics.lastCandlesUrl = '';
     if(typeof DBG.metrics.lastCandlesError==='undefined') DBG.metrics.lastCandlesError = '';
 
+    if(typeof DBG.metrics.lastClickAction==='undefined') DBG.metrics.lastClickAction = '';
+    if(typeof DBG.metrics.lastClickAt==='undefined') DBG.metrics.lastClickAt = 0;
+    if(typeof DBG.metrics.lastClickError==='undefined') DBG.metrics.lastClickError = '';
+
     function _safeStr(v){
       try{
         if(v == null) return '';
@@ -2567,6 +2571,14 @@ display:none;
         out.push('  liveLoopsRunning: ' + (ls.liveLoops ? 'YES' : 'NO'));
         out.push('  tradesPollingRunning: ' + (ls.tradesPolling ? 'YES' : 'NO'));
       }catch(_){}
+
+      try{
+        out.push('Clicks:');
+        var mtc = (DBG && DBG.metrics) ? DBG.metrics : {};
+        out.push('  lastClickAction: ' + _safeStr(mtc.lastClickAction));
+        out.push('  lastClickAt: ' + (mtc.lastClickAt ? _fmtTime(mtc.lastClickAt) : '(never)'));
+        out.push('  lastClickError: ' + _safeStr(mtc.lastClickError));
+      }catch(_){ }
 
       try{
         out.push('Trades:');
@@ -2937,6 +2949,38 @@ display:none;
     // -------------------- Helpers
     const sleep = (ms)=>new Promise(r=>setTimeout(r, ms));
     const lc = (v)=>String(v||'').toLowerCase();
+
+    // -------------------- Safe UI binding + click instrumentation (Fixing_06)
+    function dgClickMark(action, err){
+      try{
+        const DBG = window.__DG_DEBUG__ || (window.__DG_DEBUG__ = {});
+        DBG.metrics = (DBG.metrics && typeof DBG.metrics==='object') ? DBG.metrics : {};
+        DBG.metrics.lastClickAction = String(action || '');
+        DBG.metrics.lastClickAt = Date.now();
+        DBG.metrics.lastClickError = err ? String((err && (err.stack || err.message)) || err) : '';
+      }catch(_){}
+    }
+
+    // Delegated, bind-once event helper that survives re-renders and never throws
+    function dgBindSafe(selector, event, action, handler, options){
+      try{
+        const REG = window.__DG_BIND_REG__ || (window.__DG_BIND_REG__ = {});
+        const k = String(event||'') + '|' + String(selector||'') + '|' + String(action||'');
+        if(REG[k]) return;
+        REG[k] = 1;
+        document.addEventListener(event, function(e){
+          let el = null;
+          try{ el = (e && e.target && e.target.closest) ? e.target.closest(selector) : null; }catch(_){}
+          if(!el) return;
+          try{ dgClickMark(action); }catch(_){}
+          try{ return handler(e, el); }catch(err){
+            try{ dgClickMark(action, err); }catch(_){}
+            try{ console.error(err); }catch(_){}
+          }
+        }, options || false);
+      }catch(_){}
+    }
+
 
     function toast(msg, ms=2200){
       toastEl.textContent = msg;
@@ -3646,13 +3690,15 @@ candleSeries = chart.addCandlestickSeries({
         const b=document.createElement('div');
         b.className='pill'+(activeNet===n.k?' active':'');
         b.innerHTML = `<span class="dot"></span>${esc(n.label)}`;
-        b.onclick=()=>{
+        b.onclick=()=>{ dgClickMark('net_pill_'+n.k); try{
           activeNet=n.k;
           renderNetPills();
           toast('Chain: '+n.label);
           // keep current addr if it matches chain type; otherwise default
           if(!addr || (activeNet==='solana' ? !isSolAddr(addr) : !isEvmAddr(addr))){ addr = DEFAULT_MARKET_TOKEN[activeNet]; }
           navigate(activeNet, addr);
+        
+        }catch(err){ try{ dgClickMark('net_pill_'+n.k, err); }catch(_){ } }
         };
         netPills.appendChild(b);
       });
@@ -3664,7 +3710,7 @@ candleSeries = chart.addCandlestickSeries({
         const b=document.createElement('button');
         b.className='tf'+(t.k===activeTF.k?' active':'');
         b.textContent=t.k;
-        b.onclick=()=>{
+        b.onclick=()=>{ dgClickMark('tf_'+t.k); try{
           activeTF=t;
           [...tfRow.children].forEach(x=>x.classList.toggle('active', x.textContent===t.k));
           // reset viewport flags on timeframe change
@@ -3681,6 +3727,8 @@ candleSeries = chart.addCandlestickSeries({
               startLiveLoops();
             })();
           }
+        
+        }catch(err){ try{ dgClickMark('tf_'+t.k, err); }catch(_){ } }
         };
         tfRow.appendChild(b);
       });
@@ -3784,7 +3832,7 @@ function initTradesAccordion(){
 
         if(!hd.dataset.accBound){
           hd.dataset.accBound = '1';
-          hd.addEventListener('click', ()=>{
+          hd.addEventListener('click', ()=>{ dgClickMark('trades_toggle');
             if(!mqTradesAcc.matches) return;
             setOpen(!tradesCard.classList.contains('open'));
           }, {passive:true});
@@ -3808,10 +3856,12 @@ function initTradesAccordion(){
 
     // Top-left Dexguard button -> jump to trending bar
     if(topDexguardBtn){
-      topDexguardBtn.onclick = ()=>{
+      topDexguardBtn.onclick = ()=>{ dgClickMark('top_dexguard'); try{
+
         const tb = document.getElementById('topBar');
         if(tb) tb.scrollIntoView({behavior:'smooth', block:'start'});
-      };
+      
+      }catch(err){ try{ dgClickMark('top_dexguard', err); }catch(_){ } } };
     }
     /* Refresh button removed (auto updates) */
 // -------------------- Search
@@ -4000,18 +4050,7 @@ function setSearchModalOpen(open){
           </div>
         `;
       }).join('');
-      showResults(html);
-
-      // click bind
-      [...results.querySelectorAll('.resItem')].forEach(el=>{
-        el.onclick=()=>{
-          const a = el.getAttribute('data-addr')||'';
-          hideResults();
-          q.value = a;
-          openToken(a);
-        };
-      });
-    }
+      showResults(html);}
 
     q.addEventListener('input', ()=>{
       clearTimeout(searchTimer);
@@ -4045,11 +4084,19 @@ function setSearchModalOpen(open){
       }
     });
 
-    document.addEventListener('click', (e)=>{
+    
+    dgBindSafe('#results .resItem', 'click', 'search_result_open', function(e, el){
+      const a = el.getAttribute('data-addr')||'';
+      try{ hideResults(); }catch(_){ }
+      try{ if(q) q.value = a; }catch(_){ }
+      if(a) openToken(a);
+    }, {passive:true});
+
+document.addEventListener('click', (e)=>{
       if(!results.contains(e.target) && e.target!==q) hideResults();
     });
 
-    btnGo.onclick=()=>openToken(q.value.trim());
+    dgBindSafe('#btnGo', 'click', 'search_open', function(){ try{ openToken(((q && q.value) ? q.value : '').trim()); }catch(_){ } }, {passive:true});
 
     // -------------------- Gecko: pool selection
     function geckoNet(){ return NET_GECKO[activeNet]; }
@@ -5925,20 +5972,16 @@ function startLiveLoops(){
         });
       }
 
-      tickerTrack.onclick = (e)=>{
-        const a = e.target.closest('.tickerItem');
-        if(!a) return;
-        e.preventDefault();
+      dgBindSafe('#tickerTrack .tickerItem', 'click', 'ticker_item_click', function(e, a){
+        try{ e.preventDefault(); }catch(_){ }
         const tAddr = a.getAttribute('data-addr') || '';
         if(tAddr) openToken(tAddr, {skipInput:true});
-      };
+      }, {passive:false});
 
       const toggle = $('trendToggle');
       if(toggle){
-        toggle.onclick = (e)=>{
-          const b = e.target.closest('.chainBtn');
-          if(!b) return;
-          const net = normalizeChain(b.dataset.net || 'solana');
+        dgBindSafe('#trendToggle .chainBtn', 'click', 'chain_switch', function(e, b){
+          const net = normalizeChain((b && b.dataset ? b.dataset.net : '') || 'solana');
           if(net===activeNet) return;
 
           // Cancel live polling (chart/trades) immediately to prevent stale updates
@@ -5976,7 +6019,9 @@ function startLiveLoops(){
                 }
               }catch(_){}
               return false;
-            };
+            
+          }catch(_){ }
+        }, {passive:true});
 
             // Kick off trending refresh for the selected chain (uses cache fallback internally)
             try{ startTrending(); }catch(_){ }
@@ -7277,3 +7322,82 @@ if(searchScrim){
 </html>
 
 
+/* ================================
+   MOBILE-ONLY TRENDING TICKER COMPACT + SMOOTH (step12)
+   - Reduce height/padding, smaller cards, better readability
+   - Smooth marquee (GPU-friendly), less heavy shadows (less jank)
+   - Keeps existing click behavior
+   - Desktop unchanged
+   ================================ */
+@media (max-width: 760px){
+  /* Compact container spacing */
+  .topBarInner{ gap: 8px !important; padding: 10px 10px 10px !important; }
+
+  /* Ticker wrapper: slimmer + lighter paint cost */
+  .tickerWrap{
+    padding: 6px 8px !important;
+    border-radius: 16px !important;
+    border: 1px solid rgba(255,255,255,.10) !important;
+    background: rgba(255,255,255,.045) !important;
+    box-shadow: 0 8px 22px rgba(0,0,0,.18) !important;
+  }
+  .tickerWrap:before,
+  .tickerWrap:after{
+    width: 28px !important;
+  }
+
+  /* Smooth animation: longer duration + GPU-friendly transforms */
+  .tickerTrack{
+    gap: 8px !important;
+    animation-duration: 28s !important;
+    transform: translate3d(0,0,0);
+    will-change: transform;
+    backface-visibility: hidden;
+    contain: content;
+  }
+  .tickerWrap:hover .tickerTrack{ animation-play-state: paused; }
+
+  /* Smaller ticker items (Dexscreener vibe) */
+  .tickerItem{
+    padding: 6px 8px !important;
+    gap: 8px !important;
+    font-size: 12px !important;
+    border-radius: 999px !important;
+    background: rgba(255,255,255,.05) !important;
+    border: 1px solid rgba(255,255,255,.10) !important;
+    box-shadow: none !important; /* reduce repaint/jank */
+  }
+  .tickerItem.top1{
+    background: rgba(255,215,0,.08) !important;
+    border-color: rgba(255,215,0,.26) !important;
+    box-shadow: none !important;
+  }
+
+  /* Logo smaller + crisp */
+  .tickerLogoWrap{
+    width: 22px !important;
+    height: 22px !important;
+    flex: 0 0 22px !important;
+    border-radius: 6px !important;
+    box-shadow: none !important;
+  }
+  .tickerLogoFallback{ font-size: 11px !important; }
+
+  /* Rank + % pills tighter */
+  .tickerItem .rank{
+    min-width: 24px !important;
+    height: 18px !important;
+    padding: 0 6px !important;
+    font-size: 11px !important;
+  }
+  .tickerPct{
+    height: 18px !important;
+    padding: 0 6px !important;
+    font-size: 11px !important;
+  }
+
+  /* Prefer reduced motion */
+  @media (prefers-reduced-motion: reduce){
+    .tickerTrack{ animation: none !important; }
+  }
+}
