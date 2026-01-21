@@ -3655,9 +3655,40 @@ function setSearchModalOpen(open){
       if(name) curTokenName = name;
       if(imgIn) curTokenImage = imgIn;
 
-      const symN = normalizePairSymbol(sym) || 'TOKEN';
-      const quoteN = normalizePairSymbol(quote) || '';
-      const title = quoteN ? `$${symN}/${quoteN}` : `$${symN}`;
+      const symN0 = normalizePairSymbol(sym) || 'TOKEN';
+      let quoteN0 = normalizePairSymbol(quote) || '';
+      // Normalize any inconsistent quote placeholders
+      if(quoteN0==='USD' || quoteN0==='TOKEN') quoteN0 = '';
+
+      // If we have an active pool selected, derive symbols from that pool to keep header consistent
+      try{
+        const selId = String(poolSel?.value||'').trim();
+        if(selId){
+          const picked = (Array.isArray(poolChoices)?poolChoices:[]).find(x=>String(x?.id||'')===selId) || null;
+          if(picked){
+            const bSym = normalizePairSymbol(tokenSymFromPool(picked,'base') || knownSymbolFromAddr(activeNet, tokenAddrFromPool(picked,'base')) || '');
+            const qSym = normalizePairSymbol(tokenSymFromPool(picked,'quote')|| knownSymbolFromAddr(activeNet, tokenAddrFromPool(picked,'quote'))|| '');
+            if(bSym || qSym){
+              // Prefer the currently tracked token side (base/quote) if available
+              const symDerived = (tokenSide==='base') ? (bSym||symN0) : (qSym||bSym||symN0);
+              const quoteDerived = (tokenSide==='base') ? (qSym||quoteN0) : (bSym||quoteN0);
+              if(symDerived) curTokenSymbol = normalizePairSymbol(symDerived) || curTokenSymbol;
+              if(quoteDerived) curQuoteSymbol = normalizePairSymbol(quoteDerived) || curQuoteSymbol;
+            }
+          }
+        }
+      }catch(_){}
+
+      const symN = normalizePairSymbol(curTokenSymbol || symN0) || 'TOKEN';
+      let quoteN = normalizePairSymbol(curQuoteSymbol || quoteN0) || '';
+      if(quoteN==='USD' || quoteN==='TOKEN') quoteN = '';
+
+      if(!quoteN){
+        const fb = (activeNet==='solana') ? 'SOL' : ((activeNet==='bsc') ? 'BNB' : 'ETH');
+        quoteN = fb;
+      }
+
+      const title = `${symN}/${quoteN}`;
       const nameHtml = (name && name.toLowerCase()!==sym.toLowerCase())
         ? `<span class="pairNameSub">${esc(name)}</span>` : '';
       pairNameEl.innerHTML = `${esc(title)}${nameHtml ? ' ' + nameHtml : ''}`;
@@ -6286,4 +6317,3 @@ if(searchScrim){
 
 </body>
 </html>
-
