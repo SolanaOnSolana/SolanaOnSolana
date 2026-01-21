@@ -1799,6 +1799,135 @@ display:none;
   #chart, #chart canvas{ z-index: 0 !important; }
 }
 
+
+
+/* ================================
+   MOBILE-ONLY TIMEFRAME PILL ROW (step08)
+   - Dexscreener-like pill row
+   - Horizontal scroll if needed, no wrapping
+   - Very clear active state (purple/blue theme)
+   - Keeps existing click handlers intact (CSS-only)
+   - Desktop unchanged
+   ================================ */
+@media (max-width: 760px){
+  /* Timeframes: single-line pill row with horizontal scroll */
+  #tfRow.tfRow{
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    gap: 8px !important;
+    padding: 4px 2px 2px !important;
+    margin: 0 !important;
+    white-space: nowrap;
+  }
+  #tfRow.tfRow::-webkit-scrollbar{ display:none; }
+
+  /* End padding so last pill isn't flush to the edge */
+  #tfRow.tfRow::after{
+    content:"";
+    flex: 0 0 10px;
+  }
+
+  /* Pills */
+  #tfRow.tfRow .tf{
+    flex: 0 0 auto !important;
+    min-height: 44px !important;
+    height: 44px !important;
+    padding: 0 14px !important;
+    border-radius: 999px !important;
+    border: 1px solid rgba(255,255,255,.14) !important;
+    background: rgba(255,255,255,.06) !important;
+    color: rgba(255,255,255,.88) !important;
+    font-weight: 1000 !important;
+    font-size: 12px !important;
+    letter-spacing: .25px !important;
+    cursor: pointer;
+    transform: none !important; /* avoid jitter while scrolling */
+  }
+  #tfRow.tfRow .tf:hover{ background: rgba(255,255,255,.09) !important; }
+  #tfRow.tfRow .tf:active{ background: rgba(255,255,255,.12) !important; }
+
+  /* Clear active state */
+  #tfRow.tfRow .tf.active{
+    color: rgba(255,255,255,.98) !important;
+    text-shadow: 0 1px 0 rgba(0,0,0,.30) !important;
+    background: linear-gradient(90deg, rgba(153,69,255,.95), rgba(0,209,255,.70)) !important;
+    border-color: rgba(255,255,255,.22) !important;
+    box-shadow: 0 12px 28px rgba(153,69,255,.18) !important;
+  }
+}
+
+
+/* ================================
+   MOBILE-ONLY MODE BAR (step09)
+   - Chart+Txns / Chart / Txns (Dexscreener-style)
+   - Wires to existing elements via minimal JS
+   - Desktop unchanged
+   ================================ */
+.modeBar{ display:none; }
+
+@media (max-width: 760px){
+  .modeBar{
+    display:flex;
+    gap:8px;
+    align-items:center;
+    justify-content:space-between;
+    padding: 10px 10px 12px;
+    border-top: 1px solid rgba(255,255,255,.07);
+    background: rgba(0,0,0,.10);
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .modeBar::-webkit-scrollbar{ display:none; }
+
+  .modeBtn{
+    flex: 1 0 auto;
+    min-height: 44px;
+    height: 44px;
+    padding: 0 14px;
+    border-radius: 999px;
+    border: 1px solid rgba(255,255,255,.12);
+    background: rgba(255,255,255,.05);
+    color: rgba(255,255,255,.88);
+    font-weight: 950;
+    font-size: 12px;
+    letter-spacing: .2px;
+    cursor: pointer;
+    white-space: nowrap;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    transition: transform .15s ease, background .15s ease, border-color .15s ease, box-shadow .15s ease;
+  }
+  .modeBtn:active{ transform: scale(.99); }
+
+  .modeBtn.active{
+    border-color: rgba(153,69,255,.55);
+    background: linear-gradient(90deg, rgba(153,69,255,.92), rgba(0,209,255,.62));
+    color: rgba(255,255,255,.98);
+    box-shadow: 0 12px 28px rgba(153,69,255,.16);
+    text-shadow: 0 1px 0 rgba(0,0,0,.28);
+  }
+
+  /* Mode behavior (mobile only) */
+  body[data-mmode="chart"] #tradesCard{ display:none !important; }
+  body[data-mmode="txns"] #chartWrap,
+  body[data-mmode="txns"] .controls{ display:none !important; }
+
+  body[data-mmode="txns"] #tradesCard{ display:block !important; }
+  body[data-mmode="chart"] #chartWrap,
+  body[data-mmode="chart"] .controls{ display:block !important; }
+  body[data-mmode="both"] #chartWrap,
+  body[data-mmode="both"] .controls{ display:block !important; }
+  body[data-mmode="both"] #tradesCard{ display:block !important; }
+
+  /* Ensure legacy mobile trades wrapper never conflicts */
+  #mobileTradesWrap{ display:none !important; }
+}
+
 </style>
 </head>
 <body>
@@ -1884,6 +2013,17 @@ display:none;
               <button class="btn" id="btnRefresh" type="button">Refresh</button>
               <select class="sel" id="poolSel" title="Pool"></select>
             </div>
+          </div>
+
+
+          <!-- ================================
+               MOBILE MODE BAR (step09)
+               Dexscreener-like: Chart+Txns / Chart / Txns
+               ================================ -->
+          <div class="modeBar" id="modeBar" aria-label="View mode">
+            <button class="modeBtn active" type="button" data-mode="both">Chart+Txns</button>
+            <button class="modeBtn" type="button" data-mode="chart">Chart</button>
+            <button class="modeBtn" type="button" data-mode="txns">Txns</button>
           </div>
 
           <div class="mobileTabs">
@@ -2402,6 +2542,64 @@ function setMobileTab(which){
       tabChart.onclick=()=>setMobileTab('chart');
       tabTrades.onclick=()=>setMobileTab('trades');
     }
+
+
+
+    // ================================
+    // Mobile mode bar (step09): Chart+Txns / Chart / Txns
+    // - Minimal JS, wires to existing elements (chartCard/tradesCard)
+    // ================================
+    const modeBar = document.getElementById('modeBar');
+    const modeBtns = modeBar ? Array.from(modeBar.querySelectorAll('.modeBtn')) : [];
+    const mqMode = window.matchMedia('(max-width: 760px)');
+
+    function applyMobileMode(mode){
+      if(!mqMode.matches) return;
+      document.body.dataset.mmode = mode;
+
+      // Active state
+      modeBtns.forEach(b=>b.classList.toggle('active', b.dataset.mode===mode));
+
+      // Always keep legacy mobile wrapper hidden (we use main trades card)
+      if(mobileTradesWrap) mobileTradesWrap.style.display = 'none';
+
+      // Show/hide using existing elements (no refactor)
+      if(chartCard) chartCard.style.display = (mode==='txns') ? 'none' : 'block';
+      if(tradesCard) tradesCard.style.display = (mode==='chart') ? 'none' : 'block';
+
+      // Ensure chart reflows correctly when shown again
+      if(mode!=='txns'){
+        try{
+          requestAnimationFrame(()=>{
+            try{ chart.resize(chartEl.clientWidth, chartEl.clientHeight); }catch(_e){}
+            try{ chart.timeScale().fitContent(); }catch(_e){}
+          });
+        }catch(_e){}
+      }
+    }
+
+    if(modeBar && modeBtns.length){
+      modeBtns.forEach(btn=>{
+        btn.addEventListener('click', ()=>{
+          applyMobileMode(btn.dataset.mode || 'both');
+        }, {passive:true});
+      });
+      // Default = Chart+Txns
+      applyMobileMode(document.body.dataset.mmode || 'both');
+    }
+
+    // Keep mode consistent across rotations/resizes; restore desktop defaults when leaving mobile
+    window.addEventListener('resize', ()=>{
+      if(mqMode.matches){
+        applyMobileMode(document.body.dataset.mmode || 'both');
+      }else{
+        // Remove mobile overrides on desktop
+        if(chartCard) chartCard.style.display = '';
+        if(tradesCard) tradesCard.style.display = '';
+        delete document.body.dataset.mmode;
+      }
+    });
+
 
 
 
