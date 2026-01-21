@@ -1064,79 +1064,77 @@ display:none;
 }
 
 /* ================================
-   DexGuard Targeted UI PATCH (A/B/C)
+   DexGuard Targeted UI PATCH (A/B/C) — FIXED (no nested @media)
    ================================ */
 @media (max-width: 760px){
-/* Header pills stay single-row with horizontal scroll if needed (no wrapping) */
-#netPills{
-  display:flex;
-  flex-wrap: nowrap !important;
-  gap: 8px;
-  overflow-x: auto;
-  overflow-y: hidden;
-  scrollbar-width: none;
-  max-width: 52vw;
+  /* Header pills stay single-row with horizontal scroll if needed (no wrapping) */
+  #netPills{
+    display:flex;
+    flex-wrap: nowrap !important;
+    gap: 8px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    max-width: 52vw;
+  }
+  #netPills::-webkit-scrollbar{ display:none; }
+
+  /* TASK C — Search dropdown never clipped */
+  .panel{ overflow: visible !important; }
+  .topBar{ z-index: 5000 !important; }
+  .dexSearch{ z-index: 6000 !important; }
+  .results{ z-index: 7000 !important; }
+  .grid{ position: relative; z-index: 1; }
+
+  /* TASK B — Live Trades stays under chart, expands downward only (accordion) */
+  #tradesCard{
+    position: relative !important;
+    left: auto !important; right: auto !important; bottom: auto !important;
+    transform: none !important;
+    height: auto !important;
+    max-height: none !important;
+    margin: 0 !important;
+  }
+  #tradesCard .tableHd{
+    cursor: pointer;
+    user-select: none;
+  }
+  #tradesCard .tableHd .sheetRight{ display:flex; align-items:center; gap:10px; }
+  #tradesCard .accToggleBtn{
+    width: 40px;
+    height: 40px;
+    display: grid;
+    place-items: center;
+    border-radius: 999px;
+    border: 1px solid rgba(255,255,255,.12);
+    background: rgba(255,255,255,.05);
+  }
+  #tradesCard .accToggleBtn:hover{ background: rgba(255,255,255,.08); }
+  #tradesCard .accToggleBtn svg{ transition: transform var(--t); }
+  #tradesCard.open .accToggleBtn svg{ transform: rotate(180deg); }
+
+  /* collapsed: header only */
+  #tradesCard:not(.open) .trades{ display:none !important; }
+
+  /* expanded: internal scrolling region, still in page flow */
+  #tradesCard.open .trades{
+    display:block !important;
+    height: auto !important;
+    max-height: clamp(240px, 45vh, 600px);
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+  }
 }
-#netPills::-webkit-scrollbar{ display:none; }
+
 @media (max-width: 640px){
   #netPills{ max-width: 44vw; }
   .pill{ min-height: 40px; padding: 8px 10px; }
 }
 
-
-@media (max-width: 760px){
-/* TASK C — Search dropdown never clipped */
-.panel{ overflow: visible !important; }
-.topBar{ z-index: 5000 !important; }
-.dexSearch{ z-index: 6000 !important; }
-.results{ z-index: 7000 !important; }
-.grid{ position: relative; z-index: 1; }
-
-/* TASK B — Live Trades stays under chart, expands downward only */
-#tradesCard{
-  position: relative !important;
-  left: auto !important; right: auto !important; bottom: auto !important;
-  transform: none !important;
-  height: auto !important;
-  max-height: none !important;
-  margin: 0 !important;
-}
-#tradesCard .tableHd{
-  cursor: pointer;
-  user-select: none;
-}
-#tradesCard .tableHd .sheetRight{ display:flex; align-items:center; gap:10px; }
-#tradesCard .accToggleBtn{
-  width: 40px;
-  height: 40px;
-  display: grid;
-  place-items: center;
-  border-radius: 999px;
-  border: 1px solid rgba(255,255,255,.12);
-  background: rgba(255,255,255,.05);
-}
-#tradesCard .accToggleBtn:hover{ background: rgba(255,255,255,.08); }
-#tradesCard .accToggleBtn svg{ transition: transform var(--t); }
-#tradesCard.open .accToggleBtn svg{ transform: rotate(180deg); }
-
-/* collapsed: header only */
-#tradesCard:not(.open) .trades{ display:none !important; }
-
-/* expanded: internal scrolling region, still in page flow */
-#tradesCard.open .trades{
-  display:block !important;
-  height: auto !important;
-  max-height: clamp(240px, 45vh, 600px);
-  overflow: auto;
-  -webkit-overflow-scrolling: touch;
-}
 @media (max-width: 980px){
   #tradesCard.open .trades{ max-height: clamp(220px, 42vh, 520px); }
 }
 
-
-
-}
 /* ===== DexGuard Live Terminal Patch: Split Panel + Live Txns ===== */
 @media (max-width: 760px){
   #btnRefresh,#btnFit{display:none !important;}
