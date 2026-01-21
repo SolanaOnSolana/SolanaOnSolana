@@ -2447,6 +2447,7 @@ display:none;
     DBG.errors = Array.isArray(DBG.errors) ? DBG.errors : [];
     DBG.rejections = Array.isArray(DBG.rejections) ? DBG.rejections : [];
     DBG.fetchFails = Array.isArray(DBG.fetchFails) ? DBG.fetchFails : [];
+    DBG.toasts = Array.isArray(DBG.toasts) ? DBG.toasts : [];
 
     function _safeStr(v){
       try{
@@ -2593,6 +2594,20 @@ display:none;
         out.push('(none)');
       }
 
+
+      out.push('');
+      out.push('toasts (last ' + (DBG.toasts.length||0) + '):');
+      if(DBG.toasts.length){
+        for(var k=DBG.toasts.length-1;k>=0;k--){
+          var t = DBG.toasts[k] || {};
+          out.push('- ' + _fmtTime(t.time) + ' | ' + _safeStr(t.kind) + ' | ' + _safeStr(t.msg));
+          if(t.url){ out.push('  url: ' + _safeStr(t.url)); }
+          if(t.reason){ out.push('  reason: ' + _safeStr(t.reason)); }
+          if(t.stack){ out.push('  stack: ' + String(t.stack).split('\n').slice(0,4).join(' | ')); }
+        }
+      }else{
+        out.push('(none)');
+      }
       return out.join('\n');
     }
 
@@ -6204,6 +6219,101 @@ if(searchScrim){
     var dg_rt_hideTimer = null;
     var dg_rt_lastShown = 0;
 
+    // Unified toast/banner gate to prevent spam (shared by runtime + loading banners)
+    var dg_toast_lastAt = 0;
+    var dg_toast_lastMsg = "";
+    var dg_toast_timer = null;
+    var dg_toast_visibleId = null;
+    var dg_guard_firstMissAt = 0;
+
+    function dgNow(){
+      try{ return Date.now(); }catch(_){ return (+new Date()); }
+    }
+
+    function dgPushToastDebug(entry){
+      try{
+        var DBG = window.__DG_DEBUG__ || (window.__DG_DEBUG__ = {});
+        var max = (DBG.max && +DBG.max) ? +DBG.max : 10;
+        DBG.toasts = Array.isArray(DBG.toasts) ? DBG.toasts : [];
+        DBG.toasts.push(entry || {});
+        if(DBG.toasts.length > max) DBG.toasts.splice(0, DBG.toasts.length - max);
+      }catch(_){}
+    }
+
+    function dgIsOurSource(src){
+      try{
+        if(!src) return false;
+        var ss = String(src);
+        if(location && location.origin && ss.indexOf(location.origin) === 0) return true;
+        if(location && location.pathname && ss.indexOf(location.pathname) !== -1) return true;
+        if(ss.indexOf('dexguard') !== -1 || ss.indexOf('DexGuard') !== -1) return true;
+      }catch(_){}
+      return false;
+    }
+
+    function dgIsOurStack(stack){
+      try{
+        var st = String(stack||'');
+        if(!st) return false;
+        if(st.indexOf('openToken') !== -1) return true;
+        if(st.indexOf('startTrending') !== -1) return true;
+        if(st.indexOf('fetchJson') !== -1) return true;
+        if(st.indexOf('loadTrades') !== -1) return true;
+        if(st.indexOf('loadCandles') !== -1) return true;
+        if(st.indexOf('DexGuard') !== -1 || st.indexOf('DG_') !== -1) return true;
+      }catch(_){}
+      return false;
+    }
+
+    function dgToastGate(msg){
+      try{
+        var now = dgNow();
+        var m = String(msg||'');
+        var same = (m === String(dg_toast_lastMsg||''));
+        var vis = null;
+        try{
+          if(dg_toast_visibleId){
+            vis = document.getElementById(dg_toast_visibleId);
+            if(vis && vis.classList && !vis.classList.contains('show')) vis = null;
+          }
+        }catch(_){ vis = null; }
+
+        if(same && (now - dg_toast_lastAt) < 8000){
+          return {action:'drop', now:now, vis:vis};
+        }
+
+        if((now - dg_toast_lastAt) < 8000){
+          // rate-limited: if something is already visible, allow text replacement; else drop
+          if(vis) return {action:'replace', now:now, vis:vis};
+          return {action:'drop', now:now, vis:null};
+        }
+
+        dg_toast_lastAt = now;
+        dg_toast_lastMsg = m;
+        return {action:'show', now:now, vis:vis};
+      }catch(_){}
+      return {action:'show', now:(+new Date()), vis:null};
+    }
+
+    function dgRecentCriticalFetchFail(){
+      try{
+        var DBG = window.__DG_DEBUG__;
+        var arr = DBG && Array.isArray(DBG.fetchFails) ? DBG.fetchFails : null;
+        if(!arr || !arr.length) return null;
+        var now = dgNow();
+        for(var i=arr.length-1;i>=0;i--){
+          var f = arr[i] || {};
+          if(!f.time) continue;
+          if(now - f.time > 45000) break;
+          var em = String(f.error||'');
+          if(/aborterror|aborted/i.test(em)) continue;
+          var u = String(f.url||'');
+          if(/trades|candles|ohlc|kline|klines|chart|pair|pairs|token|search|trending/i.test(u)) return f;
+        }
+      }catch(_){}
+      return null;
+    }
+
     function dgEnsureRuntimeBanner(){
       var b = document.getElementById(DG_RT_BANNER_ID);
       if(b) return b;
@@ -6251,27 +6361,60 @@ if(searchScrim){
       return b;
     }
 
-    function dgShowRuntimeBanner(reason){
+    function dgShowRuntimeBanner(reason, meta){
       try{
-        var now = Date.now();
-        // throttle repeated errors
-        if(now - dg_rt_lastShown < 500) return;
-        dg_rt_lastShown = now;
+        // Only surface to user for real app failures (avoid third-party/script/resource noise)
+        if(dgIsNoiseError(reason)) return;
+
+        var msg = "Runtime error — retrying…";
+        var now = dgNow();
+        var st = meta && meta.stack ? String(meta.stack) : (reason && reason.stack ? String(reason.stack) : undefined);
+        var src = meta && (meta.filename || meta.source || meta.src || meta.url) ? (meta.filename || meta.source || meta.src || meta.url) : undefined;
+
+        // If we can't attribute to our app, don't toast (still logged to console/debug panel)
+        if(!(dgIsOurSource(src) || dgIsOurStack(st))){
+          dgPushToastDebug({time: now, kind: "runtime_drop", msg: msg, reason: String((reason && (reason.message||reason.name)) || reason || ""), url: src, stack: st});
+          return;
+        }
+
+        var gate = dgToastGate(msg);
+
+        // If something else is visible, replace text instead of stacking (single visible toast)
+        var visEl = gate.vis;
+        if(gate.action === 'replace' && visEl){
+          try{
+            var t0 = visEl.querySelector ? visEl.querySelector(".rtTxt") : null;
+            if(t0) t0.textContent = msg;
+          }catch(_){}
+          dgPushToastDebug({time: now, kind: "runtime_update", msg: msg, reason: String((reason && (reason.message||reason.name)) || reason || ""), url: src, stack: st});
+          return;
+        }
+        if(gate.action === 'drop'){
+          dgPushToastDebug({time: now, kind: "runtime_drop", msg: msg, reason: String((reason && (reason.message||reason.name)) || reason || ""), url: src, stack: st});
+          return;
+        }
+
+        // Hide status banner if present
+        try{
+          var sb = document.getElementById("rtStatusBanner");
+          if(sb && sb.classList) sb.classList.remove("show");
+        }catch(_){}
 
         var b = dgEnsureRuntimeBanner();
         if(!b) return;
 
-        var t = b.querySelector(".rtTxt");
-        if(t){
-          // keep text stable; optionally add short hint
-          t.textContent = "Runtime error — retrying…";
-        }
+        var t = b.querySelector ? b.querySelector(".rtTxt") : null;
+        if(t) t.textContent = msg;
 
         b.classList.add("show");
-        if(dg_rt_hideTimer) clearTimeout(dg_rt_hideTimer);
-        dg_rt_hideTimer = setTimeout(function(){
+        dg_toast_visibleId = b.id;
+
+        if(dg_toast_timer) clearTimeout(dg_toast_timer);
+        dg_toast_timer = setTimeout(function(){
           try{ b.classList.remove("show"); }catch(_){}
-        }, 5200);
+        }, 6000);
+
+        dgPushToastDebug({time: now, kind: "runtime_show", msg: msg, reason: String((reason && (reason.message||reason.name)) || reason || ""), url: src, stack: st});
       }catch(_){}
     }
 
@@ -6307,7 +6450,7 @@ if(searchScrim){
           error: error,
           stack: error && error.stack ? String(error.stack) : undefined
         });
-        if(!dgIsNoiseError(error || message)) dgShowRuntimeBanner(error || message);
+        if(!dgIsNoiseError(error || message)) dgShowRuntimeBanner(error || message, {source: source, filename: source, line: lineno, col: colno, stack: (error && error.stack) ? String(error.stack) : undefined});
 }catch(_){}
       // Never block default handling
       if(typeof prevOnError === "function"){
@@ -6337,7 +6480,7 @@ if(searchScrim){
           if(tg){ tg = String(tg).toUpperCase(); }
           isRes = (tg === "IMG" || tg === "SCRIPT" || tg === "LINK" || tg === "IFRAME");
         }catch(_){}
-        if(!isRes && !dgIsNoiseError(r)) dgShowRuntimeBanner(r);
+        if(!isRes && !dgIsNoiseError(r)) dgShowRuntimeBanner(r, payload);
       }catch(_){}
     }, true);
 
@@ -6351,7 +6494,7 @@ if(searchScrim){
           reasonType: (r && r.constructor && r.constructor.name) ? r.constructor.name : typeof r,
           stack: r && r.stack ? String(r.stack) : undefined
         });
-        if(!dgIsNoiseError(r)) dgShowRuntimeBanner(r);
+        if(!dgIsNoiseError(r)) dgShowRuntimeBanner(r, {stack: (r && r.stack) ? String(r.stack) : undefined});
 }catch(_){}
       if(typeof prevOnRej === "function"){
         try{ return prevOnRej.apply(this, arguments); }catch(_){}
@@ -6367,7 +6510,7 @@ if(searchScrim){
           reasonType: (r && r.constructor && r.constructor.name) ? r.constructor.name : typeof r,
           stack: r && r.stack ? String(r.stack) : undefined
         });
-        if(!dgIsNoiseError(r)) dgShowRuntimeBanner(r);
+        if(!dgIsNoiseError(r)) dgShowRuntimeBanner(r, {stack: (r && r.stack) ? String(r.stack) : undefined});
       }catch(_){}
     }, true);
 
@@ -6436,21 +6579,77 @@ if(searchScrim){
       return b;
     }
 
-    function dgShowStatusBanner(){
+    function dgShowStatusBanner(meta){
       try{
-        // If a real runtime error banner is visible, don't stack the loading banner on top
+        var msg = "Loading failed — retrying…";
+        var now = dgNow();
+
+        // Determine if this looks like a real app failure (not just slow render)
+        var recent = dgRecentCriticalFetchFail();
+        var misses = meta && meta.misses ? meta.misses : null;
+
+        // Treat pure transient network hiccups as non-toast unless persisting
+        var isNetOnly = false;
+        try{
+          if(recent){
+            var em = String(recent.error||'').toLowerCase();
+            isNetOnly = (em.includes('failed to fetch') || em.includes('network') || em.includes('cors'));
+          }
+        }catch(_){}
+
+        // Require either repeated misses or a recent critical fetch failure; otherwise stay silent
+        var missCount = 0;
+        try{ var g = window.DG_RENDER_GUARD__; missCount = (g && g.missCount) ? g.missCount : 0; }catch(_){}
+        var persisting = false;
+        try{
+          if(!dg_guard_firstMissAt) dg_guard_firstMissAt = now;
+          persisting = (now - dg_guard_firstMissAt) > 25000;
+        }catch(_){}
+
+        var att = 0; try{ var gg = window.DG_RENDER_GUARD__; att = gg && gg.attempts ? gg.attempts : 0; }catch(_){}
+
+        if(!(recent || (persisting) || ((misses && missCount >= 2) && att >= 2))){
+          dgPushToastDebug({time: now, kind:"loading_drop", msg: msg, reason: (meta && meta.reason) ? String(meta.reason) : "", url: recent ? String(recent.url||"") : "", stack: (meta && meta.stack) ? String(meta.stack) : undefined});
+          return;
+        }
+        if(isNetOnly && !persisting){
+          dgPushToastDebug({time: now, kind:"loading_drop_net", msg: msg, reason: (meta && meta.reason) ? String(meta.reason) : "", url: recent ? String(recent.url||"") : "", stack: (meta && meta.stack) ? String(meta.stack) : undefined});
+          return;
+        }
+
+        var gate = dgToastGate(msg);
+        var visEl = gate.vis;
+        if(gate.action === 'replace' && visEl){
+          try{
+            var t0 = visEl.querySelector ? visEl.querySelector(".rtTxt") : null;
+            if(t0) t0.textContent = msg;
+          }catch(_){}
+          dgPushToastDebug({time: now, kind:"loading_update", msg: msg, reason: (meta && meta.reason) ? String(meta.reason) : "", url: recent ? String(recent.url||"") : "", stack: (meta && meta.stack) ? String(meta.stack) : undefined});
+          return;
+        }
+        if(gate.action === 'drop'){
+          dgPushToastDebug({time: now, kind:"loading_drop", msg: msg, reason: (meta && meta.reason) ? String(meta.reason) : "", url: recent ? String(recent.url||"") : "", stack: (meta && meta.stack) ? String(meta.stack) : undefined});
+          return;
+        }
+
+        // Hide runtime banner if present (single visible toast)
         try{
           var rb = document.getElementById("rtErrBanner");
-          if(rb && rb.classList && rb.classList.contains("show")) return;
+          if(rb && rb.classList) rb.classList.remove("show");
         }catch(_){}
 
         var b = dgEnsureStatusBanner();
         if(!b) return;
+
         b.classList.add("show");
-        if(dg_status_hideTimer) clearTimeout(dg_status_hideTimer);
-        dg_status_hideTimer = setTimeout(function(){
+        dg_toast_visibleId = b.id;
+
+        if(dg_toast_timer) clearTimeout(dg_toast_timer);
+        dg_toast_timer = setTimeout(function(){
           try{ b.classList.remove("show"); }catch(_){}
         }, 6000);
+
+        dgPushToastDebug({time: now, kind:"loading_show", msg: msg, reason: (meta && meta.reason) ? String(meta.reason) : "", url: recent ? String(recent.url||"") : "", stack: (meta && meta.stack) ? String(meta.stack) : undefined});
       }catch(_){}
     }
 
@@ -6565,11 +6764,18 @@ if(searchScrim){
         var misses = dgCriticalState();
         if(misses && misses.length){
           try{ console.warn("RenderGuard: missing/empty sections", misses, "reason:", reason); }catch(_){}
-          dgShowStatusBanner();
+          try{
+            DG_GUARD.missCount = (DG_GUARD.missCount || 0) + 1;
+            if(!dg_guard_firstMissAt) dg_guard_firstMissAt = dgNow();
+          }catch(_){}
+          // Only show status toast for real/persisting app failures (not transient hiccups)
           dgRetryLastAction(reason);
+          dgShowStatusBanner({reason: reason, misses: misses});
         }else{
           // Reset attempts on success so backoff doesn't keep growing
           DG_GUARD.attempts = 0;
+          DG_GUARD.missCount = 0;
+          dg_guard_firstMissAt = 0;
         }
       }catch(_){}
     }
@@ -6640,3 +6846,82 @@ if(searchScrim){
 </html>
 
 
+/* ================================
+   MOBILE-ONLY TRENDING TICKER COMPACT + SMOOTH (step12)
+   - Reduce height/padding, smaller cards, better readability
+   - Smooth marquee (GPU-friendly), less heavy shadows (less jank)
+   - Keeps existing click behavior
+   - Desktop unchanged
+   ================================ */
+@media (max-width: 760px){
+  /* Compact container spacing */
+  .topBarInner{ gap: 8px !important; padding: 10px 10px 10px !important; }
+
+  /* Ticker wrapper: slimmer + lighter paint cost */
+  .tickerWrap{
+    padding: 6px 8px !important;
+    border-radius: 16px !important;
+    border: 1px solid rgba(255,255,255,.10) !important;
+    background: rgba(255,255,255,.045) !important;
+    box-shadow: 0 8px 22px rgba(0,0,0,.18) !important;
+  }
+  .tickerWrap:before,
+  .tickerWrap:after{
+    width: 28px !important;
+  }
+
+  /* Smooth animation: longer duration + GPU-friendly transforms */
+  .tickerTrack{
+    gap: 8px !important;
+    animation-duration: 28s !important;
+    transform: translate3d(0,0,0);
+    will-change: transform;
+    backface-visibility: hidden;
+    contain: content;
+  }
+  .tickerWrap:hover .tickerTrack{ animation-play-state: paused; }
+
+  /* Smaller ticker items (Dexscreener vibe) */
+  .tickerItem{
+    padding: 6px 8px !important;
+    gap: 8px !important;
+    font-size: 12px !important;
+    border-radius: 999px !important;
+    background: rgba(255,255,255,.05) !important;
+    border: 1px solid rgba(255,255,255,.10) !important;
+    box-shadow: none !important; /* reduce repaint/jank */
+  }
+  .tickerItem.top1{
+    background: rgba(255,215,0,.08) !important;
+    border-color: rgba(255,215,0,.26) !important;
+    box-shadow: none !important;
+  }
+
+  /* Logo smaller + crisp */
+  .tickerLogoWrap{
+    width: 22px !important;
+    height: 22px !important;
+    flex: 0 0 22px !important;
+    border-radius: 6px !important;
+    box-shadow: none !important;
+  }
+  .tickerLogoFallback{ font-size: 11px !important; }
+
+  /* Rank + % pills tighter */
+  .tickerItem .rank{
+    min-width: 24px !important;
+    height: 18px !important;
+    padding: 0 6px !important;
+    font-size: 11px !important;
+  }
+  .tickerPct{
+    height: 18px !important;
+    padding: 0 6px !important;
+    font-size: 11px !important;
+  }
+
+  /* Prefer reduced motion */
+  @media (prefers-reduced-motion: reduce){
+    .tickerTrack{ animation: none !important; }
+  }
+}
