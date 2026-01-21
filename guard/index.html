@@ -4201,6 +4201,45 @@ function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
         localStorage.setItem(trendLsKey(chain), JSON.stringify({ts: Date.now(), chain: String(chain||''), data, included}));
       }catch(e){}
     }
+    
+    // ---- Per-chain trending cache (memory + localStorage)
+    const TREND_CHAIN_CACHE = (window.__DG_TREND_CHAIN_CACHE__ || (window.__DG_TREND_CHAIN_CACHE__ = new Map()));
+    function trendIsValidList(list){
+      return Array.isArray(list) && list.length > 0;
+    }
+    function trendIsValidBundle(obj){
+      return !!(obj && Array.isArray(obj.data) && Array.isArray(obj.included));
+    }
+    function setCachedTrending(chain, data, included){
+      try{
+        const ck = String(chain||'');
+        // Update cache ONLY on successful fetch (non-empty list)
+        if(!trendIsValidList(data)) return;
+        const inc = Array.isArray(included) ? included : [];
+        const bundle = {ts: Date.now(), chain: ck, data: data, included: inc};
+        TREND_CHAIN_CACHE.set(ck, bundle);
+        try{ trendWriteCache(ck, data, inc); }catch(e){}
+      }catch(e){}
+    }
+    function getCachedTrendingBundle(chain){
+      try{
+        const ck = String(chain||'');
+        const mem = TREND_CHAIN_CACHE.get(ck);
+        if(trendIsValidBundle(mem) && trendIsValidList(mem.data)) return mem;
+        const ls = trendReadCache(ck);
+        if(trendIsValidBundle(ls) && trendIsValidList(ls.data)){
+          // hydrate memory cache
+          try{ TREND_CHAIN_CACHE.set(ck, ls); }catch(e){}
+          return ls;
+        }
+      }catch(e){}
+      return null;
+    }
+    function getCachedTrending(chain){
+      const b = getCachedTrendingBundle(chain);
+      return (b && trendIsValidList(b.data)) ? b.data : null;
+    }
+
     function stopTrendingInterval(){
       if(trendingTimer){ try{ clearInterval(trendingTimer); }catch(e){} trendingTimer = null; }
     }
@@ -4244,7 +4283,7 @@ function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
       }
       const out = { data, incMap };
       TREND_CACHE.set(key, {ts: now, data: out});
-      try{ trendWriteCache(chainKey, data, inc); }catch(e){}
+      try{ setCachedTrending(chainKey, data, inc); }catch(e){}
       return out;
     }
 
@@ -4343,9 +4382,9 @@ function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
       applyNetTheme();
       syncTrendToggle();
 
-      // Render immediately from localStorage cache (per chain), then refresh in background
+      // Render immediately from cache (per chain), then refresh in background
       try{
-        const c = trendReadCache(activeNet);
+        const c = getCachedTrendingBundle(activeNet);
         if(c){
           const im = trendBuildIncMap(c.included);
           renderTrendingTicker(c.data, im);
