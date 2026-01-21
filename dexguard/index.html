@@ -2292,6 +2292,43 @@ display:none;
       requestControllers.set(key, ac);
       return ac;
     }
+    // Lightweight perf logs (console only)
+    const perfToken = { id:0, t0:0, paint:0, candles:0, trades:0, logged:false };
+    function perfStartToken(id){
+      perfToken.id = id;
+      perfToken.t0 = performance.now();
+      perfToken.paint = 0;
+      perfToken.candles = 0;
+      perfToken.trades = 0;
+      perfToken.logged = false;
+    }
+    function perfMarkPaint(id){
+      if(id !== perfToken.id || id !== reqIds.token) return;
+      if(perfToken.paint) return;
+      perfToken.paint = performance.now() - perfToken.t0;
+      perfLogIfReady(id);
+    }
+    function perfMarkCandles(id){
+      if(id !== perfToken.id || id !== reqIds.token) return;
+      if(perfToken.candles) return;
+      perfToken.candles = performance.now() - perfToken.t0;
+      perfLogIfReady(id);
+    }
+    function perfMarkTrades(id){
+      if(id !== perfToken.id || id !== reqIds.token) return;
+      if(perfToken.trades) return;
+      perfToken.trades = performance.now() - perfToken.t0;
+      perfLogIfReady(id);
+    }
+    function perfLogIfReady(id){
+      if(id !== perfToken.id || id !== reqIds.token) return;
+      if(perfToken.logged) return;
+      if(perfToken.paint && perfToken.candles && perfToken.trades){
+        console.log(`[PERF] paint=${perfToken.paint.toFixed(0)}ms candles=${perfToken.candles.toFixed(0)}ms trades=${perfToken.trades.toFixed(0)}ms`);
+        perfToken.logged = true;
+      }
+    }
+
     let tradesFetchInFlight = false;
     let tradesRenderTimer = null;
     let tradesLastRenderAt = 0;
@@ -3436,6 +3473,8 @@ function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
       candleSeries.setData(src.map(c=>({time:c.time, open:c.open, high:c.high, low:c.low, close:c.close})));
       volumeSeries.setData(src.map(c=>({time:c.time, value:c.volume||0, color:(c.close>=c.open)?'rgba(20,241,149,.35)':'rgba(255,77,109,.35)'})));
 
+      if(src && src.length) perfMarkCandles(perfToken.id);
+
       if(fit){
         applyDefaultViewport();
       }else{
@@ -3834,6 +3873,7 @@ function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
           if(rows.length){
             // insert after head in a single batch
             el.insertBefore(frag, head.nextSibling);
+            if(reset && newRowsHtml.length) perfMarkTrades(perfToken.id);
             // animate new rows (batched)
             rows.forEach(r=>{ try{ r.classList.add('enter'); }catch(_){ } });
             requestAnimationFrame(()=>{ setTimeout(()=>{ rows.forEach(r=>{ try{ r.classList.remove('enter'); }catch(_){ } }); }, 420); });
@@ -4366,6 +4406,7 @@ function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
           if(!skipInput) q.value = v;
 
           const id = ++reqIds.token;
+          perfStartToken(id);
           let _tokenKey = `token:${activeNet}:${v}`;
           let _tokenAC = startRequest(_tokenKey);
 
@@ -4388,6 +4429,7 @@ function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
           setTokenLoadingUI();
           await new Promise(r=>requestAnimationFrame(r));
           if(id !== reqIds.token) return;
+          perfMarkPaint(id);
 
           let dsPair = null;
 
@@ -4844,4 +4886,3 @@ if(searchScrim){
 })();</script>
 </body>
 </html>
-
