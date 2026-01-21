@@ -3259,6 +3259,7 @@ function setSearchModalOpen(open){
     // Candles paging + viewport normalization
     const CANDLE_LIMIT = 1000;
     const candlePager = { loading:false, hasMore:true, before:null, key:'' };
+    let _lastCandleFitKey = '';
     let _pagingAttached = false;
 
     function desiredViewportBars(){
@@ -3456,13 +3457,14 @@ function setSearchModalOpen(open){
       attachPaging();
 
       const id = ++reqIds.candles;
+      const tfKey = `${activeNet}|${poolAddr}|${activeTF?.k||''}`;
       const ac = startRequest(`candles:${activeNet}:${poolAddr}:${activeTF?.k||''}`);
 
       statusEl.textContent = 'Loading chart…';
       candlePager.loading = true;
       candlePager.hasMore = true;
       candlePager.before = null;
-      candlePager.key = `${activeNet}|${poolAddr}|${activeTF?.k||''}`;
+      candlePager.key = tfKey;
 
       rawCandles=[];
       candleSeries.setData([]);
@@ -3471,54 +3473,88 @@ function setSearchModalOpen(open){
       try{
         const gran = activeTF.gecko;
         const needBars = desiredViewportBars();
-        let pages = 0;
+        const maxPages = (activeTF.k==='ALL' ? 6 : 3);
+
+        // 1) Fetch newest page first and render immediately
         let before = null;
-        let all = [];
+        let pages = 0;
 
-        while(pages++ < (activeTF.k==='ALL' ? 10 : 6)){
-          const url = geckoCandlesUrl(gran, before);
-          const j = await fetchJson(url, {timeout:18000, retries:1, signal: ac.signal});
-          if(id !== reqIds.candles) return;
-          let part = mapGeckoOhlcv(j);
-          if(!part.length){
-            candlePager.hasMore = false;
-            break;
-          }
-          part.sort((a,b)=>a.time-b.time);
+        const url0 = geckoCandlesUrl(gran, before);
+        const j0 = await fetchJson(url0, {timeout:18000, retries:1, signal: ac.signal});
+        if(id !== reqIds.candles) return;
 
-          // prepend
-          all = part.concat(all);
-
-          // continue paging older
-          const oldest = part[0].time;
-          before = oldest - 1;
-          if(part.length < (CANDLE_LIMIT - 10)) { candlePager.hasMore = false; break; }
-
-          // stop once we have enough data for a good-looking viewport + buffer
-          if(all.length >= (needBars * 2)) break;
-        }
-
-        // dedupe + sort
-        const map = new Map();
-        for(const c of all){ map.set(c.time, c); }
-        rawCandles = Array.from(map.values()).sort((a,b)=>a.time-b.time);
-
-        if(!rawCandles.length){
+        let part0 = mapGeckoOhlcv(j0);
+        if(!part0.length){
           statusEl.textContent = 'Chart not available for this pool.';
           candlePager.hasMore = false;
           candlePager.before = null;
           candlePager.loading = false;
           return;
         }
+        part0.sort((a,b)=>a.time-b.time);
 
-        candlePager.before = rawCandles[0].time - 1;
-        applyCandlesToChart(true);
+        // Set pager for older
+        before = part0[0].time - 1;
+        pages = 1;
+
+        // Initial render
+        rawCandles = part0;
+        candlePager.before = before;
+
+        const shouldFit = !!fit && (_lastCandleFitKey !== tfKey);
+        applyCandlesToChart(shouldFit);
+        if(shouldFit) _lastCandleFitKey = tfKey;
+
         statusEl.textContent = 'Live.';
+        candlePager.loading = false;
+
+        // 2) Backfill older pages in background until enough bars exist
+        requestAnimationFrame(()=>{ (async ()=>{
+          try{
+            const targetBars = Math.floor(needBars * 1.6);
+            let fetched = pages;
+            let localBefore = before;
+
+            while(id === reqIds.candles && fetched < maxPages && candlePager.hasMore && localBefore && rawCandles.length < targetBars){
+              candlePager.loading = true;
+
+              const url = geckoCandlesUrl(gran, localBefore);
+              const j = await fetchJson(url, {timeout:18000, retries:1, signal: ac.signal});
+              if(id !== reqIds.candles) return;
+
+              const part = mapGeckoOhlcv(j);
+              if(!part.length){
+                candlePager.hasMore = false;
+                break;
+              }
+              part.sort((a,b)=>a.time-b.time);
+
+              // Merge by time, keep unique
+              const map = new Map();
+              for(const c of rawCandles) map.set(c.time, c);
+              for(const c of part) map.set(c.time, c);
+              rawCandles = Array.from(map.values()).sort((a,b)=>a.time-b.time);
+
+              // Continue paging older
+              localBefore = part[0].time - 1;
+              candlePager.before = localBefore;
+
+              if(part.length < (CANDLE_LIMIT - 10)) candlePager.hasMore = false;
+
+              applyCandlesToChart(false);
+              fetched++;
+            }
+          }catch(e){
+            // ignore background errors
+          }finally{
+            if(id === reqIds.candles) candlePager.loading = false;
+          }
+        })(); });
       }catch(e){
         statusEl.textContent = 'Chart error.';
         console.error(e);
       }finally{
-        candlePager.loading = false;
+        if(id === reqIds.candles) candlePager.loading = false;
       }
     }
 
