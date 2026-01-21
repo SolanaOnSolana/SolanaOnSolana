@@ -2282,7 +2282,7 @@ display:none;
   <script src="https://unpkg.com/lightweight-charts@4.2.1/dist/lightweight-charts.standalone.production.js"></script>
   <script>
   (function(){
-    <!-- SPEEDFIX PATCH START -->
+    // SPEEDFIX PATCH START
     function isMobile(){ return window.matchMedia("(max-width:760px)").matches; }
     const requestControllers = new Map();
     const reqIds = { trending:0, token:0, candles:0, trades:0, search:0 };
@@ -2292,7 +2292,40 @@ display:none;
       requestControllers.set(key, ac);
       return ac;
     }
-    <!-- SPEEDFIX PATCH END -->
+    let tradesFetchInFlight = false;
+    let tradesRenderTimer = null;
+    let tradesLastRenderAt = 0;
+    let tradesPendingPayload = null;
+    let tradesPendingReset = false;
+    let tradesPendingGuardId = 0;
+    let tradesPendingGuardKey = '';
+    function scheduleTradesRender(payload, reset, onRendered, guardId, guardKey){
+      tradesPendingPayload = payload;
+      if(reset) tradesPendingReset = true;
+      if(guardId != null) tradesPendingGuardId = guardId;
+      if(guardKey != null) tradesPendingGuardKey = guardKey;
+      const now = performance.now ? performance.now() : Date.now();
+      const elapsed = now - (tradesLastRenderAt||0);
+      const delay = Math.max(0, 250 - elapsed); // 4x/sec max
+      if(tradesRenderTimer) return;
+      tradesRenderTimer = setTimeout(()=>{
+        tradesRenderTimer = null;
+        // stale guard: never render after token/chain switch
+        if(tradesPendingGuardId && tradesPendingGuardId !== reqIds.trades) return;
+        if(tradesPendingGuardKey && loadTrades && loadTrades._inFlightKey && tradesPendingGuardKey !== loadTrades._inFlightKey) return;
+        tradesLastRenderAt = performance.now ? performance.now() : Date.now();
+        const data = tradesPendingPayload;
+        const doReset = tradesPendingReset;
+        tradesPendingReset = false;
+        try{
+          const newly = renderTrades(data, {reset: doReset}) || [];
+          if(typeof onRendered === 'function') onRendered(newly);
+        }catch(e){
+          // keep UI stable
+        }
+      }, delay);
+    }
+    // SPEEDFIX PATCH END
 
     // =========================================================
     //  $SOS DEX Terminal — from scratch
@@ -3776,24 +3809,38 @@ function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
       const newly = [];
 
       // Only add unseen trades (prepend)
+      const newRowsHtml = [];
       for(const tr of parsed){
         if(tradesSeen.has(tr.id)) continue;
         tradesSeen.add(tr.id);
         newly.push(tr);
+        newRowsHtml.push(tradeRowHtml(tr));
+      }
 
-        const html = tradeRowHtml(tr);
+      if(newRowsHtml.length){
+        const htmlStr = newRowsHtml.join('');
         tradesContainer().forEach(el=>{
           const head = el.querySelector('.tradeHead');
           const wrapper = document.createElement('div');
-          wrapper.innerHTML = html;
-          const row = wrapper.firstElementChild;
-          if(row){ row.classList.add('enter'); requestAnimationFrame(()=>{ row.classList.add('enter'); }); setTimeout(()=>{ try{ row.classList.remove('enter'); }catch(_){ } }, 420); }
-          // insert after head
-          el.insertBefore(row, head.nextSibling);
+          wrapper.innerHTML = htmlStr;
+          const frag = document.createDocumentFragment();
+          const rows = [];
+          while(wrapper.firstElementChild){
+            const row = wrapper.firstElementChild;
+            rows.push(row);
+            frag.appendChild(row);
+          }
+          if(rows.length){
+            // insert after head in a single batch
+            el.insertBefore(frag, head.nextSibling);
+            // animate new rows (batched)
+            rows.forEach(r=>{ try{ r.classList.add('enter'); }catch(_){ } });
+            requestAnimationFrame(()=>{ setTimeout(()=>{ rows.forEach(r=>{ try{ r.classList.remove('enter'); }catch(_){ } }); }, 420); });
+          }
           // cap rows
-          const rows = [...el.querySelectorAll('.tradeRow')];
-          if(rows.length>120){
-            rows.slice(120).forEach(r=>r.remove());
+          const rowsAll = [...el.querySelectorAll('.tradeRow')];
+          if(rowsAll.length>120){
+            rowsAll.slice(120).forEach(r=>r.remove());
           }
         });
       }
@@ -3854,9 +3901,13 @@ function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
     }
     async function loadTrades(reset=false){
       if(!poolAddr) return;
+      const _trKey = `trades:${activeNet}:${poolAddr}`;
+      if(tradesFetchInFlight && loadTrades._inFlightKey === _trKey) return;
+      loadTrades._inFlightKey = _trKey;
+      tradesFetchInFlight = true;
       const _key0 = `${activeNet}|${poolAddr}`;
       const id = ++reqIds.trades;
-      const ac = startRequest(`trades:${activeNet}:${poolAddr}`);
+      const ac = startRequest(_trKey);
       const _reqId = (loadTrades._reqId = (loadTrades._reqId||0) + 1);
       const _my = _reqId;
       try{
@@ -3864,13 +3915,20 @@ function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
         if(id !== reqIds.trades) return;
         if(_my !== loadTrades._reqId) return;
         if(_key0 !== `${activeNet}|${poolAddr}`) return;
-        const newly = renderTrades(data, {reset}) || [];
-        if(newly.length){
-          // Apply oldest->newest so candle updates are correct
-          newly.slice().sort((a,b)=>a.tsMs-b.tsMs).forEach(applyTradeToCandles);
-        }
+        scheduleTradesRender(data, reset, (newly)=>{
+          if(id !== reqIds.trades) return;
+          if(_my !== loadTrades._reqId) return;
+          if(_key0 !== `${activeNet}|${poolAddr}`) return;
+          if(newly && newly.length){
+            // Apply oldest->newest so candle updates are correct
+            newly.slice().sort((a,b)=>a.tsMs-b.tsMs).forEach(applyTradeToCandles);
+          }
+        }, id, _trKey);
       }catch(e){
         // keep UI stable
+      }
+      finally{
+        if(loadTrades._inFlightKey === _trKey) tradesFetchInFlight = false;
       }
     }
 
@@ -4776,7 +4834,6 @@ if(searchScrim){
     splitHandle.addEventListener('pointerdown', onDown, {passive:false});
     splitHandle.addEventListener('touchstart', onDown, {passive:false});
   }catch(_){}
-})();
-</script>
+})();</script>
 </body>
 </html>
