@@ -2286,6 +2286,12 @@ display:none;
     function isMobile(){ return window.matchMedia("(max-width:760px)").matches; }
     const requestControllers = new Map();
     const reqIds = { trending:0, token:0, candles:0, trades:0, search:0 };
+    function startRequest(key){
+      try{ requestControllers.get(key)?.abort(); }catch(e){}
+      const ac = new AbortController();
+      requestControllers.set(key, ac);
+      return ac;
+    }
     <!-- SPEEDFIX PATCH END -->
 
     // =========================================================
@@ -2435,12 +2441,19 @@ display:none;
     }
 
     // fetch with timeout + retry + CORS fallback via allorigins
-    async function fetchJson(url, {timeout=12000, retries=1}={}){
+    async function fetchJson(url, {timeout=12000, retries=1, signal}={}){
       const proxy = (u)=>'https://api.allorigins.win/raw?url=' + encodeURIComponent(u);
       let lastErr=null;
       for(let i=0;i<=retries;i++){
         const ctl = new AbortController();
-        const t = setTimeout(()=>ctl.abort(), timeout);
+        // allow external cancellation + internal timeout
+        if(signal){
+          try{
+            if(signal.aborted) ctl.abort();
+            else signal.addEventListener('abort', ()=>{ try{ ctl.abort(); }catch(e){} }, {once:true});
+          }catch(e){}
+        }
+        const t = setTimeout(()=>{ try{ ctl.abort(); }catch(e){} }, timeout);
         try{
           const r = await fetch(url, {
             headers:{'accept':'application/json'},
@@ -2453,12 +2466,15 @@ display:none;
         }catch(e){
           clearTimeout(t);
           lastErr=e;
+          // abort requested externally -> stop immediately
+          if(signal && signal.aborted) throw e;
+          if(e && e.name==='AbortError' && signal) throw e;
           // try proxy for CORS / network error
           try{
             const msg = String(e&&e.message||e||'');
             const isCors = (e instanceof TypeError) || /Failed to fetch|NetworkError|CORS/i.test(msg);
             if(isCors){
-              const r2 = await fetch(proxy(url), {cache:'no-store'});
+              const r2 = await fetch(proxy(url), {cache:'no-store', signal: ctl.signal});
               if(r2.ok){
                 const txt = await r2.text();
                 return JSON.parse(txt);
@@ -2624,6 +2640,8 @@ let seenMakers = new Set();
     let pollMetaTimer = null;
     let pollCandleTimer = null;
     let trendingTimer = null;
+    let trendingGen = 0;
+    let trendingLoadFn = null;
     let ageTimer = null;
 
     // -------------------- Chart
@@ -2915,18 +2933,18 @@ function setSearchModalOpen(open){
       searchScrim.addEventListener('click', hideResults);
     }
 
-    async function dsSearch(query){
+    async function dsSearch(query, fetchOpts={}){
       // DexScreener search is used ONLY for discovery. We do not embed anything.
       const url = DS + '/search/?q=' + encodeURIComponent(query);
-      const j = await fetchJson(url, {timeout:12000, retries:1});
+      const j = await fetchJson(url, {timeout:12000, retries:1, signal: fetchOpts.signal});
       return Array.isArray(j?.pairs) ? j.pairs : [];
     }
 
-    async function dsTokenPairsV1(net, tokenAddr){
+    async function dsTokenPairsV1(net, tokenAddr, fetchOpts={}){
       const chain = NET_DS[normalizeChain(net)] || 'solana';
       const url = `https://api.dexscreener.com/token-pairs/v1/${chain}/${encodeURIComponent(tokenAddr)}`;
       try{
-        const j = await fetchJson(url, {timeout:14000, retries:1});
+        const j = await fetchJson(url, {timeout:14000, retries:1, signal: fetchOpts.signal});
         return Array.isArray(j) ? j : [];
       }catch(_){
         return [];
@@ -3073,11 +3091,12 @@ function setSearchModalOpen(open){
       searchTimer = setTimeout(async ()=>{
         const id = ++searchReq;
         try{
-          const pairs = await dsSearch(v);
-          if(id!==searchReq) return;
+          const pairs = await dsSearch(v, {signal: ac.signal});
+          if(id!==reqIds.search) return;
           renderSearchResults(pairs);
         }catch(e){
-          if(id!==searchReq) return;
+          if(id!==reqIds.search) return;
+          if(e && e.name==='AbortError') return;
           showResults(`<div style="padding:12px; color:rgba(255,255,255,.75)">Search error. Try again.</div>`);
         }
       }, 220);
@@ -3100,10 +3119,10 @@ function setSearchModalOpen(open){
     // -------------------- Gecko: pool selection
     function geckoNet(){ return NET_GECKO[activeNet]; }
 
-    async function resolvePoolsFromGecko(tokenAddr){
+    async function resolvePoolsFromGecko(tokenAddr, fetchOpts={}){
       // /networks/{network}/tokens/{token}/pools?include=base_token,quote_token&page=1
       const url = `${GECKO}/networks/${encodeURIComponent(geckoNet())}/tokens/${encodeURIComponent(tokenAddr)}/pools?include=base_token,quote_token,dex&page=1`;
-      const j = await fetchJson(url, {timeout:14000, retries:1});
+      const j = await fetchJson(url, {timeout:14000, retries:1, signal: fetchOpts.signal});
       return Array.isArray(j?.data) ? j.data : [];
     }
 
@@ -3403,12 +3422,15 @@ function setSearchModalOpen(open){
     async function refreshLatestCandles(){
       if(!poolAddr) return;
       const _key0 = `${activeNet}|${poolAddr}|${activeTF?.k||''}`;
+      const id = ++reqIds.candles;
+      const ac = startRequest(`candles:${activeNet}:${poolAddr}:${activeTF?.k||''}`);
       const _reqId = (refreshLatestCandles._reqId = (refreshLatestCandles._reqId||0) + 1);
       const _my = _reqId;
       try{
         const gran = activeTF.gecko;
         const url = geckoCandlesUrl(gran, null);
-        const j = await fetchJson(url, {timeout:16000, retries:1});
+        const j = await fetchJson(url, {timeout:16000, retries:1, signal: ac.signal});
+        if(id !== reqIds.candles) return;
         if(_my !== refreshLatestCandles._reqId) return;
         if(_key0 !== `${activeNet}|${poolAddr}|${activeTF?.k||''}`) return;
         const part = mapGeckoOhlcv(j);
@@ -3433,6 +3455,9 @@ function setSearchModalOpen(open){
       if(!poolAddr) return;
       attachPaging();
 
+      const id = ++reqIds.candles;
+      const ac = startRequest(`candles:${activeNet}:${poolAddr}:${activeTF?.k||''}`);
+
       statusEl.textContent = 'Loading chart…';
       candlePager.loading = true;
       candlePager.hasMore = true;
@@ -3452,7 +3477,8 @@ function setSearchModalOpen(open){
 
         while(pages++ < (activeTF.k==='ALL' ? 10 : 6)){
           const url = geckoCandlesUrl(gran, before);
-          const j = await fetchJson(url, {timeout:18000, retries:1});
+          const j = await fetchJson(url, {timeout:18000, retries:1, signal: ac.signal});
+          if(id !== reqIds.candles) return;
           let part = mapGeckoOhlcv(j);
           if(!part.length){
             candlePager.hasMore = false;
@@ -3509,9 +3535,13 @@ function setSearchModalOpen(open){
       const prevRange = (()=>{ try{ return chart.timeScale().getVisibleLogicalRange(); }catch(_){ return null; } })();
       const prevTimes = new Set(rawCandles.map(c=>c.time));
 
+      const id = ++reqIds.candles;
+      const ac = startRequest(`candles:${activeNet}:${poolAddr}:${activeTF?.k||''}`);
+
       try{
         const url = geckoCandlesUrl(activeTF.gecko, before);
-        const j = await fetchJson(url, {timeout:18000, retries:1});
+        const j = await fetchJson(url, {timeout:18000, retries:1, signal: ac.signal});
+        if(id !== reqIds.candles) return;
         let part = mapGeckoOhlcv(j);
         if(!part.length){
           candlePager.hasMore = false;
@@ -3642,18 +3672,18 @@ function setSearchModalOpen(open){
       `;
     }
 
-    async function geckoTrades(limit=80){
+    async function geckoTrades(limit=80, fetchOpts={}){
       const base = `${GECKO}/networks/${encodeURIComponent(geckoNet())}/pools/${encodeURIComponent(poolAddr)}/trades`;
       // GeckoTerminal often uses JSON:API pagination. Try page params first, then fallback to limit.
       try{
         const url1 = base + `?page=1&limit=${encodeURIComponent(limit)}`;
-        const j1 = await fetchJson(url1, {timeout:14000, retries:1});
+        const j1 = await fetchJson(url1, {timeout:14000, retries:1, signal: fetchOpts.signal});
         if(Array.isArray(j1?.data) && j1.data.length) return j1.data;
       }catch(e){ /* ignore */ }
 
       try{
         const url2 = base + `?limit=${encodeURIComponent(limit)}`;
-        const j2 = await fetchJson(url2, {timeout:14000, retries:1});
+        const j2 = await fetchJson(url2, {timeout:14000, retries:1, signal: fetchOpts.signal});
         if(Array.isArray(j2?.data)) return j2.data;
       }catch(e){ /* ignore */ }
 
@@ -3757,10 +3787,13 @@ function setSearchModalOpen(open){
     async function loadTrades(reset=false){
       if(!poolAddr) return;
       const _key0 = `${activeNet}|${poolAddr}`;
+      const id = ++reqIds.trades;
+      const ac = startRequest(`trades:${activeNet}:${poolAddr}`);
       const _reqId = (loadTrades._reqId = (loadTrades._reqId||0) + 1);
       const _my = _reqId;
       try{
-        const data = await geckoTrades(80);
+        const data = await geckoTrades(80, {signal: ac.signal});
+        if(id !== reqIds.trades) return;
         if(_my !== loadTrades._reqId) return;
         if(_key0 !== `${activeNet}|${poolAddr}`) return;
         const newly = renderTrades(data, {reset}) || [];
@@ -3824,9 +3857,9 @@ function setSearchModalOpen(open){
 
 
 // -------------------- Meta (refresh price/liquidity/24h)
-    async function geckoPool(){
+    async function geckoPool(fetchOpts={}){
       const url = `${GECKO}/networks/${encodeURIComponent(geckoNet())}/pools/${encodeURIComponent(poolAddr)}?include=base_token,quote_token`;
-      const j = await fetchJson(url, {timeout:14000, retries:1});
+      const j = await fetchJson(url, {timeout:14000, retries:1, signal: fetchOpts.signal});
       return j?.data || null;
     }
 
@@ -3844,6 +3877,35 @@ function setSearchModalOpen(open){
     
     // -------------------- Trending (match main site)
     const TREND_CACHE = new Map();
+    const TREND_LS_PREFIX = 'dexguard_trending_cache_v1:';
+    function trendLsKey(chain){ return TREND_LS_PREFIX + String(chain||''); }
+    function trendBuildIncMap(included){
+      const m = new Map();
+      for(const it of (included||[])){
+        if(!it || !it.id) continue;
+        const id = String(it.id);
+        if(it.type) m.set(String(it.type)+':' + id, it);
+        m.set(id, it);
+      }
+      return m;
+    }
+    function trendReadCache(chain){
+      try{
+        const raw = localStorage.getItem(trendLsKey(chain));
+        if(!raw) return null;
+        const obj = JSON.parse(raw);
+        if(!obj || !Array.isArray(obj.data) || !Array.isArray(obj.included)) return null;
+        return obj;
+      }catch(e){ return null; }
+    }
+    function trendWriteCache(chain, data, included){
+      try{
+        localStorage.setItem(trendLsKey(chain), JSON.stringify({ts: Date.now(), chain: String(chain||''), data, included}));
+      }catch(e){}
+    }
+    function stopTrendingInterval(){
+      if(trendingTimer){ try{ clearInterval(trendingTimer); }catch(e){} trendingTimer = null; }
+    }
 
     function applyNetTheme(){
       document.body.classList.remove('net-sol','net-eth','net-bnb','net-base');
@@ -3862,19 +3924,29 @@ function setSearchModalOpen(open){
     }
 
     async function fetchTrendingPools(net){
-      const key = String(net||'');
+      const chainKey = activeNet;
+      const id = ++reqIds.trending;
+      const ac = startRequest(`trending:${chainKey}`);
+      const key = String(chainKey||net||'');
       const cached = TREND_CACHE.get(key);
       const now = Date.now();
       if(cached && (now - cached.ts) < 45000) return cached.data;
 
       const url = `${GECKO}/networks/${encodeURIComponent(net)}/trending_pools?include=base_token,quote_token,dex`;
-      const j = await fetchJson(url, {timeout:14000, retries:1});
+      const j = await fetchJson(url, {timeout:14000, retries:0, signal: ac.signal});
+      if(id !== reqIds.trending) return null;
       const data = Array.isArray(j?.data) ? j.data : [];
       const inc  = Array.isArray(j?.included) ? j.included : [];
       const incMap = new Map();
-      for(const it of inc){ if(it?.id) incMap.set(it.id, it); }
+      for(const it of inc){
+        if(!it?.id) continue;
+        const iid = String(it.id);
+        if(it?.type) incMap.set(String(it.type)+':' + iid, it);
+        incMap.set(iid, it);
+      }
       const out = { data, incMap };
       TREND_CACHE.set(key, {ts: now, data: out});
+      try{ trendWriteCache(chainKey, data, inc); }catch(e){}
       return out;
     }
 
@@ -3967,26 +4039,79 @@ function setSearchModalOpen(open){
       tickerTrack.innerHTML = items + items;
       syncTickerMarquee();
     }
-
     async function startTrending(){
+      const gen = ++trendingGen;
+      stopTrendingInterval();
       applyNetTheme();
       syncTrendToggle();
 
-      const load = async ()=>{
-        try{
-          const net = geckoNet();
-          const res = await fetchTrendingPools(net);
-          renderTrendingTicker(res.data, res.incMap);
-        }catch(e){
-          console.error('trending failed', e);
-          tickerTrack.innerHTML = `<div class="tickerEmpty">Trending unavailable.</div>`;
+      // Render immediately from localStorage cache (per chain), then refresh in background
+      try{
+        const c = trendReadCache(activeNet);
+        if(c){
+          const im = trendBuildIncMap(c.included);
+          renderTrendingTicker(c.data, im);
         }
+      }catch(e){}
+
+      const load = async ()=>{
+        if(gen !== trendingGen) return;
+        const net = geckoNet();
+        const delays = [0, 600, 1200];
+        let lastErr = null;
+        for(let attempt=0; attempt<delays.length; attempt++){
+          if(gen !== trendingGen) return;
+          if(attempt>0) await sleep(delays[attempt]);
+          if(gen !== trendingGen) return;
+          try{
+            const res = await fetchTrendingPools(net);
+            if(gen !== trendingGen) return;
+            if(!res) return; // stale
+            renderTrendingTicker(res.data, res.incMap);
+            statusEl.textContent = 'Live.';
+            return;
+          }catch(e){
+            if(e && e.name==='AbortError') return;
+            lastErr = e;
+          }
+        }
+        if(gen !== trendingGen) return;
+        statusEl.textContent = 'Temporarily unavailable';
+        try{
+          if(!tickerTrack.querySelector('.tickerItem')){
+            tickerTrack.innerHTML = `<div class="tickerEmpty">Temporarily unavailable.</div>`;
+            syncTickerMarquee();
+          }
+        }catch(_){ }
+        try{ console.error('trending failed', lastErr); }catch(_){ }
       };
 
-      await load();
-      statusEl.textContent = 'Live.';
-      if(trendingTimer) clearInterval(trendingTimer);
-      trendingTimer = setInterval(load, 25000);
+      trendingLoadFn = load;
+      // Initial refresh (background)
+      load();
+
+      // Ensure only one trending interval exists, pause/resume on visibility
+      stopTrendingInterval();
+      trendingTimer = setInterval(()=>{
+        if(document.hidden) return;
+        try{ trendingLoadFn && trendingLoadFn(); }catch(_){ }
+      }, 25000);
+
+      if(!startTrending._visBound){
+        startTrending._visBound = true;
+        document.addEventListener('visibilitychange', ()=>{
+          if(document.hidden){
+            stopTrendingInterval();
+          }else{
+            try{ trendingLoadFn && trendingLoadFn(); }catch(_){ }
+            stopTrendingInterval();
+            trendingTimer = setInterval(()=>{
+              if(document.hidden) return;
+              try{ trendingLoadFn && trendingLoadFn(); }catch(_){ }
+            }, 25000);
+          }
+        });
+      }
 
       tickerTrack.onclick = (e)=>{
         const a = e.target.closest('.tickerItem');
@@ -4035,178 +4160,274 @@ function setSearchModalOpen(open){
       }
     }
 
-    async function openToken(input, opts={}){
-      try{ if(typeof stopLiveLoops==='function') stopLiveLoops(); }catch(_){ }
-      const skipInput = !!opts.skipInput;
-      const silent = !!opts.silent;
-      const boot = !!opts.boot;
-
-      let v = String(input||'').trim();
-      if(!v){ toast('Paste a token name or address'); return; }
-      if(!skipInput) q.value = v;
-
-      // reset view
-      statusEl.textContent = 'Loading…';
-      pairNameEl.textContent = 'Loading…';
-      pairMetaEl.textContent = 'Resolving best pool…';
-      results.innerHTML = '';
-
-      // Force default chart timeframe on every token selection
-      setActiveTFKey('15m');
-
-
-      let dsPair = null;
-
-      // If user typed a name/symbol (not an address), resolve via DexScreener search (auto across chains)
-      if(!isEvmAddr(v) && !isSolAddr(v)){
-        statusEl.textContent = 'Searching…';
-        pairNameEl.textContent = 'Searching…';
-        pairMetaEl.textContent = 'Finding best match…';
-        try{
-          const pairs = await dsSearch(v);
-          if(!pairs.length){
-            statusEl.textContent = 'Not found.';
-            pairNameEl.textContent = 'Not found';
-            pairMetaEl.textContent = 'Try a contract address.';
-            toast('No results. Try contract address.');
-            return;
-          }
-          const best = bestPairAnyNet(pairs);
-          if(!best){
-            toast('No usable pair found.');
-            return;
-          }
-          // switch net to best match chain
-          const chainId = lc(best?.chainId||'');
-          const newNet = (chainId==='solana') ? 'solana' : (chainId==='ethereum' ? 'eth' : (chainId==='bsc' ? 'bsc' : (chainId==='base' ? 'base' : activeNet)));
-          if(newNet !== activeNet){
-            activeNet = newNet;
-            renderNetPills();
-            startTrending();
-          }
-
-          dsPair = best;
-          v = String(best?.baseToken?.address || '').trim() || v;
-          if(!skipInput) q.value = v;
-        }catch(e){
-          statusEl.textContent = 'Search error.';
-          toast('Search failed. Try again.');
-          return;
-        }
+    function tradeSkeletonHtml(n){
+      let out='';
+      for(let i=0;i<n;i++){
+        out += `<div class="tradeRow" style="opacity:.55">
+          <div class="mono">—</div>
+          <div><span class="typeBadge" style="opacity:.85">—</span></div>
+          <div class="mono">—</div>
+          <div class="mono">—</div>
+          <div class="mono hideM">—</div>
+          <div class="maker hideM"><span class="addr">—</span></div>
+          <button class="iconBtn" type="button" aria-label="loading" style="opacity:.45; pointer-events:none">…</button>
+        </div>`;
       }
+      return out;
+    }
 
-      // If it's an EVM address and no dsPair yet, try all EVM nets and pick best liquidity
-      if(isEvmAddr(v) && !dsPair){
-        const nets = ['eth','bsc','base'];
-        let best = null;
-        for(const n of nets){
-          const arr = await dsTokenPairsV1(n, v);
-          const cand = bestPairAnyNet(arr);
-          if(cand && (!best || Number(cand?.liquidity?.usd||0) > Number(best?.liquidity?.usd||0))) best = cand;
-        }
-        if(best){
-          const chainId = lc(best?.chainId||'');
-          const newNet = (chainId==='ethereum') ? 'eth' : (chainId==='bsc' ? 'bsc' : (chainId==='base' ? 'base' : activeNet));
-          if(newNet !== activeNet){
-            activeNet = newNet;
-            renderNetPills();
-            startTrending();
-          }
-          dsPair = best;
-        }
-      }
+    function ensureChartSkeleton(){
+      const wrap = document.getElementById('chartWrap');
+      if(!wrap) return null;
+      let el = document.getElementById('chartSkeleton');
+      if(el) return el;
+      el = document.createElement('div');
+      el.id = 'chartSkeleton';
+      el.style.cssText = 'position:absolute;inset:0;display:none;pointer-events:none;z-index:2;';
+      el.innerHTML = `<div style="position:absolute;inset:14px;border-radius:16px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.04);"></div>`;
+      wrap.appendChild(el);
+      return el;
+    }
 
-      // If it's Solana address and no dsPair yet, fetch DS token-pairs on Solana
-      if(isSolAddr(v) && !dsPair){
-        const arr = await dsTokenPairsV1('solana', v);
-        const best = bestPairAnyNet(arr);
-        if(best) dsPair = best;
-      }
-
-      // preferred pool address (pairAddress is usually the AMM pool address)
-      let preferredPool = dsPair?.pairAddress || dsPair?.pair_address || '';
-
-      // Fill header from DexScreener meta (fast symbols/logos/stats)
-      if(dsPair){
-        const meta = dsExtractTokenMeta(dsPair, v);
-        curTokenAddr = v;
-        if(meta?.image) curTokenImage = meta.image;
-        if(meta?.name) curTokenName = meta.name;
-        applyTokenHeader(meta);
-
-        applyStats({
-          price: num(dsPair?.priceUsd),
-          liq: num(dsPair?.liquidity?.usd),
-          mcap: num(dsPair?.fdv),
-          h24: num(dsPair?.priceChange?.h24),
-        });
-      }else{
-        curTokenAddr = v;
-        curTokenName = '';
-        curTokenImage = '';
-        applyTokenHeader({symbol:'TOKEN', name:'', quoteSymbol:'', image:''});
-        applyStats({});
-      }
-
-      // reset caches/timers
-      tradesSeen = new Set();
-      seenMakers = new Set();
-
+    function setTokenLoadingUI(){
       try{
-        // 1) preferred pool first (when available via DexScreener)
-        if(preferredPool){
-          poolAddr = preferredPool;
-          const p = await geckoPool();
-          if(p){
+        statsEl.innerHTML = [
+          `<span class="statPill"><span class="k">Price</span><span class="v">—</span></span>`,
+          `<span class="statPill"><span class="k">Liquidity</span><span class="v">—</span></span>`,
+          `<span class="statPill"><span class="k">MCap/FDV</span><span class="v">—</span></span>`,
+          `<span class="statPill"><span class="k">24h</span><span class="v">—</span></span>`
+        ].join('');
+      }catch(_){}
+      try{
+        const sk = ensureChartSkeleton();
+        if(sk) sk.style.display = 'block';
+      }catch(_){}
+      try{
+        const ph = tradeSkeletonHtml(6);
+        tradesContainer().forEach(el=>{
+          const head = el.querySelector('.tradeHead');
+          el.innerHTML = '';
+          if(head) el.appendChild(head);
+          el.insertAdjacentHTML('beforeend', ph);
+        });
+      }catch(_){}
+    }
+
+    function clearTokenLoadingUI(){
+      try{
+        const sk = document.getElementById('chartSkeleton');
+        if(sk) sk.style.display = 'none';
+      }catch(_){}
+    }
+
+
+
+    async function openToken(input, opts={}){
+          try{ if(typeof stopLiveLoops==='function') stopLiveLoops(); }catch(_){ }
+          const skipInput = !!opts.skipInput;
+          const silent = !!opts.silent;
+          const boot = !!opts.boot;
+
+          let v = String(input||'').trim();
+          if(!v){ toast('Paste a token name or address'); return; }
+          if(!skipInput) q.value = v;
+
+          const id = ++reqIds.token;
+          let _tokenKey = `token:${activeNet}:${v}`;
+          let _tokenAC = startRequest(_tokenKey);
+
+          // reset view
+          statusEl.textContent = 'Loading…';
+          pairNameEl.textContent = 'Loading…';
+          pairMetaEl.textContent = 'Resolving best pool…';
+          results.innerHTML = '';
+
+          // Force default chart timeframe on every token selection
+          setActiveTFKey('15m');
+
+          // Instant UI feedback (must render before any network)
+          setTokenLoadingUI();
+          await new Promise(r=>requestAnimationFrame(r));
+          if(id !== reqIds.token) return;
+
+          let dsPair = null;
+
+          // If user typed a name/symbol (not an address), resolve via DexScreener search (auto across chains)
+          if(!isEvmAddr(v) && !isSolAddr(v)){
+            statusEl.textContent = 'Searching…';
+            pairNameEl.textContent = 'Searching…';
+            pairMetaEl.textContent = 'Finding best match…';
+            try{
+              const _sId = ++reqIds.search;
+              const _sKey = `search:${activeNet}`;
+              const _sAc = startRequest(_sKey);
+              const pairs = await dsSearch(v, {signal: _sAc.signal});
+              if(_sId !== reqIds.search) return;
+              if(id !== reqIds.token) return;
+              if(!pairs.length){
+                statusEl.textContent = 'Not found.';
+                pairNameEl.textContent = 'Not found';
+                pairMetaEl.textContent = 'Try a contract address.';
+                toast('No results. Try contract address.');
+                clearTokenLoadingUI();
+                return;
+              }
+              const best = bestPairAnyNet(pairs);
+              if(!best){
+                toast('No usable pair found.');
+                clearTokenLoadingUI();
+                return;
+              }
+              // switch net to best match chain
+              const chainId = lc(best?.chainId||'');
+              const newNet = (chainId==='solana') ? 'solana' : (chainId==='ethereum' ? 'eth' : (chainId==='bsc' ? 'bsc' : (chainId==='base' ? 'base' : activeNet)));
+              if(newNet !== activeNet){
+                activeNet = newNet;
+                renderNetPills();
+                startTrending();
+              }
+              _tokenKey = `token:${activeNet}:${v}`;
+              _tokenAC = startRequest(_tokenKey);
+
+              dsPair = best;
+              v = String(best?.baseToken?.address || '').trim() || v;
+              if(!skipInput) q.value = v;
+              _tokenKey = `token:${activeNet}:${v}`;
+              _tokenAC = startRequest(_tokenKey);
+            }catch(e){
+              statusEl.textContent = 'Search error.';
+              toast('Search failed. Try again.');
+              return;
+            }
+          }
+
+          // If it's an EVM address and no dsPair yet, try all EVM nets and pick best liquidity
+          if(isEvmAddr(v) && !dsPair){
+            const nets = ['eth','bsc','base'];
+            let best = null;
+            for(const n of nets){
+              const arr = await dsTokenPairsV1(n, v, {signal: _tokenAC.signal});
+              if(id !== reqIds.token) return;
+              const cand = bestPairAnyNet(arr);
+              if(cand && (!best || Number(cand?.liquidity?.usd||0) > Number(best?.liquidity?.usd||0))) best = cand;
+            }
+            if(best){
+              const chainId = lc(best?.chainId||'');
+              const newNet = (chainId==='ethereum') ? 'eth' : (chainId==='bsc' ? 'bsc' : (chainId==='base' ? 'base' : activeNet));
+              if(newNet !== activeNet){
+                activeNet = newNet;
+                renderNetPills();
+                startTrending();
+              }
+              _tokenKey = `token:${activeNet}:${v}`;
+              _tokenAC = startRequest(_tokenKey);
+              dsPair = best;
+            }
+          }
+
+          // If it's Solana address and no dsPair yet, fetch DS token-pairs on Solana
+          if(isSolAddr(v) && !dsPair){
+            const arr = await dsTokenPairsV1('solana', v, {signal: _tokenAC.signal});
+            if(id !== reqIds.token) return;
+            const best = bestPairAnyNet(arr);
+            if(best) dsPair = best;
+          }
+
+          // preferred pool address (pairAddress is usually the AMM pool address)
+          let preferredPool = dsPair?.pairAddress || dsPair?.pair_address || '';
+
+          // Fill header from DexScreener meta (fast symbols/logos/stats)
+          if(dsPair){
+            const meta = dsExtractTokenMeta(dsPair, v);
+            curTokenAddr = v;
+            if(meta?.image) curTokenImage = meta.image;
+            if(meta?.name) curTokenName = meta.name;
+            applyTokenHeader(meta);
+
+            applyStats({
+              price: num(dsPair?.priceUsd),
+              liq: num(dsPair?.liquidity?.usd),
+              mcap: num(dsPair?.fdv),
+              h24: num(dsPair?.priceChange?.h24),
+            });
+          }else{
+            curTokenAddr = v;
+            curTokenName = '';
+            curTokenImage = '';
+            applyTokenHeader({symbol:'TOKEN', name:'', quoteSymbol:'', image:''});
+            applyStats({});
+          }
+
+          // reset caches/timers
+          tradesSeen = new Set();
+          seenMakers = new Set();
+
+          try{
+            // 1) preferred pool first (when available via DexScreener)
+            if(preferredPool){
+              poolAddr = preferredPool;
+              const p = await geckoPool({signal: _tokenAC.signal});
+              if(id !== reqIds.token) return;
+              if(p){
+                if(id !== reqIds.token) return;
+                applyPool(p);
+                statusEl.textContent = 'Loading…';
+                await Promise.all([loadCandles(true), loadTrades(true)]);
+                if(id !== reqIds.token) return;
+                clearTokenLoadingUI();
+                if(id !== reqIds.token) return;
+                statusEl.textContent = 'Live.';
+                startLiveLoops();
+                return;
+              }
+            }
+
+            // 2) fallback: Gecko token pools -> choose best
+            const pools = await resolvePoolsFromGecko(v, {signal: _tokenAC.signal});
+            if(id !== reqIds.token) return;
+            if(!pools.length){
+              statusEl.textContent = 'Not found.';
+              pairNameEl.textContent = 'Not found';
+              pairMetaEl.textContent = 'Try a different token or chain.';
+              toast('Token not found on this chain.');
+              clearTokenLoadingUI();
+              return;
+            }
+
+            const best = chooseBestPool(pools, v);
+            poolChoices = pools;
+            poolAddr = poolAddressFromPool(best);
+
+            const _cP = loadCandles(true);
+            const _tP = loadTrades(true);
+            const p = await geckoPool({signal: _tokenAC.signal});
+            if(id !== reqIds.token) return;
+            if(!p) throw new Error('Pool fetch failed');
+            if(id !== reqIds.token) return;
             applyPool(p);
-            statusEl.textContent = 'Loading chart…';
-            await loadCandles(true);
-            statusEl.textContent = 'Loading trades…';
-            await loadTrades(true);
+
+            statusEl.textContent = 'Loading…';
+            await Promise.all([_cP, _tP]);
+                if(id !== reqIds.token) return;
+                clearTokenLoadingUI();
+                if(id !== reqIds.token) return;
             statusEl.textContent = 'Live.';
             startLiveLoops();
-            return;
-          }
-        }
-
-        // 2) fallback: Gecko token pools -> choose best
-        const pools = await resolvePoolsFromGecko(v);
-        if(!pools.length){
-          statusEl.textContent = 'Not found.';
-          pairNameEl.textContent = 'Not found';
-          pairMetaEl.textContent = 'Try a different token or chain.';
-          toast('Token not found on this chain.');
-          return;
-        }
-
-        const best = chooseBestPool(pools, v);
-        poolChoices = pools;
-        poolAddr = poolAddressFromPool(best);
-
-        const p = await geckoPool();
-        if(!p) throw new Error('Pool fetch failed');
-        applyPool(p);
-
-        statusEl.textContent = 'Loading chart…';
-        await loadCandles(true);
-        statusEl.textContent = 'Loading trades…';
-        await loadTrades(true);
-        statusEl.textContent = 'Live.';
-        startLiveLoops();
-      }catch(e){
-        console.error(e);
-        statusEl.textContent = 'Load error.';
-        // Avoid noisy toast on first load / auto-open. Show toast only after user actions.
-        if(!silent && !boot){
-          toast('Failed to load chart/trades. API blocked or pool unsupported.');
-        }
-        // One gentle auto-retry on boot (sometimes APIs are rate-limited on initial load)
-        if(boot && !openToken._bootRetried){
-          openToken._bootRetried = true;
-          setTimeout(()=>openToken(addr, {skipInput:true, silent:true}), 1200);
-        }
-}
+          }catch(e){
+            console.error(e);
+            statusEl.textContent = 'Load error.';
+            clearTokenLoadingUI();
+            // Avoid noisy toast on first load / auto-open. Show toast only after user actions.
+            if(!silent && !boot){
+              toast('Failed to load chart/trades. API blocked or pool unsupported.');
+            }
+            // One gentle auto-retry on boot (sometimes APIs are rate-limited on initial load)
+            if(boot && !openToken._bootRetried){
+              openToken._bootRetried = true;
+              setTimeout(()=>openToken(addr, {skipInput:true, silent:true}), 1200);
+            }
     }
+        }
 
     
     // Boot UI
@@ -4485,3 +4706,84 @@ if(searchScrim){
 </script>
 </body>
 </html>
+
+
+/* ================================
+   MOBILE-ONLY TRENDING TICKER COMPACT + SMOOTH (step12)
+   - Reduce height/padding, smaller cards, better readability
+   - Smooth marquee (GPU-friendly), less heavy shadows (less jank)
+   - Keeps existing click behavior
+   - Desktop unchanged
+   ================================ */
+@media (max-width: 760px){
+  /* Compact container spacing */
+  .topBarInner{ gap: 8px !important; padding: 10px 10px 10px !important; }
+
+  /* Ticker wrapper: slimmer + lighter paint cost */
+  .tickerWrap{
+    padding: 6px 8px !important;
+    border-radius: 16px !important;
+    border: 1px solid rgba(255,255,255,.10) !important;
+    background: rgba(255,255,255,.045) !important;
+    box-shadow: 0 8px 22px rgba(0,0,0,.18) !important;
+  }
+  .tickerWrap:before,
+  .tickerWrap:after{
+    width: 28px !important;
+  }
+
+  /* Smooth animation: longer duration + GPU-friendly transforms */
+  .tickerTrack{
+    gap: 8px !important;
+    animation-duration: 28s !important;
+    transform: translate3d(0,0,0);
+    will-change: transform;
+    backface-visibility: hidden;
+    contain: content;
+  }
+  .tickerWrap:hover .tickerTrack{ animation-play-state: paused; }
+
+  /* Smaller ticker items (Dexscreener vibe) */
+  .tickerItem{
+    padding: 6px 8px !important;
+    gap: 8px !important;
+    font-size: 12px !important;
+    border-radius: 999px !important;
+    background: rgba(255,255,255,.05) !important;
+    border: 1px solid rgba(255,255,255,.10) !important;
+    box-shadow: none !important; /* reduce repaint/jank */
+  }
+  .tickerItem.top1{
+    background: rgba(255,215,0,.08) !important;
+    border-color: rgba(255,215,0,.26) !important;
+    box-shadow: none !important;
+  }
+
+  /* Logo smaller + crisp */
+  .tickerLogoWrap{
+    width: 22px !important;
+    height: 22px !important;
+    flex: 0 0 22px !important;
+    border-radius: 6px !important;
+    box-shadow: none !important;
+  }
+  .tickerLogoFallback{ font-size: 11px !important; }
+
+  /* Rank + % pills tighter */
+  .tickerItem .rank{
+    min-width: 24px !important;
+    height: 18px !important;
+    padding: 0 6px !important;
+    font-size: 11px !important;
+  }
+  .tickerPct{
+    height: 18px !important;
+    padding: 0 6px !important;
+    font-size: 11px !important;
+  }
+
+  /* Prefer reduced motion */
+  @media (prefers-reduced-motion: reduce){
+    .tickerTrack{ animation: none !important; }
+  }
+}
