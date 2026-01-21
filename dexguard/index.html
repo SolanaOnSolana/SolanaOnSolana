@@ -2228,6 +2228,24 @@ display:none;
 #rtStatusBanner .rtClose:hover{ background: rgba(255,255,255,.10); }
 /* ===== /Micro 02 ===== */
 
+
+/* ===== DexGuard Micro 13: Trades Animation (smooth insert + shift) ===== */
+.tradeRow{ will-change: transform, opacity; }
+.tradeRow.dg-new{
+  opacity: 0;
+  transform: translateY(-12px);
+}
+.tradeRow.dg-new.dg-in{
+  opacity: 1;
+  transform: translateY(0);
+  transition: transform .22s ease, opacity .22s ease;
+}
+/* Ensure shift animations are smooth but lightweight */
+.tradeRow.dg-shift{
+  transition: transform .22s ease;
+}
+/* ===== /Micro 13 ===== */
+
 </style>
 </head>
 <body>
@@ -4072,68 +4090,256 @@ function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
 
       return [];
     }
+    // ===== DexGuard Micro 11: Trades UI fallback states (empty vs error) =====
+    function tradesHasAnyRows(){
+      try{
+        const el = document.getElementById('trades');
+        if(!el) return false;
+        return !!(el.querySelector('.tradeRow') || el.querySelector('.tradeHead'));
+      }catch(_){ return false; }
+    }
 
-        function renderTrades(trades, {reset=false}={}){
-      const parsed = (trades||[]).map(parseTrade).filter(x=>x.id && Number.isFinite(x.tsMs));
-      parsed.sort((a,b)=>b.tsMs-a.tsMs);
+    function setTradesFallback(msg){
+      try{
+        const el = document.getElementById('trades');
+        if(!el) return;
+        const safe = String(msg||'').replace(/[<>&]/g, s=>({ '<':'&lt;','>':'&gt;','&':'&amp;' }[s]));
+        el.innerHTML = `<div style="padding:14px 12px;color:rgba(255,255,255,.70);font-weight:900;font-size:13px;letter-spacing:.1px;">${safe}</div>`;
+      }catch(_){}
+    }
 
-      if(reset){
-        tradesSeen = new Set();
-        seenMakers = new Set();
-        // clear existing rows (keep header)
-        tradesContainer().forEach(el=>{
-          const head = el.querySelector('.tradeHead');
-          el.innerHTML='';
+    function showTradesRetrying(){
+      try{
+        const el = document.getElementById('trades');
+        if(!el) return;
+        // only overwrite if there are no rows; otherwise keep last good trades visible
+        const hasRows = !!(el.querySelector('.tradeRow'));
+        if(!hasRows){
+          setTradesFallback('Trades retrying…');
+        }
+      }catch(_){}
+    }
+    // ===== /Micro 11 =====
+    // ===== DexGuard Micro 12: Trades Dedupe (tx hash/signature + fallback key) =====
+    function tradeDedupeKey(tr){
+      try{
+        const txRaw = String((tr && (tr.tx || tr.id)) || '').trim();
+        if(txRaw && txRaw !== '0' && txRaw !== 'null' && txRaw !== 'undefined'){
+          return 'tx:' + txRaw.toLowerCase();
+        }
+        const ts = Number.isFinite(tr?.tsMs) ? Math.floor(tr.tsMs) : 0;
+        const type = String(tr?.type || '').toLowerCase();
+        const maker = String(tr?.maker || '').toLowerCase();
+        const usd = Number.isFinite(tr?.usd) ? (Math.round(tr.usd * 100) / 100) : '';
+        const price = Number.isFinite(tr?.price) ? (Math.round(tr.price * 1e10) / 1e10) : '';
+        const amt = Number.isFinite(tr?.amount) ? (Math.round(tr.amount * 1e10) / 1e10) : '';
+        return 'f:' + [ts, type, maker, usd, price, amt].join('|');
+      }catch(_){
+        try{ return 'f:' + String(Date.now()) + '|' + Math.random(); }catch(__){ return 'f:' + Math.random(); }
+      }
+    }
+    // ===== /Micro 12 =====
+    function renderTrades(trades, {reset=false} = {}){
+      try{
+        const el = document.getElementById('trades');
+        if(!el){ return; }
+
+        // Keep last-good rows visible on fetch failures (handled elsewhere)
+        if(!Array.isArray(trades)){
+          setTradesFallback('Trades retrying…');
+          return;
+        }
+        if(trades.length===0){
+          setTradesFallback('No recent trades');
+          return;
+        }
+
+        // State per pool signature (so dedupe survives polling, resets on pool/pair change)
+        const sig = `${activeNet}|${String(poolAddr||'').toLowerCase()}|${String(poolId||'')}`;
+        const S = (window.__DG_TRADES_UI__ || (window.__DG_TRADES_UI__ = {sig:'', keys:new Set(), max: 80}));
+        if(reset || S.sig !== sig){
+          S.sig = sig;
+          S.keys = new Set();
+          // clear and rebuild header
+          el.innerHTML = '';
+        }
+
+        // Ensure header exists
+        let head = el.querySelector('.tradeHead');
+        if(!head){
+          head = document.createElement('div');
+          head.className = 'tradeHead';
+          head.innerHTML = `
+            <div>Time</div>
+            <div>Type</div>
+            <div class="hideM">USD</div>
+            <div>Amount</div>
+            <div class="hideM">Price</div>
+            <div class="hideM">Maker</div>
+            <div></div>
+          `;
           el.appendChild(head);
+        }
+
+        // Snapshot positions for FLIP (existing rows only)
+        const existingRows = Array.from(el.querySelectorAll('.tradeRow'));
+        const beforeTops = new Map();
+        for(const r of existingRows){
+          try{ beforeTops.set(r, r.getBoundingClientRect().top); }catch(_){}
+        }
+
+        // Normalize incoming trades into renderable rows (most recent first)
+        const norm = [];
+        for(const t of trades){
+          try{
+            const a = t?.attributes || t || {};
+            const ts = Number(a?.timestamp || a?.time || a?.ts || 0);
+            const tsMs = ts ? (ts > 3e12 ? ts : ts*1000) : (a?.tsMs || 0);
+            const side = String(a?.kind || a?.side || a?.type || '').toLowerCase();
+            const type = side.includes('sell') ? 'sell' : (side.includes('buy') ? 'buy' : (a?.isBuy ? 'buy' : 'sell'));
+            const price = Number(a?.price_usd || a?.priceUsd || a?.price || 0);
+            const usd = Number(a?.volume_usd || a?.usd || a?.amount_usd || 0);
+            const baseAmt = Number(a?.base_amount || a?.baseAmount || a?.amount || 0);
+            const quoteAmt = Number(a?.quote_amount || a?.quoteAmount || 0);
+            const maker = String(a?.tx_from || a?.maker || a?.trader || a?.owner || '').trim();
+            const tx = String(a?.tx_hash || a?.txHash || a?.tx || t?.tx || t?.id || '').trim();
+
+            const amt = baseAmt || quoteAmt || 0;
+
+            const tr = { tsMs: Number(tsMs)||0, type, price: Number(price)||0, usd: Number(usd)||0, amount: Number(amt)||0, maker, tx };
+            tr.id = tx || '';
+            tr.k = tradeDedupeKey(tr);
+            norm.push(tr);
+          }catch(_){}
+        }
+        norm.sort((A,B)=>(B.tsMs||0)-(A.tsMs||0));
+        const top = norm.slice(0, S.max);
+
+        // Determine new trades to insert (preserve order newest->oldest)
+        const newOnes = [];
+        for(const tr of top){
+          if(!S.keys.has(tr.k)){
+            newOnes.push(tr);
+          }
+        }
+
+        // If nothing new, ensure panel is never blank
+        if(!newOnes.length){
+          if(!el.querySelector('.tradeRow')){
+            setTradesFallback('No recent trades');
+          }
+          return;
+        }
+
+        // Helper formatters
+        const fmtTime = (ms)=>{
+          try{
+            const d = new Date(ms||Date.now());
+            const hh = String(d.getHours()).padStart(2,'0');
+            const mm = String(d.getMinutes()).padStart(2,'0');
+            const ss = String(d.getSeconds()).padStart(2,'0');
+            return `${hh}:${mm}:${ss}`;
+          }catch(_){ return ''; }
+        };
+        const fmtNum = (n, dp=2)=>{
+          try{
+            if(!Number.isFinite(n)) return '–';
+            return n.toLocaleString(undefined, {maximumFractionDigits: dp});
+          }catch(_){ return String(n); }
+        };
+        const shortAddr = (a)=>{
+          try{
+            const s = String(a||'');
+            if(!s) return '—';
+            if(s.length<=12) return s;
+            return s.slice(0,6)+'…'+s.slice(-4);
+          }catch(_){ return '—'; }
+        };
+
+        // Insert at top (below header): newest first. Build nodes without rebuilding entire list.
+        const insertBefore = head.nextSibling;
+        for(const tr of newOnes){
+          S.keys.add(tr.k);
+
+          const row = document.createElement('div');
+          row.className = 'tradeRow dg-new enter';
+          row.dataset.k = tr.k;
+
+          const tbadge = `<span class="typeBadge ${tr.type==='buy'?'buy':'sell'}">${tr.type.toUpperCase()}</span>`;
+          const usdTxt = tr.usd ? ('$'+fmtNum(tr.usd, 2)) : '—';
+          const amtTxt = tr.amount ? fmtNum(tr.amount, 4) : '—';
+          const priceTxt = tr.price ? ('$'+fmtNum(tr.price, 8)) : '—';
+
+          const makerHtml = `<div class="maker"><span class="addr mono">${shortAddr(tr.maker)}</span></div>`;
+          const txLink = tr.tx ? `<a class="iconBtn" href="${explorerTxUrl(tr.tx)}" target="_blank" rel="noopener" title="Tx">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M14 3h7v7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              <path d="M10 14L21 3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              <path d="M21 14v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </a>` : `<div></div>`;
+
+          row.innerHTML = `
+            <div class="mono">${fmtTime(tr.tsMs)}</div>
+            <div>${tbadge}</div>
+            <div class="mono hideM">${usdTxt}</div>
+            <div class="mono">${amtTxt}</div>
+            <div class="mono hideM">${priceTxt}</div>
+            <div class="hideM">${makerHtml}</div>
+            <div>${txLink}</div>
+          `;
+
+          el.insertBefore(row, insertBefore);
+            try{ row.addEventListener('animationend', ()=>row.classList.remove('enter'), {once:true}); }catch(_){ setTimeout(()=>row.classList.remove('enter'), 400); }
+          requestAnimationFrame(()=>{ try{ row.classList.add('dg-in'); }catch(_){} });
+        }
+
+        // Prune extra rows beyond max (keep newest)
+        const rowsNow = Array.from(el.querySelectorAll('.tradeRow'));
+        if(rowsNow.length > S.max){
+          for(let i=S.max; i<rowsNow.length; i++){
+            try{
+              const k = rowsNow[i].dataset.k;
+              if(k) S.keys.delete(k);
+              rowsNow[i].remove();
+            }catch(_){}
+          }
+        }
+
+        // FLIP: animate older rows shifting down smoothly
+        requestAnimationFrame(()=>{
+          try{
+            const rowsAfter = Array.from(el.querySelectorAll('.tradeRow'));
+            for(const r of rowsAfter){
+              if(r.classList.contains('dg-new')) continue;
+              const bt = beforeTops.get(r);
+              if(bt == null) continue;
+              const at = r.getBoundingClientRect().top;
+              const dy = bt - at;
+              if(Math.abs(dy) < 0.5) continue;
+              r.classList.add('dg-shift');
+              r.style.transition = 'none';
+              r.style.transform = `translateY(${dy}px)`;
+              r.getBoundingClientRect();
+              r.style.transition = 'transform .22s ease';
+              r.style.transform = 'translateY(0)';
+              setTimeout(()=>{
+                try{
+                  r.style.transition = '';
+                  r.style.transform = '';
+                  r.classList.remove('dg-shift');
+                }catch(_){}
+              }, 260);
+            }
+            for(const r of el.querySelectorAll('.tradeRow.dg-new')){
+              setTimeout(()=>{ try{ r.classList.remove('dg-new'); }catch(_){ } }, 320);
+            }
+          }catch(_){}
         });
+
+      }catch(_){
+        try{ setTradesFallback('Trades retrying…'); }catch(__){}
       }
-
-      const newly = [];
-
-      // Only add unseen trades (prepend)
-      const newRowsHtml = [];
-      for(const tr of parsed){
-        if(tradesSeen.has(tr.id)) continue;
-        tradesSeen.add(tr.id);
-        newly.push(tr);
-        newRowsHtml.push(tradeRowHtml(tr));
-      }
-
-      if(newRowsHtml.length){
-        const htmlStr = newRowsHtml.join('');
-        tradesContainer().forEach(el=>{
-          const head = el.querySelector('.tradeHead');
-          const wrapper = document.createElement('div');
-          wrapper.innerHTML = htmlStr;
-          const frag = document.createDocumentFragment();
-          const rows = [];
-          while(wrapper.firstElementChild){
-            const row = wrapper.firstElementChild;
-            rows.push(row);
-            frag.appendChild(row);
-          }
-          if(rows.length){
-            // insert after head in a single batch
-            el.insertBefore(frag, head.nextSibling);
-            if(reset && newRowsHtml.length) perfMarkTrades(perfToken.id);
-            // animate new rows (batched)
-            rows.forEach(r=>{ try{ r.classList.add('enter'); }catch(_){ } });
-            requestAnimationFrame(()=>{ setTimeout(()=>{ rows.forEach(r=>{ try{ r.classList.remove('enter'); }catch(_){ } }); }, 420); });
-          }
-          // cap rows
-          const rowsAll = [...el.querySelectorAll('.tradeRow')];
-          if(rowsAll.length>120){
-            rowsAll.slice(120).forEach(r=>r.remove());
-          }
-        });
-      }
-
-      const total = tradesDesk.querySelectorAll('.tradeRow').length;
-      tradesStat.textContent = `${total} trades`;
-      tradesStatM.textContent = `${total} trades`;
-
-      updateAges();
-      return newly;
     }
 
     function updateAges(){
@@ -4269,6 +4475,7 @@ LIVE.gen++;
         if(!pid){
           TRADES_POLL.failCount = Math.min(TRADES_POLL.failCount + 1, 6);
           TRADES_POLL.delayMs = Math.min(TRADES_POLL.maxMs, Math.round(TRADES_POLL.normalMs * Math.pow(2, TRADES_POLL.failCount)));
+          try{ showTradesRetrying(); }catch(_){ }
           TRADES_POLL.timer = setTimeout(pollTradesOnce, TRADES_POLL.delayMs);
           return;
         }
@@ -4287,7 +4494,8 @@ LIVE.gen++;
           TRADES_POLL.delayMs = Math.min(TRADES_POLL.maxMs, Math.round(TRADES_POLL.normalMs * Math.pow(2, TRADES_POLL.failCount)));
         }
       }catch(e){
-        try{ console.warn("TradesPoll failure", e); }catch(_){}
+        try{ console.warn("TradesPoll failure", e);
+        try{ showTradesRetrying(); }catch(_){ } }catch(_){}
         TRADES_POLL.failCount = Math.min(TRADES_POLL.failCount + 1, 6);
         TRADES_POLL.delayMs = Math.min(TRADES_POLL.maxMs, Math.round(TRADES_POLL.normalMs * Math.pow(2, TRADES_POLL.failCount)));
       }finally{
@@ -5816,3 +6024,84 @@ if(searchScrim){
 
 </body>
 </html>
+
+
+/* ================================
+   MOBILE-ONLY TRENDING TICKER COMPACT + SMOOTH (step12)
+   - Reduce height/padding, smaller cards, better readability
+   - Smooth marquee (GPU-friendly), less heavy shadows (less jank)
+   - Keeps existing click behavior
+   - Desktop unchanged
+   ================================ */
+@media (max-width: 760px){
+  /* Compact container spacing */
+  .topBarInner{ gap: 8px !important; padding: 10px 10px 10px !important; }
+
+  /* Ticker wrapper: slimmer + lighter paint cost */
+  .tickerWrap{
+    padding: 6px 8px !important;
+    border-radius: 16px !important;
+    border: 1px solid rgba(255,255,255,.10) !important;
+    background: rgba(255,255,255,.045) !important;
+    box-shadow: 0 8px 22px rgba(0,0,0,.18) !important;
+  }
+  .tickerWrap:before,
+  .tickerWrap:after{
+    width: 28px !important;
+  }
+
+  /* Smooth animation: longer duration + GPU-friendly transforms */
+  .tickerTrack{
+    gap: 8px !important;
+    animation-duration: 28s !important;
+    transform: translate3d(0,0,0);
+    will-change: transform;
+    backface-visibility: hidden;
+    contain: content;
+  }
+  .tickerWrap:hover .tickerTrack{ animation-play-state: paused; }
+
+  /* Smaller ticker items (Dexscreener vibe) */
+  .tickerItem{
+    padding: 6px 8px !important;
+    gap: 8px !important;
+    font-size: 12px !important;
+    border-radius: 999px !important;
+    background: rgba(255,255,255,.05) !important;
+    border: 1px solid rgba(255,255,255,.10) !important;
+    box-shadow: none !important; /* reduce repaint/jank */
+  }
+  .tickerItem.top1{
+    background: rgba(255,215,0,.08) !important;
+    border-color: rgba(255,215,0,.26) !important;
+    box-shadow: none !important;
+  }
+
+  /* Logo smaller + crisp */
+  .tickerLogoWrap{
+    width: 22px !important;
+    height: 22px !important;
+    flex: 0 0 22px !important;
+    border-radius: 6px !important;
+    box-shadow: none !important;
+  }
+  .tickerLogoFallback{ font-size: 11px !important; }
+
+  /* Rank + % pills tighter */
+  .tickerItem .rank{
+    min-width: 24px !important;
+    height: 18px !important;
+    padding: 0 6px !important;
+    font-size: 11px !important;
+  }
+  .tickerPct{
+    height: 18px !important;
+    padding: 0 6px !important;
+    font-size: 11px !important;
+  }
+
+  /* Prefer reduced motion */
+  @media (prefers-reduced-motion: reduce){
+    .tickerTrack{ animation: none !important; }
+  }
+}
