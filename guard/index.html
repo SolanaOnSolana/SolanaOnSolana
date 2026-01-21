@@ -3528,6 +3528,7 @@ function setSearchModalOpen(open){
       applyStats({price, liq, mcap, h24});
 
       btnBuy.href = buildBuyUrl(activeNet, addr);
+      try{ startTradesPolling(); }catch(_){ }
     }
 
     // -------------------- Candles
@@ -4071,9 +4072,51 @@ function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
 
       return [];
     }
+    // ===== DexGuard Micro 11: Trades UI fallback states (empty vs error) =====
+    function tradesHasAnyRows(){
+      try{
+        const el = document.getElementById('trades');
+        if(!el) return false;
+        return !!(el.querySelector('.tradeRow') || el.querySelector('.tradeHead'));
+      }catch(_){ return false; }
+    }
+
+    function setTradesFallback(msg){
+      try{
+        const el = document.getElementById('trades');
+        if(!el) return;
+        const safe = String(msg||'').replace(/[<>&]/g, s=>({ '<':'&lt;','>':'&gt;','&':'&amp;' }[s]));
+        el.innerHTML = `<div style="padding:14px 12px;color:rgba(255,255,255,.70);font-weight:900;font-size:13px;letter-spacing:.1px;">${safe}</div>`;
+      }catch(_){}
+    }
+
+    function showTradesRetrying(){
+      try{
+        const el = document.getElementById('trades');
+        if(!el) return;
+        // only overwrite if there are no rows; otherwise keep last good trades visible
+        const hasRows = !!(el.querySelector('.tradeRow'));
+        if(!hasRows){
+          setTradesFallback('Trades retrying…');
+        }
+      }catch(_){}
+    }
+    // ===== /Micro 11 =====
+
+
 
         function renderTrades(trades, {reset=false}={}){
-      const parsed = (trades||[]).map(parseTrade).filter(x=>x.id && Number.isFinite(x.tsMs));
+      try{
+        if(!Array.isArray(trades)){
+          setTradesFallback('Trades retrying…');
+          return;
+        }
+        if(trades.length===0){
+          setTradesFallback('No recent trades');
+          return;
+        }
+      }catch(_){}
+const parsed = (trades||[]).map(parseTrade).filter(x=>x.id && Number.isFinite(x.tsMs));
       parsed.sort((a,b)=>b.tsMs-a.tsMs);
 
       if(reset){
@@ -4215,7 +4258,8 @@ function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
     }
 
     function stopLiveLoops(){
-      LIVE.gen++;
+            try{ stopTradesPolling(); }catch(_){ }
+LIVE.gen++;
       const st = LIVE;
       if(st.tTrades){ clearTimeout(st.tTrades); st.tTrades=null; }
       if(st.tCandles){ clearTimeout(st.tCandles); st.tCandles=null; }
@@ -4225,7 +4269,97 @@ function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
 
     const LIVE = { gen:0, tTrades:null, tCandles:null, tMeta:null, tAges:null, failTrades:0, tradeDelay:1500 };
 
-    function startLiveLoops(){
+    
+    // ===== DexGuard Micro 10: Trades Polling (stable interval + backoff) =====
+    const TRADES_POLL = (window.__DG_TRADES_POLL__ || (window.__DG_TRADES_POLL__ = {
+      timer: null,
+      running: false,
+      normalMs: 3000,
+      delayMs: 3000,
+      maxMs: 30000,
+      failCount: 0,
+      sig: '',
+      ctrl: null
+    }));
+
+    function tradesPollSig(){
+      try{
+        return `${activeNet}|${String(poolAddr||'').toLowerCase()}|${String(poolId||'')}`;
+      }catch(_){ return ''; }
+    }
+
+    function stopTradesPolling(){
+      try{
+        TRADES_POLL.running = false;
+        if(TRADES_POLL.timer){ clearTimeout(TRADES_POLL.timer); TRADES_POLL.timer = null; }
+        if(TRADES_POLL.ctrl){ try{ TRADES_POLL.ctrl.abort(); }catch(_){ } TRADES_POLL.ctrl = null; }
+      }catch(_){}
+    }
+
+    async function pollTradesOnce(){
+      try{
+        if(!TRADES_POLL.running) return;
+        const sigNow = tradesPollSig();
+        if(TRADES_POLL.sig && sigNow !== TRADES_POLL.sig){
+          // token/pool changed; stop this loop
+          stopTradesPolling();
+          return;
+        }
+
+        // Must have a selected pool; otherwise retry soon
+        const pid = String(poolAddr||poolId||'').trim();
+        if(!pid){
+          TRADES_POLL.failCount = Math.min(TRADES_POLL.failCount + 1, 6);
+          TRADES_POLL.delayMs = Math.min(TRADES_POLL.maxMs, Math.round(TRADES_POLL.normalMs * Math.pow(2, TRADES_POLL.failCount)));
+          try{ showTradesRetrying(); }catch(_){ }
+          TRADES_POLL.timer = setTimeout(pollTradesOnce, TRADES_POLL.delayMs);
+          return;
+        }
+
+        // Abort previous in-flight request
+        if(TRADES_POLL.ctrl){ try{ TRADES_POLL.ctrl.abort(); }catch(_){ } }
+        TRADES_POLL.ctrl = new AbortController();
+
+        const data = await geckoTrades(80, {signal: TRADES_POLL.ctrl.signal});
+        if(Array.isArray(data)){
+          try{ renderTrades(data); }catch(_){}
+          TRADES_POLL.failCount = 0;
+          TRADES_POLL.delayMs = TRADES_POLL.normalMs;
+        }else{
+          TRADES_POLL.failCount = Math.min(TRADES_POLL.failCount + 1, 6);
+          TRADES_POLL.delayMs = Math.min(TRADES_POLL.maxMs, Math.round(TRADES_POLL.normalMs * Math.pow(2, TRADES_POLL.failCount)));
+        }
+      }catch(e){
+        try{ console.warn("TradesPoll failure", e);
+        try{ showTradesRetrying(); }catch(_){ } }catch(_){}
+        TRADES_POLL.failCount = Math.min(TRADES_POLL.failCount + 1, 6);
+        TRADES_POLL.delayMs = Math.min(TRADES_POLL.maxMs, Math.round(TRADES_POLL.normalMs * Math.pow(2, TRADES_POLL.failCount)));
+      }finally{
+        try{
+          if(!TRADES_POLL.running) return;
+          const sigNow2 = tradesPollSig();
+          if(TRADES_POLL.sig && sigNow2 !== TRADES_POLL.sig) return;
+          // Ensure only one active loop
+          if(TRADES_POLL.timer){ clearTimeout(TRADES_POLL.timer); TRADES_POLL.timer = null; }
+          TRADES_POLL.timer = setTimeout(pollTradesOnce, TRADES_POLL.delayMs);
+        }catch(_){}
+      }
+    }
+
+    function startTradesPolling(){
+      try{
+        stopTradesPolling(); // guarantee no overlap
+        TRADES_POLL.running = true;
+        TRADES_POLL.failCount = 0;
+        TRADES_POLL.delayMs = TRADES_POLL.normalMs;
+        TRADES_POLL.sig = tradesPollSig();
+        try{ console.debug("TradesPoll start", TRADES_POLL.sig); }catch(_){}
+        TRADES_POLL.timer = setTimeout(pollTradesOnce, 120);
+      }catch(_){}
+    }
+    // ===== /Micro 10 =====
+
+function startLiveLoops(){
       stopLiveLoops();
       const gen = LIVE.gen;
       LIVE.failTrades = 0;
@@ -4237,6 +4371,7 @@ function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
           await loadTrades(false);
           LIVE.failTrades = 0;
           LIVE.tradeDelay = 1500;
+      try{ startTradesPolling(); }catch(_){ }
         }catch(_){
           LIVE.failTrades = (LIVE.failTrades||0) + 1;
           LIVE.tradeDelay = Math.min(7000, Math.round(1500 * Math.pow(1.25, LIVE.failTrades)));
