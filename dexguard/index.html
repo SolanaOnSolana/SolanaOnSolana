@@ -1208,6 +1208,28 @@ display:none;
   #tradesCard.open .trades{ max-height: clamp(220px, 42vh, 520px); }
 }
 
+
+/* ===== DexGuard Live Terminal Patch: Split Panel + Live Txns ===== */
+#btnRefresh,#btnFit{display:none !important;}
+.splitRoot{display:flex; flex-direction:column; height:clamp(520px,70vh,780px); min-height:480px; max-height:820px; margin-top:10px;}
+.splitChart{flex:1 1 auto; min-height:220px; position:relative; display:flex; flex-direction:column;}
+.splitChart #chartWrap{flex:1 1 auto; height:100% !important; min-height:220px;}
+.splitHandle{flex:0 0 14px; height:14px; cursor:ns-resize; touch-action:none; user-select:none; display:flex; align-items:center; justify-content:center;
+  background:rgba(255,255,255,.03); border-top:1px solid rgba(255,255,255,.06); border-bottom:1px solid rgba(255,255,255,.06);}
+.splitHandle::before{content:""; width:52px; height:4px; border-radius:999px; background:rgba(255,255,255,.18);}
+.splitPanel{flex:0 0 var(--split-bottom,260px); min-height:160px; max-height:calc(100% - 220px); overflow:hidden; display:flex; flex-direction:column;
+  background:rgba(0,0,0,.12); border-radius:16px;}
+.splitTabs{display:flex; gap:8px; padding:10px 10px 8px; align-items:center; border-bottom:1px solid rgba(255,255,255,.07); background:rgba(0,0,0,.16);}
+.splitTab{appearance:none; border:1px solid rgba(255,255,255,.10); background:rgba(255,255,255,.03); color:rgba(255,255,255,.88); padding:8px 10px; border-radius:12px;
+  font-weight:650; font-size:12px; letter-spacing:.2px; cursor:pointer;}
+.splitTab.active{background:rgba(255,184,0,.14); border-color:rgba(255,184,0,.22); color:#ffd37a;}
+.splitBody{flex:1; overflow:auto; -webkit-overflow-scrolling:touch;}
+.tradeRow.enter{animation:tradeEnter .26s ease-out both;}
+@keyframes tradeEnter{from{opacity:0; transform:translateY(-10px);}to{opacity:1; transform:translateY(0);}}
+/* Hide legacy mobile chart/trades tabs (split panel replaces them) */
+.mobileTabs{display:none !important;}
+#mobileTradesWrap{display:none !important;}
+
 </style>
 </head>
 <body>
@@ -1747,7 +1769,7 @@ let seenMakers = new Set();
     });
     ro.observe(chartEl);
 
-    btnFit.onclick = ()=>chart.timeScale().fitContent();
+    /* Fit button removed (auto-fit handled) */
 
     // -------------------- UI boot
     function renderNetPills(){
@@ -1779,7 +1801,10 @@ let seenMakers = new Set();
           activeTF=t;
           [...tfRow.children].forEach(x=>x.classList.toggle('active', x.textContent===t.k));
           if(poolAddr){
+            try{ if(typeof stopLiveLoops==='function') stopLiveLoops(); }catch(_){ }
             loadCandles(true);
+            loadTrades(true);
+            startLiveLoops();
           }
         };
         tfRow.appendChild(b);
@@ -1818,15 +1843,8 @@ function setMobileTab(which){
         if(tb) tb.scrollIntoView({behavior:'smooth', block:'start'});
       };
     }
-
-    btnRefresh.onclick=()=>{
-      if(!poolAddr){ toast('Pick a token first'); return; }
-      loadCandles(true);
-      loadTrades(true);
-      loadMeta(true);
-    };
-
-    // -------------------- Search
+    /* Refresh button removed (auto updates) */
+// -------------------- Search
     let searchTimer=null;
     let searchReq=0;
 
@@ -2335,10 +2353,15 @@ function setMobileTab(which){
 
     async function refreshLatestCandles(){
       if(!poolAddr) return;
+      const _key0 = `${activeNet}|${poolAddr}|${activeTF?.k||''}`;
+      const _reqId = (refreshLatestCandles._reqId = (refreshLatestCandles._reqId||0) + 1);
+      const _my = _reqId;
       try{
         const gran = activeTF.gecko;
         const url = geckoCandlesUrl(gran, null);
         const j = await fetchJson(url, {timeout:16000, retries:1});
+        if(_my !== refreshLatestCandles._reqId) return;
+        if(_key0 !== `${activeNet}|${poolAddr}|${activeTF?.k||''}`) return;
         const part = mapGeckoOhlcv(j);
         if(!part.length) return;
         part.sort((a,b)=>a.time-b.time);
@@ -2617,6 +2640,7 @@ function setMobileTab(which){
           const wrapper = document.createElement('div');
           wrapper.innerHTML = html;
           const row = wrapper.firstElementChild;
+          if(row){ row.classList.add('enter'); requestAnimationFrame(()=>{ row.classList.add('enter'); }); setTimeout(()=>{ try{ row.classList.remove('enter'); }catch(_){ } }, 420); }
           // insert after head
           el.insertBefore(row, head.nextSibling);
           // cap rows
@@ -2681,30 +2705,74 @@ function setMobileTab(which){
         volumeSeries.update({time:c.time, value:c.volume, color:(c.close>=c.open)?'rgba(20,241,149,.35)':'rgba(255,77,109,.35)'});
       }
     }
-
     async function loadTrades(reset=false){
       if(!poolAddr) return;
+      const _key0 = `${activeNet}|${poolAddr}`;
+      const _reqId = (loadTrades._reqId = (loadTrades._reqId||0) + 1);
+      const _my = _reqId;
       try{
         const data = await geckoTrades(80);
+        if(_my !== loadTrades._reqId) return;
+        if(_key0 !== `${activeNet}|${poolAddr}`) return;
         const newly = renderTrades(data, {reset}) || [];
         if(newly.length){
           // Apply oldest->newest so candle updates are correct
           newly.slice().sort((a,b)=>a.tsMs-b.tsMs).forEach(applyTradeToCandles);
         }
-
-    function startLiveLoops(){
-      if(tradesTimer) clearInterval(tradesTimer);
-      tradesTimer = setInterval(async ()=>{ try{ await loadTrades(false); }catch(_){ } }, 2500);
-
-      if(candlesTimer) clearInterval(candlesTimer);
-      candlesTimer = setInterval(async ()=>{ try{ await refreshLatestCandles(); }catch(_){ } }, 5000);
-    }
-        statusEl.textContent = 'Live.';
       }catch(e){
-        console.error(e);
-        statusEl.textContent = 'Trades error.';
+        // keep UI stable
       }
     }
+
+    function stopLiveLoops(){
+      LIVE.gen++;
+      const st = LIVE;
+      if(st.tTrades){ clearTimeout(st.tTrades); st.tTrades=null; }
+      if(st.tCandles){ clearTimeout(st.tCandles); st.tCandles=null; }
+      if(st.tMeta){ clearTimeout(st.tMeta); st.tMeta=null; }
+      if(st.tAges){ clearInterval(st.tAges); st.tAges=null; }
+    }
+
+    const LIVE = { gen:0, tTrades:null, tCandles:null, tMeta:null, tAges:null, failTrades:0, tradeDelay:1500 };
+
+    function startLiveLoops(){
+      stopLiveLoops();
+      const gen = LIVE.gen;
+      LIVE.failTrades = 0;
+      LIVE.tradeDelay = 1500;
+
+      const scheduleTrades = async ()=>{
+        if(gen !== LIVE.gen) return;
+        try{
+          await loadTrades(false);
+          LIVE.failTrades = 0;
+          LIVE.tradeDelay = 1500;
+        }catch(_){
+          LIVE.failTrades = (LIVE.failTrades||0) + 1;
+          LIVE.tradeDelay = Math.min(7000, Math.round(1500 * Math.pow(1.25, LIVE.failTrades)));
+        }
+        LIVE.tTrades = setTimeout(scheduleTrades, LIVE.tradeDelay);
+      };
+
+      const scheduleCandles = async ()=>{
+        if(gen !== LIVE.gen) return;
+        try{ await refreshLatestCandles(); }catch(_){}
+        LIVE.tCandles = setTimeout(scheduleCandles, 9000);
+      };
+
+      const scheduleMeta = async ()=>{
+        if(gen !== LIVE.gen) return;
+        try{ await loadMeta(); }catch(_){}
+        LIVE.tMeta = setTimeout(scheduleMeta, 15000);
+      };
+
+      LIVE.tAges = setInterval(()=>{ if(gen === LIVE.gen) updateAges(); }, 1000);
+
+      scheduleTrades();
+      scheduleCandles();
+      scheduleMeta();
+    }
+
 
 // -------------------- Meta (refresh price/liquidity/24h)
     async function geckoPool(){
@@ -2919,6 +2987,7 @@ function setMobileTab(which){
     }
 
     async function openToken(input, opts={}){
+      try{ if(typeof stopLiveLoops==='function') stopLiveLoops(); }catch(_){ }
       const skipInput = !!opts.skipInput;
       const silent = !!opts.silent;
       const boot = !!opts.boot;
@@ -3189,6 +3258,179 @@ if(searchScrim){
   }catch(_){}
 })();
   })();
-  </script>
+  
+
+// ================================
+//  DexGuard Split Panel (Chart + Txns) + Drag Handle
+// ================================
+(function initSplitPanel(){
+  try{
+    const rootId = 'splitRoot';
+    if(document.getElementById(rootId)) return;
+    if(!chartCard || !tradesCard) return;
+
+    // Remove legacy buttons completely
+    try{ if(btnFit) btnFit.remove(); }catch(_){}
+    try{ if(btnRefresh) btnRefresh.remove(); }catch(_){}
+
+    // Hide legacy mobile tab wrapper + mobile trades wrapper (split replaces)
+    try{ const mt = chartCard.querySelector('.mobileTabs'); if(mt) mt.remove(); }catch(_){}
+    try{ if(mobileTradesWrap) mobileTradesWrap.style.display='none'; }catch(_){}
+
+    // Build split DOM
+    const splitRoot = document.createElement('div');
+    splitRoot.id = rootId;
+    splitRoot.className = 'splitRoot';
+
+    const splitChart = document.createElement('div');
+    splitChart.className = 'splitChart';
+
+    const splitHandle = document.createElement('div');
+    splitHandle.className = 'splitHandle';
+    splitHandle.setAttribute('role','separator');
+    splitHandle.setAttribute('aria-orientation','horizontal');
+    splitHandle.title = 'Drag to resize';
+
+    const splitPanel = document.createElement('div');
+    splitPanel.className = 'splitPanel';
+
+    const splitTabs = document.createElement('div');
+    splitTabs.className = 'splitTabs';
+
+    const mkTab = (key, label)=>{
+      const b=document.createElement('button');
+      b.type='button';
+      b.className='splitTab';
+      b.dataset.key=key;
+      b.textContent=label;
+      return b;
+    };
+
+    const tabBoth = mkTab('both','Chart+Txns');
+    const tabChartOnly = mkTab('chart','Chart');
+    const tabTxnsOnly = mkTab('txns','Txns');
+    splitTabs.appendChild(tabBoth);
+    splitTabs.appendChild(tabChartOnly);
+    splitTabs.appendChild(tabTxnsOnly);
+
+    const splitBody = document.createElement('div');
+    splitBody.className = 'splitBody';
+
+    splitPanel.appendChild(splitTabs);
+    splitPanel.appendChild(splitBody);
+
+    // Move chartWrap + controls into splitChart
+    const chartWrapEl = document.getElementById('chartWrap');
+    const controlsEl = chartCard.querySelector('.controls');
+    if(chartWrapEl) splitChart.appendChild(chartWrapEl);
+    if(controlsEl) splitChart.appendChild(controlsEl);
+
+    // Move trades card into splitBody
+    tradesCard.classList.remove('desktopOnly');
+    splitBody.appendChild(tradesCard);
+
+    // Insert into chartCard (after header)
+    const hd = chartCard.querySelector('.cardHd');
+    if(hd && hd.parentNode){
+      hd.parentNode.insertBefore(splitRoot, hd.nextSibling);
+    }else{
+      chartCard.appendChild(splitRoot);
+    }
+    splitRoot.appendChild(splitChart);
+    splitRoot.appendChild(splitHandle);
+    splitRoot.appendChild(splitPanel);
+
+    // Default heights
+    const clamp = (v,min,max)=>Math.max(min,Math.min(max,v));
+    const recompute = ()=>{
+      const total = splitRoot.clientHeight || 0;
+      const minBottom = 160;
+      const maxBottom = Math.max(minBottom, total - 240);
+      const cur = parseFloat(getComputedStyle(splitRoot).getPropertyValue('--split-bottom')) || 260;
+      const next = clamp(cur, minBottom, maxBottom);
+      splitRoot.style.setProperty('--split-bottom', next + 'px');
+      requestAnimationFrame(()=>{ try{ chart.applyOptions({ width: chartEl.clientWidth, height: chartEl.clientHeight }); }catch(_){ } });
+    };
+    window.addEventListener('resize', recompute, {passive:true});
+    requestAnimationFrame(recompute);
+
+    // Tabs behavior
+    const setMode = (mode)=>{
+      tabBoth.classList.toggle('active', mode==='both');
+      tabChartOnly.classList.toggle('active', mode==='chart');
+      tabTxnsOnly.classList.toggle('active', mode==='txns');
+
+      if(mode==='chart'){
+        splitPanel.style.display = 'none';
+        splitHandle.style.display = 'none';
+        splitChart.style.flex = '1 1 auto';
+      }else if(mode==='txns'){
+        splitChart.style.display = 'none';
+        splitHandle.style.display = 'none';
+        splitPanel.style.display = 'flex';
+      }else{
+        splitChart.style.display = 'flex';
+        splitPanel.style.display = 'flex';
+        splitHandle.style.display = 'flex';
+      }
+
+      requestAnimationFrame(()=>{
+        try{
+          if(mode!=='txns'){
+            chart.applyOptions({ width: chartEl.clientWidth, height: chartEl.clientHeight });
+            chart.timeScale().fitContent();
+          }
+        }catch(_){}
+      });
+    };
+
+    tabBoth.onclick = ()=>setMode('both');
+    tabChartOnly.onclick = ()=>setMode('chart');
+    tabTxnsOnly.onclick = ()=>setMode('txns');
+    setMode('both');
+
+    // Drag handle behavior
+    let dragging=false, startY=0, startBottom=0;
+    const onMove = (e)=>{
+      if(!dragging) return;
+      const y = (e.touches && e.touches[0]) ? e.touches[0].clientY : e.clientY;
+      const dy = y - startY;
+      const total = splitRoot.clientHeight || 0;
+      const minBottom = 160;
+      const maxBottom = Math.max(minBottom, total - 240);
+      const next = clamp(startBottom - dy, minBottom, maxBottom);
+      splitRoot.style.setProperty('--split-bottom', next + 'px');
+      requestAnimationFrame(()=>{ try{ chart.applyOptions({ width: chartEl.clientWidth, height: chartEl.clientHeight }); }catch(_){ } });
+      e.preventDefault?.();
+    };
+    const onUp = ()=>{
+      if(!dragging) return;
+      dragging=false;
+      document.body.classList.remove('dragging');
+      window.removeEventListener('pointermove', onMove, {passive:false});
+      window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('touchmove', onMove, {passive:false});
+      window.removeEventListener('touchend', onUp);
+    };
+
+    const onDown = (e)=>{
+      if(tabChartOnly.classList.contains('active') || tabTxnsOnly.classList.contains('active')) return;
+      dragging=true;
+      startY = (e.touches && e.touches[0]) ? e.touches[0].clientY : e.clientY;
+      startBottom = parseFloat(getComputedStyle(splitRoot).getPropertyValue('--split-bottom')) || 260;
+      document.body.classList.add('dragging');
+      if(e.pointerId && splitHandle.setPointerCapture) try{ splitHandle.setPointerCapture(e.pointerId); }catch(_){}
+      window.addEventListener('pointermove', onMove, {passive:false});
+      window.addEventListener('pointerup', onUp);
+      window.addEventListener('touchmove', onMove, {passive:false});
+      window.addEventListener('touchend', onUp);
+      e.preventDefault?.();
+    };
+
+    splitHandle.addEventListener('pointerdown', onDown, {passive:false});
+    splitHandle.addEventListener('touchstart', onDown, {passive:false});
+  }catch(_){}
+})();
+</script>
 </body>
 </html>
