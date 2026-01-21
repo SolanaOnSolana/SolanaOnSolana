@@ -2077,6 +2077,108 @@ display:none;
   }
 }
 
+
+/* ================================
+   MOBILE-ONLY OVERLAY STACKING FIX (step13)
+   - Ensure overlays (search results, dropdowns, menus) always sit above chart canvas & panels
+   - Fix stacking contexts via isolation / z-index without changing desktop
+   ================================ */
+@media (max-width: 760px){
+  /* Create a predictable stacking root for the app */
+  body{
+    position: relative;
+    isolation: isolate; /* prevents weird stacking-context interactions */
+  }
+
+  /* Keep chart/canvas at the bottom of the local stacking order */
+  #chartCard, #chartWrap, #chart, #chart canvas{
+    position: relative;
+    z-index: 0 !important;
+  }
+
+  /* Panels/cards stay above the chart baseline but below overlays */
+  .panel, .grid, .card, .controls{
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Avoid accidental stacking contexts that trap z-index */
+  .panel, .card, .grid, #chartWrap, #chart{
+    transform: none !important;
+    filter: none !important;
+    will-change: auto !important;
+  }
+
+  /* Search overlay: always on top */
+  .searchScrim, #searchScrim{
+    position: fixed !important;
+    z-index: 2147483000 !important;
+  }
+  .results, #results{
+    z-index: 2147483001 !important;
+  }
+
+  /* Generic "overlay-ish" popups/tooltips (safe no-op if not present) */
+  [role="dialog"], [role="menu"], [role="listbox"], [role="tooltip"],
+  .dropdown, .dropdownMenu, .menu, .menuPanel, .popover, .tooltip, .contextMenu, .sheet{
+    z-index: 2147482990 !important;
+  }
+}
+
+
+/* ================================
+   MOBILE-ONLY SAFE-AREA + SCROLL POLISH (step14)
+   - Use env(safe-area-inset-top/bottom) for sticky bars + bottom spacing
+   - Prevent "rubber band" overlap on iOS
+   - Ensure overlays lock background scroll (works with existing searchModalOpen lock)
+   - Desktop unchanged
+   ================================ */
+@media (max-width: 760px){
+  :root{
+    --safeTop: env(safe-area-inset-top);
+    --safeBottom: env(safe-area-inset-bottom);
+  }
+
+  /* Give the whole page a safe bottom so nothing sits under the home indicator */
+  .wrap{
+    padding-bottom: calc(16px + var(--safeBottom)) !important;
+  }
+
+  /* Ensure fixed/sticky bars respect safe areas */
+  .topbar{
+    padding-top: calc(var(--safeTop) + 8px) !important;
+  }
+  .dexSearch{
+    top: calc(var(--safeTop) + var(--appbarH, 56px) + 8px) !important;
+  }
+
+  /* Any bottom UI (toast/sheets) should sit above the home indicator */
+  .toast{
+    bottom: calc(18px + var(--safeBottom)) !important;
+  }
+  /* Search results sheet already uses a bottom offset; enforce safe-area just in case */
+  #results.results, .results{
+    padding-bottom: max(10px, var(--safeBottom)) !important;
+  }
+
+  /* Reduce iOS rubber-band bounce that can cause fixed/sticky overlap */
+  html, body{
+    overscroll-behavior-x: none;
+    overscroll-behavior-y: none;
+  }
+
+  /* Nested scrollers stay smooth */
+  .trades, .results{
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* When an overlay is open, keep the background fully locked and non-bouncy */
+  body.searchModalOpen{
+    overscroll-behavior: none;
+    touch-action: none;
+  }
+}
+
 </style>
 </head>
 <body>
@@ -4421,3 +4523,84 @@ if(searchScrim){
 </script>
 </body>
 </html>
+
+
+/* ================================
+   MOBILE-ONLY TRENDING TICKER COMPACT + SMOOTH (step12)
+   - Reduce height/padding, smaller cards, better readability
+   - Smooth marquee (GPU-friendly), less heavy shadows (less jank)
+   - Keeps existing click behavior
+   - Desktop unchanged
+   ================================ */
+@media (max-width: 760px){
+  /* Compact container spacing */
+  .topBarInner{ gap: 8px !important; padding: 10px 10px 10px !important; }
+
+  /* Ticker wrapper: slimmer + lighter paint cost */
+  .tickerWrap{
+    padding: 6px 8px !important;
+    border-radius: 16px !important;
+    border: 1px solid rgba(255,255,255,.10) !important;
+    background: rgba(255,255,255,.045) !important;
+    box-shadow: 0 8px 22px rgba(0,0,0,.18) !important;
+  }
+  .tickerWrap:before,
+  .tickerWrap:after{
+    width: 28px !important;
+  }
+
+  /* Smooth animation: longer duration + GPU-friendly transforms */
+  .tickerTrack{
+    gap: 8px !important;
+    animation-duration: 28s !important;
+    transform: translate3d(0,0,0);
+    will-change: transform;
+    backface-visibility: hidden;
+    contain: content;
+  }
+  .tickerWrap:hover .tickerTrack{ animation-play-state: paused; }
+
+  /* Smaller ticker items (Dexscreener vibe) */
+  .tickerItem{
+    padding: 6px 8px !important;
+    gap: 8px !important;
+    font-size: 12px !important;
+    border-radius: 999px !important;
+    background: rgba(255,255,255,.05) !important;
+    border: 1px solid rgba(255,255,255,.10) !important;
+    box-shadow: none !important; /* reduce repaint/jank */
+  }
+  .tickerItem.top1{
+    background: rgba(255,215,0,.08) !important;
+    border-color: rgba(255,215,0,.26) !important;
+    box-shadow: none !important;
+  }
+
+  /* Logo smaller + crisp */
+  .tickerLogoWrap{
+    width: 22px !important;
+    height: 22px !important;
+    flex: 0 0 22px !important;
+    border-radius: 6px !important;
+    box-shadow: none !important;
+  }
+  .tickerLogoFallback{ font-size: 11px !important; }
+
+  /* Rank + % pills tighter */
+  .tickerItem .rank{
+    min-width: 24px !important;
+    height: 18px !important;
+    padding: 0 6px !important;
+    font-size: 11px !important;
+  }
+  .tickerPct{
+    height: 18px !important;
+    padding: 0 6px !important;
+    font-size: 11px !important;
+  }
+
+  /* Prefer reduced motion */
+  @media (prefers-reduced-motion: reduce){
+    .tickerTrack{ animation: none !important; }
+  }
+}
