@@ -4102,6 +4102,27 @@ function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
       }catch(_){}
     }
     // ===== /Micro 11 =====
+    // ===== DexGuard Micro 12: Trades Dedupe (tx hash/signature + fallback key) =====
+    function tradeDedupeKey(tr){
+      try{
+        const txRaw = String((tr && (tr.tx || tr.id)) || '').trim();
+        if(txRaw && txRaw !== '0' && txRaw !== 'null' && txRaw !== 'undefined'){
+          return 'tx:' + txRaw.toLowerCase();
+        }
+        const ts = Number.isFinite(tr?.tsMs) ? Math.floor(tr.tsMs) : 0;
+        const type = String(tr?.type || '').toLowerCase();
+        const maker = String(tr?.maker || '').toLowerCase();
+        const usd = Number.isFinite(tr?.usd) ? (Math.round(tr.usd * 100) / 100) : '';
+        const price = Number.isFinite(tr?.price) ? (Math.round(tr.price * 1e10) / 1e10) : '';
+        const amt = Number.isFinite(tr?.amount) ? (Math.round(tr.amount * 1e10) / 1e10) : '';
+        return 'f:' + [ts, type, maker, usd, price, amt].join('|');
+      }catch(_){
+        try{ return 'f:' + String(Date.now()) + '|' + Math.random(); }catch(__){ return 'f:' + Math.random(); }
+      }
+    }
+    // ===== /Micro 12 =====
+
+
 
 
 
@@ -4135,8 +4156,19 @@ const parsed = (trades||[]).map(parseTrade).filter(x=>x.id && Number.isFinite(x.
       // Only add unseen trades (prepend)
       const newRowsHtml = [];
       for(const tr of parsed){
-        if(tradesSeen.has(tr.id)) continue;
-        tradesSeen.add(tr.id);
+        const _k = tradeDedupeKey(tr);
+        if(tradesSeen.has(_k)) continue;
+        tradesSeen.add(_k);
+        // prevent unbounded growth across long sessions
+        if(tradesSeen.size > 5000){
+          try{
+            const keep = new Set();
+            for(let i=0;i<Math.min(240, trades.length);i++){
+              keep.add(tradeDedupeKey(trades[i]));
+            }
+            tradesSeen = keep;
+          }catch(_){ }
+        }
         newly.push(tr);
         newRowsHtml.push(tradeRowHtml(tr));
       }
