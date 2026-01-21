@@ -2453,6 +2453,11 @@ display:none;
     if(typeof DBG.metrics.lastTradesCount==='undefined') DBG.metrics.lastTradesCount = 0;
     if(typeof DBG.metrics.lastTradesUrl==='undefined') DBG.metrics.lastTradesUrl = '';
     if(typeof DBG.metrics.lastTradesError==='undefined') DBG.metrics.lastTradesError = '';
+    if(typeof DBG.metrics.lastCandlesFetchAt==='undefined') DBG.metrics.lastCandlesFetchAt = 0;
+    if(typeof DBG.metrics.lastCandlesCount==='undefined') DBG.metrics.lastCandlesCount = 0;
+    if(typeof DBG.metrics.lastCandlesTf==='undefined') DBG.metrics.lastCandlesTf = '';
+    if(typeof DBG.metrics.lastCandlesUrl==='undefined') DBG.metrics.lastCandlesUrl = '';
+    if(typeof DBG.metrics.lastCandlesError==='undefined') DBG.metrics.lastCandlesError = '';
 
     function _safeStr(v){
       try{
@@ -3344,24 +3349,166 @@ let seenMakers = new Set();
 
     // -------------------- Chart
     const chartEl = $('chart');
-    const chart = LightweightCharts.createChart(chartEl, {
-      width: chartEl.clientWidth || 800,
-      height: chartEl.clientHeight || 520,
-      layout: { background: { type:'solid', color:'rgba(0,0,0,0)' }, textColor:'rgba(255,255,255,.86)' },
-      grid: { vertLines:{color:'rgba(255,255,255,.06)'}, horzLines:{color:'rgba(255,255,255,.06)'} },
-      rightPriceScale: { borderColor:'rgba(255,255,255,.12)' },
-      timeScale: { borderColor:'rgba(255,255,255,.12)', timeVisible:true, secondsVisible:false },
-      crosshair: { mode: 1 },
-      handleScroll: { mouseWheel:true, pressedMouseMove:true, horzTouchDrag:true, vertTouchDrag:true },
-      handleScale: { axisPressedMouseMove:true, mouseWheel:true, pinch:true },
-    });
+    let chart = null;
+    let candleSeries = null;
+    let volumeSeries = null;
+    let _dgChartMode = 'lw';
 
+    function dgCreateNativeChart(container){
+      // Minimal native canvas fallback when external chart lib fails
+      const cvs = document.createElement('canvas');
+      cvs.id = 'dgNativeChart';
+      cvs.style.width = '100%';
+      cvs.style.height = '100%';
+      cvs.style.display = 'block';
+      try{ container.innerHTML = ''; }catch(_){}
+      try{ container.appendChild(cvs); }catch(_){}
+      const ctx = cvs.getContext('2d', { alpha:true });
+      let w = 0, h = 0;
+      let candles = [];
+      let visCb = null;
+      let visRange = null;
 
-    // Unified number formatting for chart scale
+      function _resize(){
+        try{
+          w = container.clientWidth || 800;
+          h = container.clientHeight || 520;
+          const dpr = window.devicePixelRatio || 1;
+          cvs.width = Math.max(1, Math.floor(w * dpr));
+          cvs.height = Math.max(1, Math.floor(h * dpr));
+          if(ctx) ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+          _draw();
+        }catch(_){}
+      }
+      function _draw(){
+        try{
+          if(!ctx) return;
+          ctx.clearRect(0, 0, w, h);
+          if(!candles || !candles.length) return;
+
+          const n = candles.length;
+          const viewBars = (typeof desiredViewportBars === 'function') ? desiredViewportBars() : 260;
+          const from = Math.max(0, n - viewBars);
+          const to = n;
+          const view = candles.slice(from, to);
+          if(!view.length) return;
+
+          let minP = Infinity, maxP = -Infinity;
+          for(const c of view){
+            if(Number.isFinite(c.low) && c.low < minP) minP = c.low;
+            if(Number.isFinite(c.high) && c.high > maxP) maxP = c.high;
+          }
+          if(!Number.isFinite(minP) || !Number.isFinite(maxP) || minP === maxP) return;
+
+          const pad = (maxP - minP) * 0.05;
+          minP -= pad; maxP += pad;
+
+          const innerTop = 10, innerBottom = h - 10;
+          const innerH = Math.max(1, innerBottom - innerTop);
+          const y = (p)=> innerBottom - ((p - minP) / (maxP - minP)) * innerH;
+
+          const cw = w / Math.max(1, view.length);
+          for(let i=0;i<view.length;i++){
+            const c = view[i];
+            const x0 = i * cw + cw * 0.15;
+            const bw = Math.max(1, cw * 0.7);
+            const yh = y(c.high), yl = y(c.low), yo = y(c.open), yc = y(c.close);
+            const up = c.close >= c.open;
+            ctx.strokeStyle = up ? 'rgba(20,241,149,.95)' : 'rgba(255,77,109,.95)';
+            ctx.fillStyle = up ? 'rgba(20,241,149,.55)' : 'rgba(255,77,109,.55)';
+            // wick
+            ctx.beginPath();
+            ctx.moveTo(x0 + bw/2, yh);
+            ctx.lineTo(x0 + bw/2, yl);
+            ctx.stroke();
+            // body
+            const top = Math.min(yo, yc);
+            const bot = Math.max(yo, yc);
+            ctx.fillRect(x0, top, bw, Math.max(1, bot - top));
+          }
+
+          try{ visCb && visCb({ from, to }); }catch(_){}
+        }catch(_){}
+      }
+
+      try{ new ResizeObserver(_resize).observe(container); }catch(_){}
+      try{ window.addEventListener('resize', _resize, {passive:true}); }catch(_){}
+      _resize();
+
+      function _mkCandleSeries(){
+        return {
+          setData(arr){
+            try{
+              const a = Array.isArray(arr) ? arr : [];
+              candles = a.map(o=>({ time:o.time, open:o.open, high:o.high, low:o.low, close:o.close })).filter(o=>Number.isFinite(o.time));
+              candles.sort((a,b)=>a.time-b.time);
+              _draw();
+            }catch(_){}
+          },
+          update(o){
+            try{
+              if(!o || !Number.isFinite(o.time)) return;
+              const c = { time:o.time, open:o.open, high:o.high, low:o.low, close:o.close };
+              const idx = candles.findIndex(x=>x.time===c.time);
+              if(idx>=0) candles[idx] = c;
+              else { candles.push(c); candles.sort((a,b)=>a.time-b.time); }
+              _draw();
+            }catch(_){}
+          }
+        };
+      }
+      function _mkVolumeSeries(){
+        return { setData(){}, update(){} };
+      }
+
+      return {
+        _mode:'native',
+        addCandlestickSeries(){ return _mkCandleSeries(); },
+        addHistogramSeries(){ return _mkVolumeSeries(); },
+        applyOptions(){},
+        resize(){ _resize(); },
+        priceScale(){ return { applyOptions(){} }; },
+        timeScale(){
+          return {
+            applyOptions(){},
+            getVisibleLogicalRange(){
+              const n = candles.length || 0;
+              const viewBars = (typeof desiredViewportBars === 'function') ? desiredViewportBars() : 260;
+              const from = Math.max(0, n - viewBars);
+              return { from, to: n };
+            },
+            setVisibleLogicalRange(r){ visRange = r || visRange; try{ _draw(); }catch(_){ } },
+            subscribeVisibleLogicalRangeChange(cb){ visCb = cb; }
+          };
+        }
+      };
+    }
+
+    try{
+      if(window.LightweightCharts && typeof LightweightCharts.createChart==='function'){
+        chart = LightweightCharts.createChart(chartEl, {
+          width: chartEl.clientWidth || 800,
+          height: chartEl.clientHeight || 520,
+          layout: { background: { type:'solid', color:'rgba(0,0,0,0)' }, textColor:'rgba(255,255,255,.86)' },
+          grid: { vertLines:{color:'rgba(255,255,255,.06)'}, horzLines:{color:'rgba(255,255,255,.06)'} },
+          rightPriceScale: { borderColor:'rgba(255,255,255,.12)' },
+          timeScale: { borderColor:'rgba(255,255,255,.12)', timeVisible:true, secondsVisible:false },
+          crosshair: { mode: 1 },
+          handleScroll: { mouseWheel:true, pressedMouseMove:true, horzTouchDrag:true, vertTouchDrag:true },
+          handleScale: { axisPressedMouseMove:true, mouseWheel:true, pinch:true },
+        });
+      }else{
+        throw new Error('LightweightCharts missing');
+      }
+    }catch(_e){
+      _dgChartMode = 'native';
+      try{ chart = dgCreateNativeChart(chartEl); }catch(_){ chart = dgCreateNativeChart(chartEl); }
+    }
+
+    // Unified number formatting for chart scale (auto precision applied after data load)
     try{ chart.applyOptions({ localization:{ priceFormatter:(p)=>DG_FMT.price(p) } }); }catch(_){ }
 
-
-    const candleSeries = chart.addCandlestickSeries({
+candleSeries = chart.addCandlestickSeries({
       upColor: 'rgba(20,241,149,.95)',
       downColor:'rgba(255,77,109,.95)',
       wickUpColor:'rgba(20,241,149,.95)',
@@ -3384,16 +3531,17 @@ let seenMakers = new Set();
       priceFormat:{ type:'price', precision: 10, minMove: 1e-10 }
     });
 
-    const volumeSeries = chart.addHistogramSeries({
+    volumeSeries = chart.addHistogramSeries({
       priceFormat: { type:'volume' },
       priceScaleId: '',
       lastValueVisible:false,
       base:0,
     });
-    chart.priceScale('').applyOptions({ scaleMargins:{ top:0.84, bottom:0 } });
+    try{ chart.priceScale('').applyOptions({ scaleMargins:{ top:0.84, bottom:0 } }); }catch(_){ }
 
 
-    // ===== Micro Smooth Update (interpolate last close) =====
+    
+// ===== Micro Smooth Update (interpolate last close) =====
     let _dgCloseTween = { raf:0, barTime:0, from:NaN, to:NaN, start:0, dur:120, open:NaN, high:NaN, low:NaN };
     let _dgRendered = { time:0, close:NaN };
     function _dgCancelCloseTween(){
@@ -3529,7 +3677,7 @@ let seenMakers = new Set();
             try{ if(typeof stopLiveLoops==='function') stopLiveLoops(); }catch(_){ }
           try{ if(typeof abortAllRequests==='function') abortAllRequests(); }catch(_){ }
             (async()=>{
-              await Promise.all([loadCandles(true), loadTrades(true)]);
+              await Promise.all([requestCandles(true), loadTrades(true)]);
               startLiveLoops();
             })();
           }
@@ -3973,7 +4121,7 @@ function setSearchModalOpen(open){
         const picked = pools.find(x=>String(x?.id||'')===id);
         if(picked){
           applyPool(picked);
-          loadCandles(true);
+          requestCandles(true);
           loadTrades(true);
           loadMeta(true);
         }
@@ -4144,6 +4292,39 @@ function setSearchModalOpen(open){
     let _lastCandleFitKey = '';
     let _pagingAttached = false;
 
+    // Candles: short-term cache + debounce to prevent heavy request queues on rapid switching
+    const CANDLE_CACHE_TTL = 45000; // ms
+    const candleCache = (window.__DG_CANDLE_CACHE__ ||= new Map());
+    let _dgCandlesDebT = 0;
+    let _dgCandlesDebKey = '';
+    let _dgCandlesDebP = null;
+    let _dgCandlesDebRes = null;
+
+    function requestCandles(fit){
+      // Debounce by (net|pool|tf) key; returns a promise that resolves when the latest scheduled load finishes
+      try{
+        const key = `${activeNet}|${poolAddr}|${activeTF?.k||''}`;
+        _dgCandlesDebKey = key;
+        if(_dgCandlesDebT) clearTimeout(_dgCandlesDebT);
+        if(!_dgCandlesDebP){
+          _dgCandlesDebP = new Promise((res)=>{ _dgCandlesDebRes = res; });
+        }
+        _dgCandlesDebT = setTimeout(async ()=>{
+          const myKey = _dgCandlesDebKey;
+          _dgCandlesDebT = 0;
+          try{
+            // Only run if still the same key at execution time
+            const curKey = `${activeNet}|${poolAddr}|${activeTF?.k||''}`;
+            if(curKey !== myKey) { /* stale */ }
+            else { await requestCandles(!!fit); }
+          }catch(_e){}
+          try{ _dgCandlesDebRes && _dgCandlesDebRes(true); }catch(_){}
+          _dgCandlesDebP = null; _dgCandlesDebRes = null;
+        }, 140);
+        return _dgCandlesDebP;
+      }catch(_){ return Promise.resolve(false); }
+    }
+
     function desiredViewportBars(){
       const k = activeTF?.k || '15m';
       if(k==='1m') return 320;
@@ -4266,26 +4447,82 @@ function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
       return out;
     }
 
+    function dgAutoDecimalsFromRange(minV, maxV){
+      try{
+        const a = Math.max(Math.abs(Number(minV)||0), Math.abs(Number(maxV)||0), 0);
+        if(a >= 1000) return 2;
+        if(a >= 100) return 3;
+        if(a >= 1) return 4;
+        if(a >= 0.01) return 6;
+        if(a >= 0.0001) return 8;
+        return 10;
+      }catch(_){ return 6; }
+    }
+    function dgFmtPriceAuto(p, dec){
+      if(!Number.isFinite(p)) return '—';
+      try{
+        const d = Math.max(0, Math.min(12, dec|0));
+        return p.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: d });
+      }catch(_){
+        try{
+          const d = Math.max(0, Math.min(12, dec|0));
+          return d ? Number(p).toFixed(d) : String(p);
+        }catch(_2){ return String(p); }
+      }
+    }
+
     function applyCandlesToChart(fit){
-      // Ensure strictly ascending + unique by time
+      // Ensure strictly ascending + unique by time + never feed NaN into renderer
       const map = new Map();
       for(const c of (rawCandles||[])){
         if(!c || !(c.time>0)) continue;
         map.set(c.time, c);
       }
-      rawCandles = Array.from(map.values()).sort((a,b)=>a.time-b.time);
-      const src = rawCandles;
+      const sorted = Array.from(map.values()).sort((a,b)=>a.time-b.time);
 
-      candleSeries.setData(src.map(c=>({time:c.time, open:c.open, high:c.high, low:c.low, close:c.close})));
-      volumeSeries.setData(src.map(c=>({time:c.time, value:c.volume||0, color:(c.close>=c.open)?'rgba(20,241,149,.35)':'rgba(255,77,109,.35)'})));
+      const clean = [];
+      let minP = Infinity, maxP = -Infinity;
+      for(const c of sorted){
+        const o = Number(c.open), h = Number(c.high), l = Number(c.low), cl = Number(c.close);
+        if(!Number.isFinite(o) || !Number.isFinite(h) || !Number.isFinite(l) || !Number.isFinite(cl)) continue;
+        const hi = Math.max(h, o, cl);
+        const lo = Math.min(l, o, cl);
+        if(!Number.isFinite(hi) || !Number.isFinite(lo)) continue;
+        const v = Number(c.volume);
+        const vol = Number.isFinite(v) ? v : 0;
+        clean.push({ time: c.time, open: o, high: hi, low: lo, close: cl, volume: vol });
+        if(lo < minP) minP = lo;
+        if(hi > maxP) maxP = hi;
+      }
+      rawCandles = clean;
 
-      if(src && src.length) perfMarkCandles(perfToken.id);
+      if(!clean.length){
+        try{ candleSeries && candleSeries.setData && candleSeries.setData([]); }catch(_){}
+        try{ volumeSeries && volumeSeries.setData && volumeSeries.setData([]); }catch(_){}
+        try{ statusEl.textContent = 'No candle data'; }catch(_){}
+        return;
+      }
+
+      try{
+        candleSeries && candleSeries.setData && candleSeries.setData(clean.map(c=>({time:c.time, open:c.open, high:c.high, low:c.low, close:c.close})));
+      }catch(_){}
+      try{
+        volumeSeries && volumeSeries.setData && volumeSeries.setData(clean.map(c=>({time:c.time, value:(Number.isFinite(c.volume)?c.volume:0), color:(c.close>=c.open)?'rgba(20,241,149,.35)':'rgba(255,77,109,.35)'})));
+      }catch(_){}
+
+      try{
+        const dec = dgAutoDecimalsFromRange(minP, maxP);
+        chart && chart.applyOptions && chart.applyOptions({ localization:{ priceFormatter:(p)=>dgFmtPriceAuto(p, dec) } });
+      }catch(_){}
+
+      try{ statusEl.textContent = ''; }catch(_){}
+
+      try{ if(clean && clean.length) perfMarkCandles(perfToken.id); }catch(_){}
 
       if(fit){
-        applyDefaultViewport();
+        try{ applyDefaultViewport(); }catch(_){}
       }else{
-        // keep bar spacing reasonable even during live updates
-        syncBarSpacing();
+        try{ syncBarSpacing(); }catch(_){}
       }
     }
 
@@ -4455,7 +4692,40 @@ function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
 
       const id = ++reqIds.candles;
       const tfKey = `${activeNet}|${poolAddr}|${activeTF?.k||''}`;
-      const ac = startRequest(`candles:${activeNet}:${poolAddr}:${activeTF?.k||''}`);
+      const _reqKey = `candles:${activeNet}:${poolAddr}:${activeTF?.k||''}`;
+      try{
+        if(window.__DG_LAST_CANDLES_REQ_KEY && requestControllers && requestControllers.get){
+          requestControllers.get(window.__DG_LAST_CANDLES_REQ_KEY)?.abort();
+        }
+      }catch(_){ }
+      try{ window.__DG_LAST_CANDLES_REQ_KEY = _reqKey; }catch(_){ }
+      const ac = startRequest(_reqKey);
+
+      // Fast path: short-term cache (instant chart when revisiting same pool/tf)
+      try{
+        const now = Date.now();
+        const cached = candleCache && candleCache.get ? candleCache.get(tfKey) : null;
+        if(cached && cached.ts && (now - cached.ts) < CANDLE_CACHE_TTL && Array.isArray(cached.candles)){
+          rawCandles = cached.candles.slice();
+          candlePager.loading = false;
+          candlePager.hasMore = !!cached.hasMore;
+          candlePager.before = (typeof cached.before === 'number' ? cached.before : (cached.before||null));
+          candlePager.key = tfKey;
+          try{
+            if(window.__DG_DEBUG__){
+              window.__DG_DEBUG__.metrics = window.__DG_DEBUG__.metrics || {};
+              window.__DG_DEBUG__.metrics.lastCandlesFetchAt = cached.ts || now;
+              window.__DG_DEBUG__.metrics.lastCandlesCount = rawCandles.length||0;
+              window.__DG_DEBUG__.metrics.lastCandlesTf = activeTF?.k||'';
+              window.__DG_DEBUG__.metrics.lastCandlesUrl = cached.url || '';
+              window.__DG_DEBUG__.metrics.lastCandlesError = '';
+            }
+          }catch(_){}
+          try{ statusEl.textContent = rawCandles.length ? '' : 'No candle data'; }catch(_){}
+          try{ applyCandlesToChart(!!fit); }catch(_){}
+          return;
+        }
+      }catch(_){}
 
       statusEl.textContent = 'Loading chart…';
       candlePager.loading = true;
@@ -4469,6 +4739,17 @@ function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
 
       try{
         const gran = activeTF.gecko;
+        try{
+          if(window.__DG_DEBUG__){
+            window.__DG_DEBUG__.metrics = window.__DG_DEBUG__.metrics || {};
+            window.__DG_DEBUG__.metrics.lastCandlesFetchAt = Date.now();
+            window.__DG_DEBUG__.metrics.lastCandlesTf = activeTF?.k||'';
+            window.__DG_DEBUG__.metrics.lastCandlesUrl = '';
+            window.__DG_DEBUG__.metrics.lastCandlesCount = 0;
+            window.__DG_DEBUG__.metrics.lastCandlesError = '';
+          }
+        }catch(_){}
+
         const needBars = desiredViewportBars();
         const maxPages = (activeTF.k==='ALL' ? 6 : 3);
 
@@ -4477,12 +4758,14 @@ function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
         let pages = 0;
 
         const url0 = geckoCandlesUrl(gran, before);
+        try{ if(window.__DG_DEBUG__){ window.__DG_DEBUG__.metrics = window.__DG_DEBUG__.metrics || {}; window.__DG_DEBUG__.metrics.lastCandlesUrl = url0; } }catch(_){ }
         const j0 = await fetchJson(url0, {timeout:18000, retries:1, signal: ac.signal});
         if(id !== reqIds.candles) return;
 
         let part0 = mapGeckoOhlcv(j0);
         if(!part0.length){
-          statusEl.textContent = 'Chart not available for this pool.';
+          try{ if(window.__DG_DEBUG__){ window.__DG_DEBUG__.metrics = window.__DG_DEBUG__.metrics || {}; window.__DG_DEBUG__.metrics.lastCandlesCount = 0; window.__DG_DEBUG__.metrics.lastCandlesError = 'No candle data'; } }catch(_){ }
+          statusEl.textContent = 'No candle data';
           candlePager.hasMore = false;
           candlePager.before = null;
           candlePager.loading = false;
@@ -4501,6 +4784,26 @@ function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
         const shouldFit = !!fit && (_lastCandleFitKey !== tfKey);
         applyCandlesToChart(shouldFit);
         if(shouldFit) _lastCandleFitKey = tfKey;
+
+        try{
+          if(window.__DG_DEBUG__){
+            window.__DG_DEBUG__.metrics = window.__DG_DEBUG__.metrics || {};
+            window.__DG_DEBUG__.metrics.lastCandlesCount = rawCandles.length||0;
+            window.__DG_DEBUG__.metrics.lastCandlesError = '';
+          }
+        }catch(_){ }
+        try{
+          if(candleCache && candleCache.set){
+            candleCache.set(tfKey, {
+              ts: Date.now(),
+              candles: rawCandles.slice(),
+              before: candlePager.before,
+              hasMore: candlePager.hasMore,
+              url: url0,
+              tf: activeTF?.k||''
+            });
+          }
+        }catch(_){ }
 
         statusEl.textContent = 'Live.';
         candlePager.loading = false;
@@ -4539,6 +4842,17 @@ function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
               if(part.length < (CANDLE_LIMIT - 10)) candlePager.hasMore = false;
 
               applyCandlesToChart(false);
+              try{
+                if(window.__DG_DEBUG__){
+                  window.__DG_DEBUG__.metrics = window.__DG_DEBUG__.metrics || {};
+                  window.__DG_DEBUG__.metrics.lastCandlesCount = rawCandles.length||0;
+                }
+              }catch(_){ }
+              try{
+                if(candleCache && candleCache.set){
+                  candleCache.set(tfKey, { ts: Date.now(), candles: rawCandles.slice(), before: candlePager.before, hasMore: candlePager.hasMore, url: url0, tf: activeTF?.k||'' });
+                }
+              }catch(_){ }
               fetched++;
             }
           }catch(e){
@@ -4548,8 +4862,14 @@ function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
           }
         })(); });
       }catch(e){
-        statusEl.textContent = 'Chart error.';
-        console.error(e);
+        try{
+          if(window.__DG_DEBUG__){
+            window.__DG_DEBUG__.metrics = window.__DG_DEBUG__.metrics || {};
+            window.__DG_DEBUG__.metrics.lastCandlesError = (e && (e.name||e.message)) ? (String(e.name||'') + (e.message?(': '+e.message):'')) : String(e||'');
+          }
+        }catch(_){ }
+        try{ statusEl.textContent = 'No candle data'; }catch(_){ }
+        try{ console.error(e); }catch(_){ }
       }finally{
         if(id === reqIds.candles) candlePager.loading = false;
       }
@@ -5940,7 +6260,7 @@ function startLiveLoops(){
                 if(id !== reqIds.token) return;
                 applyPool(p);
                 statusEl.textContent = 'Loading…';
-                await Promise.all([loadCandles(true), loadTrades(true)]);
+                await Promise.all([requestCandles(true), loadTrades(true)]);
                 if(id !== reqIds.token) return;
                 clearTokenLoadingUI();
                 if(id !== reqIds.token) return;
@@ -5970,7 +6290,7 @@ return;
             poolChoices = pools;
             poolAddr = poolAddressFromPool(best);
 
-            const _cP = loadCandles(true);
+            const _cP = requestCandles(true);
             const _tP = loadTrades(true);
             const p = await geckoPool({signal: _tokenAC.signal});
             if(id !== reqIds.token) return;
@@ -6957,82 +7277,3 @@ if(searchScrim){
 </html>
 
 
-/* ================================
-   MOBILE-ONLY TRENDING TICKER COMPACT + SMOOTH (step12)
-   - Reduce height/padding, smaller cards, better readability
-   - Smooth marquee (GPU-friendly), less heavy shadows (less jank)
-   - Keeps existing click behavior
-   - Desktop unchanged
-   ================================ */
-@media (max-width: 760px){
-  /* Compact container spacing */
-  .topBarInner{ gap: 8px !important; padding: 10px 10px 10px !important; }
-
-  /* Ticker wrapper: slimmer + lighter paint cost */
-  .tickerWrap{
-    padding: 6px 8px !important;
-    border-radius: 16px !important;
-    border: 1px solid rgba(255,255,255,.10) !important;
-    background: rgba(255,255,255,.045) !important;
-    box-shadow: 0 8px 22px rgba(0,0,0,.18) !important;
-  }
-  .tickerWrap:before,
-  .tickerWrap:after{
-    width: 28px !important;
-  }
-
-  /* Smooth animation: longer duration + GPU-friendly transforms */
-  .tickerTrack{
-    gap: 8px !important;
-    animation-duration: 28s !important;
-    transform: translate3d(0,0,0);
-    will-change: transform;
-    backface-visibility: hidden;
-    contain: content;
-  }
-  .tickerWrap:hover .tickerTrack{ animation-play-state: paused; }
-
-  /* Smaller ticker items (Dexscreener vibe) */
-  .tickerItem{
-    padding: 6px 8px !important;
-    gap: 8px !important;
-    font-size: 12px !important;
-    border-radius: 999px !important;
-    background: rgba(255,255,255,.05) !important;
-    border: 1px solid rgba(255,255,255,.10) !important;
-    box-shadow: none !important; /* reduce repaint/jank */
-  }
-  .tickerItem.top1{
-    background: rgba(255,215,0,.08) !important;
-    border-color: rgba(255,215,0,.26) !important;
-    box-shadow: none !important;
-  }
-
-  /* Logo smaller + crisp */
-  .tickerLogoWrap{
-    width: 22px !important;
-    height: 22px !important;
-    flex: 0 0 22px !important;
-    border-radius: 6px !important;
-    box-shadow: none !important;
-  }
-  .tickerLogoFallback{ font-size: 11px !important; }
-
-  /* Rank + % pills tighter */
-  .tickerItem .rank{
-    min-width: 24px !important;
-    height: 18px !important;
-    padding: 0 6px !important;
-    font-size: 11px !important;
-  }
-  .tickerPct{
-    height: 18px !important;
-    padding: 0 6px !important;
-    font-size: 11px !important;
-  }
-
-  /* Prefer reduced motion */
-  @media (prefers-reduced-motion: reduce){
-    .tickerTrack{ animation: none !important; }
-  }
-}
