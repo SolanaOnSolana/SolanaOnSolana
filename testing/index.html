@@ -1281,10 +1281,6 @@ display:none;
 }
 
 
-
-/* ===== PERF: containment to reduce paint/layout cost (no visual/behavior change) ===== */
-#chartWrap{ contain: layout paint; }
-.trades{ contain: layout paint; }
 </style>
 </head>
 <body>
@@ -1451,6 +1447,13 @@ display:none;
     const NET_LABEL = { solana:'SOL', eth:'ETH', bsc:'BNB', base:'BASE' };
     const NET_DS = { solana:'solana', eth:'ethereum', bsc:'bsc', base:'base' };
     const NET_GECKO = { solana:'solana', eth:'eth', bsc:'bsc', base:'base' };
+    // Native gas/settlement unit for each chain (display only)
+    const NATIVE_UNIT = { solana:'SOL', eth:'ETH', bsc:'BNB', base:'ETH' };
+    function nativeUnit(net){
+      const n = String(net||'').toLowerCase();
+      return NATIVE_UNIT[n] || (NET_LABEL[n] || 'ETH');
+    }
+
 
     const DEFAULT_TOKEN = {
       solana: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', // USDC
@@ -1532,90 +1535,6 @@ display:none;
     const sleep = (ms)=>new Promise(r=>setTimeout(r, ms));
     const lc = (v)=>String(v||'').toLowerCase();
 
-
-    // -------------------- PERF (targeted optimizations, no behavior changes)
-    const PERF = (()=> {
-      // LRU cache with TTL
-      class LRUCache{
-        constructor(max=120, ttl=30000){ this.max=max; this.ttl=ttl; this.m=new Map(); }
-        _now(){ return (typeof performance!=='undefined' && performance.now) ? performance.now() : Date.now(); }
-        get(k){
-          const e = this.m.get(k);
-          if(!e) return null;
-          if(e.exp && e.exp < Date.now()){ this.m.delete(k); return null; }
-          // refresh recency
-          this.m.delete(k); this.m.set(k, e);
-          return e.v;
-        }
-        set(k, v, ttlMs){
-          const exp = Date.now() + (ttlMs ?? this.ttl);
-          if(this.m.has(k)) this.m.delete(k);
-          this.m.set(k, {v, exp});
-          while(this.m.size > this.max){
-            const first = this.m.keys().next().value;
-            this.m.delete(first);
-          }
-        }
-        del(k){ this.m.delete(k); }
-        clear(){ this.m.clear(); }
-      }
-
-      const aborters = new Map();
-      const inflight = new Map();
-
-      const idle = (cb, timeout=500)=>{
-        if(typeof requestIdleCallback === 'function') return requestIdleCallback(cb, {timeout});
-        return setTimeout(()=>cb({didTimeout:true, timeRemaining:()=>0}), timeout);
-      };
-
-      const raf = (cb)=>{
-        return requestAnimationFrame(cb);
-      };
-
-      const abort = (group)=>{
-        const prev = aborters.get(group);
-        if(prev){ try{ prev.abort(); }catch(_){ } }
-        const ctl = new AbortController();
-        aborters.set(group, ctl);
-        return ctl.signal;
-      };
-
-      const caches = {
-        tokenMeta: new LRUCache(220, 60000),
-        candles:   new LRUCache(80,  45000),
-        trades:    new LRUCache(160, 15000),
-        search:    new LRUCache(140, 60000),
-        http:      new LRUCache(220, 45000),
-        chartPrep: new LRUCache(40,  60000),
-      };
-
-      const fetchCached = async (url, fetcher, {cache=null, cacheKey=null, ttl=null, dedupe=true}={})=>{
-        const key = cacheKey || url;
-        if(cache){
-          const hit = cache.get(key);
-          if(hit!=null) return hit;
-        }
-        if(dedupe){
-          const p0 = inflight.get(key);
-          if(p0) return p0;
-        }
-        let p;
-        p = (async()=>{
-          const j = await fetcher();
-          if(cache) cache.set(key, j, ttl);
-          return j;
-        })();
-        inflight.set(key, p);
-        try{
-          return await p;
-        }finally{
-          if(inflight.get(key)===p) inflight.delete(key);
-        }
-      };
-
-      return { LRUCache, caches, inflight, idle, raf, abort, fetchCached };
-    })();
-
     function toast(msg, ms=2200){
       toastEl.textContent = msg;
       toastEl.style.display='block';
@@ -1667,41 +1586,27 @@ display:none;
     }
 
     // fetch with timeout + retry + CORS fallback via allorigins
-    async function fetchJson(url, {timeout=12000, retries=1, signal=null}={}){
+    async function fetchJson(url, {timeout=12000, retries=1}={}){
       const proxy = (u)=>'https://api.allorigins.win/raw?url=' + encodeURIComponent(u);
       let lastErr=null;
       for(let i=0;i<=retries;i++){
         const ctl = new AbortController();
-        const t = setTimeout(()=>{ try{ ctl.abort(); }catch(_){ } }, timeout);
-
-        // Link external cancellation (switch token/chain/timeframe, search typing, etc.)
-        let unlink = null;
-        if(signal){
-          if(signal.aborted){ clearTimeout(t); throw new DOMException('Aborted','AbortError'); }
-          const onAbort = ()=>{ try{ ctl.abort(); }catch(_){ } };
-          signal.addEventListener('abort', onAbort, {once:true});
-          unlink = ()=>{ try{ signal.removeEventListener('abort', onAbort); }catch(_){ } };
-        }
-
+        const t = setTimeout(()=>ctl.abort(), timeout);
         try{
           const r = await fetch(url, {
             headers:{'accept':'application/json'},
             signal: ctl.signal,
             cache: 'no-store'
           });
-          clearTimeout(t); if(unlink) unlink();
+          clearTimeout(t);
           if(!r.ok) throw new Error('HTTP '+r.status);
           return await r.json();
         }catch(e){
-          clearTimeout(t); if(unlink) unlink();
+          clearTimeout(t);
           lastErr=e;
-
-          // Try proxy for CORS / network error
+          // try proxy for CORS / network error
           try{
             const msg = String(e&&e.message||e||'');
-            const isAbort = (e && (e.name==='AbortError')) || /aborted/i.test(msg);
-            if(isAbort) throw e;
-
             const isCors = (e instanceof TypeError) || /Failed to fetch|NetworkError|CORS/i.test(msg);
             if(isCors){
               const r2 = await fetch(proxy(url), {cache:'no-store'});
@@ -1710,20 +1615,11 @@ display:none;
                 return JSON.parse(txt);
               }
             }
-          }catch(e2){
-            // Preserve abort and other hard failures
-            if(e2 && e2.name==='AbortError') throw e2;
-          }
-
+          }catch(_){ }
           if(i<retries) await sleep(250*(i+1));
         }
       }
       throw lastErr || new Error('Network');
-    }
-
-    // Cached/deduped JSON fetch (TTL to prevent spam refetch, still fresh)
-    async function fetchJsonCached(url, {timeout=12000, retries=1, signal=null, cacheKey=null, ttl=null, cache=PERF.caches.http}={}){
-      return PERF.fetchCached(url, ()=>fetchJson(url, {timeout, retries, signal}), {cache, cacheKey: cacheKey||url, ttl, dedupe:true});
     }
 
     function normalizeChain(x){
@@ -2028,30 +1924,18 @@ function setMobileTab(which){
       searchScrim.addEventListener('click', hideResults);
     }
 
-    async function dsSearch(query, signal){
+    async function dsSearch(query){
       // DexScreener search is used ONLY for discovery. We do not embed anything.
       const url = DS + '/search/?q=' + encodeURIComponent(query);
-      const ck = `ds:search:${lc(query)}`;
-      const j = await fetchJsonCached(url, {timeout:12000, retries:1, signal, cacheKey: ck, ttl: 60000, cache: PERF.caches.search});
+      const j = await fetchJson(url, {timeout:12000, retries:1});
       return Array.isArray(j?.pairs) ? j.pairs : [];
     }
 
-    async function dsTokenPairsV1(net, tokenAddr, signal){
+    async function dsTokenPairsV1(net, tokenAddr){
       const chain = NET_DS[normalizeChain(net)] || 'solana';
       const url = `https://api.dexscreener.com/token-pairs/v1/${chain}/${encodeURIComponent(tokenAddr)}`;
-      const ck = `ds:pairs:${chain}:${String(tokenAddr)}`;
       try{
-        const j = await fetchJsonCached(url, {timeout:14000, retries:1, signal, cacheKey: ck, ttl: 60000, cache: PERF.caches.tokenMeta});
-        return Array.isArray(j) ? j : [];
-      }catch(_){
-        return [];
-      }
-    }
-
-/${encodeURIComponent(tokenAddr)}`;
-      try{
-        const ck = `gecko:pool:${geckoNet()}:${poolAddr}`;
-      const j = await fetchJsonCached(url, {timeout:14000, retries:1, signal, cacheKey: ck, ttl: 45000, cache: PERF.caches.tokenMeta});
+        const j = await fetchJson(url, {timeout:14000, retries:1});
         return Array.isArray(j) ? j : [];
       }catch(_){
         return [];
@@ -2198,14 +2082,14 @@ function setMobileTab(which){
       searchTimer = setTimeout(async ()=>{
         const id = ++searchReq;
         try{
-          const pairs = await dsSearch(v, PERF.abort('search'));
+          const pairs = await dsSearch(v);
           if(id!==searchReq) return;
           renderSearchResults(pairs);
         }catch(e){
           if(id!==searchReq) return;
           showResults(`<div style="padding:12px; color:rgba(255,255,255,.75)">Search error. Try again.</div>`);
         }
-      }, 120);
+      }, 220);
     });
 
     q.addEventListener('keydown', (e)=>{
@@ -2228,8 +2112,7 @@ function setMobileTab(which){
     async function resolvePoolsFromGecko(tokenAddr){
       // /networks/{network}/tokens/{token}/pools?include=base_token,quote_token&page=1
       const url = `${GECKO}/networks/${encodeURIComponent(geckoNet())}/tokens/${encodeURIComponent(tokenAddr)}/pools?include=base_token,quote_token,dex&page=1`;
-      const ck = `gecko:pool:${geckoNet()}:${poolAddr}`;
-      const j = await fetchJsonCached(url, {timeout:14000, retries:1, signal, cacheKey: ck, ttl: 45000, cache: PERF.caches.tokenMeta});
+      const j = await fetchJson(url, {timeout:14000, retries:1});
       return Array.isArray(j?.data) ? j.data : [];
     }
 
@@ -2306,7 +2189,7 @@ function setMobileTab(which){
       if(name) curTokenName = name;
       if(imgIn) curTokenImage = imgIn;
 
-      const title = quote ? `$${sym}/${quote}` : `$${sym}`;
+      const title = `$${sym}/${nativeUnit(activeNet)}`;
       const nameHtml = (name && name.toLowerCase()!==sym.toLowerCase())
         ? `<span class="pairNameSub">${esc(name)}</span>` : '';
       pairNameEl.innerHTML = `${esc(title)}${nameHtml ? ' ' + nameHtml : ''}`;
@@ -2464,49 +2347,24 @@ function setMobileTab(which){
     }
 
     function applyCandlesToChart(fit){
-      // Ensure strictly ascending + unique by time (keeps chart stable)
+      // Ensure strictly ascending + unique by time
       const map = new Map();
       for(const c of (rawCandles||[])){
         if(!c || !(c.time>0)) continue;
         map.set(c.time, c);
       }
       rawCandles = Array.from(map.values()).sort((a,b)=>a.time-b.time);
-
       const src = rawCandles;
-      if(!src || !src.length) return;
 
-      const first = src[0];
-      const last = src[src.length-1];
-      const keyBase = (candlePager && candlePager.key) ? candlePager.key : `${activeNet}|${poolAddr}|${activeTF?.k||''}`;
-      const prepKey = `prep:${keyBase}:${src.length}:${first.time}:${last.time}:${last.close||0}:${last.volume||0}`;
+      candleSeries.setData(src.map(c=>({time:c.time, open:c.open, high:c.high, low:c.low, close:c.close})));
+      volumeSeries.setData(src.map(c=>({time:c.time, value:c.volume||0, color:(c.close>=c.open)?'rgba(20,241,149,.35)':'rgba(255,77,109,.35)'})));
 
-      let prep = PERF.caches.chartPrep.get(prepKey);
-      if(!prep){
-        const cd = new Array(src.length);
-        const vd = new Array(src.length);
-        for(let i=0;i<src.length;i++){
-          const c = src[i];
-          cd[i] = {time:c.time, open:c.open, high:c.high, low:c.low, close:c.close};
-          const v = (Number.isFinite(c.volume) ? c.volume : (Number.isFinite(c.vol)?c.vol:0));
-          vd[i] = {time:c.time, value:v, color:(c.close>=c.open)?'rgba(20,241,149,.35)':'rgba(255,77,109,.35)'};
-        }
-        prep = {cd, vd};
-        PERF.caches.chartPrep.set(prepKey, prep, 60000);
+      if(fit){
+        applyDefaultViewport();
+      }else{
+        // keep bar spacing reasonable even during live updates
+        syncBarSpacing();
       }
-
-      // Defer heavy setData until next frame so DOM/layout is stable
-      if(applyCandlesToChart._raf) cancelAnimationFrame(applyCandlesToChart._raf);
-      applyCandlesToChart._raf = PERF.raf(()=>{
-        candleSeries.setData(prep.cd);
-        volumeSeries.setData(prep.vd);
-
-        if(fit){
-          applyDefaultViewport();
-        }else{
-          // keep bar spacing reasonable even during live updates
-          syncBarSpacing();
-        }
-      });
     }
 
     function applyTradeToCandles(tr){
@@ -2556,11 +2414,10 @@ function setMobileTab(which){
       const _key0 = `${activeNet}|${poolAddr}|${activeTF?.k||''}`;
       const _reqId = (refreshLatestCandles._reqId = (refreshLatestCandles._reqId||0) + 1);
       const _my = _reqId;
-      const signal = PERF.abort('candlesLatest');
       try{
         const gran = activeTF.gecko;
         const url = geckoCandlesUrl(gran, null);
-        const j = await fetchJsonCached(url, {timeout:16000, retries:1, signal, ttl: 15000, cache: PERF.caches.http});
+        const j = await fetchJson(url, {timeout:16000, retries:1});
         if(_my !== refreshLatestCandles._reqId) return;
         if(_key0 !== `${activeNet}|${poolAddr}|${activeTF?.k||''}`) return;
         const part = mapGeckoOhlcv(j);
@@ -2574,7 +2431,6 @@ function setMobileTab(which){
         for(const c of part) map.set(c.time, c);
         rawCandles = keep.concat(Array.from(map.values()).sort((a,b)=>a.time-b.time));
 
-        try{ PERF.caches.candles.set(`candles:${activeNet}:${poolAddr}:${activeTF?.k||''}`, {raw: rawCandles.slice(), before: candlePager.before, hasMore: candlePager.hasMore}, 45000); }catch(_){ }
         applyCandlesToChart(false);
       }catch(e){
         // ignore
@@ -2585,29 +2441,12 @@ function setMobileTab(which){
     async function loadCandles(fit){
       if(!poolAddr) return;
       attachPaging();
-      const signal = PERF.abort('candles');
 
       statusEl.textContent = 'Loading chart…';
       candlePager.loading = true;
       candlePager.hasMore = true;
       candlePager.before = null;
       candlePager.key = `${activeNet}|${poolAddr}|${activeTF?.k||''}`;
-
-      const _ckCandles = `candles:${activeNet}:${poolAddr}:${activeTF?.k||''}`;
-      const _cachedCandles = PERF.caches.candles.get(_ckCandles);
-      // Use fresh cached dataset for instant chart paint
-      if(_cachedCandles && Array.isArray(_cachedCandles.raw) && _cachedCandles.raw.length){
-        rawCandles = _cachedCandles.raw.slice();
-        candlePager.before = _cachedCandles.before ?? (rawCandles[0]?.time ? (rawCandles[0].time-1) : null);
-        candlePager.hasMore = (_cachedCandles.hasMore !== false);
-        applyCandlesToChart(true);
-        statusEl.textContent = 'Live.';
-        // Continue in background to keep data fresh (non-blocking)
-        PERF.idle(()=>{ try{ if(`${activeNet}|${poolAddr}|${activeTF?.k||''}`===candlePager.key) refreshLatestCandles(); }catch(_){ } }, 350);
-        candlePager.loading = false;
-        return;
-      }
-
 
       rawCandles=[];
       candleSeries.setData([]);
@@ -2622,7 +2461,7 @@ function setMobileTab(which){
 
         while(pages++ < (activeTF.k==='ALL' ? 10 : 6)){
           const url = geckoCandlesUrl(gran, before);
-          const j = await fetchJsonCached(url, {timeout:18000, retries:1, signal, ttl: 45000, cache: PERF.caches.http});
+          const j = await fetchJson(url, {timeout:18000, retries:1});
           let part = mapGeckoOhlcv(j);
           if(!part.length){
             candlePager.hasMore = false;
@@ -2656,7 +2495,6 @@ function setMobileTab(which){
         }
 
         candlePager.before = rawCandles[0].time - 1;
-        PERF.caches.candles.set(_ckCandles, {raw: rawCandles.slice(), before: candlePager.before, hasMore: candlePager.hasMore}, 45000);
         applyCandlesToChart(true);
         statusEl.textContent = 'Live.';
       }catch(e){
@@ -2669,7 +2507,6 @@ function setMobileTab(which){
 
     async function loadOlderCandles(){
       if(!poolAddr) return;
-      const signal = PERF.abort('candlesOlder');
       if(candlePager.loading || !candlePager.hasMore) return;
 
       const key = `${activeNet}|${poolAddr}|${activeTF?.k||''}`;
@@ -2683,7 +2520,7 @@ function setMobileTab(which){
 
       try{
         const url = geckoCandlesUrl(activeTF.gecko, before);
-        const j = await fetchJsonCached(url, {timeout:18000, retries:1, signal, ttl: 45000, cache: PERF.caches.http});
+        const j = await fetchJson(url, {timeout:18000, retries:1});
         let part = mapGeckoOhlcv(j);
         if(!part.length){
           candlePager.hasMore = false;
@@ -2706,7 +2543,6 @@ function setMobileTab(which){
         candlePager.before = rawCandles[0].time - 1;
         if(part.length < (CANDLE_LIMIT - 10)) candlePager.hasMore = false;
 
-        try{ PERF.caches.candles.set(`candles:${activeNet}:${poolAddr}:${activeTF?.k||''}`, {raw: rawCandles.slice(), before: candlePager.before, hasMore: candlePager.hasMore}, 45000); }catch(_){ }
         applyCandlesToChart(false);
 
         // keep viewport anchored after prepend
@@ -2775,17 +2611,36 @@ function setMobileTab(which){
 
       const usd = num(a.volume_in_usd || a.usd_value || a.volume_usd || a.amount_usd || a.total_usd);
       const price = num(a.price_in_usd || a.price_usd || a.price);
+
       const baseAmt = num(a.base_token_amount || a.amount_base || a.base_amount || a.base_token_volume || a.base_volume);
       const quoteAmt = num(a.quote_token_amount || a.amount_quote || a.quote_amount || a.quote_token_volume || a.quote_volume);
-      const amount = Number.isFinite(baseAmt) ? baseAmt : (Number.isFinite(quoteAmt)? quoteAmt : NaN);
 
-      return { id, type, tx, maker, tsMs, usd, price, amount };
+      // Try to detect which side is the chain native asset (SOL/ETH/BNB; Base uses ETH)
+      const baseSym = String(
+        a.base_token_symbol || a.base_symbol || a.base_token?.symbol || a.base?.symbol ||
+        a.base_token?.data?.attributes?.symbol || a.base_token?.data?.attributes?.symbol?.toString?.() || ''
+      ).trim();
+      const quoteSym = String(
+        a.quote_token_symbol || a.quote_symbol || a.quote_token?.symbol || a.quote?.symbol ||
+        a.quote_token?.data?.attributes?.symbol || a.quote_token?.data?.attributes?.symbol?.toString?.() || ''
+      ).trim();
+
+      const nat = nativeUnit(activeNet);
+      const natSet = nat === 'SOL' ? ['SOL','WSOL'] : (nat === 'BNB' ? ['BNB','WBNB'] : ['ETH','WETH']);
+      const baseIsNat = baseSym && natSet.includes(baseSym.toUpperCase());
+      const quoteIsNat = quoteSym && natSet.includes(quoteSym.toUpperCase());
+
+      const nativeAmt = (baseIsNat && Number.isFinite(baseAmt)) ? baseAmt
+        : ((quoteIsNat && Number.isFinite(quoteAmt)) ? quoteAmt
+        : (Number.isFinite(baseAmt) ? baseAmt : (Number.isFinite(quoteAmt) ? quoteAmt : NaN)));
+
+      return { id, type, tx, maker, tsMs, usd, price, baseAmt, quoteAmt, baseSym, quoteSym, nativeAmt };
     }
 
     function tradeRowHtml(tr){
       const age = timeAgo(tr.tsMs);
       const usdTxt = Number.isFinite(tr.usd) ? '$'+formatCompact(tr.usd) : '—';
-      const amtTxt = Number.isFinite(tr.amount) ? formatCompact(tr.amount)+' '+esc(curTokenSymbol) : '—';
+      const amtTxt = Number.isFinite(tr.nativeAmt) ? formatCompact(tr.nativeAmt)+' '+esc(nativeUnit(activeNet)) : '—';
       const priceTxt = Number.isFinite(tr.price) ? '$'+formatPrice(tr.price) : '—';
 
       const isNew = tr.maker ? (!seenMakers.has(tr.maker)) : false;
@@ -2815,21 +2670,19 @@ function setMobileTab(which){
       `;
     }
 
-    async function geckoTrades(limit=80, signal){
+    async function geckoTrades(limit=80){
       const base = `${GECKO}/networks/${encodeURIComponent(geckoNet())}/pools/${encodeURIComponent(poolAddr)}/trades`;
       // GeckoTerminal often uses JSON:API pagination. Try page params first, then fallback to limit.
       try{
         const url1 = base + `?page=1&limit=${encodeURIComponent(limit)}`;
-        const ck1 = `gecko:trades:${geckoNet()}:${poolAddr}:p1:${limit}`;
-        const j1 = await fetchJsonCached(url1, {timeout:14000, retries:1, signal, cacheKey: ck1, ttl: 15000, cache: PERF.caches.trades});
-        if(Array.isArray(j1?.data) && j1.data.length){ const ret=j1.data; PERF.caches.trades.set(`trades:${geckoNet()}:${poolAddr}:${limit}`, ret, 15000); return ret; }
+        const j1 = await fetchJson(url1, {timeout:14000, retries:1});
+        if(Array.isArray(j1?.data) && j1.data.length) return j1.data;
       }catch(e){ /* ignore */ }
 
       try{
         const url2 = base + `?limit=${encodeURIComponent(limit)}`;
-        const ck2 = `gecko:trades:${geckoNet()}:${poolAddr}:lim:${limit}`;
-        const j2 = await fetchJsonCached(url2, {timeout:14000, retries:1, signal, cacheKey: ck2, ttl: 15000, cache: PERF.caches.trades});
-        if(Array.isArray(j2?.data)){ const ret=j2.data; PERF.caches.trades.set(`trades:${geckoNet()}:${poolAddr}:${limit}`, ret, 15000); return ret; }
+        const j2 = await fetchJson(url2, {timeout:14000, retries:1});
+        if(Array.isArray(j2?.data)) return j2.data;
       }catch(e){ /* ignore */ }
 
       return [];
@@ -2840,114 +2693,57 @@ function setMobileTab(which){
       parsed.sort((a,b)=>b.tsMs-a.tsMs);
 
       if(reset){
-        // reset seen sets for this pool
         tradesSeen = new Set();
         seenMakers = new Set();
         // clear existing rows (keep header)
         tradesContainer().forEach(el=>{
           const head = el.querySelector('.tradeHead');
-          el.textContent = '';
-          if(head) el.appendChild(head);
-          el._rowCount = 0;
+          el.innerHTML='';
+          el.appendChild(head);
         });
       }
 
       const newly = [];
+
+      // Only add unseen trades (prepend)
       for(const tr of parsed){
         if(tradesSeen.has(tr.id)) continue;
         tradesSeen.add(tr.id);
         newly.push(tr);
-      }
-      if(!newly.length){
-        return [];
-      }
 
-      // Preserve existing visual ordering (prepend inserts reverse; we emulate by inserting oldest->newest at top)
-      const ordered = newly.slice().sort((a,b)=>a.tsMs-b.tsMs);
-
-      const MAX_ROWS = 120;
-      const htmlList = new Array(ordered.length);
-      for(let i=0;i<ordered.length;i++){
-        htmlList[i] = tradeRowHtml(ordered[i]);
-      }
-      const html = htmlList.join('');
-
-      tradesContainer().forEach(el=>{
-        const head = el.querySelector('.tradeHead');
-        if(!head) return;
-
-        // Batch insert
-        const frag = document.createDocumentFragment();
-        const wrap = document.createElement('div');
-        wrap.innerHTML = html;
-        while(wrap.firstElementChild){
-          const row = wrap.firstElementChild;
-          wrap.removeChild(row);
-          // cache pointers to avoid repeated queries in updateAges
-          try{
-            row._ts = Number(row.getAttribute('data-ts')||0);
-            row._ageEl = row.querySelector('.age');
-          }catch(_){}
-          row.classList.add('enter');
-          frag.appendChild(row);
-        }
-        el.insertBefore(frag, head.nextSibling);
-
-        // Remove enter class after paint (GPU-friendly)
-        PERF.raf(()=>{ 
-          let n = head.nextSibling;
-          let c = 0;
-          while(n && c < ordered.length){
-            try{ n.classList.remove('enter'); }catch(_){}
-            n = n.nextSibling; c++;
+        const html = tradeRowHtml(tr);
+        tradesContainer().forEach(el=>{
+          const head = el.querySelector('.tradeHead');
+          const wrapper = document.createElement('div');
+          wrapper.innerHTML = html;
+          const row = wrapper.firstElementChild;
+          if(row){ row.classList.add('enter'); requestAnimationFrame(()=>{ row.classList.add('enter'); }); setTimeout(()=>{ try{ row.classList.remove('enter'); }catch(_){ } }, 420); }
+          // insert after head
+          el.insertBefore(row, head.nextSibling);
+          // cap rows
+          const rows = [...el.querySelectorAll('.tradeRow')];
+          if(rows.length>120){
+            rows.slice(120).forEach(r=>r.remove());
           }
         });
+      }
 
-        // Cap rows without expensive selectors
-        let count = el._rowCount;
-        if(!Number.isFinite(count)) count = el.querySelectorAll('.tradeRow').length;
-        count += ordered.length;
-        while(count > MAX_ROWS){
-          const last = el.lastElementChild;
-          if(last && last !== head){
-            el.removeChild(last);
-            count--;
-          }else{
-            break;
-          }
-        }
-        el._rowCount = count;
-      });
+      const total = tradesDesk.querySelectorAll('.tradeRow').length;
+      tradesStat.textContent = `${total} trades`;
+      tradesStatM.textContent = `${total} trades`;
 
-      // Stats
-      try{
-        const buys = ordered.filter(t=>t.side==='buy').length;
-        const sells = ordered.length - buys;
-        const txt = `+${buys} / -${sells}`;
-        if(tradesStat) tradesStat.textContent = txt;
-        if(tradesStatM) tradesStatM.textContent = txt;
-      }catch(_){}
-
+      updateAges();
       return newly;
     }
 
     function updateAges(){
       tradesContainer().forEach(el=>{
-        const head = el.querySelector('.tradeHead');
-        if(!head) return;
-        let n = head.nextSibling;
-        while(n){
-          if(n.classList && n.classList.contains('tradeRow')){
-            const ts = (typeof n._ts === 'number' ? n._ts : Number(n.getAttribute('data-ts')||0));
-            if(ts){
-              const ageEl = n._ageEl || n.querySelector('.age');
-              if(ageEl) ageEl.textContent = timeAgo(ts);
-              n._ts = ts;
-              n._ageEl = ageEl;
-            }
-          }
-          n = n.nextSibling;
-        }
+        [...el.querySelectorAll('.tradeRow')].forEach(row=>{
+          const ts = Number(row.getAttribute('data-ts')||0);
+          if(!ts) return;
+          const ageEl = row.querySelector('.age');
+          if(ageEl) ageEl.textContent = timeAgo(ts);
+        });
       });
     }
 
@@ -2991,20 +2787,8 @@ function setMobileTab(which){
       const _key0 = `${activeNet}|${poolAddr}`;
       const _reqId = (loadTrades._reqId = (loadTrades._reqId||0) + 1);
       const _my = _reqId;
-      const signal = PERF.abort('trades');
-
       try{
-        // Fast path: use fresh cache immediately (no behavior change, just quicker paint)
-        const ck = `trades:${geckoNet()}:${poolAddr}:80`;
-        const cached = PERF.caches.trades.get(ck);
-        if(cached && _my === loadTrades._reqId && _key0 === `${activeNet}|${poolAddr}`){
-          const newly0 = renderTrades(cached, {reset}) || [];
-          if(newly0.length){
-            newly0.slice().sort((a,b)=>a.tsMs-b.tsMs).forEach(applyTradeToCandles);
-          }
-        }
-
-        const data = await geckoTrades(80, signal);
+        const data = await geckoTrades(80);
         if(_my !== loadTrades._reqId) return;
         if(_key0 !== `${activeNet}|${poolAddr}`) return;
         const newly = renderTrades(data, {reset}) || [];
@@ -3068,17 +2852,16 @@ function setMobileTab(which){
 
 
 // -------------------- Meta (refresh price/liquidity/24h)
-    async function geckoPool(signal){
+    async function geckoPool(){
       const url = `${GECKO}/networks/${encodeURIComponent(geckoNet())}/pools/${encodeURIComponent(poolAddr)}?include=base_token,quote_token`;
-      const ck = `gecko:pool:${geckoNet()}:${poolAddr}`;
-      const j = await fetchJsonCached(url, {timeout:14000, retries:1, signal, cacheKey: ck, ttl: 45000, cache: PERF.caches.tokenMeta});
+      const j = await fetchJson(url, {timeout:14000, retries:1});
       return j?.data || null;
     }
 
     async function loadMeta(){
       if(!poolAddr) return;
       try{
-        const p = await geckoPool(PERF.abort('meta'));
+        const p = await geckoPool();
         if(!p) return;
         applyPool(p);
       }catch(e){
@@ -3113,8 +2896,7 @@ function setMobileTab(which){
       if(cached && (now - cached.ts) < 45000) return cached.data;
 
       const url = `${GECKO}/networks/${encodeURIComponent(net)}/trending_pools?include=base_token,quote_token,dex`;
-      const ck = `gecko:pool:${geckoNet()}:${poolAddr}`;
-      const j = await fetchJsonCached(url, {timeout:14000, retries:1, signal, cacheKey: ck, ttl: 45000, cache: PERF.caches.tokenMeta});
+      const j = await fetchJson(url, {timeout:14000, retries:1});
       const data = Array.isArray(j?.data) ? j.data : [];
       const inc  = Array.isArray(j?.included) ? j.included : [];
       const incMap = new Map();
@@ -3309,7 +3091,7 @@ function setMobileTab(which){
         pairNameEl.textContent = 'Searching…';
         pairMetaEl.textContent = 'Finding best match…';
         try{
-          const pairs = await dsSearch(v, PERF.abort('search'));
+          const pairs = await dsSearch(v);
           if(!pairs.length){
             statusEl.textContent = 'Not found.';
             pairNameEl.textContent = 'Not found';
@@ -3402,7 +3184,7 @@ function setMobileTab(which){
         // 1) preferred pool first (when available via DexScreener)
         if(preferredPool){
           poolAddr = preferredPool;
-          const p = await geckoPool(PERF.abort('meta'));
+          const p = await geckoPool();
           if(p){
             applyPool(p);
             statusEl.textContent = 'Loading chart…';
@@ -3429,7 +3211,7 @@ function setMobileTab(which){
         poolChoices = pools;
         poolAddr = poolAddressFromPool(best);
 
-        const p = await geckoPool(PERF.abort('meta'));
+        const p = await geckoPool();
         if(!p) throw new Error('Pool fetch failed');
         applyPool(p);
 
