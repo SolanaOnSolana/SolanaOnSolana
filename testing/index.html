@@ -793,53 +793,292 @@ display:none;
       .maker .new{display:none}
     }
   
-    /* Chart loading overlay (only affects chart area) */
-    #chartSkel{
-      position:absolute; inset:0;
-      display:none;
-      place-items:center;
-      background: linear-gradient(180deg, rgba(9,12,33,.72), rgba(9,12,33,.38));
-      border-radius:16px;
-      z-index:10;
-      pointer-events:none;
-    }
-    #chartSkel .skelBox{
-      width:min(520px, 86%);
-      padding:18px 16px;
-      border:1px solid rgba(255,255,255,.10);
-      border-radius:16px;
-      background: rgba(255,255,255,.04);
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
-    }
-    #chartSkel .skelLine{
-      height:10px;
-      margin:10px 0;
-      border-radius:999px;
-      background: linear-gradient(90deg, rgba(255,255,255,.06), rgba(255,255,255,.14), rgba(255,255,255,.06));
-      background-size: 240% 100%;
-      animation: chartSkel 1.1s linear infinite;
-    }
-    #chartSkel .skelHint{
-      margin-top:12px;
-      font-size:13px;
-      color: rgba(255,255,255,.78);
-      font-weight:800;
-      text-align:center;
-    }
-    @keyframes chartSkel{
-      0%{ background-position: 0% 0%; }
-      100%{ background-position: 240% 0%; }
-    }
 
-    /* Smooth trade row insertion */
-    .tradeRow.newRow{
-      animation: tradeIn .22s ease-out both;
-    }
-    @keyframes tradeIn{
-      from{ opacity:0; transform: translateY(-6px); }
-      to{ opacity:1; transform: translateY(0); }
-    }
+/* ================================
+   DexGuard UI/UX Premium Patch (Design-only)
+   ================================ */
+
+/* Design tokens */
+:root{
+  --s-1:8px;
+  --s-2:12px;
+  --s-3:16px;
+  --s-4:20px;
+  --s-5:24px;
+  --r-1:14px;
+  --r-2:18px;
+  --r-3:22px;
+  --e-1: 0 10px 28px rgba(0,0,0,.36);
+  --e-2: 0 18px 54px rgba(0,0,0,.55);
+  --glassSm: blur(10px);
+  --glassNone: blur(0px);
+  --hit:44px;
+}
+
+/* Global polish + accessibility */
+.btn, .pill, .chainBtn, .tf, .iconBtn, .tab{
+  min-height: var(--hit);
+}
+.btn, .pill, .chainBtn, .tf, .sel{
+  -webkit-tap-highlight-color: transparent;
+}
+.btn:focus-visible, .pill:focus-visible, .chainBtn:focus-visible, .tf:focus-visible, .dexInput:focus-visible, .iconBtn:focus-visible{
+  outline: 2px solid rgba(0,209,255,.55);
+  outline-offset: 2px;
+}
+.panel{
+  /* Avoid expensive blur on large surfaces */
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: var(--e-2);
+}
+.topBar{
+  /* Keep glass subtle (no heavy blur on wide area) */
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* Make typography feel more terminal-grade */
+.pairName{
+  font-size: 15px;
+  line-height: 1.25;
+}
+.pairMeta{
+  line-height: 1.35;
+}
+
+/* Search dropdown: no full-page dim/blur; keep dropdown crisp */
+.searchScrim{
+  display:none !important;
+  background: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+.dexSearch.open .searchScrim{ display:none !important; }
+.results{
+  left: 0 !important;
+  right: 0 !important;
+  width: min(560px, calc(100vw - 28px)) !important;
+  transform: translateZ(0);
+}
+.resItem{
+  min-height: 56px;
+  padding: 12px 12px;
+}
+.resR .btn, .resR .iconBtn{
+  min-height: 40px;
+  height: 40px;
+}
+
+/* Token header + controls: tighter + consistent */
+.cardHd{ padding: 14px 14px; }
+.controls{
+  padding: 10px 12px;
+}
+.tf{
+  min-height: 40px;
+  padding: 10px 12px;
+  font-size: 12px;
+}
+.sel{ min-height: 40px; }
+
+/* Table rows: smoother hover/tap */
+.tradeRow{ transition: background var(--t); }
+.tradeRow:active{ background: rgba(255,255,255,.07); }
+
+/* ===== Mobile-first: compact sticky top bar + proper hierarchy ===== */
+@media (max-width: 740px){
+  .wrap{
+    padding: 10px 10px 110px; /* reserve space for bottom sheet */
+  }
+
+  .topbar{
+    position: sticky;
+    top: calc(env(safe-area-inset-top) + 8px);
+    z-index: 90;
+    padding: 10px 10px;
+    border-radius: var(--r-2);
+    backdrop-filter: var(--glassSm);
+    -webkit-backdrop-filter: var(--glassSm);
+  }
+  .brand{ gap: 10px; }
+  #topDexguardBtn{
+    min-height: var(--hit);
+    padding: 8px 14px;
+  }
+  .actions{
+    gap: 8px;
+    flex-wrap: nowrap;
+    justify-content: flex-end;
+    width: auto;
+  }
+  #btnBack{
+    min-height: var(--hit);
+    padding: 10px 12px;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+  #btnX{
+    width: var(--hit);
+    height: var(--hit);
+    padding: 0;
+    justify-content: center;
+  }
+  #btnX span{ display:none; }
+
+  /* Trending/search header: compact, app-like */
+  .topBarInner{
+    padding: 10px 10px 10px;
+    gap: 10px;
+  }
+  .topRow{
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: space-between;
+  }
+  .hotLabel{
+    display:none; /* keep accessible via ticker; don't dominate */
+  }
+  .chainToggle{
+    margin-left: 0;
+    width: 100%;
+    justify-content: space-between;
+  }
+  .chainBtn{
+    flex: 1;
+    text-align: center;
+    min-height: 40px;
+    padding: 10px 10px;
+    font-size: 12px;
+  }
+
+  .bottomRow{
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+  .tickerWrap{
+    padding: 8px 10px;
+    border-radius: 18px;
+  }
+  .tickerTrack{ animation-duration: 22s; }
+  .tickerItem{ font-size: 12px; padding: 8px 10px; }
+
+  /* Search: prominent + thumb friendly */
+  .dexSearch{ width: 100%; max-width: 100%; }
+  .dexSearchInner{
+    min-height: var(--hit);
+    padding: 10px 12px;
+    border-radius: 18px;
+  }
+  .dexInput{
+    font-size: 14px;
+    font-weight: 900;
+  }
+  .results{
+    max-height: 58vh;
+    border-radius: 18px;
+  }
+
+  /* Main content hierarchy */
+  #chartWrap{ height: 520px; }
+  .card{
+    border-radius: var(--r-3);
+  }
+  .cardHd{
+    padding: 12px 12px;
+    gap: 10px;
+  }
+  .tlogo{
+    width: 40px;
+    height: 40px;
+    border-radius: 14px;
+  }
+  .pairName{
+    font-size: 15px;
+  }
+  .stats{
+    justify-content: flex-start;
+    gap: 8px;
+  }
+
+  /* Hide legacy mobile tabs wrapper entirely */
+  .mobileTabs{ display:none !important; }
+  #mobileTradesWrap{ display:none !important; }
+
+  /* ===== Live Trades bottom sheet ===== */
+  #tradesCard{
+    position: fixed !important;
+    left: 10px;
+    right: 10px;
+    bottom: calc(env(safe-area-inset-bottom) + 10px);
+    margin: 0 !important;
+    height: min(72vh, 560px);
+    max-width: none !important;
+    z-index: 95;
+    box-shadow: var(--e-2);
+    transform: translateY(calc(100% - 64px));
+    transition: transform .22s cubic-bezier(.2,.9,.2,1);
+    will-change: transform;
+    background: rgba(10,12,22,.72);
+    backdrop-filter: var(--glassSm);
+    -webkit-backdrop-filter: var(--glassSm);
+  }
+  #tradesCard.sheetOpen{
+    transform: translateY(0);
+  }
+  #tradesCard .tableHd{
+    padding: 10px 12px;
+    border-bottom: 1px solid rgba(255,255,255,.08);
+    background: rgba(10,12,22,.74);
+    backdrop-filter: var(--glassSm);
+    -webkit-backdrop-filter: var(--glassSm);
+    cursor: pointer;
+    user-select: none;
+  }
+  #tradesCard .tableHd::before{
+    content:"";
+    display:block;
+    width: 46px;
+    height: 4px;
+    border-radius: 999px;
+    background: rgba(255,255,255,.18);
+    margin: 2px auto 8px;
+  }
+  #tradesCard .tableHd .ttl{
+    font-size: 14px;
+    letter-spacing: -.01em;
+  }
+  #tradesCard .tableHd .sub{
+    font-size: 12px;
+  }
+  #tradesCard:not(.sheetOpen) .trades{
+    display:none;
+  }
+  #tradesCard.sheetOpen .trades{
+    height: calc(min(72vh, 560px) - 74px);
+    overflow:auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Trades columns: reduce clutter on mobile */
+  .tradeHead, .tradeRow{
+    grid-template-columns: 64px 64px 84px 1fr 0 0 34px !important;
+  }
+  .maker .new{ display:none !important; }
+}
+
+/* ===== Desktop premium grid balancing ===== */
+@media (min-width: 980px){
+  .grid{
+    gap: 16px;
+    padding: 16px;
+  }
+  #chartWrap{ height: 560px; }
+  .cardHd{ padding: 16px 16px; }
+  .controls{ padding: 12px 14px; }
+  .trades{ height: 560px; }
+}
 </style>
 </head>
 <body>
@@ -1131,51 +1370,40 @@ display:none;
     }
 
     // fetch with timeout + retry + CORS fallback via allorigins
-    async function fetchJson(url, {timeout=12000, retries=1, signal=null}={}){
+    async function fetchJson(url, {timeout=12000, retries=1}={}){
       const proxy = (u)=>'https://api.allorigins.win/raw?url=' + encodeURIComponent(u);
       let lastErr=null;
-
-      const makeSignal = ()=>{
-        const ctl = new AbortController();
-        let extAbort = null;
-        if(signal){
-          if(signal.aborted){ try{ ctl.abort(); }catch(_e){} }
-          extAbort = ()=>{ try{ ctl.abort(); }catch(_e){} };
-          try{ signal.addEventListener('abort', extAbort, {once:true}); }catch(_e){}
-        }
-        const t = setTimeout(()=>{ try{ ctl.abort(); }catch(_e){} }, timeout);
-        return {ctl, t, extAbort};
-      };
-
       for(let i=0;i<=retries;i++){
-        const {ctl, t, extAbort} = makeSignal();
+        const ctl = new AbortController();
+        const t = setTimeout(()=>ctl.abort(), timeout);
         try{
           const r = await fetch(url, {
             headers:{'accept':'application/json'},
             signal: ctl.signal,
+            cache: 'no-store'
           });
           clearTimeout(t);
-          if(extAbort && signal) try{ signal.removeEventListener('abort', extAbort); }catch(_e){}
           if(!r.ok) throw new Error('HTTP '+r.status);
           return await r.json();
         }catch(e){
           clearTimeout(t);
-          if(extAbort && signal) try{ signal.removeEventListener('abort', extAbort); }catch(_e){}
-          lastErr = e;
+          lastErr=e;
+          // try proxy for CORS / network error
           try{
-            const {ctl:ctl2, t:t2, extAbort:ext2} = makeSignal();
-            const r2 = await fetch(proxy(url), {headers:{'accept':'application/json'}, signal: ctl2.signal});
-            clearTimeout(t2);
-            if(ext2 && signal) try{ signal.removeEventListener('abort', ext2); }catch(_e){}
-            if(!r2.ok) throw new Error('HTTP '+r2.status);
-            return await r2.json();
-          }catch(e2){
-            lastErr = e2;
-          }
-          if(i<retries) await new Promise(r=>setTimeout(r, 250 + i*250));
+            const msg = String(e&&e.message||e||'');
+            const isCors = (e instanceof TypeError) || /Failed to fetch|NetworkError|CORS/i.test(msg);
+            if(isCors){
+              const r2 = await fetch(proxy(url), {cache:'no-store'});
+              if(r2.ok){
+                const txt = await r2.text();
+                return JSON.parse(txt);
+              }
+            }
+          }catch(_){ }
+          if(i<retries) await sleep(250*(i+1));
         }
       }
-      throw lastErr || new Error('fetchJson failed');
+      throw lastErr || new Error('Network');
     }
 
     function normalizeChain(x){
@@ -1314,7 +1542,7 @@ display:none;
     let activeNet = normalizeChain(qs.get('chain') || 'solana');
     let addr = String(qs.get('addr')||'').trim();
 
-    let activeTF = TF.find(x=>x.k==='5m') || TF[1] || TF[0];
+    let activeTF = TF.find(x=>x.k==='ALL');
     let poolChoices = [];
     let poolId = '';
     let poolAddr = '';
@@ -1727,8 +1955,10 @@ let seenMakers = new Set();
       if(imgIn) curTokenImage = imgIn;
 
       const title = quote ? `$${sym}/${quote}` : `$${sym}`;
-      pairNameEl.textContent = title;
-      pairMetaEl.textContent = `${NET_LABEL[activeNet]} • ${shortAddr(addr)}`;
+      const nameHtml = (name && name.toLowerCase()!==sym.toLowerCase())
+        ? `<span class="pairNameSub">${esc(name)}</span>` : '';
+      pairNameEl.innerHTML = `${esc(title)}${nameHtml ? ' ' + nameHtml : ''}`;
+      pairMetaEl.textContent = `${NET_LABEL[activeNet]} • ${shortAddr(addr)} • Native chart + live trades`;
 
       if(img){
         tokenLogo.innerHTML = `<img src="${esc(img)}" alt="" referrerpolicy="no-referrer" onerror="this.onerror=null; this.remove(); var p=this.parentNode; if(p){p.innerHTML='<span class=\\"fb\\">${esc(sym.slice(0,1).toUpperCase())}</span>';}" />`;
@@ -1809,82 +2039,8 @@ let seenMakers = new Set();
       }).filter(x=>x.time>0 && Number.isFinite(x.open) && Number.isFinite(x.high) && Number.isFinite(x.low) && Number.isFinite(x.close));
     }
 
-    
-    // -------------------- Chart + Trades (stable realtime)
-    const _candleCache = new Map(); // key -> {at:number, candles:Array}
-    const CANDLE_CACHE_TTL = 25000;
-
-    let _candleCtl = null;
-    let _tradesCtl = null;
-
-    let _tradesInFlight = false;
-    let _candlesInFlight = false;
-
-    // bounded dedupe
-    let tradesSeen = new Map();   // id -> tsSeen
-    let _tradesSeenQ = [];        // FIFO ids
-    const MAX_SEEN_TRADES = 5000;
-
-    function _markTradeSeen(id){
-      if(!id) return;
-      if(tradesSeen.has(id)) return;
-      tradesSeen.set(id, Date.now());
-      _tradesSeenQ.push(id);
-      if(_tradesSeenQ.length > MAX_SEEN_TRADES){
-        const drop = _tradesSeenQ.splice(0, _tradesSeenQ.length - MAX_SEEN_TRADES);
-        drop.forEach(k=>tradesSeen.delete(k));
-      }
-    }
-
-    function stopLiveLoops(){
-      if(pollTradesTimer){ clearInterval(pollTradesTimer); pollTradesTimer=null; }
-      if(pollCandleTimer){ clearInterval(pollCandleTimer); pollCandleTimer=null; }
-      if(ageTimer){ clearInterval(ageTimer); ageTimer=null; }
-      _tradesInFlight = false;
-      _candlesInFlight = false;
-      try{ if(_tradesCtl) _tradesCtl.abort(); }catch(_e){}
-      try{ if(_candleCtl) _candleCtl.abort(); }catch(_e){}
-      _tradesCtl = null;
-      _candleCtl = null;
-    }
-
-    // lightweight overlay for chart loading / errors
-    const _chartOverlay = (()=>{
-      const wrap = $('chartWrap') || document.getElementById('chartWrap');
-      if(!wrap) return null;
-      let el = document.getElementById('chartSkel');
-      if(!el){
-        el = document.createElement('div');
-        el.id = 'chartSkel';
-        el.innerHTML = `<div class="skelBox">
-          <div class="skelLine"></div>
-          <div class="skelLine"></div>
-          <div class="skelLine"></div>
-          <div class="skelHint" id="chartSkelHint">Loading chart…</div>
-        </div>`;
-        wrap.appendChild(el);
-      }
-      return el;
-    })();
-
-    function _showChartOverlay(msg){
-      if(!_chartOverlay) return;
-      const hint = document.getElementById('chartSkelHint');
-      if(hint) hint.textContent = msg || 'Loading chart…';
-      _chartOverlay.style.display = 'grid';
-    }
-    function _hideChartOverlay(){
-      if(!_chartOverlay) return;
-      _chartOverlay.style.display = 'none';
-    }
-
     function applyCandlesToChart(fit){
-      const src = rawCandles || [];
-      if(!src.length){
-        candleSeries.setData([]);
-        volumeSeries.setData([]);
-        return;
-      }
+      const src = rawCandles;
       candleSeries.setData(src.map(c=>({time:c.time, open:c.open, high:c.high, low:c.low, close:c.close})));
       volumeSeries.setData(src.map(c=>({time:c.time, value:c.volume, color:(c.close>=c.open)?'rgba(20,241,149,.35)':'rgba(255,77,109,.35)'})));
       if(fit) chart.timeScale().fitContent();
@@ -1895,206 +2051,194 @@ let seenMakers = new Set();
       if(!Number.isFinite(tr?.price)) return;
       if(!Number.isFinite(tr?.tsMs)) return;
 
-      const tfSec = (activeTF?.k==='ALL') ? 86400 : (activeTF?.agg || 300);
-      const ts = Math.floor(tr.tsMs/1000);
-      const bucket = Math.floor(ts / tfSec) * tfSec;
+      const tsSec = Math.floor(tr.tsMs/1000);
+      const bucket = Math.floor(tsSec / activeTF.agg) * activeTF.agg;
 
-      // find candle (usually last)
-      let c = rawCandles[rawCandles.length-1];
-      if(!c || bucket > c.time){
-        const prevClose = c?.close ?? tr.price;
-        c = { time: bucket, open: prevClose, high: tr.price, low: tr.price, close: tr.price, volume: 0 };
-        rawCandles.push(c);
-      }else if(bucket < c.time){
-        // late trade: try update matching candle if exists
-        let found = null;
-        for(let i=rawCandles.length-1;i>=0 && rawCandles[i].time>=bucket;i--){ if(rawCandles[i].time===bucket){ found=rawCandles[i]; break; } }
-        if(!found) return;
-        c = found;
+      const last = rawCandles[rawCandles.length-1];
+      const usdVol = Number.isFinite(tr.usd) ? tr.usd : 0;
+
+      if(bucket < last.time - activeTF.agg*3){
+        // too old for current visible timeframe; ignore
+        return;
       }
 
-      c.high = Math.max(c.high, tr.price);
-      c.low  = Math.min(c.low,  tr.price);
-      c.close = tr.price;
+      if(bucket === last.time){
+        last.close = tr.price;
+        if(tr.price > last.high) last.high = tr.price;
+        if(tr.price < last.low) last.low = tr.price;
+        if(usdVol) last.volume = (Number.isFinite(last.volume)?last.volume:0) + usdVol;
+        candleSeries.update({time:last.time, open:last.open, high:last.high, low:last.low, close:last.close});
+        volumeSeries.update({time:last.time, value:last.volume, color:(last.close>=last.open)?'rgba(20,241,149,.35)':'rgba(255,77,109,.35)'});
+        return;
+      }
 
-      const addVol = Number.isFinite(tr.usd) ? tr.usd : 0;
-      if(addVol>0) c.volume = (Number(c.volume)||0) + addVol;
-
-      candleSeries.update({time:c.time, open:c.open, high:c.high, low:c.low, close:c.close});
-      volumeSeries.update({time:c.time, value:c.volume, color:(c.close>=c.open)?'rgba(20,241,149,.35)':'rgba(255,77,109,.35)'});
+      if(bucket > last.time){
+        const open = Number.isFinite(last.close) ? last.close : tr.price;
+        const c = {
+          time: bucket,
+          open,
+          high: Math.max(open, tr.price),
+          low: Math.min(open, tr.price),
+          close: tr.price,
+          volume: usdVol
+        };
+        rawCandles.push(c);
+        candleSeries.update({time:c.time, open:c.open, high:c.high, low:c.low, close:c.close});
+        volumeSeries.update({time:c.time, value:c.volume, color:(c.close>=c.open)?'rgba(20,241,149,.35)':'rgba(255,77,109,.35)'});
+      }
     }
 
     async function refreshLatestCandles(){
       if(!poolAddr) return;
-      if(_candlesInFlight) return;
-      _candlesInFlight = true;
       try{
-        if(_candleCtl) _candleCtl.abort();
-        _candleCtl = new AbortController();
         const gran = activeTF.gecko;
         const url = geckoCandlesUrl(gran, null);
-        const j = await fetchJson(url, {timeout:16000, retries:1, signal:_candleCtl.signal});
+        const j = await fetchJson(url, {timeout:16000, retries:1});
         const part = mapGeckoOhlcv(j);
         if(!part.length) return;
+        part.sort((a,b)=>a.time-b.time);
 
-        // merge by timestamp
-        const map = new Map((rawCandles||[]).map(c=>[c.time,c]));
-        part.forEach(c=>map.set(c.time,c));
-        rawCandles = Array.from(map.values()).sort((a,b)=>a.time-b.time);
+        // Merge by time, keeping history
+        const earliest = part[0].time;
+        const keep = rawCandles.filter(c=>c.time < earliest);
+        const map = new Map();
+        for(const c of part) map.set(c.time, c);
+        rawCandles = keep.concat(Array.from(map.values()).sort((a,b)=>a.time-b.time));
 
-        const key = `${activeNet}|${poolAddr}|${activeTF.k}`;
-        _candleCache.set(key, {at: Date.now(), candles: rawCandles.slice()});
-
-        // update the tail
-        const tail = part.slice(-40).sort((a,b)=>a.time-b.time);
-        tail.forEach(c=>{
-          candleSeries.update({time:c.time, open:c.open, high:c.high, low:c.low, close:c.close});
-          volumeSeries.update({time:c.time, value:c.volume, color:(c.close>=c.open)?'rgba(20,241,149,.35)':'rgba(255,77,109,.35)'});
-        });
-      }catch(_e){}finally{
-        _candlesInFlight = false;
+        applyCandlesToChart(false);
+      }catch(e){
+        // ignore
       }
     }
 
+
     async function loadCandles(fit){
       if(!poolAddr) return;
-      _showChartOverlay('Loading chart…');
       statusEl.textContent = 'Loading chart…';
-
-      const cacheKey = `${activeNet}|${poolAddr}|${activeTF.k}`;
-      const cached = _candleCache.get(cacheKey);
-      if(cached && (Date.now()-cached.at) < CANDLE_CACHE_TTL && Array.isArray(cached.candles) && cached.candles.length){
-        rawCandles = cached.candles.slice();
-        applyCandlesToChart(!!fit);
-        _hideChartOverlay();
-        statusEl.textContent = 'Live.';
-        return;
-      }
-
-      rawCandles = [];
+      rawCandles=[];
       candleSeries.setData([]);
       volumeSeries.setData([]);
 
       try{
-        if(_candleCtl) _candleCtl.abort();
-        _candleCtl = new AbortController();
-
         const gran = activeTF.gecko;
+
+        // backfill loop to get full history (until no older candles)
         let before = null;
         let all = [];
         let guard = 0;
-        const maxPages = (activeTF.k==='ALL' ? 10 : 5);
-
-        while(guard++ < maxPages){
+        while(guard++ < (activeTF.k==='ALL' ? 12 : 4)){
           const url = geckoCandlesUrl(gran, before);
-          const j = await fetchJson(url, {timeout:17000, retries:1, signal:_candleCtl.signal});
+          const j = await fetchJson(url, {timeout:16000, retries:1});
           const part = mapGeckoOhlcv(j);
           if(!part.length) break;
-
+          // gecko returns newest->oldest sometimes; normalize
+          part.sort((a,b)=>a.time-b.time);
+          // prepend
           all = part.concat(all);
-
-          const oldest = part[0]?.time;
-          if(!Number.isFinite(oldest)) break;
-          before = String(Math.max(0, oldest - 1));
-
-          if(part.length < 900) break;
-          await new Promise(r=>setTimeout(r, 0));
+          // next before = oldest timestamp - 1
+          before = part[0].time - 1;
+          if(part.length < 990) break; // no more pages
         }
 
+        // dedupe by time
         const map = new Map();
-        all.forEach(c=>{ if(Number.isFinite(c?.time)) map.set(c.time, c); });
+        all.forEach(c=>map.set(c.time, c));
         rawCandles = Array.from(map.values()).sort((a,b)=>a.time-b.time);
 
         if(!rawCandles.length){
-          statusEl.textContent = 'Chart not available.';
-          _showChartOverlay('Chart not available.');
+          statusEl.textContent = 'Chart not available for this pool.';
           return;
         }
 
-        _candleCache.set(cacheKey, {at: Date.now(), candles: rawCandles.slice()});
-        applyCandlesToChart(!!fit);
-        _hideChartOverlay();
+        applyCandlesToChart(fit);
         statusEl.textContent = 'Live.';
+
       }catch(e){
-        if(e?.name==='AbortError') return;
-        console.error(e);
         statusEl.textContent = 'Chart error.';
-        _showChartOverlay('Chart error. Click Refresh.');
+        console.error(e);
       }
     }
 
-    function parseTrade(t){
-      const a = t?.attributes || t || {};
-      const num = (v)=>{ v = Number(v); return Number.isFinite(v) ? v : NaN; };
+    // -------------------- Trades
+    function tradesContainer(){
+      // write to both desktop + mobile
+      return [tradesDesk, tradesMob];
+    }
 
+    function ensureTradeHead(){
+      // head exists in markup
+    }
+
+    function timeAgo(tsMs){
+      const d = Math.max(0, Date.now() - tsMs);
+      const s = Math.floor(d/1000);
+      if(s<60) return s+'s';
+      const m = Math.floor(s/60);
+      if(m<60) return m+'m';
+      const h = Math.floor(m/60);
+      if(h<24) return h+'h';
+      const days = Math.floor(h/24);
+      return days+'d';
+    }
+
+    function parseTrade(t){
+      const a = t?.attributes || {};
       const id = String(t?.id || a.tx_hash || a.transaction_hash || a.signature || a.transaction_id || '') || '';
       const side = String(a.trade_type || a.side || a.taker_side || a.kind || '').toLowerCase();
       const type = side.includes('sell') ? 'sell' : (side.includes('buy') ? 'buy' : (a.is_buy===true?'buy':(a.is_sell===true?'sell':'')));
 
       const tx = String(a.tx_hash || a.transaction_hash || a.signature || a.transaction_id || id || '').trim();
-      const maker = String(a.maker || a.trader || a.wallet_address || a.user || a.from || a.from_address || a.trader_address || a.owner || '').trim();
+      const maker = String(
+        a.taker || a.trader || a.wallet_address || a.from_address || a.maker || a.maker_address || a.tx_from_address || a.user_address || ''
+      ).trim();
 
       const rawTs = (a.block_timestamp ?? a.timestamp ?? a.time ?? a.created_at ?? a.mined_at ?? a.block_time ?? 0);
-      const tsMs = Number.isFinite(Number(rawTs)) ? (Number(rawTs)>10_000_000_000?Number(rawTs):Number(rawTs)*1000) : Date.now();
+      let tsMs = NaN;
+      if(typeof rawTs==='number'){
+        tsMs = rawTs>1e12 ? rawTs : rawTs*1000;
+      }else{
+        const tsv = String(rawTs||'').trim();
+        if(tsv && /^\d+(\.\d+)?$/.test(tsv)){
+          const n = Number(tsv);
+          tsMs = n>1e12 ? n : n*1000;
+        }else{
+          const d = Date.parse(tsv);
+          if(Number.isFinite(d)) tsMs = d;
+        }
+      }
+      if(!Number.isFinite(tsMs)) tsMs = Date.now();
 
       const usd = num(a.volume_in_usd || a.usd_value || a.volume_usd || a.amount_usd || a.total_usd);
       const price = num(a.price_in_usd || a.price_usd || a.price);
-
       const baseAmt = num(a.base_token_amount || a.amount_base || a.base_amount || a.base_token_volume || a.base_volume);
       const quoteAmt = num(a.quote_token_amount || a.amount_quote || a.quote_amount || a.quote_token_volume || a.quote_volume);
-
       const amount = Number.isFinite(baseAmt) ? baseAmt : (Number.isFinite(quoteAmt)? quoteAmt : NaN);
 
-      return { id: (tx||id), tx:(tx||id), maker, type, tsMs, usd, price, baseAmt, quoteAmt, amount };
+      return { id, type, tx, maker, tsMs, usd, price, amount };
     }
 
-    async function geckoTrades(limit=200, {signal=null}={}){
-      const base = `${GECKO}/networks/${encodeURIComponent(geckoNet())}/pools/${encodeURIComponent(poolAddr)}/trades`;
-      try{
-        const url1 = base + `?page=1&limit=${encodeURIComponent(limit)}`;
-        const j1 = await fetchJson(url1, {timeout:14000, retries:1, signal});
-        if(Array.isArray(j1?.data) && j1.data.length) return j1.data;
-      }catch(_e){}
-      try{
-        const url2 = base + `?limit=${encodeURIComponent(limit)}`;
-        const j2 = await fetchJson(url2, {timeout:14000, retries:1, signal});
-        if(Array.isArray(j2?.data)) return j2.data;
-      }catch(_e){}
-      return [];
-    }
-
-    function _tradeRowHtml(tr){
-      const ageHtml = `<span class="ageTxt mono" data-ts="${esc(String(tr.tsMs||0))}">—</span>`;
-      const typeClass = tr.type==='buy' ? 'buy' : (tr.type==='sell' ? 'sell' : '');
-      const typeTxt = tr.type ? tr.type.toUpperCase() : '—';
-      const usdTxt = Number.isFinite(tr.usd) ? ('$'+formatCompact(tr.usd)) : '—';
-
-      const amt = Number.isFinite(tr.amount) ? tr.amount : NaN;
-      const amtTxt = Number.isFinite(amt) ? (formatCompact(amt) + (curTokenSymbol?(' '+curTokenSymbol):'')) : '—';
-
+    function tradeRowHtml(tr){
+      const age = timeAgo(tr.tsMs);
+      const usdTxt = Number.isFinite(tr.usd) ? '$'+formatCompact(tr.usd) : '—';
+      const amtTxt = Number.isFinite(tr.amount) ? formatCompact(tr.amount)+' '+esc(curTokenSymbol) : '—';
       const priceTxt = Number.isFinite(tr.price) ? '$'+formatPrice(tr.price) : '—';
 
       const isNew = tr.maker ? (!seenMakers.has(tr.maker)) : false;
-      if(tr.maker){
-        seenMakers.add(tr.maker);
-        if(seenMakers.size>2000) seenMakers = new Set(Array.from(seenMakers).slice(-2000));
-      }
+      if(tr.maker) seenMakers.add(tr.maker);
 
       const makerHtml = tr.maker
-        ? `<div class="maker">
-            <a class="addr mono" href="${esc(explorerAddr(activeNet, tr.maker))}" target="_blank" rel="noreferrer" title="${esc(tr.maker)}">${esc(shortAddr(tr.maker))}</a>
-            ${isNew?'<span class="new">NEW</span>':''}
-          </div>`
+        ? `<div class="maker"><span class="addr mono" title="${esc(tr.maker)}">${esc(shortAddr(tr.maker))}</span>${isNew?'<span class="new">NEW</span>':''}</div>`
         : `<span class="mono" style="opacity:.7">—</span>`;
 
       const txUrl = tr.tx ? explorerTx(activeNet, tr.tx) : '#';
+      const addrUrl = tr.maker ? explorerAddr(activeNet, tr.maker) : '#';
 
       return `
-        <div class="tradeRow newRow" data-id="${esc(tr.id)}" data-ts="${esc(String(tr.tsMs||0))}" data-type="${esc(tr.type||'')}">
-          <div class="mono">${ageHtml}</div>
-          <div><span class="typeBadge ${esc(typeClass)}">${esc(typeTxt)}</span></div>
+        <div class=\"tradeRow\" data-id=\"${esc(tr.id)}\" data-ts=\"${Number.isFinite(tr.tsMs)?tr.tsMs:0}\" data-price=\"${Number.isFinite(tr.price)?tr.price:''}\" data-usd=\"${Number.isFinite(tr.usd)?tr.usd:''}\" data-type=\"${esc(tr.type||'')}\">
+          <div class=\"mono age\">${esc(age)}</div>
+          <div><span class="typeBadge ${tr.type==='sell'?'sell':'buy'}">${tr.type==='sell'?'SELL':'BUY'}</span></div>
           <div class="mono">${esc(usdTxt)}</div>
-          <div class="mono">${esc(amtTxt)}</div>
+          <div class="mono">${amtTxt}</div>
           <div class="mono hideM">${esc(priceTxt)}</div>
           <div class="hideM">${makerHtml}</div>
           <div>
@@ -2106,104 +2250,150 @@ let seenMakers = new Set();
       `;
     }
 
+    async function geckoTrades(limit=80){
+      const base = `${GECKO}/networks/${encodeURIComponent(geckoNet())}/pools/${encodeURIComponent(poolAddr)}/trades`;
+      // GeckoTerminal often uses JSON:API pagination. Try page params first, then fallback to limit.
+      try{
+        const url1 = base + `?page=1&limit=${encodeURIComponent(limit)}`;
+        const j1 = await fetchJson(url1, {timeout:14000, retries:1});
+        if(Array.isArray(j1?.data) && j1.data.length) return j1.data;
+      }catch(e){ /* ignore */ }
+
+      try{
+        const url2 = base + `?limit=${encodeURIComponent(limit)}`;
+        const j2 = await fetchJson(url2, {timeout:14000, retries:1});
+        if(Array.isArray(j2?.data)) return j2.data;
+      }catch(e){ /* ignore */ }
+
+      return [];
+    }
+
     function renderTrades(trades, {reset=false}={}){
       const parsed = (trades||[]).map(parseTrade).filter(x=>x.id && Number.isFinite(x.tsMs));
       parsed.sort((a,b)=>b.tsMs-a.tsMs);
 
       if(reset){
+        tradesSeen = new Set();
+        seenMakers = new Set();
+        // clear existing rows (keep header)
         tradesContainer().forEach(el=>{
           const head = el.querySelector('.tradeHead');
           el.innerHTML='';
-          if(head) el.appendChild(head);
+          el.appendChild(head);
         });
-        tradesSeen = new Map();
-        _tradesSeenQ = [];
-        seenMakers = new Set();
       }
 
       const newly = [];
+
+      // Only add unseen trades (prepend)
       for(const tr of parsed){
         if(tradesSeen.has(tr.id)) continue;
-        _markTradeSeen(tr.id);
+        tradesSeen.add(tr.id);
         newly.push(tr);
-      }
-      if(!newly.length) return [];
 
-      const add = newly.slice().sort((a,b)=>a.tsMs-b.tsMs);
-
-      tradesContainer().forEach(el=>{
-        const head = el.querySelector('.tradeHead');
-        for(const tr of add){
+        const html = tradeRowHtml(tr);
+        tradesContainer().forEach(el=>{
+          const head = el.querySelector('.tradeHead');
           const wrapper = document.createElement('div');
-          wrapper.innerHTML = _tradeRowHtml(tr).trim();
+          wrapper.innerHTML = html;
           const row = wrapper.firstElementChild;
-          if(!row) continue;
-          el.insertBefore(row, head ? head.nextSibling : el.firstChild);
-          requestAnimationFrame(()=>row.classList.remove('newRow'));
-        }
-        const rows = [...el.querySelectorAll('.tradeRow')];
-        const maxRows = 220;
-        if(rows.length > maxRows) rows.slice(maxRows).forEach(r=>r.remove());
-      });
+          // insert after head
+          el.insertBefore(row, head.nextSibling);
+          // cap rows
+          const rows = [...el.querySelectorAll('.tradeRow')];
+          if(rows.length>120){
+            rows.slice(120).forEach(r=>r.remove());
+          }
+        });
+      }
 
       const total = tradesDesk.querySelectorAll('.tradeRow').length;
-      if(tradesStat) tradesStat.textContent = total ? `${total} shown` : '—';
-      if(tradesStatM) tradesStatM.textContent = total ? `${total} shown` : '—';
+      tradesStat.textContent = `${total} trades`;
+      tradesStatM.textContent = `${total} trades`;
 
+      updateAges();
       return newly;
     }
 
     function updateAges(){
-      const now = Date.now();
       tradesContainer().forEach(el=>{
-        el.querySelectorAll('.ageTxt').forEach(span=>{
-          const ts = Number(span.getAttribute('data-ts') || 0);
-          if(!Number.isFinite(ts) || !ts){ span.textContent = '—'; return; }
-          const s = Math.max(0, Math.floor((now - ts)/1000));
-          if(s < 60) span.textContent = `${s}s ago`;
-          else if(s < 3600) span.textContent = `${Math.floor(s/60)}m ago`;
-          else span.textContent = `${Math.floor(s/3600)}h ago`;
+        [...el.querySelectorAll('.tradeRow')].forEach(row=>{
+          const ts = Number(row.getAttribute('data-ts')||0);
+          if(!ts) return;
+          const ageEl = row.querySelector('.age');
+          if(ageEl) ageEl.textContent = timeAgo(ts);
         });
       });
+    }
+
+    function applyTradeToCandles(tr){
+      if(!rawCandles || !rawCandles.length) return;
+      if(!Number.isFinite(tr.price)) return;
+      if(!Number.isFinite(activeTF?.agg) || activeTF.agg<=0) return;
+
+      const tsSec = Math.floor(tr.tsMs/1000);
+      const bucket = Math.floor(tsSec / activeTF.agg) * activeTF.agg;
+
+      const last = rawCandles[rawCandles.length-1];
+      const usdVol = Number.isFinite(tr.usd) ? tr.usd : 0;
+
+      // ignore very old trades (keeps chart stable)
+      if(bucket < last.time - activeTF.agg*5) return;
+
+      if(bucket === last.time){
+        last.close = tr.price;
+        last.high = Math.max(last.high, tr.price);
+        last.low  = Math.min(last.low, tr.price);
+        last.volume = (Number(last.volume)||0) + usdVol;
+        candleSeries.update({time:last.time, open:last.open, high:last.high, low:last.low, close:last.close});
+        volumeSeries.update({time:last.time, value:last.volume, color:(last.close>=last.open)?'rgba(20,241,149,.35)':'rgba(255,77,109,.35)'});
+        return;
+      }
+
+      if(bucket > last.time){
+        const open = Number.isFinite(last.close) ? last.close : tr.price;
+        const close = tr.price;
+        const high = Math.max(open, close);
+        const low = Math.min(open, close);
+        const c = {time: bucket, open, high, low, close, volume: usdVol};
+        rawCandles.push(c);
+        candleSeries.update({time:c.time, open:c.open, high:c.high, low:c.low, close:c.close});
+        volumeSeries.update({time:c.time, value:c.volume, color:(c.close>=c.open)?'rgba(20,241,149,.35)':'rgba(255,77,109,.35)'});
+      }
     }
 
     async function loadTrades(reset=false){
       if(!poolAddr) return;
       try{
-        if(_tradesCtl) _tradesCtl.abort();
-        _tradesCtl = new AbortController();
-
-        const data = await geckoTrades(220, {signal:_tradesCtl.signal});
+        const data = await geckoTrades(80);
         const newly = renderTrades(data, {reset}) || [];
         if(newly.length){
+          // Apply oldest->newest so candle updates are correct
           newly.slice().sort((a,b)=>a.tsMs-b.tsMs).forEach(applyTradeToCandles);
         }
+
+    function startLiveLoops(){
+      if(tradesTimer) clearInterval(tradesTimer);
+      tradesTimer = setInterval(async ()=>{ try{ await loadTrades(false); }catch(_){ } }, 2500);
+
+      if(candlesTimer) clearInterval(candlesTimer);
+      candlesTimer = setInterval(async ()=>{ try{ await refreshLatestCandles(); }catch(_){ } }, 5000);
+    }
         statusEl.textContent = 'Live.';
       }catch(e){
-        if(e?.name==='AbortError') return;
         console.error(e);
         statusEl.textContent = 'Trades error.';
       }
     }
 
-    function startLiveLoops(){
-      stopLiveLoops();
-      updateAges();
-      ageTimer = setInterval(updateAges, 1000);
-
-      pollTradesTimer = setInterval(async ()=>{
-        if(_tradesInFlight) return;
-        _tradesInFlight = true;
-        try{ await loadTrades(false); }catch(_e){}finally{ _tradesInFlight=false; }
-      }, 1500);
-
-      pollCandleTimer = setInterval(async ()=>{
-        if(_candlesInFlight) return;
-        _candlesInFlight = true;
-        try{ await refreshLatestCandles(); }catch(_e){}finally{ _candlesInFlight=false; }
-      }, 15000);
+// -------------------- Meta (refresh price/liquidity/24h)
+    async function geckoPool(){
+      const url = `${GECKO}/networks/${encodeURIComponent(geckoNet())}/pools/${encodeURIComponent(poolAddr)}?include=base_token,quote_token`;
+      const j = await fetchJson(url, {timeout:14000, retries:1});
+      return j?.data || null;
     }
-function loadMeta(){
+
+    async function loadMeta(){
       if(!poolAddr) return;
       try{
         const p = await geckoPool();
@@ -2408,9 +2598,7 @@ function loadMeta(){
       }
     }
 
-    async function openToken(input, {
-      try{ stopLiveLoops(); }catch(_e){}
-skipInput=false}={}){
+    async function openToken(input, {skipInput=false}={}){
       let v = String(input||'').trim();
       if(!v){ toast('Paste a token name or address'); return; }
       if(!skipInput) q.value = v;
@@ -2420,12 +2608,6 @@ skipInput=false}={}){
       pairNameEl.textContent = 'Loading…';
       pairMetaEl.textContent = 'Resolving best pool…';
       results.innerHTML = '';
-
-      
-
-      // default timeframe: always open on 5m
-      activeTF = TF.find(x=>x.k==='5m') || TF[1] || TF[0];
-      renderTimeframes();
 
       let dsPair = null;
 
@@ -2587,6 +2769,79 @@ skipInput=false}={}){
     if(!addr) addr = DEFAULT_TOKEN[activeNet];
     // auto-open default
     openToken(addr, {skipInput:true, silent:true, boot:true});
+
+// ================================
+//  UI/UX Premium Patch (Design-only)
+//  - Mobile Live Trades bottom sheet
+//  - Close search results on outside tap (no global scrim)
+// ================================
+
+// Close search dropdown on outside interactions (no full-page dimming/blur)
+document.addEventListener('pointerdown', (e)=>{
+  try{
+    if(results && results.style.display === 'block'){
+      if(dexSearch && !dexSearch.contains(e.target)){
+        hideResults();
+      }
+    }
+  }catch(_){}
+}, {capture:true});
+
+if(searchScrim){
+  // ensure scrim never blocks UI
+  searchScrim.style.display = 'none';
+}
+
+// Mobile: make Live Trades a bottom sheet (accordion)
+let tradesSheetOpen = false;
+const tradesMq = window.matchMedia('(max-width: 740px)');
+
+function setTradesSheet(open){
+  tradesSheetOpen = !!open;
+  if(!tradesCard) return;
+  tradesCard.classList.toggle('sheetOpen', tradesSheetOpen);
+}
+function toggleTradesSheet(){
+  setTradesSheet(!(tradesCard && tradesCard.classList.contains('sheetOpen')));
+}
+
+function ensureTradesSheetUI(){
+  if(!tradesCard) return;
+  const hd = tradesCard.querySelector('.tableHd');
+  if(!hd) return;
+
+  // Add a subtle toggle affordance (button) without changing existing IDs/features
+  if(!tradesCard.querySelector('.sheetToggleBtn')){
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'iconBtn sheetToggleBtn';
+    btn.setAttribute('aria-label','Toggle Live Trades');
+    btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M7.41 8.58 12 13.17l4.59-4.59L18 10l-6 6-6-6z"/></svg>';
+    btn.addEventListener('click', (e)=>{ e.preventDefault(); e.stopPropagation(); if(tradesMq.matches) toggleTradesSheet(); });
+    // place to the right side
+    hd.appendChild(btn);
+  }
+
+  // Tap header toggles on mobile only
+  hd.addEventListener('click', ()=>{
+    if(tradesMq.matches) toggleTradesSheet();
+  }, {passive:true});
+
+  // Escape closes
+  document.addEventListener('keydown', (e)=>{
+    if(e.key === 'Escape' && tradesMq.matches){
+      setTradesSheet(false);
+    }
+  });
+}
+
+ensureTradesSheetUI();
+setTradesSheet(false);
+
+tradesMq.addEventListener('change', ()=>{
+  // reset sheet state when leaving mobile
+  if(!tradesMq.matches) setTradesSheet(false);
+});
 
   })();
   </script>
