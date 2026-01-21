@@ -2453,12 +2453,23 @@ display:none;
     if(typeof DBG.metrics.lastTradesCount==='undefined') DBG.metrics.lastTradesCount = 0;
     if(typeof DBG.metrics.lastTradesUrl==='undefined') DBG.metrics.lastTradesUrl = '';
     if(typeof DBG.metrics.lastTradesError==='undefined') DBG.metrics.lastTradesError = '';
+    if(typeof DBG.metrics.lastCandlesFetchAt==='undefined') DBG.metrics.lastCandlesFetchAt = 0;
+    if(typeof DBG.metrics.lastCandlesCount==='undefined') DBG.metrics.lastCandlesCount = 0;
+    if(typeof DBG.metrics.lastCandlesTf==='undefined') DBG.metrics.lastCandlesTf = '';
+    if(typeof DBG.metrics.lastCandlesUrl==='undefined') DBG.metrics.lastCandlesUrl = '';
+    if(typeof DBG.metrics.lastCandlesError==='undefined') DBG.metrics.lastCandlesError = '';
+
+    if(typeof DBG.metrics.lastClickAction==='undefined') DBG.metrics.lastClickAction = '';
+    if(typeof DBG.metrics.lastClickAt==='undefined') DBG.metrics.lastClickAt = 0;
+    if(typeof DBG.metrics.lastClickError==='undefined') DBG.metrics.lastClickError = '';
 
     function _safeStr(v){
       try{
         if(v == null) return '';
         if(typeof v === 'string') return v;
         if(typeof v === 'number' || typeof v === 'boolean') return String(v);
+    DBG.checks = Array.isArray(DBG.checks) ? DBG.checks : [];
+    DBG.pushCheck = function(entry){ try{ _push(DBG.checks, entry); }catch(_){ } };
         if(v && typeof v.message === 'string') return v.message;
         try{ return JSON.stringify(v); }catch(_){}
         return String(v);
@@ -2564,6 +2575,14 @@ display:none;
       }catch(_){}
 
       try{
+        out.push('Clicks:');
+        var mtc = (DBG && DBG.metrics) ? DBG.metrics : {};
+        out.push('  lastClickAction: ' + _safeStr(mtc.lastClickAction));
+        out.push('  lastClickAt: ' + (mtc.lastClickAt ? _fmtTime(mtc.lastClickAt) : '(never)'));
+        out.push('  lastClickError: ' + _safeStr(mtc.lastClickError));
+      }catch(_){ }
+
+      try{
         out.push('Trades:');
         var mt = (DBG && DBG.metrics) ? DBG.metrics : {};
         out.push('  lastTradesFetchAt: ' + (mt.lastTradesFetchAt ? _fmtTime(mt.lastTradesFetchAt) : '(never)'));
@@ -2622,6 +2641,20 @@ display:none;
       }else{
         out.push('(none)');
       }
+      out.push('');
+      out.push('self-check (last ' + (DBG.checks.length||0) + '):');
+      if(DBG.checks.length){
+        for(var sc=DBG.checks.length-1; sc>=0; sc--){
+          var c = DBG.checks[sc] || {};
+          out.push('- ' + _fmtTime(c.time) + ' | ' + _safeStr(c.reason) + ' | ' + _safeStr(c.misses));
+          if(c.state){ out.push('  state: ' + _safeStr(c.state)); }
+          if(c.action){ out.push('  action: ' + _safeStr(c.action)); }
+          if(c.stack){ out.push('  stack: ' + String(c.stack).split('\n').slice(0,4).join(' | ')); }
+        }
+      }else{
+        out.push('(none)');
+      }
+
       return out.join('\n');
     }
 
@@ -2730,6 +2763,28 @@ display:none;
       const ac = new AbortController();
       requestControllers.set(key, ac);
       return ac;
+    }
+
+
+    // Candle load resilience
+    const CANDLE_FETCH_TIMEOUT_MS = 10000; // strict timeout for Gecko candle fetch
+    const CANDLE_AUTORETRY_DELAY_MS = 1200;
+    const candleRetryState = new Map(); // key: net|pool|tf -> {count:number, t:number}
+    function makeTimeoutSignal(parentSignal, ms){
+      const ctrl = new AbortController();
+      let t = setTimeout(()=>{ try{ ctrl.abort(new DOMException('Timeout','TimeoutError')); }catch(_){ try{ ctrl.abort(); }catch(__){} } }, ms);
+      const onAbort = ()=>{ try{ ctrl.abort(parentSignal?.reason); }catch(_){ try{ ctrl.abort(); }catch(__){} } cleanup(); };
+      const cleanup = ()=>{
+        try{ clearTimeout(t); }catch(_){}
+        try{ parentSignal && parentSignal.removeEventListener && parentSignal.removeEventListener('abort', onAbort); }catch(_){}
+      };
+      try{
+        if(parentSignal){
+          if(parentSignal.aborted) onAbort();
+          else parentSignal.addEventListener('abort', onAbort, {once:true});
+        }
+      }catch(_){}
+      return { signal: ctrl.signal, cleanup };
     }
 
     // Abort helpers: ensure old in-flight requests cannot overwrite new state
@@ -2932,6 +2987,38 @@ display:none;
     // -------------------- Helpers
     const sleep = (ms)=>new Promise(r=>setTimeout(r, ms));
     const lc = (v)=>String(v||'').toLowerCase();
+
+    // -------------------- Safe UI binding + click instrumentation (Fixing_06)
+    function dgClickMark(action, err){
+      try{
+        const DBG = window.__DG_DEBUG__ || (window.__DG_DEBUG__ = {});
+        DBG.metrics = (DBG.metrics && typeof DBG.metrics==='object') ? DBG.metrics : {};
+        DBG.metrics.lastClickAction = String(action || '');
+        DBG.metrics.lastClickAt = Date.now();
+        DBG.metrics.lastClickError = err ? String((err && (err.stack || err.message)) || err) : '';
+      }catch(_){}
+    }
+
+    // Delegated, bind-once event helper that survives re-renders and never throws
+    function dgBindSafe(selector, event, action, handler, options){
+      try{
+        const REG = window.__DG_BIND_REG__ || (window.__DG_BIND_REG__ = {});
+        const k = String(event||'') + '|' + String(selector||'') + '|' + String(action||'');
+        if(REG[k]) return;
+        REG[k] = 1;
+        document.addEventListener(event, function(e){
+          let el = null;
+          try{ el = (e && e.target && e.target.closest) ? e.target.closest(selector) : null; }catch(_){}
+          if(!el) return;
+          try{ dgClickMark(action); }catch(_){}
+          try{ return handler(e, el); }catch(err){
+            try{ dgClickMark(action, err); }catch(_){}
+            try{ console.error(err); }catch(_){}
+          }
+        }, options || false);
+      }catch(_){}
+    }
+
 
     function toast(msg, ms=2200){
       toastEl.textContent = msg;
@@ -3344,24 +3431,166 @@ let seenMakers = new Set();
 
     // -------------------- Chart
     const chartEl = $('chart');
-    const chart = LightweightCharts.createChart(chartEl, {
-      width: chartEl.clientWidth || 800,
-      height: chartEl.clientHeight || 520,
-      layout: { background: { type:'solid', color:'rgba(0,0,0,0)' }, textColor:'rgba(255,255,255,.86)' },
-      grid: { vertLines:{color:'rgba(255,255,255,.06)'}, horzLines:{color:'rgba(255,255,255,.06)'} },
-      rightPriceScale: { borderColor:'rgba(255,255,255,.12)' },
-      timeScale: { borderColor:'rgba(255,255,255,.12)', timeVisible:true, secondsVisible:false },
-      crosshair: { mode: 1 },
-      handleScroll: { mouseWheel:true, pressedMouseMove:true, horzTouchDrag:true, vertTouchDrag:true },
-      handleScale: { axisPressedMouseMove:true, mouseWheel:true, pinch:true },
-    });
+    let chart = null;
+    let candleSeries = null;
+    let volumeSeries = null;
+    let _dgChartMode = 'lw';
 
+    function dgCreateNativeChart(container){
+      // Minimal native canvas fallback when external chart lib fails
+      const cvs = document.createElement('canvas');
+      cvs.id = 'dgNativeChart';
+      cvs.style.width = '100%';
+      cvs.style.height = '100%';
+      cvs.style.display = 'block';
+      try{ container.innerHTML = ''; }catch(_){}
+      try{ container.appendChild(cvs); }catch(_){}
+      const ctx = cvs.getContext('2d', { alpha:true });
+      let w = 0, h = 0;
+      let candles = [];
+      let visCb = null;
+      let visRange = null;
 
-    // Unified number formatting for chart scale
+      function _resize(){
+        try{
+          w = container.clientWidth || 800;
+          h = container.clientHeight || 520;
+          const dpr = window.devicePixelRatio || 1;
+          cvs.width = Math.max(1, Math.floor(w * dpr));
+          cvs.height = Math.max(1, Math.floor(h * dpr));
+          if(ctx) ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+          _draw();
+        }catch(_){}
+      }
+      function _draw(){
+        try{
+          if(!ctx) return;
+          ctx.clearRect(0, 0, w, h);
+          if(!candles || !candles.length) return;
+
+          const n = candles.length;
+          const viewBars = (typeof desiredViewportBars === 'function') ? desiredViewportBars() : 260;
+          const from = Math.max(0, n - viewBars);
+          const to = n;
+          const view = candles.slice(from, to);
+          if(!view.length) return;
+
+          let minP = Infinity, maxP = -Infinity;
+          for(const c of view){
+            if(Number.isFinite(c.low) && c.low < minP) minP = c.low;
+            if(Number.isFinite(c.high) && c.high > maxP) maxP = c.high;
+          }
+          if(!Number.isFinite(minP) || !Number.isFinite(maxP) || minP === maxP) return;
+
+          const pad = (maxP - minP) * 0.05;
+          minP -= pad; maxP += pad;
+
+          const innerTop = 10, innerBottom = h - 10;
+          const innerH = Math.max(1, innerBottom - innerTop);
+          const y = (p)=> innerBottom - ((p - minP) / (maxP - minP)) * innerH;
+
+          const cw = w / Math.max(1, view.length);
+          for(let i=0;i<view.length;i++){
+            const c = view[i];
+            const x0 = i * cw + cw * 0.15;
+            const bw = Math.max(1, cw * 0.7);
+            const yh = y(c.high), yl = y(c.low), yo = y(c.open), yc = y(c.close);
+            const up = c.close >= c.open;
+            ctx.strokeStyle = up ? 'rgba(20,241,149,.95)' : 'rgba(255,77,109,.95)';
+            ctx.fillStyle = up ? 'rgba(20,241,149,.55)' : 'rgba(255,77,109,.55)';
+            // wick
+            ctx.beginPath();
+            ctx.moveTo(x0 + bw/2, yh);
+            ctx.lineTo(x0 + bw/2, yl);
+            ctx.stroke();
+            // body
+            const top = Math.min(yo, yc);
+            const bot = Math.max(yo, yc);
+            ctx.fillRect(x0, top, bw, Math.max(1, bot - top));
+          }
+
+          try{ visCb && visCb({ from, to }); }catch(_){}
+        }catch(_){}
+      }
+
+      try{ new ResizeObserver(_resize).observe(container); }catch(_){}
+      try{ window.addEventListener('resize', _resize, {passive:true}); }catch(_){}
+      _resize();
+
+      function _mkCandleSeries(){
+        return {
+          setData(arr){
+            try{
+              const a = Array.isArray(arr) ? arr : [];
+              candles = a.map(o=>({ time:o.time, open:o.open, high:o.high, low:o.low, close:o.close })).filter(o=>Number.isFinite(o.time));
+              candles.sort((a,b)=>a.time-b.time);
+              _draw();
+            }catch(_){}
+          },
+          update(o){
+            try{
+              if(!o || !Number.isFinite(o.time)) return;
+              const c = { time:o.time, open:o.open, high:o.high, low:o.low, close:o.close };
+              const idx = candles.findIndex(x=>x.time===c.time);
+              if(idx>=0) candles[idx] = c;
+              else { candles.push(c); candles.sort((a,b)=>a.time-b.time); }
+              _draw();
+            }catch(_){}
+          }
+        };
+      }
+      function _mkVolumeSeries(){
+        return { setData(){}, update(){} };
+      }
+
+      return {
+        _mode:'native',
+        addCandlestickSeries(){ return _mkCandleSeries(); },
+        addHistogramSeries(){ return _mkVolumeSeries(); },
+        applyOptions(){},
+        resize(){ _resize(); },
+        priceScale(){ return { applyOptions(){} }; },
+        timeScale(){
+          return {
+            applyOptions(){},
+            getVisibleLogicalRange(){
+              const n = candles.length || 0;
+              const viewBars = (typeof desiredViewportBars === 'function') ? desiredViewportBars() : 260;
+              const from = Math.max(0, n - viewBars);
+              return { from, to: n };
+            },
+            setVisibleLogicalRange(r){ visRange = r || visRange; try{ _draw(); }catch(_){ } },
+            subscribeVisibleLogicalRangeChange(cb){ visCb = cb; }
+          };
+        }
+      };
+    }
+
+    try{
+      if(window.LightweightCharts && typeof LightweightCharts.createChart==='function'){
+        chart = LightweightCharts.createChart(chartEl, {
+          width: chartEl.clientWidth || 800,
+          height: chartEl.clientHeight || 520,
+          layout: { background: { type:'solid', color:'rgba(0,0,0,0)' }, textColor:'rgba(255,255,255,.86)' },
+          grid: { vertLines:{color:'rgba(255,255,255,.06)'}, horzLines:{color:'rgba(255,255,255,.06)'} },
+          rightPriceScale: { borderColor:'rgba(255,255,255,.12)' },
+          timeScale: { borderColor:'rgba(255,255,255,.12)', timeVisible:true, secondsVisible:false },
+          crosshair: { mode: 1 },
+          handleScroll: { mouseWheel:true, pressedMouseMove:true, horzTouchDrag:true, vertTouchDrag:true },
+          handleScale: { axisPressedMouseMove:true, mouseWheel:true, pinch:true },
+        });
+      }else{
+        throw new Error('LightweightCharts missing');
+      }
+    }catch(_e){
+      _dgChartMode = 'native';
+      try{ chart = dgCreateNativeChart(chartEl); }catch(_){ chart = dgCreateNativeChart(chartEl); }
+    }
+
+    // Unified number formatting for chart scale (auto precision applied after data load)
     try{ chart.applyOptions({ localization:{ priceFormatter:(p)=>DG_FMT.price(p) } }); }catch(_){ }
 
-
-    const candleSeries = chart.addCandlestickSeries({
+candleSeries = chart.addCandlestickSeries({
       upColor: 'rgba(20,241,149,.95)',
       downColor:'rgba(255,77,109,.95)',
       wickUpColor:'rgba(20,241,149,.95)',
@@ -3384,16 +3613,17 @@ let seenMakers = new Set();
       priceFormat:{ type:'price', precision: 10, minMove: 1e-10 }
     });
 
-    const volumeSeries = chart.addHistogramSeries({
+    volumeSeries = chart.addHistogramSeries({
       priceFormat: { type:'volume' },
       priceScaleId: '',
       lastValueVisible:false,
       base:0,
     });
-    chart.priceScale('').applyOptions({ scaleMargins:{ top:0.84, bottom:0 } });
+    try{ chart.priceScale('').applyOptions({ scaleMargins:{ top:0.84, bottom:0 } }); }catch(_){ }
 
 
-    // ===== Micro Smooth Update (interpolate last close) =====
+    
+// ===== Micro Smooth Update (interpolate last close) =====
     let _dgCloseTween = { raf:0, barTime:0, from:NaN, to:NaN, start:0, dur:120, open:NaN, high:NaN, low:NaN };
     let _dgRendered = { time:0, close:NaN };
     function _dgCancelCloseTween(){
@@ -3498,13 +3728,15 @@ let seenMakers = new Set();
         const b=document.createElement('div');
         b.className='pill'+(activeNet===n.k?' active':'');
         b.innerHTML = `<span class="dot"></span>${esc(n.label)}`;
-        b.onclick=()=>{
+        b.onclick=()=>{ dgClickMark('net_pill_'+n.k); try{
           activeNet=n.k;
           renderNetPills();
           toast('Chain: '+n.label);
           // keep current addr if it matches chain type; otherwise default
           if(!addr || (activeNet==='solana' ? !isSolAddr(addr) : !isEvmAddr(addr))){ addr = DEFAULT_MARKET_TOKEN[activeNet]; }
           navigate(activeNet, addr);
+        
+        }catch(err){ try{ dgClickMark('net_pill_'+n.k, err); }catch(_){ } }
         };
         netPills.appendChild(b);
       });
@@ -3516,7 +3748,7 @@ let seenMakers = new Set();
         const b=document.createElement('button');
         b.className='tf'+(t.k===activeTF.k?' active':'');
         b.textContent=t.k;
-        b.onclick=()=>{
+        b.onclick=()=>{ dgClickMark('tf_'+t.k); try{
           activeTF=t;
           [...tfRow.children].forEach(x=>x.classList.toggle('active', x.textContent===t.k));
           // reset viewport flags on timeframe change
@@ -3529,10 +3761,12 @@ let seenMakers = new Set();
             try{ if(typeof stopLiveLoops==='function') stopLiveLoops(); }catch(_){ }
           try{ if(typeof abortAllRequests==='function') abortAllRequests(); }catch(_){ }
             (async()=>{
-              await Promise.all([loadCandles(true), loadTrades(true)]);
+              await Promise.all([requestCandles(true), loadTrades(true)]);
               startLiveLoops();
             })();
           }
+        
+        }catch(err){ try{ dgClickMark('tf_'+t.k, err); }catch(_){ } }
         };
         tfRow.appendChild(b);
       });
@@ -3636,7 +3870,7 @@ function initTradesAccordion(){
 
         if(!hd.dataset.accBound){
           hd.dataset.accBound = '1';
-          hd.addEventListener('click', ()=>{
+          hd.addEventListener('click', ()=>{ dgClickMark('trades_toggle');
             if(!mqTradesAcc.matches) return;
             setOpen(!tradesCard.classList.contains('open'));
           }, {passive:true});
@@ -3660,10 +3894,12 @@ function initTradesAccordion(){
 
     // Top-left Dexguard button -> jump to trending bar
     if(topDexguardBtn){
-      topDexguardBtn.onclick = ()=>{
+      topDexguardBtn.onclick = ()=>{ dgClickMark('top_dexguard'); try{
+
         const tb = document.getElementById('topBar');
         if(tb) tb.scrollIntoView({behavior:'smooth', block:'start'});
-      };
+      
+      }catch(err){ try{ dgClickMark('top_dexguard', err); }catch(_){ } } };
     }
     /* Refresh button removed (auto updates) */
 // -------------------- Search
@@ -3852,18 +4088,7 @@ function setSearchModalOpen(open){
           </div>
         `;
       }).join('');
-      showResults(html);
-
-      // click bind
-      [...results.querySelectorAll('.resItem')].forEach(el=>{
-        el.onclick=()=>{
-          const a = el.getAttribute('data-addr')||'';
-          hideResults();
-          q.value = a;
-          openToken(a);
-        };
-      });
-    }
+      showResults(html);}
 
     q.addEventListener('input', ()=>{
       clearTimeout(searchTimer);
@@ -3897,11 +4122,19 @@ function setSearchModalOpen(open){
       }
     });
 
-    document.addEventListener('click', (e)=>{
+    
+    dgBindSafe('#results .resItem', 'click', 'search_result_open', function(e, el){
+      const a = el.getAttribute('data-addr')||'';
+      try{ hideResults(); }catch(_){ }
+      try{ if(q) q.value = a; }catch(_){ }
+      if(a) openToken(a);
+    }, {passive:true});
+
+document.addEventListener('click', (e)=>{
       if(!results.contains(e.target) && e.target!==q) hideResults();
     });
 
-    btnGo.onclick=()=>openToken(q.value.trim());
+    dgBindSafe('#btnGo', 'click', 'search_open', function(){ try{ openToken(((q && q.value) ? q.value : '').trim()); }catch(_){ } }, {passive:true});
 
     // -------------------- Gecko: pool selection
     function geckoNet(){ return NET_GECKO[activeNet]; }
@@ -3973,7 +4206,7 @@ function setSearchModalOpen(open){
         const picked = pools.find(x=>String(x?.id||'')===id);
         if(picked){
           applyPool(picked);
-          loadCandles(true);
+          requestCandlesImmediate(true);
           loadTrades(true);
           loadMeta(true);
         }
@@ -4144,6 +4377,92 @@ function setSearchModalOpen(open){
     let _lastCandleFitKey = '';
     let _pagingAttached = false;
 
+    // Candles: short-term cache + debounce to prevent heavy request queues on rapid switching
+    const CANDLE_CACHE_TTL = 45000; // ms
+    const candleCache = (window.__DG_CANDLE_CACHE__ ||= new Map());
+    let _dgCandlesDebT = 0;
+    let _dgCandlesDebKey = '';
+    let _dgCandlesDebFit = false;
+    let _dgCandlesDebVer = 0;
+    let _dgCandlesDebWaiters = [];
+
+    function requestCandles(fit){
+      // Debounce by (net|pool|tf) key; schedules ONE call to loadCandles().
+      // Returns a promise that resolves when the latest requested loadCandles settles,
+      // even if intermediate requests are superseded.
+      try{
+        const key = `${activeNet}|${poolAddr}|${activeTF?.k||''}`;
+        _dgCandlesDebKey = key;
+        _dgCandlesDebFit = !!fit;
+        const myVer = ++_dgCandlesDebVer;
+
+        const p = new Promise((res)=>{
+          try{ _dgCandlesDebWaiters.push({ver: myVer, res}); }catch(_e){ res(false); }
+        });
+
+        if(_dgCandlesDebT) clearTimeout(_dgCandlesDebT);
+        _dgCandlesDebT = setTimeout(async ()=>{
+          _dgCandlesDebT = 0;
+
+          const runVer = _dgCandlesDebVer;
+          const runKey = _dgCandlesDebKey;
+          const runFit = _dgCandlesDebFit;
+
+          let ok = true;
+          try{
+            const curKey = `${activeNet}|${poolAddr}|${activeTF?.k||''}`;
+            if(curKey === runKey){
+              await loadCandles(!!runFit);
+            }
+          }catch(_e){ ok = false; }
+
+          // Only resolve if this run is still the latest requested version.
+          if(runVer === _dgCandlesDebVer){
+            const w = _dgCandlesDebWaiters.splice(0, _dgCandlesDebWaiters.length);
+            for(const it of w){
+              try{ it.res(!!ok); }catch(_){}
+            }
+          }
+        }, 140);
+
+        return p;
+      }catch(_){ return Promise.resolve(false); }
+    }
+
+    function requestCandlesImmediate(fit){
+      // Immediate candle loader for token/pair switching:
+      // cancels any pending debounce timer and calls loadCandles() directly.
+      try{
+        const key = `${activeNet}|${poolAddr}|${activeTF?.k||''}`;
+        _dgCandlesDebKey = key;
+        _dgCandlesDebFit = !!fit;
+        const myVer = ++_dgCandlesDebVer;
+
+        // Cancel any pending debounced run (we're going immediate).
+        if(_dgCandlesDebT){
+          try{ clearTimeout(_dgCandlesDebT); }catch(_){}
+          _dgCandlesDebT = 0;
+        }
+
+        return (async ()=>{
+          let ok = true;
+          try{
+            await loadCandles(!!fit);
+          }catch(_e){ ok = false; }
+
+          // Resolve any pending debounced waiters if this is still the latest request.
+          if(myVer === _dgCandlesDebVer){
+            const w = _dgCandlesDebWaiters.splice(0, _dgCandlesDebWaiters.length);
+            for(const it of w){
+              try{ it.res(ok); }catch(_e){}
+            }
+          }
+          return ok;
+        })();
+      }catch(_){ return Promise.resolve(false); }
+    }
+
+
     function desiredViewportBars(){
       const k = activeTF?.k || '15m';
       if(k==='1m') return 320;
@@ -4266,26 +4585,86 @@ function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
       return out;
     }
 
+    function dgAutoDecimalsFromRange(minV, maxV){
+      try{
+        const a = Math.max(Math.abs(Number(minV)||0), Math.abs(Number(maxV)||0), 0);
+        if(a >= 1000) return 2;
+        if(a >= 100) return 3;
+        if(a >= 1) return 4;
+        if(a >= 0.01) return 6;
+        if(a >= 0.0001) return 8;
+        return 10;
+      }catch(_){ return 6; }
+    }
+    function dgFmtPriceAuto(p, dec){
+      if(!Number.isFinite(p)) return '—';
+      try{
+        const d = Math.max(0, Math.min(12, dec|0));
+        return p.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: d });
+      }catch(_){
+        try{
+          const d = Math.max(0, Math.min(12, dec|0));
+          return d ? Number(p).toFixed(d) : String(p);
+        }catch(_2){ return String(p); }
+      }
+    }
+
     function applyCandlesToChart(fit){
-      // Ensure strictly ascending + unique by time
+      // Ensure strictly ascending + unique by time + never feed NaN into renderer
       const map = new Map();
       for(const c of (rawCandles||[])){
         if(!c || !(c.time>0)) continue;
         map.set(c.time, c);
       }
-      rawCandles = Array.from(map.values()).sort((a,b)=>a.time-b.time);
-      const src = rawCandles;
+      const sorted = Array.from(map.values()).sort((a,b)=>a.time-b.time);
 
-      candleSeries.setData(src.map(c=>({time:c.time, open:c.open, high:c.high, low:c.low, close:c.close})));
-      volumeSeries.setData(src.map(c=>({time:c.time, value:c.volume||0, color:(c.close>=c.open)?'rgba(20,241,149,.35)':'rgba(255,77,109,.35)'})));
+      const clean = [];
+      let minP = Infinity, maxP = -Infinity;
+      for(const c of sorted){
+        const o = Number(c.open), h = Number(c.high), l = Number(c.low), cl = Number(c.close);
+        if(!Number.isFinite(o) || !Number.isFinite(h) || !Number.isFinite(l) || !Number.isFinite(cl)) continue;
+        const hi = Math.max(h, o, cl);
+        const lo = Math.min(l, o, cl);
+        if(!Number.isFinite(hi) || !Number.isFinite(lo)) continue;
+        const v = Number(c.volume);
+        const vol = Number.isFinite(v) ? v : 0;
+        clean.push({ time: c.time, open: o, high: hi, low: lo, close: cl, volume: vol });
+        if(lo < minP) minP = lo;
+        if(hi > maxP) maxP = hi;
+      }
+      rawCandles = clean;
 
-      if(src && src.length) perfMarkCandles(perfToken.id);
+      if(!clean.length){
+        try{ candleSeries && candleSeries.setData && candleSeries.setData([]); }catch(_){}
+        try{ volumeSeries && volumeSeries.setData && volumeSeries.setData([]); }catch(_){}
+        try{ statusEl.textContent = 'No candle data'; }catch(_){}
+        return;
+      }
+
+      try{
+        candleSeries && candleSeries.setData && candleSeries.setData(clean.map(c=>({time:c.time, open:c.open, high:c.high, low:c.low, close:c.close})));
+      }catch(_){}
+      try{
+        volumeSeries && volumeSeries.setData && volumeSeries.setData(clean.map(c=>({time:c.time, value:(Number.isFinite(c.volume)?c.volume:0), color:(c.close>=c.open)?'rgba(20,241,149,.35)':'rgba(255,77,109,.35)'})));
+      }catch(_){}
+
+      try{
+        const dec = dgAutoDecimalsFromRange(minP, maxP);
+        chart && chart.applyOptions && chart.applyOptions({ localization:{ priceFormatter:(p)=>dgFmtPriceAuto(p, dec) } });
+      }catch(_){}
+
+      try{ statusEl.textContent = ''; }catch(_){}
+
+      try{ if(clean && clean.length) perfMarkCandles(perfToken.id); }catch(_){}
 
       if(fit){
-        applyDefaultViewport();
+        if(!userInteracted){
+          try{ applyDefaultViewport(); }catch(_){ }
+        }else{
+          try{ syncBarSpacing(); }catch(_){ }
+        }
       }else{
-        // keep bar spacing reasonable even during live updates
-        syncBarSpacing();
+        try{ syncBarSpacing(); }catch(_){}
       }
     }
 
@@ -4455,20 +4834,117 @@ function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
 
       const id = ++reqIds.candles;
       const tfKey = `${activeNet}|${poolAddr}|${activeTF?.k||''}`;
-      const ac = startRequest(`candles:${activeNet}:${poolAddr}:${activeTF?.k||''}`);
+      const _reqKey = `candles:${activeNet}:${poolAddr}:${activeTF?.k||''}`;
+      try{
+        if(window.__DG_LAST_CANDLES_REQ_KEY && requestControllers && requestControllers.get){
+          requestControllers.get(window.__DG_LAST_CANDLES_REQ_KEY)?.abort();
+        }
+      }catch(_){ }
+      try{ window.__DG_LAST_CANDLES_REQ_KEY = _reqKey; }catch(_){ }
+      const ac = startRequest(_reqKey);
 
-      statusEl.textContent = 'Loading chart…';
-      candlePager.loading = true;
-      candlePager.hasMore = true;
-      candlePager.before = null;
-      candlePager.key = tfKey;
 
-      rawCandles=[];
-      candleSeries.setData([]);
-      volumeSeries.setData([]);
+      // Retry + tap-to-retry state (per token/timeframe)
+      const retryKey = tfKey;
+      const isStillCurrent = (expectedId)=> (expectedId === reqIds.candles && retryKey === `${activeNet}|${poolAddr}|${activeTF?.k||''}`);
+      const clearRetryUI = ()=>{
+        try{ if(statusEl){ statusEl.onclick = null; statusEl.style.cursor = ''; statusEl.style.pointerEvents = ''; } }catch(_){}
+      };
+      const showTapToRetry = (msg)=>{
+        try{
+          if(!statusEl) return;
+          statusEl.textContent = msg || 'Tap to retry';
+          statusEl.style.cursor = 'pointer';
+          statusEl.style.pointerEvents = 'auto';
+          statusEl.onclick = ()=>{
+            try{ candleRetryState.set(retryKey, {count:0, t:Date.now()}); }catch(_){}
+            try{ statusEl.onclick = null; statusEl.style.cursor=''; }catch(_){}
+            try{ requestCandlesImmediate(true); }catch(_){ try{ loadCandles(true); }catch(__){} }
+          };
+        }catch(_){}
+      };
+      const scheduleAutoRetryOnce = ()=>{
+        try{
+          const st = candleRetryState.get(retryKey) || {count:0, t:0};
+          if(st.count >= 1) return false;
+          candleRetryState.set(retryKey, {count: st.count + 1, t: Date.now()});
+          const expectedId = id;
+          setTimeout(()=>{
+            if(!isStillCurrent(expectedId)) return;
+            try{ requestCandlesImmediate(true); }catch(_){ try{ loadCandles(true); }catch(__){} }
+          }, CANDLE_AUTORETRY_DELAY_MS);
+          return true;
+        }catch(_){}
+        return false;
+      };
+
+      // Fast path: memory cache (render instantly) then background refresh
+      let _renderedFromCache = false;
+      try{
+        const now = Date.now();
+        const cached = candleCache && candleCache.get ? candleCache.get(tfKey) : null;
+        if(cached && Array.isArray(cached.candles)){
+          rawCandles = cached.candles.slice();
+          candlePager.loading = false;
+          candlePager.hasMore = !!cached.hasMore;
+          candlePager.before = (typeof cached.before === 'number' ? cached.before : (cached.before||null));
+          candlePager.key = tfKey;
+          try{
+            if(window.__DG_DEBUG__){
+              window.__DG_DEBUG__.metrics = window.__DG_DEBUG__.metrics || {};
+              window.__DG_DEBUG__.metrics.lastCandlesFetchAt = cached.ts || now;
+              window.__DG_DEBUG__.metrics.lastCandlesCount = rawCandles.length||0;
+              window.__DG_DEBUG__.metrics.lastCandlesTf = activeTF?.k||'';
+              window.__DG_DEBUG__.metrics.lastCandlesUrl = cached.url || '';
+              window.__DG_DEBUG__.metrics.lastCandlesError = '';
+            }
+          }catch(_){}
+          try{ statusEl.textContent = rawCandles.length ? '' : 'Loading chart…'; }catch(_){}
+          try{ if(rawCandles.length){ clearRetryUI(); candleRetryState.delete(retryKey); } }catch(_){}
+          try{
+            const shouldFit = !!fit && !userInteracted && (_lastCandleFitKey !== tfKey);
+            applyCandlesToChart(shouldFit);
+            if(shouldFit) _lastCandleFitKey = tfKey;
+          }catch(_){}
+          _renderedFromCache = rawCandles.length>0;
+
+          // If cache is very fresh, skip background refresh
+          const age = (cached.ts ? (now - cached.ts) : 1e9);
+          if(_renderedFromCache && age < 5000){
+            return;
+          }
+        }
+      }catch(_){}
+
+      if(!_renderedFromCache){
+        statusEl.textContent = 'Loading chart…';
+        candlePager.loading = true;
+        candlePager.hasMore = true;
+        candlePager.before = null;
+        candlePager.key = tfKey;
+
+        rawCandles=[];
+        candleSeries.setData([]);
+        volumeSeries.setData([]);
+      }else{
+        // Background refresh: keep existing series visible, do not clear/fit again here
+        candlePager.loading = true;
+        try{ if(statusEl && statusEl.textContent === 'Loading chart…') statusEl.textContent = ''; }catch(_){}
+      }
 
       try{
         const gran = activeTF.gecko;
+        try{
+          if(window.__DG_DEBUG__){
+            window.__DG_DEBUG__.metrics = window.__DG_DEBUG__.metrics || {};
+            window.__DG_DEBUG__.metrics.lastCandlesFetchAt = Date.now();
+            window.__DG_DEBUG__.metrics.lastCandlesTf = activeTF?.k||'';
+            window.__DG_DEBUG__.metrics.lastCandlesUrl = '';
+            window.__DG_DEBUG__.metrics.lastCandlesCount = 0;
+            window.__DG_DEBUG__.metrics.lastCandlesError = '';
+          }
+        }catch(_){}
+
         const needBars = desiredViewportBars();
         const maxPages = (activeTF.k==='ALL' ? 6 : 3);
 
@@ -4477,12 +4953,25 @@ function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
         let pages = 0;
 
         const url0 = geckoCandlesUrl(gran, before);
-        const j0 = await fetchJson(url0, {timeout:18000, retries:1, signal: ac.signal});
+        try{ if(window.__DG_DEBUG__){ window.__DG_DEBUG__.metrics = window.__DG_DEBUG__.metrics || {}; window.__DG_DEBUG__.metrics.lastCandlesUrl = url0; } }catch(_){ }
+        const tSig0 = makeTimeoutSignal(ac.signal, CANDLE_FETCH_TIMEOUT_MS);
+        let j0;
+        try{
+          j0 = await fetchJson(url0, {timeout:(CANDLE_FETCH_TIMEOUT_MS+2000), retries:1, signal: tSig0.signal});
+        }finally{
+          tSig0.cleanup();
+        }
         if(id !== reqIds.candles) return;
 
         let part0 = mapGeckoOhlcv(j0);
         if(!part0.length){
-          statusEl.textContent = 'Chart not available for this pool.';
+          try{ if(window.__DG_DEBUG__){ window.__DG_DEBUG__.metrics = window.__DG_DEBUG__.metrics || {}; window.__DG_DEBUG__.metrics.lastCandlesError = 'Empty candle data'; } }catch(_){ }
+          // If we already have something on screen (cache), keep it and retry silently once.
+          const hasVisible = Array.isArray(rawCandles) && rawCandles.length>0;
+          if(!hasVisible){
+            showTapToRetry('Tap to retry');
+          }
+          scheduleAutoRetryOnce();
           candlePager.hasMore = false;
           candlePager.before = null;
           candlePager.loading = false;
@@ -4498,10 +4987,32 @@ function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
         rawCandles = part0;
         candlePager.before = before;
 
-        const shouldFit = !!fit && (_lastCandleFitKey !== tfKey);
+        const shouldFit = !!fit && !userInteracted && (_lastCandleFitKey !== tfKey);
         applyCandlesToChart(shouldFit);
         if(shouldFit) _lastCandleFitKey = tfKey;
 
+        try{
+          if(window.__DG_DEBUG__){
+            window.__DG_DEBUG__.metrics = window.__DG_DEBUG__.metrics || {};
+            window.__DG_DEBUG__.metrics.lastCandlesCount = rawCandles.length||0;
+            window.__DG_DEBUG__.metrics.lastCandlesError = '';
+          }
+        }catch(_){ }
+        try{
+          if(candleCache && candleCache.set){
+            candleCache.set(tfKey, {
+              ts: Date.now(),
+              candles: rawCandles.slice(),
+              before: candlePager.before,
+              hasMore: candlePager.hasMore,
+              url: url0,
+              tf: activeTF?.k||''
+            });
+          }
+        }catch(_){ }
+
+        clearRetryUI();
+        try{ candleRetryState.delete(retryKey); }catch(_){ }
         statusEl.textContent = 'Live.';
         candlePager.loading = false;
 
@@ -4516,7 +5027,13 @@ function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
               candlePager.loading = true;
 
               const url = geckoCandlesUrl(gran, localBefore);
-              const j = await fetchJson(url, {timeout:18000, retries:1, signal: ac.signal});
+              const tSig = makeTimeoutSignal(ac.signal, CANDLE_FETCH_TIMEOUT_MS);
+              let j;
+              try{
+                j = await fetchJson(url, {timeout:(CANDLE_FETCH_TIMEOUT_MS+2000), retries:1, signal: tSig.signal});
+              }finally{
+                tSig.cleanup();
+              }
               if(id !== reqIds.candles) return;
 
               const part = mapGeckoOhlcv(j);
@@ -4539,6 +5056,17 @@ function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
               if(part.length < (CANDLE_LIMIT - 10)) candlePager.hasMore = false;
 
               applyCandlesToChart(false);
+              try{
+                if(window.__DG_DEBUG__){
+                  window.__DG_DEBUG__.metrics = window.__DG_DEBUG__.metrics || {};
+                  window.__DG_DEBUG__.metrics.lastCandlesCount = rawCandles.length||0;
+                }
+              }catch(_){ }
+              try{
+                if(candleCache && candleCache.set){
+                  candleCache.set(tfKey, { ts: Date.now(), candles: rawCandles.slice(), before: candlePager.before, hasMore: candlePager.hasMore, url: url0, tf: activeTF?.k||'' });
+                }
+              }catch(_){ }
               fetched++;
             }
           }catch(e){
@@ -4548,8 +5076,23 @@ function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
           }
         })(); });
       }catch(e){
-        statusEl.textContent = 'Chart error.';
-        console.error(e);
+        try{
+          if(window.__DG_DEBUG__){
+            window.__DG_DEBUG__.metrics = window.__DG_DEBUG__.metrics || {};
+            window.__DG_DEBUG__.metrics.lastCandlesError = (e && (e.name||e.message)) ? (String(e.name||'') + (e.message?(': '+e.message):'')) : String(e||'');
+          }
+        }catch(_){ }
+        try{
+          const critical = !(Array.isArray(rawCandles) && rawCandles.length>0);
+          if(critical){
+            showTapToRetry('Tap to retry');
+            scheduleAutoRetryOnce();
+          }else{
+            // Keep existing candles visible; avoid leaving a stale loading label
+            if(statusEl && statusEl.textContent === 'Loading chart…') statusEl.textContent = '';
+          }
+        }catch(_){ }
+        try{ console.error(e); }catch(_){ }
       }finally{
         if(id === reqIds.candles) candlePager.loading = false;
       }
@@ -5605,20 +6148,16 @@ function startLiveLoops(){
         });
       }
 
-      tickerTrack.onclick = (e)=>{
-        const a = e.target.closest('.tickerItem');
-        if(!a) return;
-        e.preventDefault();
+      dgBindSafe('#tickerTrack .tickerItem', 'click', 'ticker_item_click', function(e, a){
+        try{ e.preventDefault(); }catch(_){ }
         const tAddr = a.getAttribute('data-addr') || '';
         if(tAddr) openToken(tAddr, {skipInput:true});
-      };
+      }, {passive:false});
 
       const toggle = $('trendToggle');
       if(toggle){
-        toggle.onclick = (e)=>{
-          const b = e.target.closest('.chainBtn');
-          if(!b) return;
-          const net = normalizeChain(b.dataset.net || 'solana');
+        dgBindSafe('#trendToggle .chainBtn', 'click', 'chain_switch', function(e, b){
+          const net = normalizeChain((b && b.dataset ? b.dataset.net : '') || 'solana');
           if(net===activeNet) return;
 
           // Cancel live polling (chart/trades) immediately to prevent stale updates
@@ -5656,8 +6195,8 @@ function startLiveLoops(){
                 }
               }catch(_){}
               return false;
+            
             };
-
             // Kick off trending refresh for the selected chain (uses cache fallback internally)
             try{ startTrending(); }catch(_){ }
 
@@ -5692,7 +6231,7 @@ function startLiveLoops(){
               }catch(_){}
             }, 2600);
           }catch(_){}
-        };
+        }, {passive:true});
       }
     }
 
@@ -5781,9 +6320,39 @@ function startLiveLoops(){
 
 
 
-    async function openToken(input, opts={}){
+    
+
+    function resetChartForNewToken(){
+      // Ensure chart never looks "frozen" while switching tokens/pools
+      try{
+        if(candleSeries && typeof candleSeries.setData==='function') candleSeries.setData([]);
+      }catch(_){}
+      try{
+        if(volumeSeries && typeof volumeSeries.setData==='function') volumeSeries.setData([]);
+      }catch(_){}
+      try{ rawCandles = []; }catch(_){}
+      try{
+        if(typeof candlePager === 'object' && candlePager){
+          candlePager.loading = false;
+          candlePager.hasMore = true;
+          candlePager.before = null;
+          candlePager.key = '';
+        }
+      }catch(_){}
+      try{ _lastCandleFitKey = ''; }catch(_){}
+      try{ statusEl.textContent = 'Loading chart…'; }catch(_){}
+      try{
+        didInitialViewport = false;
+        didFitOnce = false;
+        _lastLogicalRange = null;
+      }catch(_){}
+    }
+
+async function openToken(input, opts={}){
           try{ if(typeof stopLiveLoops==='function') stopLiveLoops(); }catch(_){ }
           try{ if(typeof abortRequestsByPrefix==='function'){ abortRequestsByPrefix('token:'); abortRequestsByPrefix('candles:'); abortRequestsByPrefix('trades:'); abortRequestsByPrefix('search:'); } }catch(_){ }
+          try{ resetChartForNewToken(); }catch(_){ }
+
           const skipInput = !!opts.skipInput;
           const silent = !!opts.silent;
           const boot = !!opts.boot;
@@ -5940,7 +6509,7 @@ function startLiveLoops(){
                 if(id !== reqIds.token) return;
                 applyPool(p);
                 statusEl.textContent = 'Loading…';
-                await Promise.all([loadCandles(true), loadTrades(true)]);
+                await Promise.all([requestCandlesImmediate(true), loadTrades(true)]);
                 if(id !== reqIds.token) return;
                 clearTokenLoadingUI();
                 if(id !== reqIds.token) return;
@@ -5970,7 +6539,7 @@ return;
             poolChoices = pools;
             poolAddr = poolAddressFromPool(best);
 
-            const _cP = loadCandles(true);
+            const _cP = requestCandlesImmediate(true);
             const _tP = loadTrades(true);
             const p = await geckoPool({signal: _tokenAC.signal});
             if(id !== reqIds.token) return;
@@ -6641,11 +7210,54 @@ if(searchScrim){
       retrying: false,
       attempts: 0,
       lastRetryAt: 0,
-      lastCheckAt: 0
+      lastCheckAt: 0,
+      recovered: {},
+      lastRecoverSig: '',
+      userFailCount: 0,
+      firstUserFailAt: 0,
+      lastBannerAt: 0,
+      lastBannerMsg: ''
     });
 
     var DG_STATUS_ID = "rtStatusBanner";
     var dg_status_hideTimer = null;
+    // Debug logging (safe even when debug overlay is disabled)
+    var DBG = window.__DG_DEBUG__ || (window.__DG_DEBUG__ = {});
+    function dgPushCheck(entry){
+      try{
+        if(!entry) entry = {};
+        if(!entry.time) entry.time = Date.now();
+        if(DBG && typeof DBG.pushCheck === "function"){
+          DBG.pushCheck(entry);
+        }else{
+          DBG.checks = Array.isArray(DBG.checks) ? DBG.checks : [];
+          DBG.checks.push(entry);
+          while(DBG.checks.length > 10) DBG.checks.shift();
+        }
+      }catch(_){}
+    }
+
+    function dgActionSig(){
+      try{
+        var an = (typeof window.activeNet!=="undefined") ? String(window.activeNet||"") : "";
+        var ad = (typeof window.addr!=="undefined") ? String(window.addr||"") : "";
+        var pa = (typeof window.poolAddr!=="undefined") ? String(window.poolAddr||"") : "";
+        var pid = (typeof window.poolId!=="undefined") ? String(window.poolId||"") : "";
+        return (an+"|"+ad+"|"+pa+"|"+pid).toLowerCase();
+      }catch(_){ return ""; }
+    }
+
+    function dgIsUserTriggered(){
+      try{
+        var act = DG_GUARD.lastAction;
+        if(!act) return false;
+        var o = act.opts || {};
+        // Consider silent/boot/programmatic as NOT user-triggered
+        if(o && (o.silent || o.boot)) return false;
+        return true;
+      }catch(_){ return false; }
+    }
+
 
     function dgEnsureStatusBanner(){
       var b = document.getElementById(DG_STATUS_ID);
@@ -6655,6 +7267,8 @@ if(searchScrim){
       b.id = DG_STATUS_ID;
       b.setAttribute("role","status");
       b.setAttribute("aria-live","polite");
+
+      try{ b.style.display = "none"; }catch(_){ }
 
       var dot = document.createElement("div");
       dot.className = "rtDot";
@@ -6692,84 +7306,56 @@ if(searchScrim){
 
     function dgShowStatusBanner(meta){
       try{
-        var msg = "Loading failed — retrying…";
-        var now = dgNow();
+        var now = Date.now();
+        var msg = (meta && meta.msg) ? String(meta.msg) : "Loading failed — retrying…";
 
-        // Determine if this looks like a real app failure (not just slow render)
-        var recent = dgRecentCriticalFetchFail();
-        var misses = meta && meta.misses ? meta.misses : null;
-
-        // Treat pure transient network hiccups as non-toast unless persisting
-        var isNetOnly = false;
-        try{
-          if(recent){
-            var em = String(recent.error||'').toLowerCase();
-            isNetOnly = (em.includes('failed to fetch') || em.includes('network') || em.includes('cors'));
-          }
-        }catch(_){}
-
-        // Require either repeated misses or a recent critical fetch failure; otherwise stay silent
-        var missCount = 0;
-        try{ var g = window.DG_RENDER_GUARD__; missCount = (g && g.missCount) ? g.missCount : 0; }catch(_){}
-        var persisting = false;
-        try{
-          if(!dg_guard_firstMissAt) dg_guard_firstMissAt = now;
-          persisting = (now - dg_guard_firstMissAt) > 25000;
-        }catch(_){}
-
-        var att = 0; try{ var gg = window.DG_RENDER_GUARD__; att = gg && gg.attempts ? gg.attempts : 0; }catch(_){}
-
-        if(!(recent || (persisting) || ((misses && missCount >= 2) && att >= 2))){
-          dgPushToastDebug({time: now, kind:"loading_drop", msg: msg, reason: (meta && meta.reason) ? String(meta.reason) : "", url: recent ? String(recent.url||"") : "", stack: (meta && meta.stack) ? String(meta.stack) : undefined});
-          return;
-        }
-        if(isNetOnly && !persisting){
-          dgPushToastDebug({time: now, kind:"loading_drop_net", msg: msg, reason: (meta && meta.reason) ? String(meta.reason) : "", url: recent ? String(recent.url||"") : "", stack: (meta && meta.stack) ? String(meta.stack) : undefined});
+        // Rate-limit + dedupe: at most once per 8s, one banner only (text replace)
+        if((now - (DG_GUARD.lastBannerAt||0)) < 8000 && msg === (DG_GUARD.lastBannerMsg||"")){
           return;
         }
 
-        var gate = dgToastGate(msg);
-        var visEl = gate.vis;
-        if(gate.action === 'replace' && visEl){
-          try{
-            var t0 = visEl.querySelector ? visEl.querySelector(".rtTxt") : null;
-            if(t0) t0.textContent = msg;
-          }catch(_){}
-          dgPushToastDebug({time: now, kind:"loading_update", msg: msg, reason: (meta && meta.reason) ? String(meta.reason) : "", url: recent ? String(recent.url||"") : "", stack: (meta && meta.stack) ? String(meta.stack) : undefined});
-          return;
-        }
-        if(gate.action === 'drop'){
-          dgPushToastDebug({time: now, kind:"loading_drop", msg: msg, reason: (meta && meta.reason) ? String(meta.reason) : "", url: recent ? String(recent.url||"") : "", stack: (meta && meta.stack) ? String(meta.stack) : undefined});
-          return;
+        // Only show when a user-triggered action has failed repeatedly AND we already tried one silent recovery.
+        var user = dgIsUserTriggered();
+        var sig = dgActionSig();
+        var recoveredOnce = !!(DG_GUARD.recovered && DG_GUARD.recovered[sig]);
+        var hardFail = !!dgRecentCriticalFetchFail();
+
+        // Needs persistence: at least 2 guard misses within 30s for user actions, and evidence of real fetch failure.
+        var windowOk = (DG_GUARD.firstUserFailAt && (now - DG_GUARD.firstUserFailAt) <= 30000);
+        if(!(user && recoveredOnce && hardFail && windowOk && (DG_GUARD.userFailCount||0) >= 2)){
+          return; // stay silent
         }
 
-        // Hide runtime banner if present (single visible toast)
-        try{
-          var rb = document.getElementById("rtErrBanner");
-          if(rb && rb.classList) rb.classList.remove("show");
-        }catch(_){}
+        DG_GUARD.lastBannerAt = now;
+        DG_GUARD.lastBannerMsg = msg;
 
         var b = dgEnsureStatusBanner();
-        if(!b) return;
+        var t = b ? b.querySelector(".rtTxt") : null;
+        if(t) t.textContent = msg;
+        try{ b.style.display = "flex"; }catch(_){}
 
-        b.classList.add("show");
-        dg_toast_visibleId = b.id;
+        // Auto-hide after 6 seconds (never stacks)
+        try{
+          if(dg_status_hideTimer) clearTimeout(dg_status_hideTimer);
+          dg_status_hideTimer = setTimeout(function(){
+            try{
+              var bb = document.getElementById(DG_STATUS_ID);
+              if(bb) bb.style.display = "none";
+            }catch(_){}
+          }, 6000);
+        }catch(_){}
 
-        if(dg_toast_timer) clearTimeout(dg_toast_timer);
-        dg_toast_timer = setTimeout(function(){
-          try{ b.classList.remove("show"); }catch(_){}
-        }, 6000);
-
-        dgPushToastDebug({time: now, kind:"loading_show", msg: msg, reason: (meta && meta.reason) ? String(meta.reason) : "", url: recent ? String(recent.url||"") : "", stack: (meta && meta.stack) ? String(meta.stack) : undefined});
+        // Log why banner was shown
+        try{
+          dgPushCheck({
+            reason: (meta && meta.reason) ? meta.reason : "statusBanner",
+            misses: (meta && meta.misses) ? meta.misses.join(",") : "",
+            state: sig,
+            action: (DG_GUARD.lastAction && DG_GUARD.lastAction.type) ? (DG_GUARD.lastAction.type + ":" + String(DG_GUARD.lastAction.input||"")) : "",
+            stack: (meta && meta.stack) ? meta.stack : (new Error("statusBanner")).stack
+          });
+        }catch(_){}
       }catch(_){}
-    }
-
-    function dgHasMeaningfulText(el){
-      try{
-        if(!el) return false;
-        var t = (el.textContent || "").replace(/\s+/g," ").trim();
-        return t.length > 0;
-      }catch(_){ return false; }
     }
 
     function dgIsEmpty(el){
@@ -6823,46 +7409,80 @@ if(searchScrim){
           if(!hasRows && !dgHasMeaningfulText(t) && dgIsEmpty(t)) misses.push("trades");
         }
       }catch(_){}
+
+      try{
+        // State consistency
+        var an = (typeof activeNet!=='undefined') ? String(activeNet||'') : '';
+        var ad = (typeof addr!=='undefined') ? String(addr||'') : '';
+        var pa = (typeof poolAddr!=='undefined') ? String(poolAddr||'') : '';
+        var pid = (typeof poolId!=='undefined') ? String(poolId||'') : '';
+        if((ad || pa || pid) && !an) misses.push("stateNet");
+        if(ad && !pa && !pid) misses.push("statePool");
+        // Live loop sanity: if we have a pool selected, trades polling should be on
+        try{
+          if(pa && typeof TRADES_POLL!=='undefined' && TRADES_POLL && TRADES_POLL.running===false){
+            misses.push("tradesLoop");
+          }
+        }catch(_){}
+      }catch(_){}
       return misses;
     }
 
     function dgRetryLastAction(reason){
       try{
         var now = Date.now();
-        if(DG_GUARD.retrying && (now - DG_GUARD.lastRetryAt) < 1200) return;
-        DG_GUARD.retrying = true;
-        DG_GUARD.lastRetryAt = now;
-        DG_GUARD.attempts = Math.min((DG_GUARD.attempts || 0) + 1, 6);
+        var sig = dgActionSig();
 
-        var delay = 850 + (DG_GUARD.attempts * 350);
-        setTimeout(function(){
-          try{
-            var act = DG_GUARD.lastAction;
-            // Prefer re-running last explicit action
-            if(act && act.type === "token" && typeof window.openToken === "function"){
-              var inp = act.input;
-              var opts = act.opts || {};
-              // keep silent + avoid altering user input box
-              var merged = {};
-              for(var k in opts) merged[k] = opts[k];
-              merged.silent = true;
-              merged.skipInput = true;
-              try{ window.openToken(inp, merged); }catch(e){ try{ console.error("guard retry openToken failed", e); }catch(_){ } }
-            }else if(act && act.type === "trending" && typeof window.startTrending === "function"){
-              try{ window.startTrending(); }catch(e){ try{ console.error("guard retry startTrending failed", e); }catch(_){ } }
-            }else{
-              // Fallback: if input has a token/address, try openToken
-              var q = document.getElementById("q");
-              var v = q ? String(q.value||"").trim() : "";
-              if(v && typeof window.openToken === "function"){
-                try{ window.openToken(v, {silent:true, skipInput:true}); }catch(e){ try{ console.error("guard retry fallback openToken failed", e); }catch(_){ } }
-              }else if(typeof window.startTrending === "function"){
-                try{ window.startTrending(); }catch(e){ try{ console.error("guard retry fallback startTrending failed", e); }catch(_){ } }
-              }
-            }
-          }catch(_){}
-          DG_GUARD.retrying = false;
-        }, delay);
+        // One silent recovery attempt per signature within a short window
+        if(!sig) sig = "nosig";
+        if(DG_GUARD.recovered && DG_GUARD.recovered[sig] && (now - DG_GUARD.recovered[sig]) < 45000){
+          return;
+        }
+
+        DG_GUARD.recovered = DG_GUARD.recovered || {};
+        DG_GUARD.recovered[sig] = now;
+        DG_GUARD.lastRecoverSig = sig;
+
+        // Keep map small
+        try{
+          var keys = Object.keys(DG_GUARD.recovered);
+          if(keys.length > 20){
+            keys.sort(function(a,b){ return (DG_GUARD.recovered[a]||0) - (DG_GUARD.recovered[b]||0); });
+            for(var i=0;i<10;i++) delete DG_GUARD.recovered[keys[i]];
+          }
+        }catch(_){}
+
+        // Prefer restarting live loops first (lightweight)
+        try{
+          if(typeof stopLiveLoops === "function") stopLiveLoops();
+          if(typeof startLiveLoops === "function") startLiveLoops();
+        }catch(_){}
+
+        // If we have a last token action, silently retry token load ONCE
+        try{
+          var act = DG_GUARD.lastAction;
+          if(act && act.type === "token" && typeof window.openToken === "function"){
+            var o = act.opts || {};
+            var retryOpts = Object.assign({}, o, {silent:true, boot:true, skipInput:true});
+            window.openToken(act.input, retryOpts);
+          }
+        }catch(_){}
+
+        // Attempt trending recovery if needed
+        try{
+          if(typeof startTrending === "function") startTrending();
+        }catch(_){}
+
+        // Log recovery attempt
+        try{
+          dgPushCheck({
+            reason: "selfRecover:" + String(reason||""),
+            misses: "",
+            state: sig,
+            action: (DG_GUARD.lastAction && DG_GUARD.lastAction.type) ? (DG_GUARD.lastAction.type + ":" + String(DG_GUARD.lastAction.input||"")) : "",
+            stack: (new Error("selfRecover")).stack
+          });
+        }catch(_){}
       }catch(_){}
     }
 
@@ -6873,20 +7493,42 @@ if(searchScrim){
         DG_GUARD.lastCheckAt = now;
 
         var misses = dgCriticalState();
+        var sig = dgActionSig();
         if(misses && misses.length){
-          try{ console.warn("RenderGuard: missing/empty sections", misses, "reason:", reason); }catch(_){}
+          // Log to debug panel store
           try{
-            DG_GUARD.missCount = (DG_GUARD.missCount || 0) + 1;
-            if(!dg_guard_firstMissAt) dg_guard_firstMissAt = dgNow();
+            dgPushCheck({
+              reason: String(reason||"guard"),
+              misses: misses.join(","),
+              state: sig,
+              action: (DG_GUARD.lastAction && DG_GUARD.lastAction.type) ? (DG_GUARD.lastAction.type + ":" + String(DG_GUARD.lastAction.input||"")) : "",
+              stack: (new Error("dgRunGuardCheck")).stack
+            });
           }catch(_){}
-          // Only show status toast for real/persisting app failures (not transient hiccups)
+
+          // Track user-triggered persistent failures (for potential banner show)
+          try{
+            if(dgIsUserTriggered() && dgRecentCriticalFetchFail()){
+              if(!DG_GUARD.firstUserFailAt || (now - DG_GUARD.firstUserFailAt) > 30000){
+                DG_GUARD.firstUserFailAt = now;
+                DG_GUARD.userFailCount = 0;
+              }
+              DG_GUARD.userFailCount = (DG_GUARD.userFailCount||0) + 1;
+            }
+          }catch(_){}
+
+          // ONE silent recovery attempt (loops restart / one token reload)
           dgRetryLastAction(reason);
-          dgShowStatusBanner({reason: reason, misses: misses});
+
+          // Banner is rate-limited and will only show for real repeated user-triggered failures
+          dgShowStatusBanner({reason: reason, misses: misses, stack: (new Error("guardBanner")).stack});
         }else{
-          // Reset attempts on success so backoff doesn't keep growing
+          // Reset counters on success
           DG_GUARD.attempts = 0;
           DG_GUARD.missCount = 0;
           dg_guard_firstMissAt = 0;
+          DG_GUARD.userFailCount = 0;
+          DG_GUARD.firstUserFailAt = 0;
         }
       }catch(_){}
     }
@@ -6908,7 +7550,16 @@ if(searchScrim){
             DG_GUARD.lastAction = { type:"token", input: String(input||""), opts: (opts||{}) };
             dgScheduleChecks("tokenSwitch");
           }catch(_){}
-          return _openToken.apply(this, arguments);
+          var p = null;
+          try{ p = _openToken.apply(this, arguments); }catch(e){ throw e; }
+          try{
+            if(p && typeof p.then === "function"){
+              p.then(function(){ dgScheduleChecks("tokenLoaded"); }, function(){ dgScheduleChecks("tokenLoadFail"); });
+            }else{
+              dgScheduleChecks("tokenLoaded");
+            }
+          }catch(_){}
+          return p;
         };
         wrapped.__dg_wrapped = true;
         window.openToken = wrapped;
@@ -6955,5 +7606,3 @@ if(searchScrim){
 
 </body>
 </html>
-
-
