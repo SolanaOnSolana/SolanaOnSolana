@@ -2119,6 +2119,62 @@ display:none;
     padding-top: 18px !important; /* normal desktop spacing */
   }
 }
+
+/* ===== DexGuard Micro 01: Runtime Error Banner (non-blocking) ===== */
+#rtErrBanner{
+  position:fixed;
+  top: calc(env(safe-area-inset-top) + 10px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2147483647;
+  max-width: min(560px, calc(100vw - 24px));
+  display:none;
+  align-items:center;
+  gap:10px;
+  padding: 10px 12px;
+  border-radius: 999px;
+  background: rgba(255,77,109,.14);
+  border: 1px solid rgba(255,77,109,.30);
+  color: rgba(255,255,255,.92);
+  box-shadow: 0 14px 60px rgba(0,0,0,.55);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  pointer-events: auto;
+  user-select: none;
+}
+#rtErrBanner.show{ display:flex; }
+#rtErrBanner .rtDot{
+  width: 10px; height: 10px; border-radius: 50%;
+  background: rgba(255,77,109,.95);
+  box-shadow: 0 0 0 3px rgba(255,77,109,.20);
+  flex: 0 0 10px;
+}
+#rtErrBanner .rtTxt{
+  font-weight: 900;
+  font-size: 13px;
+  letter-spacing: .1px;
+  line-height: 1.25;
+  overflow:hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#rtErrBanner .rtClose{
+  margin-left:auto;
+  width: 28px; height: 28px;
+  display:grid; place-items:center;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.14);
+  background: rgba(255,255,255,.06);
+  color: rgba(255,255,255,.92);
+  cursor:pointer;
+  pointer-events:auto;
+}
+#rtErrBanner .rtClose:hover{ background: rgba(255,255,255,.10); }
+@media (max-width: 520px){
+  #rtErrBanner .rtTxt{ font-size: 12px; }
+}
+/* ===== /Micro 01 ===== */
+
 </style>
 </head>
 <body>
@@ -2282,11 +2338,87 @@ display:none;
   <script src="https://unpkg.com/lightweight-charts@4.2.1/dist/lightweight-charts.standalone.production.js"></script>
   <script>
   (function(){
-    <!-- SPEEDFIX PATCH START -->
+    // SPEEDFIX PATCH START
     function isMobile(){ return window.matchMedia("(max-width:760px)").matches; }
     const requestControllers = new Map();
     const reqIds = { trending:0, token:0, candles:0, trades:0, search:0 };
-    <!-- SPEEDFIX PATCH END -->
+    function startRequest(key){
+      try{ requestControllers.get(key)?.abort(); }catch(e){}
+      const ac = new AbortController();
+      requestControllers.set(key, ac);
+      return ac;
+    }
+    // Lightweight perf logs (console only)
+    const perfToken = { id:0, t0:0, paint:0, candles:0, trades:0, logged:false };
+    function perfStartToken(id){
+      perfToken.id = id;
+      perfToken.t0 = performance.now();
+      perfToken.paint = 0;
+      perfToken.candles = 0;
+      perfToken.trades = 0;
+      perfToken.logged = false;
+    }
+    function perfMarkPaint(id){
+      if(id !== perfToken.id || id !== reqIds.token) return;
+      if(perfToken.paint) return;
+      perfToken.paint = performance.now() - perfToken.t0;
+      perfLogIfReady(id);
+    }
+    function perfMarkCandles(id){
+      if(id !== perfToken.id || id !== reqIds.token) return;
+      if(perfToken.candles) return;
+      perfToken.candles = performance.now() - perfToken.t0;
+      perfLogIfReady(id);
+    }
+    function perfMarkTrades(id){
+      if(id !== perfToken.id || id !== reqIds.token) return;
+      if(perfToken.trades) return;
+      perfToken.trades = performance.now() - perfToken.t0;
+      perfLogIfReady(id);
+    }
+    function perfLogIfReady(id){
+      if(id !== perfToken.id || id !== reqIds.token) return;
+      if(perfToken.logged) return;
+      if(perfToken.paint && perfToken.candles && perfToken.trades){
+        console.log(`[PERF] paint=${perfToken.paint.toFixed(0)}ms candles=${perfToken.candles.toFixed(0)}ms trades=${perfToken.trades.toFixed(0)}ms`);
+        perfToken.logged = true;
+      }
+    }
+
+    let tradesFetchInFlight = false;
+    let tradesRenderTimer = null;
+    let tradesLastRenderAt = 0;
+    let tradesPendingPayload = null;
+    let tradesPendingReset = false;
+    let tradesPendingGuardId = 0;
+    let tradesPendingGuardKey = '';
+    function scheduleTradesRender(payload, reset, onRendered, guardId, guardKey){
+      tradesPendingPayload = payload;
+      if(reset) tradesPendingReset = true;
+      if(guardId != null) tradesPendingGuardId = guardId;
+      if(guardKey != null) tradesPendingGuardKey = guardKey;
+      const now = performance.now ? performance.now() : Date.now();
+      const elapsed = now - (tradesLastRenderAt||0);
+      const delay = Math.max(0, 250 - elapsed); // 4x/sec max
+      if(tradesRenderTimer) return;
+      tradesRenderTimer = setTimeout(()=>{
+        tradesRenderTimer = null;
+        // stale guard: never render after token/chain switch
+        if(tradesPendingGuardId && tradesPendingGuardId !== reqIds.trades) return;
+        if(tradesPendingGuardKey && loadTrades && loadTrades._inFlightKey && tradesPendingGuardKey !== loadTrades._inFlightKey) return;
+        tradesLastRenderAt = performance.now ? performance.now() : Date.now();
+        const data = tradesPendingPayload;
+        const doReset = tradesPendingReset;
+        tradesPendingReset = false;
+        try{
+          const newly = renderTrades(data, {reset: doReset}) || [];
+          if(typeof onRendered === 'function') onRendered(newly);
+        }catch(e){
+          // keep UI stable
+        }
+      }, delay);
+    }
+    // SPEEDFIX PATCH END
 
     // =========================================================
     //  $SOS DEX Terminal — from scratch
@@ -2435,12 +2567,19 @@ display:none;
     }
 
     // fetch with timeout + retry + CORS fallback via allorigins
-    async function fetchJson(url, {timeout=12000, retries=1}={}){
+    async function fetchJson(url, {timeout=12000, retries=1, signal}={}){
       const proxy = (u)=>'https://api.allorigins.win/raw?url=' + encodeURIComponent(u);
       let lastErr=null;
       for(let i=0;i<=retries;i++){
         const ctl = new AbortController();
-        const t = setTimeout(()=>ctl.abort(), timeout);
+        // allow external cancellation + internal timeout
+        if(signal){
+          try{
+            if(signal.aborted) ctl.abort();
+            else signal.addEventListener('abort', ()=>{ try{ ctl.abort(); }catch(e){} }, {once:true});
+          }catch(e){}
+        }
+        const t = setTimeout(()=>{ try{ ctl.abort(); }catch(e){} }, timeout);
         try{
           const r = await fetch(url, {
             headers:{'accept':'application/json'},
@@ -2453,12 +2592,15 @@ display:none;
         }catch(e){
           clearTimeout(t);
           lastErr=e;
+          // abort requested externally -> stop immediately
+          if(signal && signal.aborted) throw e;
+          if(e && e.name==='AbortError' && signal) throw e;
           // try proxy for CORS / network error
           try{
             const msg = String(e&&e.message||e||'');
             const isCors = (e instanceof TypeError) || /Failed to fetch|NetworkError|CORS/i.test(msg);
             if(isCors){
-              const r2 = await fetch(proxy(url), {cache:'no-store'});
+              const r2 = await fetch(proxy(url), {cache:'no-store', signal: ctl.signal});
               if(r2.ok){
                 const txt = await r2.text();
                 return JSON.parse(txt);
@@ -2624,6 +2766,8 @@ let seenMakers = new Set();
     let pollMetaTimer = null;
     let pollCandleTimer = null;
     let trendingTimer = null;
+    let trendingGen = 0;
+    let trendingLoadFn = null;
     let ageTimer = null;
 
     // -------------------- Chart
@@ -2721,11 +2865,18 @@ let seenMakers = new Set();
         b.onclick=()=>{
           activeTF=t;
           [...tfRow.children].forEach(x=>x.classList.toggle('active', x.textContent===t.k));
+          // reset viewport flags on timeframe change
+          userInteracted = false;
+          programmaticRangeChange = false;
+          didInitialViewport = false;
+          didFitOnce = false;
+          _lastLogicalRange = null;
           if(poolAddr){
             try{ if(typeof stopLiveLoops==='function') stopLiveLoops(); }catch(_){ }
-            loadCandles(true);
-            loadTrades(true);
-            startLiveLoops();
+            (async()=>{
+              await Promise.all([loadCandles(true), loadTrades(true)]);
+              startLiveLoops();
+            })();
           }
         };
         tfRow.appendChild(b);
@@ -2783,8 +2934,7 @@ function setMobileTab(which){
       if(mode!=='txns'){
         try{
           requestAnimationFrame(()=>{
-            try{ chart.resize(chartEl.clientWidth, chartEl.clientHeight); }catch(_e){}
-            try{ chart.timeScale().fitContent(); }catch(_e){}
+            try{ chart.resize(chartEl.clientWidth, chartEl.clientHeight); }catch(_e){}            // SPEEDFIX step07: no auto-fit on mode switching
           });
         }catch(_e){}
       }
@@ -2915,18 +3065,18 @@ function setSearchModalOpen(open){
       searchScrim.addEventListener('click', hideResults);
     }
 
-    async function dsSearch(query){
+    async function dsSearch(query, fetchOpts={}){
       // DexScreener search is used ONLY for discovery. We do not embed anything.
       const url = DS + '/search/?q=' + encodeURIComponent(query);
-      const j = await fetchJson(url, {timeout:12000, retries:1});
+      const j = await fetchJson(url, {timeout:12000, retries:1, signal: fetchOpts.signal});
       return Array.isArray(j?.pairs) ? j.pairs : [];
     }
 
-    async function dsTokenPairsV1(net, tokenAddr){
+    async function dsTokenPairsV1(net, tokenAddr, fetchOpts={}){
       const chain = NET_DS[normalizeChain(net)] || 'solana';
       const url = `https://api.dexscreener.com/token-pairs/v1/${chain}/${encodeURIComponent(tokenAddr)}`;
       try{
-        const j = await fetchJson(url, {timeout:14000, retries:1});
+        const j = await fetchJson(url, {timeout:14000, retries:1, signal: fetchOpts.signal});
         return Array.isArray(j) ? j : [];
       }catch(_){
         return [];
@@ -3078,6 +3228,7 @@ function setSearchModalOpen(open){
           renderSearchResults(pairs);
         }catch(e){
           if(id!==searchReq) return;
+          if(e && e.name==='AbortError') return;
           showResults(`<div style="padding:12px; color:rgba(255,255,255,.75)">Search error. Try again.</div>`);
         }
       }, 220);
@@ -3100,10 +3251,10 @@ function setSearchModalOpen(open){
     // -------------------- Gecko: pool selection
     function geckoNet(){ return NET_GECKO[activeNet]; }
 
-    async function resolvePoolsFromGecko(tokenAddr){
+    async function resolvePoolsFromGecko(tokenAddr, fetchOpts={}){
       // /networks/{network}/tokens/{token}/pools?include=base_token,quote_token&page=1
       const url = `${GECKO}/networks/${encodeURIComponent(geckoNet())}/tokens/${encodeURIComponent(tokenAddr)}/pools?include=base_token,quote_token,dex&page=1`;
-      const j = await fetchJson(url, {timeout:14000, retries:1});
+      const j = await fetchJson(url, {timeout:14000, retries:1, signal: fetchOpts.signal});
       return Array.isArray(j?.data) ? j.data : [];
     }
 
@@ -3240,6 +3391,7 @@ function setSearchModalOpen(open){
     // Candles paging + viewport normalization
     const CANDLE_LIMIT = 1000;
     const candlePager = { loading:false, hasMore:true, before:null, key:'' };
+    let _lastCandleFitKey = '';
     let _pagingAttached = false;
 
     function desiredViewportBars(){
@@ -3255,15 +3407,29 @@ function setSearchModalOpen(open){
       return 260;
     }
 
-    function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
+    
+    // -------------------- Viewport stability flags (SPEEDFIX step06)
+    let userInteracted = false;
+    let programmaticRangeChange = false;
+    let didInitialViewport = false;
+    let didFitOnce = false;  // per token+timeframe
+    let _lastLogicalRange = null;
+
+    function withProgrammaticRangeChange(fn){
+      programmaticRangeChange = true;
+      try{ fn && fn(); }catch(_e){}
+      requestAnimationFrame(()=>{ programmaticRangeChange = false; });
+    }
+function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
 
     function syncBarSpacing(){
       try{
+        if(userInteracted) return;
         const r = chart.timeScale().getVisibleLogicalRange();
         const bars = r ? Math.max(10, Math.round(r.to - r.from)) : desiredViewportBars();
         const w = Math.max(320, chartEl.clientWidth || 800);
         const spacing = clamp(w / (bars * 1.15), 3.5, 18);
-        chart.timeScale().applyOptions({ barSpacing: spacing });
+        withProgrammaticRangeChange(()=>{ chart.timeScale().applyOptions({ barSpacing: spacing }); });
       }catch(_){}
     }
 
@@ -3271,11 +3437,15 @@ function setSearchModalOpen(open){
       try{
         const total = (rawCandles||[]).length;
         if(!total){ return; }
+        if(didInitialViewport){ syncBarSpacing(); return; }
         const bars = desiredViewportBars();
         const from = Math.max(0, total - bars);
         const to = Math.max(0, total - 1);
-        chart.timeScale().setVisibleLogicalRange({from, to});
-        chart.timeScale().applyOptions({ rightOffset: 6 });
+        withProgrammaticRangeChange(()=>{ 
+          chart.timeScale().setVisibleLogicalRange({from, to});
+          chart.timeScale().applyOptions({ rightOffset: 6 });
+        });
+        didInitialViewport = true;
         syncBarSpacing();
       }catch(_){}
     }
@@ -3286,6 +3456,15 @@ function setSearchModalOpen(open){
 
       chart.timeScale().subscribeVisibleLogicalRangeChange((range)=>{
         if(!range) return;
+        // detect user-driven range changes to prevent viewport resets
+        if(!programmaticRangeChange){
+          if(_lastLogicalRange){
+            const df = Math.abs((range.from||0) - (_lastLogicalRange.from||0));
+            const dt = Math.abs((range.to||0) - (_lastLogicalRange.to||0));
+            if(df > 2 || dt > 2){ userInteracted = true; }
+          }
+          _lastLogicalRange = { from: range.from, to: range.to };
+        }
         if(!poolAddr) return;
         if(candlePager.loading || !candlePager.hasMore) return;
         if(range.from < 30){
@@ -3350,6 +3529,8 @@ function setSearchModalOpen(open){
       candleSeries.setData(src.map(c=>({time:c.time, open:c.open, high:c.high, low:c.low, close:c.close})));
       volumeSeries.setData(src.map(c=>({time:c.time, value:c.volume||0, color:(c.close>=c.open)?'rgba(20,241,149,.35)':'rgba(255,77,109,.35)'})));
 
+      if(src && src.length) perfMarkCandles(perfToken.id);
+
       if(fit){
         applyDefaultViewport();
       }else{
@@ -3403,12 +3584,15 @@ function setSearchModalOpen(open){
     async function refreshLatestCandles(){
       if(!poolAddr) return;
       const _key0 = `${activeNet}|${poolAddr}|${activeTF?.k||''}`;
+      const id = ++reqIds.candles;
+      const ac = startRequest(`candles:${activeNet}:${poolAddr}:${activeTF?.k||''}`);
       const _reqId = (refreshLatestCandles._reqId = (refreshLatestCandles._reqId||0) + 1);
       const _my = _reqId;
       try{
         const gran = activeTF.gecko;
         const url = geckoCandlesUrl(gran, null);
-        const j = await fetchJson(url, {timeout:16000, retries:1});
+        const j = await fetchJson(url, {timeout:16000, retries:1, signal: ac.signal});
+        if(id !== reqIds.candles) return;
         if(_my !== refreshLatestCandles._reqId) return;
         if(_key0 !== `${activeNet}|${poolAddr}|${activeTF?.k||''}`) return;
         const part = mapGeckoOhlcv(j);
@@ -3433,11 +3617,15 @@ function setSearchModalOpen(open){
       if(!poolAddr) return;
       attachPaging();
 
+      const id = ++reqIds.candles;
+      const tfKey = `${activeNet}|${poolAddr}|${activeTF?.k||''}`;
+      const ac = startRequest(`candles:${activeNet}:${poolAddr}:${activeTF?.k||''}`);
+
       statusEl.textContent = 'Loading chart…';
       candlePager.loading = true;
       candlePager.hasMore = true;
       candlePager.before = null;
-      candlePager.key = `${activeNet}|${poolAddr}|${activeTF?.k||''}`;
+      candlePager.key = tfKey;
 
       rawCandles=[];
       candleSeries.setData([]);
@@ -3446,53 +3634,88 @@ function setSearchModalOpen(open){
       try{
         const gran = activeTF.gecko;
         const needBars = desiredViewportBars();
-        let pages = 0;
+        const maxPages = (activeTF.k==='ALL' ? 6 : 3);
+
+        // 1) Fetch newest page first and render immediately
         let before = null;
-        let all = [];
+        let pages = 0;
 
-        while(pages++ < (activeTF.k==='ALL' ? 10 : 6)){
-          const url = geckoCandlesUrl(gran, before);
-          const j = await fetchJson(url, {timeout:18000, retries:1});
-          let part = mapGeckoOhlcv(j);
-          if(!part.length){
-            candlePager.hasMore = false;
-            break;
-          }
-          part.sort((a,b)=>a.time-b.time);
+        const url0 = geckoCandlesUrl(gran, before);
+        const j0 = await fetchJson(url0, {timeout:18000, retries:1, signal: ac.signal});
+        if(id !== reqIds.candles) return;
 
-          // prepend
-          all = part.concat(all);
-
-          // continue paging older
-          const oldest = part[0].time;
-          before = oldest - 1;
-          if(part.length < (CANDLE_LIMIT - 10)) { candlePager.hasMore = false; break; }
-
-          // stop once we have enough data for a good-looking viewport + buffer
-          if(all.length >= (needBars * 2)) break;
-        }
-
-        // dedupe + sort
-        const map = new Map();
-        for(const c of all){ map.set(c.time, c); }
-        rawCandles = Array.from(map.values()).sort((a,b)=>a.time-b.time);
-
-        if(!rawCandles.length){
+        let part0 = mapGeckoOhlcv(j0);
+        if(!part0.length){
           statusEl.textContent = 'Chart not available for this pool.';
           candlePager.hasMore = false;
           candlePager.before = null;
           candlePager.loading = false;
           return;
         }
+        part0.sort((a,b)=>a.time-b.time);
 
-        candlePager.before = rawCandles[0].time - 1;
-        applyCandlesToChart(true);
+        // Set pager for older
+        before = part0[0].time - 1;
+        pages = 1;
+
+        // Initial render
+        rawCandles = part0;
+        candlePager.before = before;
+
+        const shouldFit = !!fit && (_lastCandleFitKey !== tfKey);
+        applyCandlesToChart(shouldFit);
+        if(shouldFit) _lastCandleFitKey = tfKey;
+
         statusEl.textContent = 'Live.';
+        candlePager.loading = false;
+
+        // 2) Backfill older pages in background until enough bars exist
+        requestAnimationFrame(()=>{ (async ()=>{
+          try{
+            const targetBars = Math.floor(needBars * 1.6);
+            let fetched = pages;
+            let localBefore = before;
+
+            while(id === reqIds.candles && fetched < maxPages && candlePager.hasMore && localBefore && rawCandles.length < targetBars){
+              candlePager.loading = true;
+
+              const url = geckoCandlesUrl(gran, localBefore);
+              const j = await fetchJson(url, {timeout:18000, retries:1, signal: ac.signal});
+              if(id !== reqIds.candles) return;
+
+              const part = mapGeckoOhlcv(j);
+              if(!part.length){
+                candlePager.hasMore = false;
+                break;
+              }
+              part.sort((a,b)=>a.time-b.time);
+
+              // Merge by time, keep unique
+              const map = new Map();
+              for(const c of rawCandles) map.set(c.time, c);
+              for(const c of part) map.set(c.time, c);
+              rawCandles = Array.from(map.values()).sort((a,b)=>a.time-b.time);
+
+              // Continue paging older
+              localBefore = part[0].time - 1;
+              candlePager.before = localBefore;
+
+              if(part.length < (CANDLE_LIMIT - 10)) candlePager.hasMore = false;
+
+              applyCandlesToChart(false);
+              fetched++;
+            }
+          }catch(e){
+            // ignore background errors
+          }finally{
+            if(id === reqIds.candles) candlePager.loading = false;
+          }
+        })(); });
       }catch(e){
         statusEl.textContent = 'Chart error.';
         console.error(e);
       }finally{
-        candlePager.loading = false;
+        if(id === reqIds.candles) candlePager.loading = false;
       }
     }
 
@@ -3509,9 +3732,13 @@ function setSearchModalOpen(open){
       const prevRange = (()=>{ try{ return chart.timeScale().getVisibleLogicalRange(); }catch(_){ return null; } })();
       const prevTimes = new Set(rawCandles.map(c=>c.time));
 
+      const id = ++reqIds.candles;
+      const ac = startRequest(`candles:${activeNet}:${poolAddr}:${activeTF?.k||''}`);
+
       try{
         const url = geckoCandlesUrl(activeTF.gecko, before);
-        const j = await fetchJson(url, {timeout:18000, retries:1});
+        const j = await fetchJson(url, {timeout:18000, retries:1, signal: ac.signal});
+        if(id !== reqIds.candles) return;
         let part = mapGeckoOhlcv(j);
         if(!part.length){
           candlePager.hasMore = false;
@@ -3538,10 +3765,10 @@ function setSearchModalOpen(open){
 
         // keep viewport anchored after prepend
         if(prevRange && added>0){
-          chart.timeScale().setVisibleLogicalRange({
+          withProgrammaticRangeChange(()=>{ chart.timeScale().setVisibleLogicalRange({
             from: prevRange.from + added,
             to: prevRange.to + added
-          });
+          }); });
         }
         syncBarSpacing();
       }catch(e){
@@ -3642,18 +3869,18 @@ function setSearchModalOpen(open){
       `;
     }
 
-    async function geckoTrades(limit=80){
+    async function geckoTrades(limit=80, fetchOpts={}){
       const base = `${GECKO}/networks/${encodeURIComponent(geckoNet())}/pools/${encodeURIComponent(poolAddr)}/trades`;
       // GeckoTerminal often uses JSON:API pagination. Try page params first, then fallback to limit.
       try{
         const url1 = base + `?page=1&limit=${encodeURIComponent(limit)}`;
-        const j1 = await fetchJson(url1, {timeout:14000, retries:1});
+        const j1 = await fetchJson(url1, {timeout:14000, retries:1, signal: fetchOpts.signal});
         if(Array.isArray(j1?.data) && j1.data.length) return j1.data;
       }catch(e){ /* ignore */ }
 
       try{
         const url2 = base + `?limit=${encodeURIComponent(limit)}`;
-        const j2 = await fetchJson(url2, {timeout:14000, retries:1});
+        const j2 = await fetchJson(url2, {timeout:14000, retries:1, signal: fetchOpts.signal});
         if(Array.isArray(j2?.data)) return j2.data;
       }catch(e){ /* ignore */ }
 
@@ -3678,24 +3905,39 @@ function setSearchModalOpen(open){
       const newly = [];
 
       // Only add unseen trades (prepend)
+      const newRowsHtml = [];
       for(const tr of parsed){
         if(tradesSeen.has(tr.id)) continue;
         tradesSeen.add(tr.id);
         newly.push(tr);
+        newRowsHtml.push(tradeRowHtml(tr));
+      }
 
-        const html = tradeRowHtml(tr);
+      if(newRowsHtml.length){
+        const htmlStr = newRowsHtml.join('');
         tradesContainer().forEach(el=>{
           const head = el.querySelector('.tradeHead');
           const wrapper = document.createElement('div');
-          wrapper.innerHTML = html;
-          const row = wrapper.firstElementChild;
-          if(row){ row.classList.add('enter'); requestAnimationFrame(()=>{ row.classList.add('enter'); }); setTimeout(()=>{ try{ row.classList.remove('enter'); }catch(_){ } }, 420); }
-          // insert after head
-          el.insertBefore(row, head.nextSibling);
+          wrapper.innerHTML = htmlStr;
+          const frag = document.createDocumentFragment();
+          const rows = [];
+          while(wrapper.firstElementChild){
+            const row = wrapper.firstElementChild;
+            rows.push(row);
+            frag.appendChild(row);
+          }
+          if(rows.length){
+            // insert after head in a single batch
+            el.insertBefore(frag, head.nextSibling);
+            if(reset && newRowsHtml.length) perfMarkTrades(perfToken.id);
+            // animate new rows (batched)
+            rows.forEach(r=>{ try{ r.classList.add('enter'); }catch(_){ } });
+            requestAnimationFrame(()=>{ setTimeout(()=>{ rows.forEach(r=>{ try{ r.classList.remove('enter'); }catch(_){ } }); }, 420); });
+          }
           // cap rows
-          const rows = [...el.querySelectorAll('.tradeRow')];
-          if(rows.length>120){
-            rows.slice(120).forEach(r=>r.remove());
+          const rowsAll = [...el.querySelectorAll('.tradeRow')];
+          if(rowsAll.length>120){
+            rowsAll.slice(120).forEach(r=>r.remove());
           }
         });
       }
@@ -3756,20 +3998,34 @@ function setSearchModalOpen(open){
     }
     async function loadTrades(reset=false){
       if(!poolAddr) return;
+      const _trKey = `trades:${activeNet}:${poolAddr}`;
+      if(tradesFetchInFlight && loadTrades._inFlightKey === _trKey) return;
+      loadTrades._inFlightKey = _trKey;
+      tradesFetchInFlight = true;
       const _key0 = `${activeNet}|${poolAddr}`;
+      const id = ++reqIds.trades;
+      const ac = startRequest(_trKey);
       const _reqId = (loadTrades._reqId = (loadTrades._reqId||0) + 1);
       const _my = _reqId;
       try{
-        const data = await geckoTrades(80);
+        const data = await geckoTrades(80, {signal: ac.signal});
+        if(id !== reqIds.trades) return;
         if(_my !== loadTrades._reqId) return;
         if(_key0 !== `${activeNet}|${poolAddr}`) return;
-        const newly = renderTrades(data, {reset}) || [];
-        if(newly.length){
-          // Apply oldest->newest so candle updates are correct
-          newly.slice().sort((a,b)=>a.tsMs-b.tsMs).forEach(applyTradeToCandles);
-        }
+        scheduleTradesRender(data, reset, (newly)=>{
+          if(id !== reqIds.trades) return;
+          if(_my !== loadTrades._reqId) return;
+          if(_key0 !== `${activeNet}|${poolAddr}`) return;
+          if(newly && newly.length){
+            // Apply oldest->newest so candle updates are correct
+            newly.slice().sort((a,b)=>a.tsMs-b.tsMs).forEach(applyTradeToCandles);
+          }
+        }, id, _trKey);
       }catch(e){
         // keep UI stable
+      }
+      finally{
+        if(loadTrades._inFlightKey === _trKey) tradesFetchInFlight = false;
       }
     }
 
@@ -3824,9 +4080,9 @@ function setSearchModalOpen(open){
 
 
 // -------------------- Meta (refresh price/liquidity/24h)
-    async function geckoPool(){
+    async function geckoPool(fetchOpts={}){
       const url = `${GECKO}/networks/${encodeURIComponent(geckoNet())}/pools/${encodeURIComponent(poolAddr)}?include=base_token,quote_token`;
-      const j = await fetchJson(url, {timeout:14000, retries:1});
+      const j = await fetchJson(url, {timeout:14000, retries:1, signal: fetchOpts.signal});
       return j?.data || null;
     }
 
@@ -3844,6 +4100,35 @@ function setSearchModalOpen(open){
     
     // -------------------- Trending (match main site)
     const TREND_CACHE = new Map();
+    const TREND_LS_PREFIX = 'dexguard_trending_cache_v1:';
+    function trendLsKey(chain){ return TREND_LS_PREFIX + String(chain||''); }
+    function trendBuildIncMap(included){
+      const m = new Map();
+      for(const it of (included||[])){
+        if(!it || !it.id) continue;
+        const id = String(it.id);
+        if(it.type) m.set(String(it.type)+':' + id, it);
+        m.set(id, it);
+      }
+      return m;
+    }
+    function trendReadCache(chain){
+      try{
+        const raw = localStorage.getItem(trendLsKey(chain));
+        if(!raw) return null;
+        const obj = JSON.parse(raw);
+        if(!obj || !Array.isArray(obj.data) || !Array.isArray(obj.included)) return null;
+        return obj;
+      }catch(e){ return null; }
+    }
+    function trendWriteCache(chain, data, included){
+      try{
+        localStorage.setItem(trendLsKey(chain), JSON.stringify({ts: Date.now(), chain: String(chain||''), data, included}));
+      }catch(e){}
+    }
+    function stopTrendingInterval(){
+      if(trendingTimer){ try{ clearInterval(trendingTimer); }catch(e){} trendingTimer = null; }
+    }
 
     function applyNetTheme(){
       document.body.classList.remove('net-sol','net-eth','net-bnb','net-base');
@@ -3862,19 +4147,29 @@ function setSearchModalOpen(open){
     }
 
     async function fetchTrendingPools(net){
-      const key = String(net||'');
+      const chainKey = activeNet;
+      const id = ++reqIds.trending;
+      const ac = startRequest(`trending:${chainKey}`);
+      const key = String(chainKey||net||'');
       const cached = TREND_CACHE.get(key);
       const now = Date.now();
       if(cached && (now - cached.ts) < 45000) return cached.data;
 
       const url = `${GECKO}/networks/${encodeURIComponent(net)}/trending_pools?include=base_token,quote_token,dex`;
-      const j = await fetchJson(url, {timeout:14000, retries:1});
+      const j = await fetchJson(url, {timeout:14000, retries:0, signal: ac.signal});
+      if(id !== reqIds.trending) return null;
       const data = Array.isArray(j?.data) ? j.data : [];
       const inc  = Array.isArray(j?.included) ? j.included : [];
       const incMap = new Map();
-      for(const it of inc){ if(it?.id) incMap.set(it.id, it); }
+      for(const it of inc){
+        if(!it?.id) continue;
+        const iid = String(it.id);
+        if(it?.type) incMap.set(String(it.type)+':' + iid, it);
+        incMap.set(iid, it);
+      }
       const out = { data, incMap };
       TREND_CACHE.set(key, {ts: now, data: out});
+      try{ trendWriteCache(chainKey, data, inc); }catch(e){}
       return out;
     }
 
@@ -3967,26 +4262,84 @@ function setSearchModalOpen(open){
       tickerTrack.innerHTML = items + items;
       syncTickerMarquee();
     }
-
     async function startTrending(){
+      const gen = ++trendingGen;
+      stopTrendingInterval();
       applyNetTheme();
       syncTrendToggle();
 
-      const load = async ()=>{
-        try{
-          const net = geckoNet();
-          const res = await fetchTrendingPools(net);
-          renderTrendingTicker(res.data, res.incMap);
-        }catch(e){
-          console.error('trending failed', e);
-          tickerTrack.innerHTML = `<div class="tickerEmpty">Trending unavailable.</div>`;
+      // Render immediately from localStorage cache (per chain), then refresh in background
+      try{
+        const c = trendReadCache(activeNet);
+        if(c){
+          const im = trendBuildIncMap(c.included);
+          renderTrendingTicker(c.data, im);
         }
+      }catch(e){}
+
+      const load = async ()=>{
+        if(gen !== trendingGen) return;
+        const net = geckoNet();
+        const delays = [0, 600, 1200];
+        let lastErr = null;
+        for(let attempt=0; attempt<delays.length; attempt++){
+          if(gen !== trendingGen) return;
+          if(attempt>0) await sleep(delays[attempt]);
+          if(gen !== trendingGen) return;
+          try{
+            const res = await fetchTrendingPools(net);
+            if(gen !== trendingGen) return;
+            if(!res) return; // stale
+            renderTrendingTicker(res.data, res.incMap);
+            statusEl.textContent = 'Live.';
+            return;
+          }catch(e){
+            if(e && e.name==='AbortError') return;
+            lastErr = e;
+          }
+        }
+        if(gen !== trendingGen) return;
+        statusEl.textContent = 'Temporarily unavailable';
+        try{
+          if(!tickerTrack.querySelector('.tickerItem')){
+            tickerTrack.innerHTML = `<div class="tickerEmpty">Temporarily unavailable.</div>`;
+            syncTickerMarquee();
+          }
+        }catch(_){ }
+        try{ console.error('trending failed', lastErr); }catch(_){ }
       };
 
-      await load();
-      statusEl.textContent = 'Live.';
-      if(trendingTimer) clearInterval(trendingTimer);
-      trendingTimer = setInterval(load, 25000);
+      trendingLoadFn = load;
+      // Initial refresh (background)
+      load();
+
+      // Ensure only one trending interval exists, pause/resume on visibility
+      stopTrendingInterval();
+      trendingTimer = setInterval(()=>{
+        if(document.hidden) return;
+        try{ trendingLoadFn && trendingLoadFn(); }catch(_){ }
+      }, 25000);
+
+      if(!startTrending._visBound){
+        startTrending._visBound = true;
+        document.addEventListener('visibilitychange', ()=>{
+          if(document.hidden){
+            stopTrendingInterval();
+            try{ if(typeof stopLiveLoops==='function') stopLiveLoops(); }catch(_){ }
+          }else{
+            try{ trendingLoadFn && trendingLoadFn(); }catch(_){ }
+            stopTrendingInterval();
+            trendingTimer = setInterval(()=>{
+              if(document.hidden) return;
+              try{ trendingLoadFn && trendingLoadFn(); }catch(_){ }
+            }, 25000);
+            // resume candles/trades loops only if a token is active
+            if(poolAddr){
+              try{ if(typeof startLiveLoops==='function') startLiveLoops(); }catch(_){ }
+            }
+          }
+        });
+      }
 
       tickerTrack.onclick = (e)=>{
         const a = e.target.closest('.tickerItem');
@@ -4028,6 +4381,7 @@ function setSearchModalOpen(open){
       updateUrl();
       renderNetPills();
       applyNetTheme();
+      try{ if(typeof stopLiveLoops==='function') stopLiveLoops(); }catch(_){ }
       startTrending();
       // if address exists, load it
       if(addr){
@@ -4035,178 +4389,282 @@ function setSearchModalOpen(open){
       }
     }
 
-    async function openToken(input, opts={}){
-      try{ if(typeof stopLiveLoops==='function') stopLiveLoops(); }catch(_){ }
-      const skipInput = !!opts.skipInput;
-      const silent = !!opts.silent;
-      const boot = !!opts.boot;
-
-      let v = String(input||'').trim();
-      if(!v){ toast('Paste a token name or address'); return; }
-      if(!skipInput) q.value = v;
-
-      // reset view
-      statusEl.textContent = 'Loading…';
-      pairNameEl.textContent = 'Loading…';
-      pairMetaEl.textContent = 'Resolving best pool…';
-      results.innerHTML = '';
-
-      // Force default chart timeframe on every token selection
-      setActiveTFKey('15m');
-
-
-      let dsPair = null;
-
-      // If user typed a name/symbol (not an address), resolve via DexScreener search (auto across chains)
-      if(!isEvmAddr(v) && !isSolAddr(v)){
-        statusEl.textContent = 'Searching…';
-        pairNameEl.textContent = 'Searching…';
-        pairMetaEl.textContent = 'Finding best match…';
-        try{
-          const pairs = await dsSearch(v);
-          if(!pairs.length){
-            statusEl.textContent = 'Not found.';
-            pairNameEl.textContent = 'Not found';
-            pairMetaEl.textContent = 'Try a contract address.';
-            toast('No results. Try contract address.');
-            return;
-          }
-          const best = bestPairAnyNet(pairs);
-          if(!best){
-            toast('No usable pair found.');
-            return;
-          }
-          // switch net to best match chain
-          const chainId = lc(best?.chainId||'');
-          const newNet = (chainId==='solana') ? 'solana' : (chainId==='ethereum' ? 'eth' : (chainId==='bsc' ? 'bsc' : (chainId==='base' ? 'base' : activeNet)));
-          if(newNet !== activeNet){
-            activeNet = newNet;
-            renderNetPills();
-            startTrending();
-          }
-
-          dsPair = best;
-          v = String(best?.baseToken?.address || '').trim() || v;
-          if(!skipInput) q.value = v;
-        }catch(e){
-          statusEl.textContent = 'Search error.';
-          toast('Search failed. Try again.');
-          return;
-        }
+    function tradeSkeletonHtml(n){
+      let out='';
+      for(let i=0;i<n;i++){
+        out += `<div class="tradeRow" style="opacity:.55">
+          <div class="mono">—</div>
+          <div><span class="typeBadge" style="opacity:.85">—</span></div>
+          <div class="mono">—</div>
+          <div class="mono">—</div>
+          <div class="mono hideM">—</div>
+          <div class="maker hideM"><span class="addr">—</span></div>
+          <button class="iconBtn" type="button" aria-label="loading" style="opacity:.45; pointer-events:none">…</button>
+        </div>`;
       }
+      return out;
+    }
 
-      // If it's an EVM address and no dsPair yet, try all EVM nets and pick best liquidity
-      if(isEvmAddr(v) && !dsPair){
-        const nets = ['eth','bsc','base'];
-        let best = null;
-        for(const n of nets){
-          const arr = await dsTokenPairsV1(n, v);
-          const cand = bestPairAnyNet(arr);
-          if(cand && (!best || Number(cand?.liquidity?.usd||0) > Number(best?.liquidity?.usd||0))) best = cand;
-        }
-        if(best){
-          const chainId = lc(best?.chainId||'');
-          const newNet = (chainId==='ethereum') ? 'eth' : (chainId==='bsc' ? 'bsc' : (chainId==='base' ? 'base' : activeNet));
-          if(newNet !== activeNet){
-            activeNet = newNet;
-            renderNetPills();
-            startTrending();
-          }
-          dsPair = best;
-        }
-      }
+    function ensureChartSkeleton(){
+      const wrap = document.getElementById('chartWrap');
+      if(!wrap) return null;
+      let el = document.getElementById('chartSkeleton');
+      if(el) return el;
+      el = document.createElement('div');
+      el.id = 'chartSkeleton';
+      el.style.cssText = 'position:absolute;inset:0;display:none;pointer-events:none;z-index:2;';
+      el.innerHTML = `<div style="position:absolute;inset:14px;border-radius:16px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.04);"></div>`;
+      wrap.appendChild(el);
+      return el;
+    }
 
-      // If it's Solana address and no dsPair yet, fetch DS token-pairs on Solana
-      if(isSolAddr(v) && !dsPair){
-        const arr = await dsTokenPairsV1('solana', v);
-        const best = bestPairAnyNet(arr);
-        if(best) dsPair = best;
-      }
-
-      // preferred pool address (pairAddress is usually the AMM pool address)
-      let preferredPool = dsPair?.pairAddress || dsPair?.pair_address || '';
-
-      // Fill header from DexScreener meta (fast symbols/logos/stats)
-      if(dsPair){
-        const meta = dsExtractTokenMeta(dsPair, v);
-        curTokenAddr = v;
-        if(meta?.image) curTokenImage = meta.image;
-        if(meta?.name) curTokenName = meta.name;
-        applyTokenHeader(meta);
-
-        applyStats({
-          price: num(dsPair?.priceUsd),
-          liq: num(dsPair?.liquidity?.usd),
-          mcap: num(dsPair?.fdv),
-          h24: num(dsPair?.priceChange?.h24),
-        });
-      }else{
-        curTokenAddr = v;
-        curTokenName = '';
-        curTokenImage = '';
-        applyTokenHeader({symbol:'TOKEN', name:'', quoteSymbol:'', image:''});
-        applyStats({});
-      }
-
-      // reset caches/timers
-      tradesSeen = new Set();
-      seenMakers = new Set();
-
+    function setTokenLoadingUI(){
       try{
-        // 1) preferred pool first (when available via DexScreener)
-        if(preferredPool){
-          poolAddr = preferredPool;
-          const p = await geckoPool();
-          if(p){
+        statsEl.innerHTML = [
+          `<span class="statPill"><span class="k">Price</span><span class="v">—</span></span>`,
+          `<span class="statPill"><span class="k">Liquidity</span><span class="v">—</span></span>`,
+          `<span class="statPill"><span class="k">MCap/FDV</span><span class="v">—</span></span>`,
+          `<span class="statPill"><span class="k">24h</span><span class="v">—</span></span>`
+        ].join('');
+      }catch(_){}
+      try{
+        const sk = ensureChartSkeleton();
+        if(sk) sk.style.display = 'block';
+      }catch(_){}
+      try{
+        const ph = tradeSkeletonHtml(6);
+        tradesContainer().forEach(el=>{
+          const head = el.querySelector('.tradeHead');
+          el.innerHTML = '';
+          if(head) el.appendChild(head);
+          el.insertAdjacentHTML('beforeend', ph);
+        });
+      }catch(_){}
+    }
+
+    function clearTokenLoadingUI(){
+      try{
+        const sk = document.getElementById('chartSkeleton');
+        if(sk) sk.style.display = 'none';
+      }catch(_){}
+    }
+
+
+
+    async function openToken(input, opts={}){
+          try{ if(typeof stopLiveLoops==='function') stopLiveLoops(); }catch(_){ }
+          const skipInput = !!opts.skipInput;
+          const silent = !!opts.silent;
+          const boot = !!opts.boot;
+
+          let v = String(input||'').trim();
+          if(!v){ toast('Paste a token name or address'); return; }
+          if(!skipInput) q.value = v;
+
+          const id = ++reqIds.token;
+          perfStartToken(id);
+          let _tokenKey = `token:${activeNet}:${v}`;
+          let _tokenAC = startRequest(_tokenKey);
+
+          // reset view
+          statusEl.textContent = 'Loading…';
+          pairNameEl.textContent = 'Loading…';
+          pairMetaEl.textContent = 'Resolving best pool…';
+          results.innerHTML = '';
+
+          // Force default chart timeframe on every token selection
+          setActiveTFKey('15m');
+          // reset viewport flags on token selection
+          userInteracted = false;
+          programmaticRangeChange = false;
+          didInitialViewport = false;
+          didFitOnce = false;
+          _lastLogicalRange = null;
+
+          // Instant UI feedback (must render before any network)
+          setTokenLoadingUI();
+          await new Promise(r=>requestAnimationFrame(r));
+          if(id !== reqIds.token) return;
+          perfMarkPaint(id);
+
+          let dsPair = null;
+
+          // If user typed a name/symbol (not an address), resolve via DexScreener search (auto across chains)
+          if(!isEvmAddr(v) && !isSolAddr(v)){
+            statusEl.textContent = 'Searching…';
+            pairNameEl.textContent = 'Searching…';
+            pairMetaEl.textContent = 'Finding best match…';
+            try{
+              const _sId = ++reqIds.search;
+              const _sKey = `search:${activeNet}`;
+              const _sAc = startRequest(_sKey);
+              const pairs = await dsSearch(v, {signal: _sAc.signal});
+              if(_sId !== reqIds.search) return;
+              if(id !== reqIds.token) return;
+              if(!pairs.length){
+                statusEl.textContent = 'Not found.';
+                pairNameEl.textContent = 'Not found';
+                pairMetaEl.textContent = 'Try a contract address.';
+                toast('No results. Try contract address.');
+                clearTokenLoadingUI();
+                return;
+              }
+              const best = bestPairAnyNet(pairs);
+              if(!best){
+                toast('No usable pair found.');
+                clearTokenLoadingUI();
+                return;
+              }
+              // switch net to best match chain
+              const chainId = lc(best?.chainId||'');
+              const newNet = (chainId==='solana') ? 'solana' : (chainId==='ethereum' ? 'eth' : (chainId==='bsc' ? 'bsc' : (chainId==='base' ? 'base' : activeNet)));
+              if(newNet !== activeNet){
+                activeNet = newNet;
+                renderNetPills();
+                startTrending();
+              }
+              _tokenKey = `token:${activeNet}:${v}`;
+              _tokenAC = startRequest(_tokenKey);
+
+              dsPair = best;
+              v = String(best?.baseToken?.address || '').trim() || v;
+              if(!skipInput) q.value = v;
+              _tokenKey = `token:${activeNet}:${v}`;
+              _tokenAC = startRequest(_tokenKey);
+            }catch(e){
+              statusEl.textContent = 'Search error.';
+              toast('Search failed. Try again.');
+              return;
+            }
+          }
+
+          // If it's an EVM address and no dsPair yet, try all EVM nets and pick best liquidity
+          if(isEvmAddr(v) && !dsPair){
+            const nets = ['eth','bsc','base'];
+            let best = null;
+            for(const n of nets){
+              const arr = await dsTokenPairsV1(n, v, {signal: _tokenAC.signal});
+              if(id !== reqIds.token) return;
+              const cand = bestPairAnyNet(arr);
+              if(cand && (!best || Number(cand?.liquidity?.usd||0) > Number(best?.liquidity?.usd||0))) best = cand;
+            }
+            if(best){
+              const chainId = lc(best?.chainId||'');
+              const newNet = (chainId==='ethereum') ? 'eth' : (chainId==='bsc' ? 'bsc' : (chainId==='base' ? 'base' : activeNet));
+              if(newNet !== activeNet){
+                activeNet = newNet;
+                renderNetPills();
+                startTrending();
+              }
+              _tokenKey = `token:${activeNet}:${v}`;
+              _tokenAC = startRequest(_tokenKey);
+              dsPair = best;
+            }
+          }
+
+          // If it's Solana address and no dsPair yet, fetch DS token-pairs on Solana
+          if(isSolAddr(v) && !dsPair){
+            const arr = await dsTokenPairsV1('solana', v, {signal: _tokenAC.signal});
+            if(id !== reqIds.token) return;
+            const best = bestPairAnyNet(arr);
+            if(best) dsPair = best;
+          }
+
+          // preferred pool address (pairAddress is usually the AMM pool address)
+          let preferredPool = dsPair?.pairAddress || dsPair?.pair_address || '';
+
+          // Fill header from DexScreener meta (fast symbols/logos/stats)
+          if(dsPair){
+            const meta = dsExtractTokenMeta(dsPair, v);
+            curTokenAddr = v;
+            if(meta?.image) curTokenImage = meta.image;
+            if(meta?.name) curTokenName = meta.name;
+            applyTokenHeader(meta);
+
+            applyStats({
+              price: num(dsPair?.priceUsd),
+              liq: num(dsPair?.liquidity?.usd),
+              mcap: num(dsPair?.fdv),
+              h24: num(dsPair?.priceChange?.h24),
+            });
+          }else{
+            curTokenAddr = v;
+            curTokenName = '';
+            curTokenImage = '';
+            applyTokenHeader({symbol:'TOKEN', name:'', quoteSymbol:'', image:''});
+            applyStats({});
+          }
+
+          // reset caches/timers
+          tradesSeen = new Set();
+          seenMakers = new Set();
+
+          try{
+            // 1) preferred pool first (when available via DexScreener)
+            if(preferredPool){
+              poolAddr = preferredPool;
+              const p = await geckoPool({signal: _tokenAC.signal});
+              if(id !== reqIds.token) return;
+              if(p){
+                if(id !== reqIds.token) return;
+                applyPool(p);
+                statusEl.textContent = 'Loading…';
+                await Promise.all([loadCandles(true), loadTrades(true)]);
+                if(id !== reqIds.token) return;
+                clearTokenLoadingUI();
+                if(id !== reqIds.token) return;
+                statusEl.textContent = 'Live.';
+                startLiveLoops();
+                return;
+              }
+            }
+
+            // 2) fallback: Gecko token pools -> choose best
+            const pools = await resolvePoolsFromGecko(v, {signal: _tokenAC.signal});
+            if(id !== reqIds.token) return;
+            if(!pools.length){
+              statusEl.textContent = 'Not found.';
+              pairNameEl.textContent = 'Not found';
+              pairMetaEl.textContent = 'Try a different token or chain.';
+              toast('Token not found on this chain.');
+              clearTokenLoadingUI();
+              return;
+            }
+
+            const best = chooseBestPool(pools, v);
+            poolChoices = pools;
+            poolAddr = poolAddressFromPool(best);
+
+            const _cP = loadCandles(true);
+            const _tP = loadTrades(true);
+            const p = await geckoPool({signal: _tokenAC.signal});
+            if(id !== reqIds.token) return;
+            if(!p) throw new Error('Pool fetch failed');
+            if(id !== reqIds.token) return;
             applyPool(p);
-            statusEl.textContent = 'Loading chart…';
-            await loadCandles(true);
-            statusEl.textContent = 'Loading trades…';
-            await loadTrades(true);
+
+            statusEl.textContent = 'Loading…';
+            await Promise.all([_cP, _tP]);
+                if(id !== reqIds.token) return;
+                clearTokenLoadingUI();
+                if(id !== reqIds.token) return;
             statusEl.textContent = 'Live.';
             startLiveLoops();
-            return;
-          }
-        }
-
-        // 2) fallback: Gecko token pools -> choose best
-        const pools = await resolvePoolsFromGecko(v);
-        if(!pools.length){
-          statusEl.textContent = 'Not found.';
-          pairNameEl.textContent = 'Not found';
-          pairMetaEl.textContent = 'Try a different token or chain.';
-          toast('Token not found on this chain.');
-          return;
-        }
-
-        const best = chooseBestPool(pools, v);
-        poolChoices = pools;
-        poolAddr = poolAddressFromPool(best);
-
-        const p = await geckoPool();
-        if(!p) throw new Error('Pool fetch failed');
-        applyPool(p);
-
-        statusEl.textContent = 'Loading chart…';
-        await loadCandles(true);
-        statusEl.textContent = 'Loading trades…';
-        await loadTrades(true);
-        statusEl.textContent = 'Live.';
-        startLiveLoops();
-      }catch(e){
-        console.error(e);
-        statusEl.textContent = 'Load error.';
-        // Avoid noisy toast on first load / auto-open. Show toast only after user actions.
-        if(!silent && !boot){
-          toast('Failed to load chart/trades. API blocked or pool unsupported.');
-        }
-        // One gentle auto-retry on boot (sometimes APIs are rate-limited on initial load)
-        if(boot && !openToken._bootRetried){
-          openToken._bootRetried = true;
-          setTimeout(()=>openToken(addr, {skipInput:true, silent:true}), 1200);
-        }
-}
+          }catch(e){
+            console.error(e);
+            statusEl.textContent = 'Load error.';
+            clearTokenLoadingUI();
+            // Avoid noisy toast on first load / auto-open. Show toast only after user actions.
+            if(!silent && !boot){
+              toast('Failed to load chart/trades. API blocked or pool unsupported.');
+            }
+            // One gentle auto-retry on boot (sometimes APIs are rate-limited on initial load)
+            if(boot && !openToken._bootRetried){
+              openToken._bootRetried = true;
+              setTimeout(()=>openToken(addr, {skipInput:true, silent:true}), 1200);
+            }
     }
+        }
 
     
     // Boot UI
@@ -4429,7 +4887,7 @@ if(searchScrim){
         try{
           if(mode!=='txns'){
             chart.applyOptions({ width: chartEl.clientWidth, height: chartEl.clientHeight });
-            chart.timeScale().fitContent();
+            /* SPEEDFIX step07: disable auto-fit on tab/mode switching */
           }
         }catch(_){}
       });
@@ -4481,8 +4939,169 @@ if(searchScrim){
     splitHandle.addEventListener('pointerdown', onDown, {passive:false});
     splitHandle.addEventListener('touchstart', onDown, {passive:false});
   }catch(_){}
+})();</script>
+
+<script>
+/* ===== DexGuard Micro 01: Hard Safety (global error catcher + banner) ===== */
+(function(){
+  try{
+    var DG_RT_BANNER_ID = "rtErrBanner";
+    var dg_rt_hideTimer = null;
+    var dg_rt_lastShown = 0;
+
+    function dgEnsureRuntimeBanner(){
+      var b = document.getElementById(DG_RT_BANNER_ID);
+      if(b) return b;
+
+      b = document.createElement("div");
+      b.id = DG_RT_BANNER_ID;
+      b.setAttribute("role","status");
+      b.setAttribute("aria-live","polite");
+
+      var dot = document.createElement("div");
+      dot.className = "rtDot";
+
+      var txt = document.createElement("div");
+      txt.className = "rtTxt";
+      txt.textContent = "Runtime error — retrying…";
+
+      var close = document.createElement("button");
+      close.type = "button";
+      close.className = "rtClose";
+      close.setAttribute("aria-label","Dismiss");
+      close.textContent = "×";
+      close.addEventListener("click", function(ev){
+        try{
+          ev.preventDefault();
+          ev.stopPropagation();
+          b.classList.remove("show");
+        }catch(_){}
+      }, {passive:false});
+
+      b.addEventListener("click", function(){
+        try{ b.classList.remove("show"); }catch(_){}
+      }, {passive:true});
+
+      b.appendChild(dot);
+      b.appendChild(txt);
+      b.appendChild(close);
+
+      document.addEventListener("DOMContentLoaded", function(){
+        try{ document.body && document.body.appendChild(b); }catch(_){}
+      }, {once:true});
+
+      if(document.body){
+        try{ document.body.appendChild(b); }catch(_){}
+      }
+      return b;
+    }
+
+    function dgShowRuntimeBanner(reason){
+      try{
+        var now = Date.now();
+        // throttle repeated errors
+        if(now - dg_rt_lastShown < 500) return;
+        dg_rt_lastShown = now;
+
+        var b = dgEnsureRuntimeBanner();
+        if(!b) return;
+
+        var t = b.querySelector(".rtTxt");
+        if(t){
+          // keep text stable; optionally add short hint
+          t.textContent = "Runtime error — retrying…";
+        }
+
+        b.classList.add("show");
+        if(dg_rt_hideTimer) clearTimeout(dg_rt_hideTimer);
+        dg_rt_hideTimer = setTimeout(function(){
+          try{ b.classList.remove("show"); }catch(_){}
+        }, 5200);
+      }catch(_){}
+    }
+
+    function dgLogFullError(tag, payload){
+      try{
+        // Make sure we never throw from logger
+        console.error(tag, payload);
+      }catch(_){}
+    }
+
+    // window.onerror (sync errors)
+    var prevOnError = window.onerror;
+    window.onerror = function(message, source, lineno, colno, error){
+      try{
+        dgLogFullError("GlobalError", {
+          message: message,
+          source: source,
+          lineno: lineno,
+          colno: colno,
+          error: error,
+          stack: error && error.stack ? String(error.stack) : undefined
+        });
+        dgShowRuntimeBanner(error || message);
+      }catch(_){}
+      // Never block default handling
+      if(typeof prevOnError === "function"){
+        try{ return prevOnError.apply(this, arguments); }catch(_){}
+      }
+      return false;
+    };
+
+    // Error events (resource errors, etc.)
+    window.addEventListener("error", function(ev){
+      try{
+        // Resource errors may not have ev.error
+        var payload = {
+          message: ev && ev.message,
+          filename: ev && ev.filename,
+          lineno: ev && ev.lineno,
+          colno: ev && ev.colno,
+          error: ev && ev.error,
+          stack: ev && ev.error && ev.error.stack ? String(ev.error.stack) : undefined,
+          target: ev && ev.target ? (ev.target.tagName || ev.target.nodeName || ev.target.toString()) : undefined
+        };
+        dgLogFullError("UnhandledErrorEvent", payload);
+        dgShowRuntimeBanner(ev && (ev.error || ev.message));
+      }catch(_){}
+    }, true);
+
+    // Promise rejections
+    var prevOnRej = window.onunhandledrejection;
+    window.onunhandledrejection = function(ev){
+      try{
+        var r = ev && ev.reason;
+        dgLogFullError("UnhandledRejection", {
+          reason: r,
+          reasonType: (r && r.constructor && r.constructor.name) ? r.constructor.name : typeof r,
+          stack: r && r.stack ? String(r.stack) : undefined
+        });
+        dgShowRuntimeBanner(r);
+      }catch(_){}
+      if(typeof prevOnRej === "function"){
+        try{ return prevOnRej.apply(this, arguments); }catch(_){}
+      }
+      return false;
+    };
+
+    window.addEventListener("unhandledrejection", function(ev){
+      try{
+        var r = ev && ev.reason;
+        dgLogFullError("UnhandledRejectionEvent", {
+          reason: r,
+          reasonType: (r && r.constructor && r.constructor.name) ? r.constructor.name : typeof r,
+          stack: r && r.stack ? String(r.stack) : undefined
+        });
+        dgShowRuntimeBanner(r);
+      }catch(_){}
+    }, true);
+
+    // Ensure banner exists early without blocking execution
+    dgEnsureRuntimeBanner();
+  }catch(_){}
 })();
 </script>
+
 </body>
 </html>
 
