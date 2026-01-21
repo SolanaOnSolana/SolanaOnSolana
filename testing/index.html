@@ -1481,6 +1481,7 @@ display:none;
 
  <script src="https://unpkg.com/lightweight-charts@4.2.1/dist/lightweight-charts.standalone.production.js"></script>
  <script>
+
  (function(){
   // =========================================================
   // $SOS DEX Terminal — from scratch
@@ -1723,6 +1724,36 @@ display:none;
    throw lastErr || new Error('fetchJson failed');
   }
 
+  // -------------------- Request management (prevents stacked fetches + cancels stale requests)
+  const REQ = {
+   gen: 0,
+   ctrls: new Map(),
+   bump(){
+    this.gen++;
+    this.abortAll();
+    return this.gen;
+   },
+   abort(key){
+    const c = this.ctrls.get(key);
+    if(c){
+     try{ c.abort(); }catch(_){}
+     this.ctrls.delete(key);
+    }
+   },
+   abortAll(){
+    for(const c of this.ctrls.values()){
+     try{ c.abort(); }catch(_){}
+    }
+    this.ctrls.clear();
+   },
+   signal(key){
+    this.abort(key);
+    const c = new AbortController();
+    this.ctrls.set(key, c);
+    return c.signal;
+   }
+  };
+
   // Lightweight response cache (per URL) with TTL to reduce refetch + UI jank
   const JSON_CACHE = new Map();
   function cachedJson(url, {ttl=0, timeout=12000, retries=1, signal=null}={}){
@@ -1743,55 +1774,7 @@ display:none;
    });
    if(t>0) JSON_CACHE.set(url, {ts: Date.now(), v: p});
    return p;
-  }={}){
-   const proxy = (u)=>'https://api.allorigins.win/raw?url=' + encodeURIComponent(u);
-   let lastErr=null;
-   for(let i=0;i<=retries;i++){
-    const ctl = new AbortController();
-    const t = setTimeout(()=>ctl.abort(), timeout);
-    try{
-     const r = await fetch(url, {
-      headers:{'accept':'application/json'},
-      signal: ctl.signal,
-      cache: 'no-store'
-     });
-     clearTimeout(t);
-     if(!r.ok) throw new Error('HTTP '+r.status);
-     return await r.json();
-    }catch(e){
-     clearTimeout(t);
-     lastErr=e;
-     // try proxy for CORS / network error
-     try{
-      const msg = String(e&&e.message||e||'');
-      const isCors = (e instanceof TypeError) || /Failed to fetch|NetworkError|CORS/i.test(msg);
-      if(isCors){
-       const r2 = await fetch(proxy(url), {cache:'no-store'});
-       if(r2.ok){
-        const txt = await r2.text();
-        return JSON.parse(txt);
-       }
-      }
-     }catch(_){ }
-     if(i<retries) await sleep(250*(i+1));
-    }
-   }
-   throw lastErr || new Error('Network');
   }
-
-  function normalizeChain(x){
-   x = lc(x);
-   if(x==='sol' || x==='solana') return 'solana';
-   if(x==='eth' || x==='ethereum') return 'eth';
-   if(x==='bnb' || x==='bsc') return 'bsc';
-   if(x==='base') return 'base';
-   return 'solana';
-  }
-
-  function isEvmAddr(s){
-   return /^0x[a-fA-F0-9]{40}$/.test(String(s||'').trim());
-  }
-
   function isSolAddr(s){
    // best-effort base58 length
    s = String(s||'').trim();
@@ -2065,7 +2048,10 @@ function setMobileTab(which){
   let searchCtl=null;
 
   function showResults(html){
-   results.innerHTML = html;
+   if(showResults._last !== html){
+    results.innerHTML = html;
+    showResults._last = html;
+   }
    const open = !!html;
    results.style.display = open ? 'block' : 'none';
    if(searchScrim) searchScrim.style.display = open ? 'block' : 'none';
@@ -2089,11 +2075,12 @@ function setMobileTab(which){
    return Array.isArray(j?.pairs) ? j.pairs : [];
   }
 
-  async function dsTokenPairsV1(net, tokenAddr){
+  async function dsTokenPairsV1(net, tokenAddr, signal=null){
+   if(!signal) signal = REQ.signal('dsTokenPairs');
    const chain = NET_DS[normalizeChain(net)] || 'solana';
    const url = `https://api.dexscreener.com/token-pairs/v1/${chain}/${encodeURIComponent(tokenAddr)}`;
    try{
-    const j = await cachedJson(url, {ttl:15000, timeout:14000, retries:1});
+    const j = await cachedJson(url, {ttl:15000, timeout:14000, retries:1, signal});
     return Array.isArray(j) ? j : [];
    }catch(_){
     return [];
@@ -2270,10 +2257,11 @@ function setMobileTab(which){
   // -------------------- Gecko: pool selection
   function geckoNet(){ return NET_GECKO[activeNet]; }
 
-  async function resolvePoolsFromGecko(tokenAddr){
+  async function resolvePoolsFromGecko(tokenAddr, signal=null){
+   if(!signal) signal = REQ.signal('geckoPools');
    // /networks/{network}/tokens/{token}/pools?include=base_token,quote_token&page=1
    const url = `${GECKO}/networks/${encodeURIComponent(geckoNet())}/tokens/${encodeURIComponent(tokenAddr)}/pools?include=base_token,quote_token,dex&page=1`;
-   const j = await cachedJson(url, {ttl:15000, timeout:14000, retries:1});
+   const j = await cachedJson(url, {ttl:15000, timeout:14000, retries:1, signal});
    return Array.isArray(j?.data) ? j.data : [];
   }
 
@@ -2644,9 +2632,10 @@ function setMobileTab(which){
    const _reqId = (refreshLatestCandles._reqId = (refreshLatestCandles._reqId||0) + 1);
    const _my = _reqId;
    try{
+    const signal = REQ.signal('candlesLatest');
     const gran = activeTF.gecko;
     const url = geckoCandlesUrl(gran, null);
-    const j = await cachedJson(url, {ttl:10000, timeout:16000, retries:1});
+    const j = await cachedJson(url, {ttl:10000, timeout:16000, retries:1, signal});
     if(_my !== refreshLatestCandles._reqId) return;
     if(_key0 !== `${activeNet}|${poolAddr}|${activeTF?.k||''}`) return;
     const part = mapGeckoOhlcv(j);
@@ -2682,6 +2671,7 @@ function setMobileTab(which){
    volumeSeries.setData([]);
 
    try{
+    const signal = REQ.signal('candles');
     const gran = activeTF.gecko;
     const needBars = desiredViewportBars();
     let pages = 0;
@@ -2690,7 +2680,7 @@ function setMobileTab(which){
 
     while(pages++ < (activeTF.k==='ALL' ? 10 : 6)){
      const url = geckoCandlesUrl(gran, before);
-     const j = await cachedJson(url, {ttl:20000, timeout:18000, retries:1});
+     const j = await cachedJson(url, {ttl:20000, timeout:18000, retries:1, signal});
      let part = mapGeckoOhlcv(j);
      if(!part.length){
       candlePager.hasMore = false;
@@ -2880,18 +2870,19 @@ function setMobileTab(which){
    `;
   }
 
-  async function geckoTrades(limit=80){
+  async function geckoTrades(limit=80, signal=null){
+   if(!signal) signal = REQ.signal('geckoTrades');
    const base = `${GECKO}/networks/${encodeURIComponent(geckoNet())}/pools/${encodeURIComponent(poolAddr)}/trades`;
    // GeckoTerminal often uses JSON:API pagination. Try page params first, then fallback to limit.
    try{
     const url1 = base + `?page=1&limit=${encodeURIComponent(limit)}`;
-    const j1 = await cachedJson(url1, {ttl:5000, timeout:14000, retries:1});
+    const j1 = await cachedJson(url1, {ttl:5000, timeout:14000, retries:1, signal});
     if(Array.isArray(j1?.data) && j1.data.length) return j1.data;
    }catch(e){ /* ignore */ }
 
    try{
     const url2 = base + `?limit=${encodeURIComponent(limit)}`;
-    const j2 = await cachedJson(url2, {ttl:5000, timeout:14000, retries:1});
+    const j2 = await cachedJson(url2, {ttl:5000, timeout:14000, retries:1, signal});
     if(Array.isArray(j2?.data)) return j2.data;
    }catch(e){ /* ignore */ }
 
@@ -3062,9 +3053,10 @@ function setMobileTab(which){
 
 
 // -------------------- Meta (refresh price/liquidity/24h)
-  async function geckoPool(){
+  async function geckoPool(signal=null){
+   if(!signal) signal = REQ.signal('geckoPool');
    const url = `${GECKO}/networks/${encodeURIComponent(geckoNet())}/pools/${encodeURIComponent(poolAddr)}?include=base_token,quote_token`;
-   const j = await cachedJson(url, {ttl:10000, timeout:14000, retries:1});
+   const j = await cachedJson(url, {ttl:10000, timeout:14000, retries:1, signal});
    return j?.data || null;
   }
 
@@ -3099,14 +3091,15 @@ function setMobileTab(which){
    });
   }
 
-  async function fetchTrendingPools(net){
+  async function fetchTrendingPools(net, signal=null){
+   if(!signal) signal = REQ.signal('trending');
    const key = String(net||'');
    const cached = TREND_CACHE.get(key);
    const now = Date.now();
    if(cached && (now - cached.ts) < 45000) return cached.data;
 
    const url = `${GECKO}/networks/${encodeURIComponent(net)}/trending_pools?include=base_token,quote_token,dex`;
-   const j = await cachedJson(url, {ttl:15000, timeout:14000, retries:1});
+   const j = await cachedJson(url, {ttl:15000, timeout:14000, retries:1, signal});
    const data = Array.isArray(j?.data) ? j.data : [];
    const inc = Array.isArray(j?.included) ? j.included : [];
    const incMap = new Map();
@@ -3202,8 +3195,12 @@ function setMobileTab(which){
    }
 
    const items = top.map((p,i)=>poolToTickerItem(p,i,incMap)).join('');
-   tickerTrack.innerHTML = items + items;
-   syncTickerMarquee();
+   const html = items + items;
+   if(renderTrendingTicker._last !== html){
+    tickerTrack.innerHTML = html;
+    renderTrendingTicker._last = html;
+    syncTickerMarquee();
+   }
   }
 
   async function startTrending(){
@@ -3274,7 +3271,9 @@ function setMobileTab(which){
   }
 
   async function openToken(input, opts={}){
+   const _gen = REQ.bump();
    try{ if(typeof stopLiveLoops==='function') stopLiveLoops(); }catch(_){ }
+   try{ if(searchCtl){ searchCtl.abort(); searchCtl=null; } }catch(_){ }
    const skipInput = !!opts.skipInput;
    const silent = !!opts.silent;
    const boot = !!opts.boot;
@@ -3718,6 +3717,7 @@ if(searchScrim){
   splitHandle.addEventListener('touchstart', onDown, {passive:false});
  }catch(_){}
 })();
+
 </script>
 </body>
 </html>
