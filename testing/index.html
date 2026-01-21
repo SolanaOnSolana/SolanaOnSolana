@@ -2705,7 +2705,6 @@ function setMobileTab(which){
         volumeSeries.update({time:c.time, value:c.volume, color:(c.close>=c.open)?'rgba(20,241,149,.35)':'rgba(255,77,109,.35)'});
       }
     }
-
     async function loadTrades(reset=false){
       if(!poolAddr) return;
       const _key0 = `${activeNet}|${poolAddr}`;
@@ -2720,6 +2719,10 @@ function setMobileTab(which){
           // Apply oldest->newest so candle updates are correct
           newly.slice().sort((a,b)=>a.tsMs-b.tsMs).forEach(applyTradeToCandles);
         }
+      }catch(e){
+        // keep UI stable
+      }
+    }
 
     function stopLiveLoops(){
       LIVE.gen++;
@@ -2746,7 +2749,7 @@ function setMobileTab(which){
           LIVE.tradeDelay = 1500;
         }catch(_){
           LIVE.failTrades = (LIVE.failTrades||0) + 1;
-          LIVE.tradeDelay = Math.min(5000, Math.round(1500 * Math.pow(1.25, LIVE.failTrades)));
+          LIVE.tradeDelay = Math.min(7000, Math.round(1500 * Math.pow(1.25, LIVE.failTrades)));
         }
         LIVE.tTrades = setTimeout(scheduleTrades, LIVE.tradeDelay);
       };
@@ -2768,14 +2771,8 @@ function setMobileTab(which){
       scheduleTrades();
       scheduleCandles();
       scheduleMeta();
-    }catch(_){ } }, 5000);
     }
-        statusEl.textContent = 'Live.';
-      }catch(e){
-        console.error(e);
-        statusEl.textContent = 'Trades error.';
-      }
-    }
+
 
 // -------------------- Meta (refresh price/liquidity/24h)
     async function geckoPool(){
