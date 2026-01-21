@@ -2808,7 +2808,7 @@ function setMobileTab(which){
         try{
           requestAnimationFrame(()=>{
             try{ chart.resize(chartEl.clientWidth, chartEl.clientHeight); }catch(_e){}
-            try{ if(!userInteracted && !didInitialViewport){ withProgrammaticRangeChange(()=>{ try{ if(!userInteracted && !didInitialViewport){ withProgrammaticRangeChange(()=>{ try{ chart.timeScale().fitContent(); }catch(_e){} }); didInitialViewport = true; didFitOnce = true; } }catch(_e){} }); didInitialViewport = true; didFitOnce = true; } }catch(_e){}
+            try{ if(!userInteracted && !didInitialViewport){ withProgrammaticRangeChange(()=>{ try{ /* SPEEDFIX step07: disable auto-fit on mode switching */ }catch(_e){}
           });
         }catch(_e){}
       }
@@ -3311,6 +3311,7 @@ function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
       try{
         const total = (rawCandles||[]).length;
         if(!total){ return; }
+        if(didInitialViewport){ syncBarSpacing(); return; }
         const bars = desiredViewportBars();
         const from = Math.max(0, total - bars);
         const to = Math.max(0, total - 1);
@@ -3318,6 +3319,7 @@ function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
           chart.timeScale().setVisibleLogicalRange({from, to});
           chart.timeScale().applyOptions({ rightOffset: 6 });
         });
+        didInitialViewport = true;
         syncBarSpacing();
       }catch(_){}
     }
@@ -4723,7 +4725,7 @@ if(searchScrim){
         try{
           if(mode!=='txns'){
             chart.applyOptions({ width: chartEl.clientWidth, height: chartEl.clientHeight });
-            if(!userInteracted && !didInitialViewport){ withProgrammaticRangeChange(()=>{ try{ chart.timeScale().fitContent(); }catch(_e){} }); didInitialViewport = true; didFitOnce = true; }
+            /* SPEEDFIX step07: disable auto-fit on tab/mode switching */
           }
         }catch(_){}
       });
