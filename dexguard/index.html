@@ -2780,9 +2780,10 @@ let seenMakers = new Set();
           _lastLogicalRange = null;
           if(poolAddr){
             try{ if(typeof stopLiveLoops==='function') stopLiveLoops(); }catch(_){ }
-            loadCandles(true);
-            loadTrades(true);
-            startLiveLoops();
+            (async()=>{
+              await Promise.all([loadCandles(true), loadTrades(true)]);
+              startLiveLoops();
+            })();
           }
         };
         tfRow.appendChild(b);
@@ -4228,6 +4229,7 @@ function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
         document.addEventListener('visibilitychange', ()=>{
           if(document.hidden){
             stopTrendingInterval();
+            try{ if(typeof stopLiveLoops==='function') stopLiveLoops(); }catch(_){ }
           }else{
             try{ trendingLoadFn && trendingLoadFn(); }catch(_){ }
             stopTrendingInterval();
@@ -4235,6 +4237,10 @@ function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
               if(document.hidden) return;
               try{ trendingLoadFn && trendingLoadFn(); }catch(_){ }
             }, 25000);
+            // resume candles/trades loops only if a token is active
+            if(poolAddr){
+              try{ if(typeof startLiveLoops==='function') startLiveLoops(); }catch(_){ }
+            }
           }
         });
       }
@@ -4279,6 +4285,7 @@ function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
       updateUrl();
       renderNetPills();
       applyNetTheme();
+      try{ if(typeof stopLiveLoops==='function') stopLiveLoops(); }catch(_){ }
       startTrending();
       // if address exists, load it
       if(addr){
@@ -4837,3 +4844,4 @@ if(searchScrim){
 })();</script>
 </body>
 </html>
+
