@@ -2292,6 +2292,42 @@ display:none;
       requestControllers.set(key, ac);
       return ac;
     }
+    let tradesFetchInFlight = false;
+    let tradesRenderTimer = null;
+    let tradesLastRenderAt = 0;
+    let tradesPendingPayload = null;
+    let tradesPendingReset = false;
+    let tradesPendingGuardId = 0;
+    let tradesPendingGuardKey = '';
+    function scheduleTradesRender(payload, reset, onRendered, guardId, guardKey){
+      tradesPendingPayload = payload;
+      if(reset) tradesPendingReset = true;
+      if(guardId != null) tradesPendingGuardId = guardId;
+      if(guardKey != null) tradesPendingGuardKey = guardKey;
+      const now = performance.now ? performance.now() : Date.now();
+      const elapsed = now - (tradesLastRenderAt||0);
+      const delay = Math.max(0, 250 - elapsed); // 4x/sec max
+      if(tradesRenderTimer) return;
+      tradesRenderTimer = setTimeout(()=>{
+        tradesRenderTimer = null;
+        // stale guard: never render after token/chain switch
+        if(tradesPendingGuardId && tradesPendingGuardId !== reqIds.trades) return;
+        if(tradesPendingGuardKey && loadTrades && loadTrades._inFlightKey && tradesPendingGuardKey !== loadTrades._inFlightKey) return;
+        tradesLastRenderAt = performance.now ? performance.now() : Date.now();
+        const data = tradesPendingPayload;
+        const doReset = tradesPendingReset;
+        tradesPendingReset = false;
+        try{
+          const newly = renderTrades(data, {reset: doReset}) || [];
+          if(typeof onRendered === 'function') onRendered(newly);
+        }catch(e){
+          // keep UI stable
+        }
+      }, delay);
+    }
+
+      }, delay);
+    }
     <!-- SPEEDFIX PATCH END -->
 
     // =========================================================
@@ -3776,24 +3812,38 @@ function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
       const newly = [];
 
       // Only add unseen trades (prepend)
+      const newRowsHtml = [];
       for(const tr of parsed){
         if(tradesSeen.has(tr.id)) continue;
         tradesSeen.add(tr.id);
         newly.push(tr);
+        newRowsHtml.push(tradeRowHtml(tr));
+      }
 
-        const html = tradeRowHtml(tr);
+      if(newRowsHtml.length){
+        const htmlStr = newRowsHtml.join('');
         tradesContainer().forEach(el=>{
           const head = el.querySelector('.tradeHead');
           const wrapper = document.createElement('div');
-          wrapper.innerHTML = html;
-          const row = wrapper.firstElementChild;
-          if(row){ row.classList.add('enter'); requestAnimationFrame(()=>{ row.classList.add('enter'); }); setTimeout(()=>{ try{ row.classList.remove('enter'); }catch(_){ } }, 420); }
-          // insert after head
-          el.insertBefore(row, head.nextSibling);
+          wrapper.innerHTML = htmlStr;
+          const frag = document.createDocumentFragment();
+          const rows = [];
+          while(wrapper.firstElementChild){
+            const row = wrapper.firstElementChild;
+            rows.push(row);
+            frag.appendChild(row);
+          }
+          if(rows.length){
+            // insert after head in a single batch
+            el.insertBefore(frag, head.nextSibling);
+            // animate new rows (batched)
+            rows.forEach(r=>{ try{ r.classList.add('enter'); }catch(_){ } });
+            requestAnimationFrame(()=>{ setTimeout(()=>{ rows.forEach(r=>{ try{ r.classList.remove('enter'); }catch(_){ } }); }, 420); });
+          }
           // cap rows
-          const rows = [...el.querySelectorAll('.tradeRow')];
-          if(rows.length>120){
-            rows.slice(120).forEach(r=>r.remove());
+          const rowsAll = [...el.querySelectorAll('.tradeRow')];
+          if(rowsAll.length>120){
+            rowsAll.slice(120).forEach(r=>r.remove());
           }
         });
       }
@@ -3854,9 +3904,13 @@ function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
     }
     async function loadTrades(reset=false){
       if(!poolAddr) return;
+      const _trKey = `trades:${activeNet}:${poolAddr}`;
+      if(tradesFetchInFlight && loadTrades._inFlightKey === _trKey) return;
+      loadTrades._inFlightKey = _trKey;
+      tradesFetchInFlight = true;
       const _key0 = `${activeNet}|${poolAddr}`;
       const id = ++reqIds.trades;
-      const ac = startRequest(`trades:${activeNet}:${poolAddr}`);
+      const ac = startRequest(_trKey);
       const _reqId = (loadTrades._reqId = (loadTrades._reqId||0) + 1);
       const _my = _reqId;
       try{
@@ -3864,13 +3918,20 @@ function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
         if(id !== reqIds.trades) return;
         if(_my !== loadTrades._reqId) return;
         if(_key0 !== `${activeNet}|${poolAddr}`) return;
-        const newly = renderTrades(data, {reset}) || [];
-        if(newly.length){
-          // Apply oldest->newest so candle updates are correct
-          newly.slice().sort((a,b)=>a.tsMs-b.tsMs).forEach(applyTradeToCandles);
-        }
+        scheduleTradesRender(data, reset, (newly)=>{
+          if(id !== reqIds.trades) return;
+          if(_my !== loadTrades._reqId) return;
+          if(_key0 !== `${activeNet}|${poolAddr}`) return;
+          if(newly && newly.length){
+            // Apply oldest->newest so candle updates are correct
+            newly.slice().sort((a,b)=>a.tsMs-b.tsMs).forEach(applyTradeToCandles);
+          }
+        }, id, _trKey);
       }catch(e){
         // keep UI stable
+      }
+      finally{
+        if(loadTrades._inFlightKey === _trKey) tradesFetchInFlight = false;
       }
     }
 
@@ -4780,3 +4841,84 @@ if(searchScrim){
 </script>
 </body>
 </html>
+
+
+/* ================================
+   MOBILE-ONLY TRENDING TICKER COMPACT + SMOOTH (step12)
+   - Reduce height/padding, smaller cards, better readability
+   - Smooth marquee (GPU-friendly), less heavy shadows (less jank)
+   - Keeps existing click behavior
+   - Desktop unchanged
+   ================================ */
+@media (max-width: 760px){
+  /* Compact container spacing */
+  .topBarInner{ gap: 8px !important; padding: 10px 10px 10px !important; }
+
+  /* Ticker wrapper: slimmer + lighter paint cost */
+  .tickerWrap{
+    padding: 6px 8px !important;
+    border-radius: 16px !important;
+    border: 1px solid rgba(255,255,255,.10) !important;
+    background: rgba(255,255,255,.045) !important;
+    box-shadow: 0 8px 22px rgba(0,0,0,.18) !important;
+  }
+  .tickerWrap:before,
+  .tickerWrap:after{
+    width: 28px !important;
+  }
+
+  /* Smooth animation: longer duration + GPU-friendly transforms */
+  .tickerTrack{
+    gap: 8px !important;
+    animation-duration: 28s !important;
+    transform: translate3d(0,0,0);
+    will-change: transform;
+    backface-visibility: hidden;
+    contain: content;
+  }
+  .tickerWrap:hover .tickerTrack{ animation-play-state: paused; }
+
+  /* Smaller ticker items (Dexscreener vibe) */
+  .tickerItem{
+    padding: 6px 8px !important;
+    gap: 8px !important;
+    font-size: 12px !important;
+    border-radius: 999px !important;
+    background: rgba(255,255,255,.05) !important;
+    border: 1px solid rgba(255,255,255,.10) !important;
+    box-shadow: none !important; /* reduce repaint/jank */
+  }
+  .tickerItem.top1{
+    background: rgba(255,215,0,.08) !important;
+    border-color: rgba(255,215,0,.26) !important;
+    box-shadow: none !important;
+  }
+
+  /* Logo smaller + crisp */
+  .tickerLogoWrap{
+    width: 22px !important;
+    height: 22px !important;
+    flex: 0 0 22px !important;
+    border-radius: 6px !important;
+    box-shadow: none !important;
+  }
+  .tickerLogoFallback{ font-size: 11px !important; }
+
+  /* Rank + % pills tighter */
+  .tickerItem .rank{
+    min-width: 24px !important;
+    height: 18px !important;
+    padding: 0 6px !important;
+    font-size: 11px !important;
+  }
+  .tickerPct{
+    height: 18px !important;
+    padding: 0 6px !important;
+    font-size: 11px !important;
+  }
+
+  /* Prefer reduced motion */
+  @media (prefers-reduced-motion: reduce){
+    .tickerTrack{ animation: none !important; }
+  }
+}
