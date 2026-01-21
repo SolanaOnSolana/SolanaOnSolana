@@ -3408,6 +3408,46 @@ function setSearchModalOpen(open){
       };
     }
 
+    function knownSymbolFromAddr(chain, address){
+      try{
+        const a = String(address||'').trim();
+        if(!a) return '';
+        const al = a.toLowerCase();
+        const ck = String(chain||'').toLowerCase();
+
+        // Native wrapped -> native symbol
+        const n = (NATIVE_QUOTES[ck]||[]).map(x=>String(x||'').toLowerCase());
+        if(n.includes(al)){
+          if(ck==='solana') return 'SOL';
+          if(ck==='bsc') return 'BNB';
+          return 'ETH'; // eth + base native wrapped
+        }
+
+        // Stable quotes -> stable symbol
+        const st = (STABLE_QUOTES[ck]||[]).map(x=>String(x||'').toLowerCase());
+        if(st.includes(al)){
+          // heuristic by position (matches file ordering)
+          if(ck==='eth' || ck==='bsc'){
+            if(al===st[1]) return 'USDT';
+            return 'USDC';
+          }
+          return 'USDC';
+        }
+
+      }catch(_){}
+      return '';
+    }
+
+    function normalizePairSymbol(sym){
+      const s = String(sym||'').trim();
+      if(!s) return '';
+      const up = s.toUpperCase();
+      if(up==='WSOL') return 'SOL';
+      if(up==='WETH') return 'ETH';
+      if(up==='WBNB') return 'BNB';
+      return up;
+    }
+
     function applyTokenHeader(meta){
       const symIn = String(meta?.symbol||'').trim();
       const nameIn = String(meta?.name||'').trim();
@@ -3418,16 +3458,19 @@ function setSearchModalOpen(open){
         ? symIn
         : ((curTokenSymbol && curTokenSymbol.toUpperCase()!=='TOKEN') ? curTokenSymbol : (symIn||'TOKEN'));
 
-      const quote = quoteIn || curQuoteSymbol || '';
+      const hasQuoteKey = !!(meta && Object.prototype.hasOwnProperty.call(meta,'quoteSymbol'));
+      const quote = hasQuoteKey ? quoteIn : (quoteIn || curQuoteSymbol || '');
       const name = nameIn || curTokenName || '';
       const img  = imgIn  || curTokenImage || '';
 
-      curTokenSymbol = sym || 'TOKEN';
-      curQuoteSymbol = quote || '';
+      curTokenSymbol = normalizePairSymbol(sym) || 'TOKEN';
+      curQuoteSymbol = normalizePairSymbol(quote) || '';
       if(name) curTokenName = name;
       if(imgIn) curTokenImage = imgIn;
 
-      const title = quote ? `$${sym}/${quote}` : `$${sym}`;
+      const symN = normalizePairSymbol(sym) || 'TOKEN';
+      const quoteN = normalizePairSymbol(quote) || '';
+      const title = quoteN ? `$${symN}/${quoteN}` : `$${symN}`;
       const nameHtml = (name && name.toLowerCase()!==sym.toLowerCase())
         ? `<span class="pairNameSub">${esc(name)}</span>` : '';
       pairNameEl.innerHTML = `${esc(title)}${nameHtml ? ' ' + nameHtml : ''}`;
@@ -3460,8 +3503,14 @@ function setSearchModalOpen(open){
       tokenSide = (base===lc(addr)) ? 'base' : ((quote===lc(addr)) ? 'quote' : 'base');
 
       // Meta (pick correct token side)
-      const baseSym = tokenSymFromPool(p,'base') || 'TOKEN';
-      const quoteSym = tokenSymFromPool(p,'quote') || '';
+      const baseAddr = tokenAddrFromPool(p,'base');
+      const quoteAddr = tokenAddrFromPool(p,'quote');
+
+      const baseSymRaw = tokenSymFromPool(p,'base') || knownSymbolFromAddr(activeNet, baseAddr) || 'TOKEN';
+      const quoteSymRaw = tokenSymFromPool(p,'quote') || knownSymbolFromAddr(activeNet, quoteAddr) || '';
+
+      const baseSym = normalizePairSymbol(baseSymRaw) || 'TOKEN';
+      const quoteSym = normalizePairSymbol(quoteSymRaw) || '';
       const sym = tokenSide==='base' ? baseSym : (quoteSym || baseSym || 'TOKEN');
       const quoteShown = tokenSide==='base' ? quoteSym : baseSym;
       const img = tokenSide==='base' ? tokenImgFromPool(p,'base') : tokenImgFromPool(p,'quote');
