@@ -2570,41 +2570,140 @@ display:none;
   }
 
   // ---- Birdeye (via worker)
-  async function bdsOhlcvToken(tfKey, signal){
-    const mint = String(curMint||'').trim();
-    if(!mint) return [];
-    const type = tfToBirdeyeType(tfKey);
-    const bars = tfBars(tfKey);
-    const sec = tfSec(tfKey);
-    const to = nowSec();
-    const from = Math.max(0, to - (bars*sec));
-    const url = `${BDS}/defi/ohlcv?address=${encodeURIComponent(mint)}&type=${encodeURIComponent(type)}&time_from=${from}&time_to=${to}`;
-    const j = await fetchJson(url, {timeout:14000, retries:0, signal});
-    const items = (j?.data?.items && Array.isArray(j.data.items)) ? j.data.items :
-                  (Array.isArray(j?.data) ? j.data : (Array.isArray(j) ? j : []));
-    const candles = items.map(x => ({
-      time: Number(x?.unix_time || x?.time || x?.t || 0),
-      open: Number(x?.o ?? x?.open ?? 0),
-      high: Number(x?.h ?? x?.high ?? 0),
-      low:  Number(x?.l ?? x?.low ?? 0),
-      close:Number(x?.c ?? x?.close ?? 0),
-      volume:Number(x?.v ?? x?.volume ?? 0),
-      v_usd:Number(x?.v_usd ?? 0)
-    }))
-    .filter(c => c.time>0 && isFinite(c.open) && isFinite(c.close))
-    .sort((a,b)=>a.time-b.time);
-    return candles;
+  async function bdsOhlcvToken(tfKey, bars=600, signal){
+  if(!curMint) return [];
+  const type = tfToBirdeyeType(tfKey);
+
+  const now = Math.floor(Date.now()/1000);
+  // seconds per bar (approx) for time window
+  const secPer =
+    (type === '1m') ? 60 :
+    (type === '5m') ? 300 :
+    (type === '15m') ? 900 :
+    (type === '1H') ? 3600 :
+    (type === '4H') ? 14400 :
+    (type === '1D') ? 86400 :
+    (type === '1W') ? 604800 :
+    900;
+
+  const from = Math.max(0, now - (secPer * Math.max(50, Number(bars)||600)));
+  const url = `${BDS}/defi/ohlcv?address=${encodeURIComponent(curMint)}&type=${encodeURIComponent(type)}&time_from=${encodeURIComponent(from)}&time_to=${encodeURIComponent(now)}`;
+
+  try{
+    const j = await fetchJson(url, { timeout: 16000, retries: 1, signal });
+
+    // Worker should return {data:{items:[...]}} but be defensive
+    const items =
+      (j?.data?.items && Array.isArray(j.data.items)) ? j.data.items :
+      (Array.isArray(j?.data) ? j.data :
+      (Array.isArray(j) ? j : []));
+
+    // Normalize Birdeye OHLCV -> lightweight-charts format {time, open, high, low, close, volume}
+    const out = (items || []).map(x => {
+      // time may be unix_time (sec) or unixTime (sec) or ms
+      let t = Number(x?.unix_time ?? x?.unixTime ?? x?.time ?? x?.t ?? 0);
+      if(t > 1e12) t = Math.floor(t/1000); // ms -> sec
+      const o = Number(x?.o ?? x?.open ?? 0);
+      const h = Number(x?.h ?? x?.high ?? 0);
+      const l = Number(x?.l ?? x?.low ?? 0);
+      const c = Number(x?.c ?? x?.close ?? 0);
+      const v = Number(x?.v ?? x?.volume ?? x?.vol ?? x?.v_usd ?? 0);
+      return { time: t, open: o, high: h, low: l, close: c, volume: v };
+    }).filter(c => c.time > 0 && isFinite(c.open) && isFinite(c.close) && isFinite(c.high) && isFinite(c.low))
+      .sort((a,b)=>a.time-b.time);
+
+    try{ window.__DG_LAST_BDS_OHLCV = { url, count: out.length, at: Date.now() }; }catch(_){}
+    return out;
+  }catch(e){
+    try{
+      console.warn('[BDS] ohlcv failed', e);
+      window.__DG_LAST_BDS_OHLCV = { url, count: 0, at: Date.now(), err: String(e?.message||e) };
+    }catch(_){}
+    return [];
   }
+}
 
   async function bdsTradesToken(limit=80, signal){
-    const mint = String(curMint||'').trim();
-    if(!mint) return [];
-    const url = `${BDS}/defi/txs/token?address=${encodeURIComponent(mint)}&offset=0&limit=${encodeURIComponent(limit)}`;
-    const j = await fetchJson(url, {timeout:14000, retries:0, signal});
-    const items = (j?.data?.items && Array.isArray(j.data.items)) ? j.data.items :
-                  (Array.isArray(j?.data) ? j.data : (Array.isArray(j) ? j : []));
-    return items;
+  if(!curMint) return [];
+  const url = `${BDS}/defi/txs/token?address=${encodeURIComponent(curMint)}&offset=0&limit=${encodeURIComponent(limit)}`;
+  try{
+    const j = await fetchJson(url, { timeout: 14000, retries: 1, signal });
+
+    const items =
+      (j?.data?.items && Array.isArray(j.data.items)) ? j.data.items :
+      (Array.isArray(j?.data) ? j.data :
+      (Array.isArray(j) ? j : []));
+
+    // Birdeye returns rich items already. Normalize minimally to what renderTrades() expects.
+    const out = (items || []).map(it => {
+      let ts = Number(it?.blockUnixTime ?? it?.time ?? it?.timestamp ?? it?.unix_time ?? it?.unixTime ?? 0);
+      if(ts > 1e12) ts = Math.floor(ts/1000);
+
+      const side = String(it?.side ?? it?.kind ?? it?.type ?? '').toLowerCase();
+      const txHash = it?.txHash ?? it?.tx_hash ?? it?.hash ?? it?.signature ?? null;
+      const owner = it?.owner ?? it?.maker ?? it?.tx_from ?? it?.from ?? null;
+
+      // Base / Quote objects (renderTrades expects base/quote with uiAmount/price/symbol)
+      const base = it?.base && typeof it.base === 'object' ? it.base : {};
+      const quote = it?.quote && typeof it.quote === 'object' ? it.quote : {};
+
+      // Fallbacks for older shapes
+      const baseUi = (base?.uiAmount ?? it?.base?.uiAmount ?? it?.base_amount ?? it?.baseAmount ?? null);
+      const quoteUi = (quote?.uiAmount ?? it?.quote?.uiAmount ?? it?.quote_amount ?? it?.quoteAmount ?? null);
+
+      const basePrice = (base?.price ?? it?.tokenPrice ?? it?.price ?? it?.price_usd ?? null);
+
+      const outBase = {
+        symbol: base?.symbol ?? it?.base_symbol ?? base?.ticker ?? '',
+        decimals: base?.decimals ?? it?.base_decimals ?? null,
+        address: base?.address ?? curMint,
+        amount: base?.amount ?? it?.base_amount ?? null,
+        uiAmount: baseUi,
+        price: basePrice
+      };
+
+      const outQuote = {
+        symbol: quote?.symbol ?? it?.quote_symbol ?? quote?.ticker ?? '',
+        decimals: quote?.decimals ?? it?.quote_decimals ?? null,
+        address: quote?.address ?? null,
+        amount: quote?.amount ?? it?.quote_amount ?? null,
+        uiAmount: quoteUi,
+        price: quote?.price ?? null
+      };
+
+      // USD volume hint (optional)
+      const volUsd =
+        it?.volumeUsd ?? it?.valueUsd ??
+        (baseUi != null && basePrice != null ? (Number(baseUi) * Number(basePrice)) : null) ??
+        null;
+
+      return {
+        ...it,
+        time: ts,
+        timestamp: ts,
+        side,
+        kind: side,
+        owner,
+        maker: owner,
+        txHash,
+        tx_hash: txHash,
+        base: outBase,
+        quote: outQuote,
+        volumeUsd: volUsd,
+        valueUsd: volUsd
+      };
+    });
+
+    try{ window.__DG_LAST_BDS_TRADES = { url, count: out.length, at: Date.now() }; }catch(_){}
+    return out;
+  }catch(e){
+    try{
+      console.warn('[BDS] trades failed', e);
+      window.__DG_LAST_BDS_TRADES = { url, count: 0, at: Date.now(), err: String(e?.message||e) };
+    }catch(_){}
+    return [];
   }
+}
 
   // ---- Formatting
   function fmtNum(n, d=2){
@@ -2827,35 +2926,49 @@ display:none;
   }
 
   async function loadCandles(fit=true){
-    try{
-      abort('candles');
-      const ctrl = new AbortController(); inFlight.candles = ctrl;
-      const candles = await bdsOhlcvToken(activeTF==='ALL' ? '15m' : activeTF, ctrl.signal);
-      rawCandles = candles || [];
-      if(rawCandles.length){
-        applyCandles(fit);
-      } else {
-        ensureChart();
-        try{ candleSeries.setData([]); }catch(_){}
-      }
-    }catch(e){}
-  }
+  const id = ++reqIds.candles;
+  const ac = startRequest('candles');
+  try{
+    setStatus('Loading candles…');
 
-  async function loadTrades(initial=false){
-    try{
-      abort('trades');
-      const ctrl = new AbortController(); inFlight.trades = ctrl;
-      const items = await bdsTradesToken(80, ctrl.signal);
-      if(!Array.isArray(items)) return;
-      const top = items[0];
-      const sig = String(top?.txHash || top?.tx_hash || top?.blockUnixTime || top?.time || '');
-      if(initial || !lastTradeSig || sig !== lastTradeSig){
-        lastTradeSig = sig || lastTradeSig;
-        renderTrades(items);
-        if(top) updateLastCandleFromTrade(top);
-      }
-    }catch(e){}
+    const tf = activeTF || '15m';
+    const candles = await bdsOhlcvToken(tf, 600, ac.signal);
+    if(id !== reqIds.candles) return;
+
+    rawCandles = Array.isArray(candles) ? candles : [];
+    applyCandles(fit);
+
+    if(rawCandles.length){
+      setStatus('');
+    }else{
+      // keep status visible so user knows it's data, not UI crash
+      setStatus('No candles for this token / timeframe.');
+    }
+  }catch(e){
+    if(id !== reqIds.candles) return;
+    try{ console.warn('loadCandles failed', e); }catch(_){}
+    rawCandles = [];
+    try{ applyCandles(fit); }catch(_){}
+    setStatus('Candles failed — check console / BDS worker.');
   }
+}
+
+  async function loadTrades(){
+  const id = ++reqIds.trades;
+  const ac = startRequest('trades');
+  try{
+    const trades = await bdsTradesToken(80, ac.signal);
+    if(id !== reqIds.trades) return;
+
+    lastTrades = Array.isArray(trades) ? trades : [];
+    renderTrades(lastTrades);
+  }catch(e){
+    if(id !== reqIds.trades) return;
+    try{ console.warn('loadTrades failed', e); }catch(_){}
+    lastTrades = [];
+    renderTrades([]);
+  }
+}
 
   function startLive(){
     stopLive();
