@@ -188,6 +188,15 @@
     state.timer = setInterval(refreshOnce, 3000);
   }
 
+  
+  // Autofill worker base URL (from ?worker=, localStorage, or if hosted on workers.dev)
+  try {
+    const guess = dgGuessWorkerBase();
+    if (!$('worker').value.trim() && guess) $('worker').value = guess;
+    if ($('worker').value.trim()) dgSetWorkerBase($('worker').value.trim());
+    $('worker').addEventListener('input', ()=> dgSetWorkerBase($('worker').value.trim()));
+  } catch(_) {}
+
   $('chain').addEventListener('change', ()=>{
     state.chain = $('chain').value;
   });
@@ -195,6 +204,7 @@
   $('btnLoad').addEventListener('click', ()=>{
     state.chain = $('chain').value;
     state.workerBase = $('worker').value.trim();
+    dgSetWorkerBase(state.workerBase);
     state.address = $('mint').value.trim();
     $('title').textContent = `${state.chain.toUpperCase()} / ${state.address || '—'}`;
     $('subtitle').textContent = state.workerBase ? state.workerBase : '(same origin)';
