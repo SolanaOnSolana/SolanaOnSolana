@@ -1,371 +1,91 @@
-<!doctype html>
-<html>
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>DexGuard — No Birdeye (Solana live via Helius)</title>
-  <style>
-    :root { color-scheme: dark; --bg:#0b0f14; --panel:#101722; --muted:#9fb0c3; --fg:#e7edf4; --acc:#f5c84c; --red:#ff4d4f; --green:#2ecc71; }
-    body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.35 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial;}
-    header{display:flex;gap:12px;align-items:center;justify-content:space-between;padding:12px 14px;background:linear-gradient(180deg,#0f151f,#0b0f14);border-bottom:1px solid rgba(255,255,255,.06);position:sticky;top:0;z-index:50}
-    .brand{display:flex;gap:10px;align-items:center}
-    .dot{width:10px;height:10px;border-radius:50%;background:var(--acc);box-shadow:0 0 0 4px rgba(245,200,76,.08)}
-    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-    input,select,button{background:var(--panel);color:var(--fg);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:10px 12px;outline:none}
-    input{min-width:320px}
-    button{cursor:pointer}
-    button.primary{border-color:rgba(245,200,76,.35);}
-    .grid{display:grid;grid-template-columns:2fr 1fr;gap:12px;padding:12px}
-    @media (max-width:980px){.grid{grid-template-columns:1fr} input{min-width:0;width:100%}}
-    .card{background:var(--panel);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:12px}
-    .kpis{display:flex;gap:12px;flex-wrap:wrap}
-    .kpi{min-width:140px}
-    .kpi .l{color:var(--muted);font-size:12px}
-    .kpi .v{font-size:16px;font-weight:700;margin-top:4px}
-    .muted{color:var(--muted)}
-    .warn{color:var(--acc)}
-    .err{color:var(--red)}
-    .ok{color:var(--green)}
-    .tbl{width:100%;border-collapse:collapse;margin-top:8px}
-    .tbl th,.tbl td{padding:8px 6px;border-bottom:1px solid rgba(255,255,255,.08);text-align:left;font-size:12px}
-    .pill{display:inline-block;padding:2px 8px;border-radius:999px;border:1px solid rgba(255,255,255,.12);color:var(--muted);font-size:11px}
-    #chart{height:360px}
-    .small{font-size:12px}
-  </style>
-</head>
-<body>
-  <header>
-    <div class="brand"><span class="dot"></span><div><div style="font-weight:800">DexGuard</div><div class="muted small">No Birdeye — Live SOL trades via Helius + DexScreener price</div></div></div>
-    <div class="row">
-      <select id="chain">
-        <option value="solana" selected>SOL</option>
-        <option value="ethereum">ETH (price only)</option>
-        <option value="bsc">BNB (price only)</option>
-        <option value="base">BASE (price only)</option>
-      </select>
-      <input id="worker" placeholder="Worker base URL (e.g. https://xxxx.workers.dev)" />
-      <input id="mint" placeholder="Token address/mint" /><input id="pair" placeholder="Pair/Pool (optional)" />
-      <button id="btnLoad" class="primary">Load</button>
-    </div>
-  </header>
-
-  <div class="grid">
-    <div class="card">
-      <div class="row" style="justify-content:space-between;align-items:flex-end">
-        <div>
-          <div id="title" style="font-weight:800;font-size:16px">—</div>
-          <div class="muted small" id="subtitle">—</div>
-        </div>
-        <div class="row">
-          <span class="pill" id="srcPrice">price: —</span>
-          <span class="pill" id="srcTrades">trades: —</span>
-          <span class="pill" id="srcCandles">candles: —</span>
-        </div>
-      </div>
-      <div class="kpis" style="margin-top:10px">
-        <div class="kpi"><div class="l">Price (USD)</div><div class="v" id="kpiPrice">—</div></div>
-        <div class="kpi"><div class="l">Last Trade</div><div class="v" id="kpiLast">—</div></div>
-        <div class="kpi"><div class="l">Status</div><div class="v" id="kpiStatus">—</div></div>
-      </div>
-      <div style="margin-top:10px" class="muted small">Chart is a lightweight placeholder here (your main Dex UI can keep using lightweight-charts). This page is for API verification without Birdeye.</div>
-      <div id="chart" class="card" style="margin-top:10px;background:#0b0f14;border-style:dashed;border-color:rgba(255,255,255,.15)">
-        <div class="muted" style="padding:14px">(Use your main app chart. If you want, I can patch your main HTML to read /api/candles + /api/trades from this worker.)</div>
-      </div>
-    </div>
-
-    <div class="card">
-      <div style="font-weight:800">Live Trades</div>
-      <div class="muted small">Solana only (needs HELIUS_API_KEY in Worker env)</div>
-      <table class="tbl" id="tradesTbl">
-        <thead><tr><th>Time</th><th>Side</th><th>Price</th><th>USD</th><th>TX</th></tr></thead>
-        <tbody></tbody>
-      </table>
-    </div>
-  </div>
-
-<script>
-  // Normalize worker base URL (must be https://<name>.<account>.workers.dev)
-  function normalizeWorkerBase(u) {
-    u = String(u || "").trim();
-    if (!u) return "";
-    // common mistake: paste Cloudflare dashboard URL
-    if (u.includes("dash.cloudflare.com")) return "__DASH__";
-    // remove trailing slashes
-    u = u.replace(/\/+$/, "");
-    return u;
-  }
-
-  const $ = (id)=>document.getElementById(id);
-
-  const state = {
-    chain: 'solana',
-    address: '',
-    timer: null,
-    workerBase: '',
-    pair: '',
-  };
-
-  function dgGuessWorkerBase(){
-    // try saved
-    try{ const s = localStorage.getItem('dg_worker_base'); if(s) return dgNormalizeBase(s); }catch(e){}
-    // if we are served from a worker, origin might already be correct
-    try{ if(location.hostname.endsWith('workers.dev')) return location.origin; }catch(e){}
-    return '';
-  }
-
-  
-  // ----- setters (were missing in v1.3.2) -----
-  function dgNormalizeBase(raw){
-    let s = String(raw || '').trim();
-    if (!s) return '';
-    // Prevent wrong "dashboard" URL input
-    if (s.includes('dash.cloudflare.com')) return '';
-    if (!/^https?:\/\//i.test(s)) s = 'https://' + s;
-    s = s.replace(/\/+$/, '');
-    return s;
-  }
-  function dgSetWorkerBase(u){
-    const base = dgNormalizeBase(u);
-    state.workerBase = base;
-    try { localStorage.setItem('dg_worker_base', base); } catch(_){}
-    const el = document.getElementById('worker');
-    if (el && el.value !== base) el.value = base;
-    return base;
-  }
-  function dgSetChain(c){
-    c = String(c || 'solana').trim().toLowerCase();
-    if (c === 'eth') c = 'ethereum';
-    if (c === 'bnb') c = 'bsc';
-    state.chain = c || 'solana';
-    try { localStorage.setItem('dg_chain', state.chain); } catch(_){}
-    const el = document.getElementById('chain');
-    if (el && el.value !== state.chain) el.value = state.chain;
-    return state.chain;
-  }
-  function dgSetAddr(a){
-    a = String(a || '').trim();
-    state.address = a;
-    try { localStorage.setItem('dg_addr', a); } catch(_){}
-    const el = document.getElementById('mint');
-    if (el && el.value !== a) el.value = a;
-    return a;
-  }
-
-function fmtNum(x, d=8){
-    const n = Number(x);
-    if(!isFinite(n)) return '—';
-    return n.toLocaleString(undefined,{maximumFractionDigits:d});
-  }
-
-  function fmtTime(sec){
-    if(!sec) return '—';
-    const dt = new Date(sec*1000);
-    return dt.toLocaleTimeString();
-  }
-
-  function shortTx(s){
-    if(!s) return '—';
-    return s.slice(0,6)+'…'+s.slice(-6);
-  }
-
-  function setStatus(msg, cls){
-    const el = $('kpiStatus');
-    el.textContent = msg;
-    el.className = 'v ' + (cls||'');
-  }
-
-  async function api(path){
-    const base = state.workerBase || location.origin;
-    const url = base.replace(/\/$/,'') + path;
-    const res = await fetch(url, { cache: 'no-store' });
-    const j = await res.json().catch(()=>null);
-    return { res, j, url };
-  }
-
-  async function refreshOnce(){
-    if(!state.address) return;
-    const chain = state.chain;
-    const addr = state.address;
-    const pairParam = state.pair ? `&pair=${encodeURIComponent(state.pair)}` : '';
-
-    // resolve (shows why "pair_not_found" happens)
-    try{
-      const rr = await api(`/api/resolve?chain=${encodeURIComponent(chain)}&address=${encodeURIComponent(addr)}${pairParam}`);
-      if(rr.j?.ok){
-        const mint = rr.j?.tokenMint || addr;
-        const p = rr.j?.pair || '—';
-        diag(`<b>Resolve:</b> <span class="ok">OK</span> • <b>mint</b>=${mint} • <b>pair</b>=${p} • <b>src</b>=${rr.j?.source||'—'}`);
-        if(!state.pair && rr.j?.pair) state.pair = rr.j.pair;
-      } else {
-        diag(`<b>Resolve:</b> <span class="bad">FAIL</span> • ${rr.j?.error||'unknown'}<br>${rr.j?.hint||''}`);
-        $('srcPrice').textContent = 'price: pair_not_found';
-        $('srcTrades').textContent = 'trades: pair_not_found';
-        $('srcCandles').textContent = 'candles: pair_not_found';
-        return;
-      }
-    } catch(e){
-      diag(`<b>Resolve:</b> <span class="bad">ERROR</span> • ${String(e)}`);
-      return;
-    }
-
-
-    // price
-    try{
-      const r = await api(`/api/price?chain=${encodeURIComponent(chain)}&address=${encodeURIComponent(addr)}${pairParam}`);
-      if(!state.pair && r.j?.pair) state.pair = r.j.pair;
-      $('srcPrice').textContent = 'price: ' + (r.j?.source || '—');
-      $('kpiPrice').textContent = fmtNum(r.j?.price, 10);
-    }catch(e){
-      $('srcPrice').textContent = 'price: error';
-    }
-
-    // trades
-    try{
-      const r = await api(`/api/trades?chain=${encodeURIComponent(chain)}&address=${encodeURIComponent(addr)}${pairParam}&limit=30`);
-      if(!state.pair && r.j?.pair) state.pair = r.j.pair;
-      $('srcTrades').textContent = 'trades: ' + (r.j?.source || '—');
-      const items = Array.isArray(r.j?.items) ? r.j.items : [];
-      $('kpiLast').textContent = items[0]?.price ? fmtNum(items[0].price, 10) : '—';
-
-      const tb = $('tradesTbl').querySelector('tbody');
-      tb.innerHTML = '';
-      for(const tr of items.slice(0,30)){
-        const trEl = document.createElement('tr');
-        const side = (tr.side||'').toLowerCase();
-        trEl.innerHTML = `
-          <td class="muted">${fmtTime(tr.t)}</td>
-          <td class="${side==='buy'?'ok':side==='sell'?'err':'muted'}">${(tr.side||'—').toUpperCase()}</td>
-          <td>${fmtNum(tr.price, 10)}</td>
-          <td class="muted">${fmtNum(tr.usd, 2)}</td>
-          <td class="muted">${shortTx(tr.tx)}</td>
-        `;
-        tb.appendChild(trEl);
-      }
-
-      if(chain !== 'solana'){
-        setStatus('EVM chains: price only (no free live trades).', 'warn');
-      } else if(r.j?.source === 'missing_helius_key'){
-        setStatus('Missing HELIUS_API_KEY in Worker env.', 'err');
-      } else {
-        setStatus('OK', 'ok');
-      }
-    }catch(e){
-      $('srcTrades').textContent = 'trades: error';
-      setStatus('Error fetching trades', 'err');
-    }
-
-    // candles (smoke test)
-    try{
-      const now = Math.floor(Date.now()/1000);
-      const r = await api(`/api/candles?chain=${encodeURIComponent(chain)}&address=${encodeURIComponent(addr)}${pairParam}&tf=15m&limit=60&to=${now}`);
-      $('srcCandles').textContent = 'candles: ' + (r.j?.source || '—') + ' ('+(r.j?.count ?? '0')+')';
-    }catch(e){
-      $('srcCandles').textContent = 'candles: error';
-    }
-  }
-
-  async function start(){
-    if(state.timer) clearInterval(state.timer);
-
-// Resolve best pair so /api/price|candles|trades can work reliably.
-// If you know the Pool/Pair already, paste it into the "Pair/Pool" field.
-const manualPair = (state.pair || '').trim();
-if (manualPair) {
-  state.pair = manualPair;
-  $('srcPrice').textContent = 'price: manual_pair';
-  $('srcTrades').textContent = 'trades: manual_pair';
-  $('srcCandles').textContent = 'candles: manual_pair';
-} else {
-  state.pair = '';
-  try{
-    const tp = await api(`/api/token-pairs?chain=${encodeURIComponent(state.chain)}&address=${encodeURIComponent(state.address)}`);
-    const items = Array.isArray(tp?.j?.items) ? tp.j.items : [];
-    if(items.length){
-      items.sort((a,b)=>(Number(b.liquidityUsd||0)-Number(a.liquidityUsd||0)));
-      state.pair = items[0]?.pairAddress || '';
-      $('srcPrice').textContent = 'price: '+(tp.j.source||'dexscreener');
-      $('srcTrades').textContent = 'trades: '+(tp.j.source||'dexscreener');
-      $('srcCandles').textContent = 'candles: '+(tp.j.source||'dexscreener');
-    } else {
-      // Show a useful reason if worker detected DS block/unavailability.
-      const err = tp?.j?.error || 'pair_not_found';
-      $('srcPrice').textContent = 'price: '+err;
-      $('srcTrades').textContent = 'trades: '+err;
-      $('srcCandles').textContent = 'candles: '+err;
-    }
-  }catch(_){
-    $('srcPrice').textContent = 'price: pair_resolve_failed';
-    $('srcTrades').textContent = 'trades: pair_resolve_failed';
-    $('srcCandles').textContent = 'candles: pair_resolve_failed';
-    state.pair = '';
-  }
-}
-
-await refreshOnce();
-    state.timer = setInterval(refreshOnce, 3000);
-  }
-
-  
-  // Autofill worker base URL (from ?worker=, localStorage, or if hosted on workers.dev)
-  try {
-    const guess = dgGuessWorkerBase();
-    if (!$('worker').value.trim() && guess) $('worker').value = guess;
-    if ($('worker').value.trim()) dgSetWorkerBase($('worker').value.trim());
-    $('worker').addEventListener('input', ()=> dgSetWorkerBase($('worker').value.trim()));
-  } catch(_) {}
-
-  $('chain').addEventListener('change', ()=>{
-    state.chain = $('chain').value;
-  });
-
-  $('btnLoad').addEventListener('click', ()=>{
-    state.chain = $('chain').value;
-    state.workerBase = $('worker').value.trim();
-    dgSetWorkerBase(state.workerBase);
-    state.address = $('mint').value.trim();
-    state.pair = ($('pair') ? $('pair').value.trim() : '');
-    $('title').textContent = `${state.chain.toUpperCase()} / ${state.address || '—'}`;
-    $('subtitle').textContent = state.workerBase ? state.workerBase : '(same origin)';
-    start();
-  });
-
-  // Prefill (optional)
-  $('worker').value = '';
-  $('mint').value = 'DezXA8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263';
-
-  // ----- boot -----
-  window.addEventListener('DOMContentLoaded', () => {
-    try {
-      const savedBase = (localStorage.getItem('dg_worker_base') || '').trim();
-      const savedChain = (localStorage.getItem('dg_chain') || '').trim();
-      const savedAddr = (localStorage.getItem('dg_addr') || '').trim();
-      const savedPair = (localStorage.getItem('dg_pair') || '').trim();
-
-      if (savedBase) document.getElementById('worker').value = savedBase;
-      if (savedChain) document.getElementById('chain').value = savedChain;
-      if (savedAddr) document.getElementById('mint').value = savedAddr;
-      if (savedPair) document.getElementById('pair').value = savedPair;
-
-      dgSetWorkerBase(document.getElementById('worker').value);
-      dgSetChain(document.getElementById('chain').value);
-      dgSetAddr(document.getElementById('mint').value);
-
-      start();
-      // one immediate refresh so UI doesn't look stuck
-      refreshOnce().catch(()=>{});
-    } catch (e) {
-      console.error('[DG] boot error', e);
-    }
-  });
-
-
-  try {
-    const saved = localStorage.getItem('dg_worker');
-    if (saved && document.getElementById('worker') && !document.getElementById('worker').value) {
-      document.getElementById('worker').value = saved.trim();
-    }
-  } catch (e) {}
-
-</script>
-</body>
-</html>
+ (cd "$(git rev-parse --show-toplevel)" && git apply --3way <<'EOF' 
+diff --git a/dexguard/index.html b/dexguard/index.html
+index 8dfe8d57fde5e5417ae20b4278ec1566bb23244b..ca5c5ffca56f7a14b7830f35a5e37c5e921711ef 100644
+--- a/dexguard/index.html
++++ b/dexguard/index.html
+@@ -2875,52 +2875,53 @@ if(typeof DBG.metrics.lastClickAction==='undefined') DBG.metrics.lastClickAction
+         if(tradesPendingGuardId && tradesPendingGuardId !== reqIds.trades) return;
+         if(tradesPendingGuardKey && loadTrades && loadTrades._inFlightKey && tradesPendingGuardKey !== loadTrades._inFlightKey) return;
+         tradesLastRenderAt = performance.now ? performance.now() : Date.now();
+         const data = tradesPendingPayload;
+         const doReset = tradesPendingReset;
+         tradesPendingReset = false;
+         try{
+           const newly = renderTrades(data, {reset: doReset}) || [];
+           if(typeof onRendered === 'function') onRendered(newly);
+         }catch(e){
+           // keep UI stable
+         }
+       }, delay);
+     }
+     // SPEEDFIX PATCH END
+ 
+     // =========================================================
+     //  $SOS DEX Terminal — from scratch
+     //  Data sources:
+     //   - Token discovery: DexScreener public API (search + token pairs)
+     //   - OHLCV + trades: GeckoTerminal API (pools)
+     //  No embeds. No third-party iframes.
+     // =========================================================
+ 
+     // -------------------- Constants
+-    const GECKO = 'https://api.geckoterminal.com/api/v2';
+-    const DS = 'https://api.dexscreener.com/latest/dex';
++    const API_BASE = (typeof location !== 'undefined' && location.origin) ? location.origin : '';
++    const GECKO = `${API_BASE}/api/gecko/api/v2`;
++    const DS = `${API_BASE}/api/ds/latest/dex`;
+ 
+     const NET_LABEL = { solana:'SOL', eth:'ETH', bsc:'BNB', base:'BASE' };
+     const NET_DS = { solana:'solana', eth:'ethereum', bsc:'bsc', base:'base' };
+     const NET_GECKO = { solana:'solana', eth:'eth', bsc:'bsc', base:'base' };
+ 
+     const DEFAULT_TOKEN = {
+       solana: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', // USDC
+       eth:    '0xA0b86991c6218b36c1d19d4a2e9eb0ce3606eb48',  // USDC
+       bsc:    '0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d',  // USDC
+       base:   '0x833589fCD6eDb6E08f4c7C32D4f71b54bda02913'   // USDC
+     };
+ 
+     const DEFAULT_MARKET_TOKEN = {
+       solana: 'So11111111111111111111111111111111111111112', // wSOL
+       eth:    '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',   // WETH
+       bsc:    '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c',   // WBNB
+       base:   '0x4200000000000000000000000000000000000006'    // WETH on Base
+     };
+ 
+     // Prefer stable quote pools for chart correctness
+     const STABLE_QUOTES = {
+       solana: ['EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'],
+       eth: ['0xA0b86991c6218b36c1d19d4a2e9eb0ce3606eb48','0xdAC17F958D2ee523a2206206994597C13D831ec7'],
+       bsc: ['0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d','0x55d398326f99059fF775485246999027B3197955'],
+       base:['0x833589fCD6eDb6E08f4c7C32D4f71b54bda02913']
+@@ -7976,26 +7977,25 @@ if(searchScrim){
+         // Seed lastAction from existing input, if any
+         var q = document.getElementById("q");
+         var v = q ? String(q.value||"").trim() : "";
+         if(v && !DG_GUARD.lastAction){
+           DG_GUARD.lastAction = { type:"token", input: v, opts: {silent:true, skipInput:true} };
+         }
+       }catch(_){}
+       dgScheduleChecks("boot");
+       // Periodic lightweight check (rare) to prevent blank screen persisting
+       try{
+         setInterval(function(){ dgRunGuardCheck("interval"); }, 12000);
+       }catch(_){}
+     }, {once:true});
+ 
+     // Also check after navigation events that often imply token changes
+     window.addEventListener("hashchange", function(){ dgScheduleChecks("hashchange"); }, {passive:true});
+     window.addEventListener("popstate", function(){ dgScheduleChecks("popstate"); }, {passive:true});
+   }catch(_){}
+ })();
+ </script>
+     <pre id="dgDebugText"></pre>
+   </div>
+ 
+ </body>
+ </html>
+-
+ 
+EOF
+)
