@@ -1,6 +1,8 @@
 <!doctype html>
 <html lang="en">
 <head>
+<script id="dg-loader-boot">document.documentElement.classList.add('dg-boot');</script>
+
  <meta charset="utf-8" />
  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
  <meta name="theme-color" content="#070711" />
@@ -2235,155 +2237,231 @@ body.net-base .chainBtn.active{ background: linear-gradient(90deg, rgba(0,82,255
 }
 </style>
 
-<!-- DG: Guardian Loader (auto-injected) -->
+<!-- DexGuard Guardian Loader (v2) -->
 <style id="dg-loader-style">
-  html.dg-preload-lock, html.dg-preload-lock body { overflow: hidden !important; height: 100%; }
+  :root{
+    --dg-gold:#ffcf4a;
+    --dg-gold2:#ffd86a;
+    --dg-bg:#07070b;
+    --dg-ink:#f6f0d9;
+    --dg-muted:rgba(246,240,217,.72);
+    --dg-glow:rgba(255,207,74,.55);
+  }
 
-  #dgPreload.dg-preload{
-    position: fixed; inset: 0; z-index: 2147483000;
-    display: grid; place-items: center;
+  /* Page reveal (smooth handoff) */
+  html.dg-boot body{ overflow:hidden !important; }
+  html.dg-boot body > *:not(#dgLoader){ opacity:0; transform:translateY(10px) scale(1.01); filter:blur(6px); transition: opacity .55s ease, transform .65s cubic-bezier(.2,.9,.2,1), filter .6s ease; }
+  html.dg-ready body > *:not(#dgLoader){ opacity:1; transform:translateY(0) scale(1); filter:blur(0); }
+
+  /* Loader overlay */
+  #dgLoader{
+    position:fixed; inset:0;
+    z-index:2147483000;
+    display:flex; align-items:center; justify-content:center;
     background:
-      radial-gradient(1200px 700px at 50% 30%, rgba(215,184,106,0.10), rgba(0,0,0,0) 60%),
-      radial-gradient(900px 500px at 50% 70%, rgba(120,98,255,0.10), rgba(0,0,0,0) 55%),
-      linear-gradient(180deg, #05050b 0%, #070711 35%, #04040a 100%);
-    color: rgba(255,255,255,0.92);
-    -webkit-font-smoothing: antialiased;
-    will-change: opacity, transform, filter;
-    --gold: #d7b86a;
-    --gold2:#f0d79a;
-    --ink:#070711;
-    --charge: 0.0;
+      radial-gradient(900px 600px at 50% 40%, rgba(255,207,74,.10), transparent 60%),
+      radial-gradient(700px 420px at 70% 60%, rgba(90,195,255,.08), transparent 58%),
+      linear-gradient(180deg, rgba(12,12,18,.96), rgba(7,7,11,.98));
+    padding: calc(16px + env(safe-area-inset-top)) 16px calc(18px + env(safe-area-inset-bottom));
+    -webkit-font-smoothing:antialiased;
+    transform:translateZ(0);
   }
 
-  #dgPreload .dg-preload-wrap{
-    width: min(560px, calc(100vw - 48px));
-    display: grid;
-    gap: 18px;
-    justify-items: center;
-    text-align: center;
-    padding: 22px 18px 20px;
+  #dgLoader .dgL-card{
+    width:min(620px, 94vw);
+    border-radius: 22px;
+    border:1px solid rgba(255,255,255,.08);
+    background: linear-gradient(180deg, rgba(18,18,26,.78), rgba(10,10,14,.62));
+    box-shadow:
+      0 24px 90px rgba(0,0,0,.72),
+      0 0 0 1px rgba(255,207,74,.06) inset;
+    overflow:hidden;
+  }
+  #dgLoader .dgL-top{
+    position:relative;
+    padding: 22px 22px 14px;
+  }
+  #dgLoader .dgL-brand{
+    display:flex; align-items:center; gap:10px;
+    font-weight:800; letter-spacing:.3px;
+    color:var(--dg-ink);
+    font-size: 15px;
+    opacity:.95;
+  }
+  #dgLoader .dgL-dot{
+    width:10px; height:10px; border-radius:999px;
+    background: radial-gradient(circle at 30% 30%, #fff, var(--dg-gold));
+    box-shadow: 0 0 18px var(--dg-glow);
+  }
+  #dgLoader .dgL-stage{
+    margin-top:10px;
+    color:var(--dg-muted);
+    font-size: 13px;
+    line-height:1.35;
+    min-height: 18px;
+    display:flex; align-items:center; gap:10px;
+  }
+  #dgLoader .dgL-stage b{ color:var(--dg-gold2); font-weight:800; }
+  #dgLoader .dgL-mid{
+    padding: 6px 16px 16px;
   }
 
-  #dgPreload .dg-preload-title{
-    font-weight: 800;
-    letter-spacing: .10em;
-    text-transform: uppercase;
-    font-size: clamp(14px, 2.8vw, 16px);
-    color: rgba(255,255,255,0.88);
-  }
-  #dgPreload .dg-preload-sub{
-    margin-top: -8px;
-    font-size: clamp(12px, 2.8vw, 13px);
-    color: rgba(255,255,255,0.62);
-  }
-
-  #dgPreload .dg-shield{
-    width: 120px; height: 120px;
-    filter: drop-shadow(0 18px 38px rgba(215,184,106, calc(0.12 + var(--charge) * 0.26)))
-            drop-shadow(0 10px 26px rgba(120,98,255, calc(0.06 + var(--charge) * 0.18)));
-    transform: translateZ(0);
-  }
-
-  /* Shield charge ring */
-  #dgPreload .dg-ring{
-    stroke-dasharray: 420;
-    stroke-dashoffset: calc(420 - (420 * var(--charge)));
-    transition: stroke-dashoffset .20s linear;
-  }
-
-  #dgPreload .dg-core{
-    transform-origin: 50% 55%;
-    animation: dgPulse 1.25s ease-in-out infinite;
-  }
-
-  #dgPreload .dg-glow{
-    opacity: calc(0.18 + var(--charge) * 0.72);
-  }
-
-  @keyframes dgPulse {
-    0%,100% { transform: scale(0.98); filter: saturate(1.05); }
-    50%     { transform: scale(1.03); filter: saturate(1.25); }
-  }
-
-  /* Floating particles */
-  #dgPreload .dg-particles{
-    position: absolute; inset: 0;
-    pointer-events: none;
-    overflow: hidden;
-  }
-  #dgPreload .dg-particles span{
-    position: absolute;
-    width: 6px; height: 6px; border-radius: 999px;
-    background: radial-gradient(circle, rgba(240,215,154,0.95), rgba(215,184,106,0.35) 55%, rgba(215,184,106,0) 75%);
-    opacity: 0.0;
-    filter: blur(0.2px);
-    animation: dgFloat 2.6s ease-in-out infinite;
-  }
-  #dgPreload .dg-particles span:nth-child(1){ left: 20%; top: 58%; animation-delay: .00s; }
-  #dgPreload .dg-particles span:nth-child(2){ left: 35%; top: 42%; animation-delay: .30s; }
-  #dgPreload .dg-particles span:nth-child(3){ left: 52%; top: 64%; animation-delay: .55s; }
-  #dgPreload .dg-particles span:nth-child(4){ left: 68%; top: 44%; animation-delay: .80s; }
-  #dgPreload .dg-particles span:nth-child(5){ left: 78%; top: 60%; animation-delay: 1.10s; }
-
-  @keyframes dgFloat{
-    0%   { transform: translate3d(0, 10px, 0) scale(0.9); opacity: 0; }
-    22%  { opacity: calc(0.20 + var(--charge) * 0.55); }
-    55%  { transform: translate3d(0, -18px, 0) scale(1.25); opacity: calc(0.15 + var(--charge) * 0.38); }
-    100% { transform: translate3d(0, -30px, 0) scale(0.85); opacity: 0; }
-  }
-
-  /* Progress */
-  #dgPreload .dg-progress{
-    width: min(420px, calc(100vw - 86px));
+  /* Progress bar */
+  #dgLoader .dgL-bar{
     height: 10px;
     border-radius: 999px;
-    position: relative;
-    background: rgba(255,255,255,0.07);
-    border: 1px solid rgba(255,255,255,0.08);
-    overflow: hidden;
+    background: rgba(255,255,255,.08);
+    overflow:hidden;
+    box-shadow: 0 0 0 1px rgba(255,255,255,.04) inset;
   }
-  #dgPreload .dg-progress > i{
-    position:absolute; inset: 0;
-    transform-origin: left center;
-    transform: scaleX(0);
-    background: linear-gradient(90deg, rgba(215,184,106,0.15), rgba(240,215,154,0.85), rgba(215,184,106,0.25));
-    filter: saturate(1.2);
+  #dgLoader .dgL-bar > i{
+    display:block; height:100%;
+    width: 0%;
+    border-radius:999px;
+    background:
+      linear-gradient(90deg, rgba(255,207,74,.25), rgba(255,207,74,.95), rgba(150,235,255,.55));
+    box-shadow: 0 0 24px rgba(255,207,74,.30);
+    transition: width .22s ease;
   }
-  #dgPreload .dg-progress::after{
-    content:"";
-    position:absolute; inset:-6px -40px;
-    background: linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,0.18), rgba(255,255,255,0));
-    transform: translateX(-60%);
-    animation: dgSheen 1.25s linear infinite;
-    mix-blend-mode: screen;
-    opacity: calc(0.25 + var(--charge) * 0.25);
-  }
-  @keyframes dgSheen{ to { transform: translateX(120%); } }
 
-  #dgPreload .dg-meta{
-    width: min(420px, calc(100vw - 86px));
-    display:flex; justify-content: space-between; align-items:center;
-    font-size: 12px;
-    color: rgba(255,255,255,0.58);
+  #dgLoader .dgL-footer{
+    display:flex; justify-content:space-between; align-items:center;
+    padding: 10px 18px 18px;
+    color:rgba(246,240,217,.58);
+    font-size:12px;
+    border-top: 1px solid rgba(255,255,255,.06);
+    background: linear-gradient(180deg, rgba(255,255,255,.02), rgba(0,0,0,0));
   }
-  #dgPreload .dg-meta strong{
-    color: rgba(240,215,154,0.88);
-    font-weight: 700;
-    letter-spacing: .06em;
+  #dgLoader .dgL-kicker{
+    display:flex; gap:10px; align-items:center;
+  }
+  #dgLoader .dgL-chip{
+    padding: 6px 10px;
+    border-radius:999px;
+    border:1px solid rgba(255,207,74,.20);
+    background: rgba(255,207,74,.06);
+    color: rgba(255,207,74,.92);
+    font-weight:800;
+    letter-spacing:.2px;
+  }
+
+  /* SVG scene */
+  #dgLoader .dgScene{
+    position:relative;
+    height: clamp(220px, 34vh, 320px);
+    border-radius: 18px;
+    background:
+      radial-gradient(260px 180px at 50% 35%, rgba(255,207,74,.12), transparent 70%),
+      radial-gradient(240px 150px at 52% 75%, rgba(110,220,255,.10), transparent 70%);
+    border: 1px solid rgba(255,255,255,.06);
+    overflow:hidden;
+    box-shadow: 0 0 0 1px rgba(255,207,74,.05) inset;
+  }
+
+  #dgLoader svg{ width:100%; height:100%; display:block; }
+  .dgStroke{
+    fill:none;
+    stroke:rgba(255,207,74,.95);
+    stroke-linecap:round;
+    stroke-linejoin:round;
+    filter: drop-shadow(0 0 12px rgba(255,207,74,.22));
+  }
+  .dgStroke.dim{
+    stroke: rgba(255,255,255,.10);
+    filter:none;
+  }
+
+  .dgChain{
+    stroke-width: 10;
+    stroke-dasharray: 420;
+    stroke-dashoffset: 420;
+    animation: dgDraw 1.25s ease forwards;
+  }
+  .dgChain2{ animation-delay:.10s; }
+
+  @keyframes dgDraw{
+    to{ stroke-dashoffset:0; }
+  }
+
+  /* Merge + shield reveal */
+  .dgGroup{
+    transform-origin: 50% 50%;
+    animation: dgFloat 3.2s ease-in-out infinite;
+  }
+  @keyframes dgFloat{
+    0%,100%{ transform:translateY(0); }
+    50%{ transform:translateY(-6px); }
+  }
+
+  #dgLoader.dg-stage2 .dgChains{ animation: dgPull .95s cubic-bezier(.2,.9,.2,1) forwards; }
+  @keyframes dgPull{
+    to{ transform: scale(1.06) translateY(-6px); opacity:.95; }
+  }
+
+  #dgLoader.dg-stage3 .dgChains{ opacity:.15; transform: scale(.92); transition: opacity .55s ease, transform .75s cubic-bezier(.2,.9,.2,1); }
+  #dgLoader .dgShield{
+    opacity:0;
+    transform: scale(.72);
+    transform-origin: 50% 55%;
+    transition: opacity .55s ease, transform .75s cubic-bezier(.2,.9,.2,1);
+  }
+  #dgLoader.dg-stage3 .dgShield{
+    opacity:1;
+    transform: scale(1.02);
+  }
+  #dgLoader.dg-stage3 .dgRing{ opacity:1; transform:scale(1); }
+  .dgRing{
+    opacity:0;
+    transform: scale(.75);
+    transform-origin:50% 50%;
+    transition: opacity .55s ease, transform .85s cubic-bezier(.2,.9,.2,1);
+  }
+
+  .dgGlowPulse{
+    animation: dgPulse 1.6s ease-in-out infinite;
+  }
+  @keyframes dgPulse{
+    0%,100%{ opacity:.65; transform: scale(1); }
+    50%{ opacity:1; transform: scale(1.08); }
+  }
+
+  /* Particles */
+  .dgParticle{
+    opacity:0;
+    animation: dgSpark 1.8s ease-in-out infinite;
+  }
+  .dgParticle:nth-child(1){ animation-delay:.05s }
+  .dgParticle:nth-child(2){ animation-delay:.22s }
+  .dgParticle:nth-child(3){ animation-delay:.38s }
+  .dgParticle:nth-child(4){ animation-delay:.57s }
+  .dgParticle:nth-child(5){ animation-delay:.71s }
+  @keyframes dgSpark{
+    0%{ transform: translateY(10px) scale(.6); opacity:0; }
+    30%{ opacity:.85; }
+    70%{ opacity:.85; }
+    100%{ transform: translateY(-16px) scale(1.1); opacity:0; }
   }
 
   /* Exit */
-  #dgPreload.dg-preload-exit{
-    opacity: 0;
-    transform: scale(1.02);
-    filter: blur(2px);
-    transition: opacity .32s ease, transform .32s ease, filter .32s ease;
+  #dgLoader.dg-exit{
+    animation: dgExit .65s cubic-bezier(.2,.9,.2,1) forwards;
+  }
+  @keyframes dgExit{
+    to{ opacity:0; transform: translateY(-10px) scale(1.02); }
   }
 
+  /* Reduced motion */
   @media (prefers-reduced-motion: reduce){
-    #dgPreload .dg-core{ animation: none; }
-    #dgPreload .dg-particles span{ animation: none; opacity: 0.25; }
-    #dgPreload .dg-progress::after{ animation: none; opacity: 0.10; }
+    .dgChain, .dgGroup, .dgGlowPulse, .dgParticle{ animation:none !important; }
+    html.dg-boot body > *:not(#dgLoader){ transition:none !important; opacity:1; transform:none; filter:none; }
+    #dgLoader{ transition:none !important; }
+  }
+
+  @media (max-width: 520px){
+    #dgLoader .dgL-card{ border-radius: 18px; }
+    #dgLoader .dgL-top{ padding: 18px 16px 12px; }
+    #dgLoader .dgL-mid{ padding: 6px 12px 14px; }
+    #dgLoader .dgL-footer{ padding: 10px 12px 14px; }
   }
 </style>
 
@@ -2391,50 +2469,108 @@ body.net-base .chainBtn.active{ background: linear-gradient(90deg, rgba(0,82,255
 
 <body>
 
-<!-- DG: Guardian Loader (auto-injected) -->
-<div id="dgPreload" class="dg-preload" aria-hidden="true">
-  <div class="dg-particles" aria-hidden="true">
-    <span></span><span></span><span></span><span></span><span></span>
-  </div>
+<div id="dgLoader" aria-hidden="false">
+  <div class="dgL-card" role="status" aria-live="polite" aria-label="DexGuard loading">
+    <div class="dgL-top">
+      <div class="dgL-brand">
+        <span class="dgL-dot" aria-hidden="true"></span>
+        <span>DexGuard Protocol</span>
+      </div>
+      <div class="dgL-stage" id="dgLoaderStage">
+        <span>Initializing <b>Guardian</b>…</span>
+      </div>
+    </div>
 
-  <div class="dg-preload-wrap">
-    <svg class="dg-shield" viewBox="0 0 140 140" role="img" aria-label="Guardian shield loading">
-      <defs>
-        <linearGradient id="dgGold" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stop-color="#f0d79a"/>
-          <stop offset="0.55" stop-color="#d7b86a"/>
-          <stop offset="1" stop-color="#b28b3a"/>
-        </linearGradient>
-        <radialGradient id="dgAura" cx="50%" cy="45%" r="60%">
-          <stop offset="0" stop-color="rgba(240,215,154,0.65)"/>
-          <stop offset="0.55" stop-color="rgba(215,184,106,0.12)"/>
-          <stop offset="1" stop-color="rgba(215,184,106,0)"/>
-        </radialGradient>
-      </defs>
+    <div class="dgL-mid">
+      <div class="dgScene" aria-hidden="true">
+        <svg viewBox="0 0 900 420" preserveAspectRatio="xMidYMid meet">
+          <defs>
+            <radialGradient id="dgGradGold" cx="50%" cy="45%" r="60%">
+              <stop offset="0%" stop-color="#fff0b8" stop-opacity="1"/>
+              <stop offset="45%" stop-color="#ffcf4a" stop-opacity="0.95"/>
+              <stop offset="100%" stop-color="#ffcf4a" stop-opacity="0"/>
+            </radialGradient>
+            <linearGradient id="dgGradShield" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#ffe6a1" stop-opacity="1"/>
+              <stop offset="55%" stop-color="#ffcf4a" stop-opacity="0.95"/>
+              <stop offset="100%" stop-color="#69d7ff" stop-opacity="0.55"/>
+            </linearGradient>
+            <filter id="dgBlur12" x="-30%" y="-30%" width="160%" height="160%">
+              <feGaussianBlur stdDeviation="10"/>
+            </filter>
+          </defs>
 
-      <!-- soft aura -->
-      <circle class="dg-glow" cx="70" cy="70" r="52" fill="url(#dgAura)"></circle>
+          <!-- soft aura -->
+          <circle cx="450" cy="210" r="150" fill="url(#dgGradGold)" opacity="0.55" filter="url(#dgBlur12)"/>
 
-      <!-- outer ring -->
-      <circle cx="70" cy="70" r="56" fill="none" stroke="rgba(255,255,255,0.10)" stroke-width="2"></circle>
-      <circle class="dg-ring" cx="70" cy="70" r="56" fill="none" stroke="url(#dgGold)" stroke-width="3" stroke-linecap="round"></circle>
+          <!-- particles -->
+          <g opacity="0.9">
+            <circle class="dgParticle" cx="320" cy="290" r="5" fill="#ffcf4a"/>
+            <circle class="dgParticle" cx="590" cy="300" r="4" fill="#ffcf4a"/>
+            <circle class="dgParticle" cx="430" cy="310" r="3.5" fill="#69d7ff"/>
+            <circle class="dgParticle" cx="505" cy="305" r="3" fill="#ffcf4a"/>
+            <circle class="dgParticle" cx="380" cy="305" r="3" fill="#ffcf4a"/>
+          </g>
 
-      <!-- shield -->
-      <g class="dg-core">
-        <path d="M70 18 C86 30 104 32 118 34 C118 74 104 104 70 122 C36 104 22 74 22 34 C36 32 54 30 70 18 Z"
-              fill="rgba(255,255,255,0.02)" stroke="url(#dgGold)" stroke-width="2.5" />
-        <path d="M70 30 C82 38 96 40 108 42 C108 72 96 94 70 108 C44 94 32 72 32 42 C44 40 58 38 70 30 Z"
-              fill="rgba(215,184,106,0.08)" stroke="rgba(240,215,154,0.35)" stroke-width="1.5"/>
-        <path d="M70 46 L88 60 L70 98 L52 60 Z"
-              fill="rgba(240,215,154,0.18)" stroke="rgba(240,215,154,0.55)" stroke-width="1.2"/>
-      </g>
-    </svg>
+          <g class="dgGroup">
+            <!-- faint ring -->
+            <circle cx="450" cy="210" r="118" class="dgStroke dim" stroke-width="6" opacity="0.7"/>
 
-    <div class="dg-preload-title">Guardian Protocol</div>
-    <div class="dg-preload-sub">Charging the shield • securing the signal</div>
+            <!-- chains -->
+            <g class="dgChains">
+              <!-- left chain -->
+              <path class="dgStroke dgChain" d="M160 250 C 240 140, 330 120, 410 165" />
+              <path class="dgStroke dgChain dgChain2" d="M180 270 C 255 165, 340 145, 418 182" />
+              <!-- right chain -->
+              <path class="dgStroke dgChain" d="M740 250 C 660 140, 570 120, 490 165" />
+              <path class="dgStroke dgChain dgChain2" d="M720 270 C 645 165, 560 145, 482 182" />
+              <!-- small links -->
+              <g opacity="0.75">
+                <circle cx="240" cy="195" r="8" fill="none" stroke="rgba(255,207,74,.85)" stroke-width="4"/>
+                <circle cx="660" cy="195" r="8" fill="none" stroke="rgba(255,207,74,.85)" stroke-width="4"/>
+                <circle cx="300" cy="160" r="7" fill="none" stroke="rgba(255,207,74,.65)" stroke-width="3.5"/>
+                <circle cx="600" cy="160" r="7" fill="none" stroke="rgba(255,207,74,.65)" stroke-width="3.5"/>
+              </g>
+            </g>
 
-    <div class="dg-progress" aria-hidden="true"><i data-prog></i></div>
-    <div class="dg-meta"><span>Boot</span><strong data-pct>0%</strong></div>
+            <!-- merge ring -->
+            <g class="dgRing">
+              <circle cx="450" cy="210" r="128" fill="none" stroke="rgba(255,207,74,.45)" stroke-width="10"/>
+              <circle cx="450" cy="210" r="128" fill="none" stroke="rgba(105,215,255,.35)" stroke-width="6" stroke-dasharray="18 20" opacity="0.9"/>
+            </g>
+
+            <!-- shield -->
+            <g class="dgShield">
+              <path class="dgGlowPulse" d="M450 95
+                  C 520 125, 590 128, 650 140
+                  C 650 260, 580 330, 450 370
+                  C 320 330, 250 260, 250 140
+                  C 310 128, 380 125, 450 95 Z"
+                fill="url(#dgGradShield)" opacity="0.95"
+                style="filter: drop-shadow(0 0 18px rgba(255,207,74,.28)) drop-shadow(0 0 26px rgba(105,215,255,.18));" />
+              <path d="M450 120
+                  C 505 144, 560 148, 605 156
+                  C 605 252, 552 306, 450 338
+                  C 348 306, 295 252, 295 156
+                  C 340 148, 395 144, 450 120 Z"
+                fill="rgba(0,0,0,0.18)" stroke="rgba(255,255,255,.10)" stroke-width="2"/>
+              <path d="M450 150 L 450 312" stroke="rgba(255,255,255,.16)" stroke-width="3" stroke-linecap="round"/>
+              <path d="M395 205 L 450 246 L 510 195" fill="none" stroke="rgba(255,255,255,.22)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+            </g>
+          </g>
+        </svg>
+      </div>
+
+      <div class="dgL-bar" aria-hidden="true"><i id="dgLoaderBar"></i></div>
+    </div>
+
+    <div class="dgL-footer">
+      <div class="dgL-kicker">
+        <span class="dgL-chip" id="dgLoaderPct">0%</span>
+        <span id="dgLoaderHint">Forging protection layer…</span>
+      </div>
+      <div style="opacity:.9">Protector • Guardian</div>
+    </div>
   </div>
 </div>
 
@@ -3869,72 +4005,146 @@ function toggleMenu(){
 
 </script>
 
-<!-- DG: Guardian Loader (auto-injected) -->
 <script id="dg-loader-script">
 (function(){
-  var pre = document.getElementById('dgPreload');
-  if(!pre) return;
+  try{
+    var htmlEl = document.documentElement;
+    // Boot class controls page blur/opacity while loader is up
+    if(!htmlEl.classList.contains('dg-boot')) htmlEl.classList.add('dg-boot');
 
-  var htmlEl = document.documentElement;
-  htmlEl.classList.add('dg-preload-lock');
+    var loader = document.getElementById('dgLoader');
+    if(!loader){ htmlEl.classList.remove('dg-boot'); htmlEl.classList.add('dg-ready'); return; }
 
-  var bar = pre.querySelector('[data-prog]');
-  var pct = pre.querySelector('[data-pct]');
-  var start = (window.performance && performance.now) ? performance.now() : Date.now();
-  var minShow = 2600;
-  var prog = 0;
-  var done = false;
-    var minDoneShow = 900;
-  var doneAt = 0;
-var raf = 0;
+    var bar = document.getElementById('dgLoaderBar');
+    var pct = document.getElementById('dgLoaderPct');
+    var stage = document.getElementById('dgLoaderStage');
+    var hint = document.getElementById('dgLoaderHint');
 
-  function clamp(n,min,max){ return n<min?min:(n>max?max:n); }
+    var start = (window.performance && performance.now) ? performance.now() : Date.now();
+    var done = false;
+    var doneAt = 0;
 
-  function step(){
-    var target = done ? 100 : 88;
-    prog += (target - prog) * 0.06;
-    if(done) prog = Math.min(100, prog + 0.38);
+    // Ensure it’s readable (min duration + min done display)
+    var MIN_TOTAL = 3200;      // always show at least this long
+    var MIN_DONE_SHOW = 1100;  // once fully loaded, keep for a bit (so text can be read)
+    var SAFETY_DONE_MS = 12000;
 
-    var p = clamp(prog, 0, 100);
-    if(bar) bar.style.transform = 'scaleX(' + (p/100) + ')';
-    if(pct) pct.textContent = String(Math.round(p)) + '%';
-    pre.style.setProperty('--charge', (p/100).toFixed(3));
+    var prog = 0;
+    var target = 0;
 
-    if(done && p >= 100){
-      if(raf) cancelAnimationFrame(raf);
-      exit();
-      return;
+    function setStage(idx){
+      // 1 = chain draw, 2 = pull/merge, 3 = shield
+      loader.classList.remove('dg-stage1','dg-stage2','dg-stage3');
+      loader.classList.add('dg-stage'+idx);
+      if(idx===1){
+        stage.innerHTML = '<span>Binding <b>chains</b>…</span>';
+        hint.textContent = 'Securing entry point…';
+      }else if(idx===2){
+        stage.innerHTML = '<span>Fusing <b>guardian core</b>…</span>';
+        hint.textContent = 'Merging protection layers…';
+      }else{
+        stage.innerHTML = '<span>Charging <b>protection shield</b>…</span>';
+        hint.textContent = 'Finalizing safeguard…';
+      }
     }
-    raf = requestAnimationFrame(step);
-  }
 
-  function exit(){
-    var now = (window.performance && performance.now) ? performance.now() : Date.now();
-    var elapsed = now - start;
-    var wait = Math.max(0, minShow - elapsed);
+    setStage(1);
 
-    
-    if(doneAt){
-      wait = Math.max(wait, minDoneShow - (now - doneAt));
+    // Stage timing cues (bullish + readable)
+    setTimeout(function(){ setStage(2); }, 1150);
+    setTimeout(function(){ setStage(3); }, 2150);
+
+    function clamp(n,a,b){ return Math.max(a, Math.min(b,n)); }
+
+    function paint(){
+      if(!bar) return;
+      bar.style.width = clamp(prog, 0, 100).toFixed(0) + '%';
+      if(pct) pct.textContent = clamp(prog,0,100).toFixed(0) + '%';
     }
-setTimeout(function(){
-      pre.classList.add('dg-preload-exit');
-      htmlEl.classList.remove('dg-preload-lock');
 
-      setTimeout(function(){
-        try{ pre.remove(); } catch(e){ pre.parentNode && pre.parentNode.removeChild(pre); }
-      }, 520);
-    }, wait);
+    function tick(){
+      var now = (window.performance && performance.now) ? performance.now() : Date.now();
+      var elapsed = now - start;
+
+      // Smooth fake progress that tracks readiness
+      // target caps at 92% until real load happens
+      if(document.readyState === 'interactive') target = Math.max(target, 55);
+      if(document.readyState === 'complete') target = 100;
+
+      if(!done){
+        // slowly drift toward target (capped)
+        var cap = (document.readyState === 'complete') ? 100 : 92;
+        target = clamp(target, 10, cap);
+
+        // add gentle motion
+        prog += (target - prog) * 0.06;
+        prog += 0.12; // tiny drift
+        prog = clamp(prog, 0, cap);
+      }else{
+        prog += (100 - prog) * 0.14;
+        prog = clamp(prog, 0, 100);
+      }
+
+      paint();
+
+      if((document.readyState === 'complete') && !done){
+        done = true;
+        doneAt = now;
+        prog = Math.max(prog, 96);
+      }
+
+      // Safety done to avoid trapping user on slow resources
+      if(!done && elapsed > SAFETY_DONE_MS){
+        done = true;
+        doneAt = now;
+      }
+
+      if(done && prog >= 99.6){
+        var wait = Math.max(0, MIN_TOTAL - elapsed);
+        if(doneAt){ wait = Math.max(wait, MIN_DONE_SHOW - (now - doneAt)); }
+        // Exit once wait satisfied
+        if(wait <= 0) return exit();
+      }
+
+      requestAnimationFrame(tick);
+    }
+
+    function exit(){
+      // Smooth handoff: reveal page first, then fade loader
+      try{
+        htmlEl.classList.remove('dg-boot');
+        htmlEl.classList.add('dg-ready');
+        loader.setAttribute('aria-hidden','true');
+        loader.classList.add('dg-exit');
+        setTimeout(function(){
+          if(loader && loader.parentNode) loader.parentNode.removeChild(loader);
+        }, 720);
+      }catch(e){
+        // fallback
+        if(loader && loader.parentNode) loader.parentNode.removeChild(loader);
+        htmlEl.classList.remove('dg-boot');
+        htmlEl.classList.add('dg-ready');
+      }
+    }
+
+    // Real load signal
+    window.addEventListener('load', function(){
+      var now = (window.performance && performance.now) ? performance.now() : Date.now();
+      done = true;
+      doneAt = now;
+      target = 100;
+    }, { once: true });
+
+    requestAnimationFrame(tick);
+  }catch(_e){
+    // Never block the page if loader fails
+    try{
+      document.documentElement.classList.remove('dg-boot');
+      document.documentElement.classList.add('dg-ready');
+      var l = document.getElementById('dgLoader');
+      if(l && l.parentNode) l.parentNode.removeChild(l);
+    }catch(__){}
   }
-
-  // Start animation after first paint
-  requestAnimationFrame(function(){ requestAnimationFrame(step); });
-
-  // Mark done when full page resources are loaded
-  window.addEventListener('load', function(){ done = true; doneAt = ((window.performance && performance.now) ? performance.now() : Date.now()); }, { once: true });
-
-  // Safety: if load doesn't fire (blocked/slow), auto-finish
-  setTimeout(function(){ if(!done){ done = true; doneAt = ((window.performance && performance.now) ? performance.now() : Date.now()); } }, 9000);
 })();
 </script>
 
