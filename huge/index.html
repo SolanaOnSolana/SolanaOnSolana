@@ -179,7 +179,7 @@ function fmtNum(x, d=8){
 
     // trades
     try{
-      const r = await api(`/api/trades?chain=${encodeURIComponent(chain)}&address=${encodeURIComponent(addr)}&limit=30`);
+      const r = await api(`/api/trades?chain=${encodeURIComponent(chain)}&address=${encodeURIComponent(addr)}${pairParam}&limit=30`);
       if(!state.pair && r.j?.pair) state.pair = r.j.pair;
       $('srcTrades').textContent = 'trades: ' + (r.j?.source || '—');
       const items = Array.isArray(r.j?.items) ? r.j.items : [];
@@ -215,7 +215,7 @@ function fmtNum(x, d=8){
     // candles (smoke test)
     try{
       const now = Math.floor(Date.now()/1000);
-      const r = await api(`/api/candles?chain=${encodeURIComponent(chain)}&address=${encodeURIComponent(addr)}&tf=15m&limit=60&to=${now}`);
+      const r = await api(`/api/candles?chain=${encodeURIComponent(chain)}&address=${encodeURIComponent(addr)}${pairParam}&tf=15m&limit=60&to=${now}`);
       $('srcCandles').textContent = 'candles: ' + (r.j?.source || '—') + ' ('+(r.j?.count ?? '0')+')';
     }catch(e){
       $('srcCandles').textContent = 'candles: error';
