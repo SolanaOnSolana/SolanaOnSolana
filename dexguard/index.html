@@ -2897,26 +2897,12 @@ if(typeof DBG.metrics.lastClickAction==='undefined') DBG.metrics.lastClickAction
     // =========================================================
 
     // -------------------- Constants
-     var API_BASE = (function(){
-  if(typeof window !== 'undefined' && window.DG_API_BASE) return window.DG_API_BASE;
-  if(typeof document !== 'undefined'){
-    const attr = document.documentElement && document.documentElement.getAttribute('data-api-base');
-    if(attr) return attr;
-  }
-  return (typeof location !== 'undefined' && location.origin) ? location.origin : '';
-})();
-var GECKO = `${API_BASE}/api/gecko/api/v2`;
-var DS = `${API_BASE}/api/ds/latest/dex`;
+    const GECKO = 'https://api.geckoterminal.com/api/v2';
+    const DS = 'https://api.dexscreener.com/latest/dex';
 
-var NET_LABEL = (typeof window !== 'undefined' && window.NET_LABEL)
-  ? window.NET_LABEL
-  : { solana:'SOL', eth:'ETH', bsc:'BNB', base:'BASE' };
-var NET_DS = (typeof window !== 'undefined' && window.NET_DS)
-  ? window.NET_DS
-  : { solana:'solana', eth:'ethereum', bsc:'bsc', base:'base' };
-var NET_GECKO = (typeof window !== 'undefined' && window.NET_GECKO)
-  ? window.NET_GECKO
-  : { solana:'solana', eth:'eth', bsc:'bsc', base:'base' };
+    const NET_LABEL = { solana:'SOL', eth:'ETH', bsc:'BNB', base:'BASE' };
+    const NET_DS = { solana:'solana', eth:'ethereum', bsc:'bsc', base:'base' };
+    const NET_GECKO = { solana:'solana', eth:'eth', bsc:'bsc', base:'base' };
 
     const DEFAULT_TOKEN = {
       solana: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', // USDC
@@ -4158,14 +4144,14 @@ function setSearchModalOpen(open){
 
     async function dsSearch(query, fetchOpts={}){
       // DexScreener search is used ONLY for discovery. We do not embed anything.
-      const url = `${API_BASE}/api/ds/token-pairs/v1/${chain}/${encodeURIComponent(tokenAddr)}`;
+      const url = DS + '/search/?q=' + encodeURIComponent(query);
       const j = await fetchJson(url, {timeout:12000, retries:1, signal: fetchOpts.signal});
       return Array.isArray(j?.pairs) ? j.pairs : [];
     }
 
     async function dsTokenPairsV1(net, tokenAddr, fetchOpts={}){
       const chain = NET_DS[normalizeChain(net)] || 'solana';
-     const url = `${API_BASE}/api/ds/token-pairs/v1/${chain}/${encodeURIComponent(tokenAddr)}`;
+      const url = `https://api.dexscreener.com/token-pairs/v1/${chain}/${encodeURIComponent(tokenAddr)}`;
       try{
         const j = await fetchJson(url, {timeout:14000, retries:1, signal: fetchOpts.signal});
         return Array.isArray(j) ? j : [];
