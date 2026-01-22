@@ -2903,18 +2903,34 @@ if(typeof DBG.metrics.lastClickAction==='undefined') DBG.metrics.lastClickAction
     // --- SOLANA (BDS) helpers (prevents Gecko "Token not found" / "Trending unavailable") ---
 // ---- SOLANA mint helper (CRITICAL)
 function solMintFromState(){
-  // In this app, Solana "token address" we want is stored in poolAddr (NOT poolId)
-  const raw = String(poolAddr || '').trim();
-  if(!raw) return (DEFAULT_TOKEN?.solana || '');
+  // Birdeye needs the Solana MINT (base token address), not the pool address.
+  // Prefer resolved token address from DexScreener / app state.
+  try{
+    const mint1 = String(curTokenAddr || '').trim();
+    if(mint1 && mint1.length > 30) return mint1;
+  }catch(_){}
 
-  // If prefixed like "solana_<mint>" keep last part
-  const last = raw.split('_').pop();
-  const mint = (last || raw).trim();
+  // Fallbacks (older states)
+  try{
+    const a = String(poolAddr || '').trim();
+    if(a && a.length > 30) return a;
+  }catch(_){}
 
-  // Quick sanity: Solana mints are typically 32-44 base58 chars; if too short, fallback
-  if(mint.length < 32) return (DEFAULT_TOKEN?.solana || '');
-  return mint;
+  try{
+    const raw = String(poolId || '').trim();
+    if(!raw) return '';
+    const last = raw.split('_').pop();
+    const mint2 = (last || raw).trim();
+    if(mint2 && mint2.length > 30) return mint2;
+  }catch(_){}
+
+  try{
+    const def = (DEFAULT_TOKEN && DEFAULT_TOKEN.solana) ? String(DEFAULT_TOKEN.solana).trim() : '';
+    return def || '';
+  }catch(_){}
+  return '';
 }
+
 
 
 function tfToBirdeyeType(tfKey){
@@ -2975,6 +2991,88 @@ async function bdsTradesToken(limit=80, signal){
   });
 }
 
+
+function makeSolPoolFromDsPair(dsPair, mint){
+  try{
+    const m = String(mint||'').trim();
+    if(!m) return null;
+
+    const baseSym = dsPair?.baseToken?.symbol || '';
+    const baseName = dsPair?.baseToken?.name || baseSym || m.slice(0,4);
+    const img = dsPair?.info?.imageUrl || dsPair?.info?.icon || dsPair?.icon || '';
+
+    const price = Number(dsPair?.priceUsd ?? dsPair?.price_usd ?? 0) || 0;
+    const liq  = Number(dsPair?.liquidity?.usd ?? dsPair?.liquidity_usd ?? 0) || 0;
+    const mc   = Number(dsPair?.marketCap ?? dsPair?.market_cap ?? dsPair?.market_cap_usd ?? 0) || 0;
+    const fdv  = Number(dsPair?.fdv ?? dsPair?.fdv_usd ?? 0) || mc;
+    const vol24= Number(dsPair?.volume?.h24 ?? dsPair?.volume24hUsd ?? 0) || 0;
+    const ch24 = Number(dsPair?.priceChange?.h24 ?? dsPair?.price_change_percentage?.h24 ?? 0) || 0;
+
+    const solMint = 'So11111111111111111111111111111111111111112';
+
+    return {
+      id: `solana_${m}`,
+      type: 'pools',
+      attributes: {
+        address: m, // IMPORTANT: use mint as "pool address" in Solana mode
+        name: (baseSym ? `${baseSym}/SOL` : baseName),
+        base_token_price_usd: price,
+        reserve_in_usd: liq,
+        market_cap_usd: mc,
+        fdv_usd: fdv,
+        volume_usd: { h24: vol24 },
+        price_change_percentage: { h24: ch24 }
+      },
+      relationships: {
+        base_token: { data: { id: m, type: 'tokens' } },
+        quote_token:{ data: { id: solMint, type: 'tokens' } }
+      },
+      _dg_meta: { image_url: img, source: 'ds' }
+    };
+  }catch(_){}
+  return null;
+}
+
+function makeSolPoolFromBdsItem(it){
+  try{
+    const m = String(it?.address || it?.token_address || it?.tokenAddress || it?.mint || '').trim();
+    if(!m) return null;
+
+    const sym = it?.symbol || it?.token_symbol || it?.tokenSymbol || '';
+    const name = it?.name || it?.token_name || it?.tokenName || sym || m.slice(0,4);
+    const img = it?.logoURI || it?.logo || it?.image || it?.icon || it?.image_url || '';
+
+    const price = Number(it?.price ?? it?.priceUsd ?? it?.price_usd ?? 0) || 0;
+    const liq   = Number(it?.liquidity ?? it?.liquidityUsd ?? it?.liquidity_usd ?? it?.liquidity?.usd ?? 0) || 0;
+    const mc    = Number(it?.mc ?? it?.marketCap ?? it?.market_cap ?? it?.market_cap_usd ?? it?.marketCapUsd ?? 0) || 0;
+    const fdv   = Number(it?.fdv ?? it?.fdvUsd ?? 0) || mc;
+    const vol24 = Number(it?.volume24hUsd ?? it?.volume24h ?? it?.v24 ?? it?.volume?.h24 ?? it?.volume_usd?.h24 ?? 0) || 0;
+    const ch24  = Number(it?.priceChange24hPercent ?? it?.priceChange24h ?? it?.change24h ?? it?.priceChange?.h24 ?? it?.price_change_percentage?.h24 ?? 0) || 0;
+
+    const solMint = 'So11111111111111111111111111111111111111112';
+
+    return {
+      id: `solana_${m}`,
+      type: 'pools',
+      attributes: {
+        address: m,
+        name: (sym ? `${sym}/SOL` : name),
+        base_token_price_usd: price,
+        reserve_in_usd: liq,
+        market_cap_usd: mc,
+        fdv_usd: fdv,
+        volume_usd: { h24: vol24 },
+        price_change_percentage: { h24: ch24 }
+      },
+      relationships: {
+        base_token: { data: { id: m, type: 'tokens' } },
+        quote_token:{ data: { id: solMint, type: 'tokens' } }
+      },
+      _dg_meta: { image_url: img, source: 'bds' }
+    };
+  }catch(_){}
+  return null;
+}
 async function bdsOhlcvToken(tfKey, bars=500, signal){
   const mint = solMintFromState();
   if(!mint) return [];
@@ -5677,106 +5775,38 @@ function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
     }
 
     async function geckoTrades(limit=80, fetchOpts={}){
-      // SOLANA uses Birdeye via Worker (BDS) to avoid Gecko rate limits / pool dependency
+      // SOLANA trades via Birdeye (BDS) — bypass Gecko entirely
       if(activeNet === 'solana'){
-        return await bdsTradesToken(limit, fetchOpts?.signal);
-      }
-
-  // NOTE: We keep the function name to avoid touching the rest of your UI.
-  // This now pulls Solana trades from Birdeye (via your Worker) instead of Gecko.
-
-  try{
-    const net = String(geckoNet() || '').toLowerCase();
-    // Only switch Solana here (as planned). Other chains can stay on Gecko for now.
-    if(net !== 'solana'){
-      // fallback to old behavior if you still need it elsewhere:
-      // return null;  // or keep Gecko for non-solana later
-    }
-  }catch(_){}
-
-  // Birdeye token address (for SOL trades we can use base token)
-  // We try a few candidates: token address from your existing state, base token, etc.
-  const candidates = [];
-  try{
-    // common globals / state vars in your file
-    if(typeof tokenAddress === "string" && tokenAddress.trim()) candidates.push(tokenAddress.trim());
-  }catch(_){}
-  try{
-    if(typeof ca === "string" && ca.trim()) candidates.push(ca.trim());
-  }catch(_){}
-  try{
-    if(typeof currentToken === "string" && currentToken.trim()) candidates.push(currentToken.trim());
-  }catch(_){}
-  try{
-    if(typeof baseTokenAddress === "string" && baseTokenAddress.trim()) candidates.push(baseTokenAddress.trim());
-  }catch(_){}
-
-  // As last resort, use wrapped SOL so the UI doesn't go blank
-  if(candidates.length === 0){
-    candidates.push("So11111111111111111111111111111111111111112");
-  }
-
-  // Birdeye endpoint: /defi/txs/token?address=...&offset=0&limit=...
-  const urlBase = `${BDS}/defi/txs/token`;
-
-  let lastMsg = '';
-  let sawResponse = false;
-
-  for(const addr of candidates){
-    const url = `${urlBase}?address=${encodeURIComponent(addr)}&offset=0&limit=${encodeURIComponent(limit)}`;
-
-    try{
-      if(window.__DG_DEBUG__ && window.__DG_DEBUG__.metrics){
-        window.__DG_DEBUG__.metrics.lastTradesUrl = url;
-        window.__DG_DEBUG__.metrics.lastTradesFetchAt = Date.now();
-      }
-    }catch(_){}
-
-    const j = await fetchJson(url, {timeout:14000, retries:0, signal: fetchOpts.signal});
-    if(fetchOpts && fetchOpts.signal && fetchOpts.signal.aborted){
-      try{ if(window.__DG_DEBUG__ && window.__DG_DEBUG__.metrics){ window.__DG_DEBUG__.metrics.lastTradesError = 'AbortError'; } }catch(_){}
-      return null;
-    }
-    if(j == null){
-      lastMsg = 'Fetch failed';
-      continue;
-    }
-
-    sawResponse = true;
-
-    // Birdeye response shape: { success, data: { items: [...] } }
-    const items =
-      (Array.isArray(j?.data?.items) ? j.data.items :
-      (Array.isArray(j?.data) ? j.data :
-      (Array.isArray(j) ? j : null)));
-
-    if(items){
-      try{
-        if(window.__DG_DEBUG__ && window.__DG_DEBUG__.metrics){
-          window.__DG_DEBUG__.metrics.lastTradesFetchAt = Date.now();
-          window.__DG_DEBUG__.metrics.lastTradesCount = items.length || 0;
-          window.__DG_DEBUG__.metrics.lastTradesError = '';
+        try{
+          const sig = (fetchOpts && fetchOpts.signal) ? fetchOpts.signal : undefined;
+          const arr = await bdsTradesToken(limit, sig);
+          return Array.isArray(arr) ? arr : null;
+        }catch(_){
+          return null;
         }
-      }catch(_){}
-      return items;
+      }
+
+      const net = geckoNet();
+      const pid1 = geckoPoolApiId();
+      if(!pid1) return [];
+
+      const base1 = `${GECKO}/networks/${encodeURIComponent(net)}/pools/${encodeURIComponent(pid1)}/trades`;
+
+      // GeckoTerminal uses JSON:API pagination
+      const url = base1 + `?page=1&limit=${encodeURIComponent(limit)}`;
+
+      const j = await fetchJson(url, {timeout:14000, retries:1, signal: fetchOpts.signal});
+      if(fetchOpts && fetchOpts.signal && fetchOpts.signal.aborted) return null;
+
+      const arr =
+        (Array.isArray(j?.data) ? j.data :
+        (Array.isArray(j?.data?.data) ? j.data.data :
+        (Array.isArray(j) ? j : null)));
+
+      return arr || null;
     }
 
-    lastMsg = (j && j.message) ? String(j.message) : 'Bad response';
-  }
 
-  try{
-    if(window.__DG_DEBUG__ && window.__DG_DEBUG__.metrics){
-      window.__DG_DEBUG__.metrics.lastTradesFetchAt = Date.now();
-      window.__DG_DEBUG__.metrics.lastTradesCount = 0;
-      window.__DG_DEBUG__.metrics.lastTradesError = lastMsg || (sawResponse ? 'No items array' : 'Fetch failed');
-    }
-  }catch(_){}
-
-  return null;
-}
-
-    // ===== /Micro 11 =====
-    // ===== DexGuard Micro 12: Trades Dedupe (tx hash/signature + fallback key) =====
     function tradeDedupeKey(tr){
       try{
         const txRaw = String((tr && (tr.tx || tr.id)) || '').trim();
@@ -6369,34 +6399,66 @@ function startLiveLoops(){
     }
 
     async function fetchTrendingPools(net){
-      const chainKey = activeNet;
-      const id = ++reqIds.trending;
-      const ac = startRequest(`trending:${chainKey}`);
-      const key = String(chainKey||net||'');
-      const cached = TREND_CACHE.get(key);
-      const now = Date.now();
-      if(cached && (now - cached.ts) < 45000) return cached.data;
+      const key = `${activeNet}|${net||''}`;
+      try{
+        const cached = trendingCache.get(key);
+        if(cached && (Date.now() - cached.t) < TRENDING_CACHE_TTL) return cached.v;
+      }catch(_){}
 
-      const url = `${GECKO}/networks/${encodeURIComponent(net)}/trending_pools?include=base_token,quote_token,dex`;
-      const j = await fetchJson(url, {timeout:14000, retries:0, signal: ac.signal});
-      if(id !== reqIds.trending) return null;
-      const data = Array.isArray(j?.data) ? j.data : [];
-      const inc  = Array.isArray(j?.included) ? j.included : [];
-      const incMap = new Map();
-      for(const it of inc){
-        if(!it?.id) continue;
-        const iid = String(it.id);
-        if(it?.type) incMap.set(String(it.type)+':' + iid, it);
-        incMap.set(iid, it);
+      // SOLANA trending via Birdeye (BDS) — bypass Gecko rate limits
+      if(activeNet === 'solana'){
+        try{
+          const url = `${BDS}/defi/token_trending?offset=0&limit=50`;
+          const j = await fetchJson(url, {timeout:12000, retries:1});
+          const items =
+            (j?.data?.items && Array.isArray(j.data.items)) ? j.data.items :
+            (Array.isArray(j?.data) ? j.data :
+            (Array.isArray(j) ? j : []));
+
+          const incMap = new Map();
+          const pools = [];
+
+          const solMint = 'So11111111111111111111111111111111111111112';
+          incMap.set(solMint, { id: solMint, type:'tokens', attributes:{ address: solMint, symbol:'SOL', name:'Solana', image_url:'' } });
+
+          for(const it of items){
+            const p = makeSolPoolFromBdsItem(it);
+            if(!p) continue;
+            pools.push(p);
+
+            const mint = p?.relationships?.base_token?.data?.id;
+            if(mint && !incMap.has(mint)){
+              incMap.set(mint, { id: mint, type:'tokens', attributes:{
+                address: mint,
+                symbol: it?.symbol || it?.token_symbol || it?.tokenSymbol || '',
+                name: it?.name || it?.token_name || it?.tokenName || (it?.symbol || mint.slice(0,4)),
+                image_url: it?.logoURI || it?.logo || it?.image || it?.icon || it?.image_url || ''
+              }});
+            }
+          }
+
+          const v = { data: pools, incMap };
+          try{ trendingCache.set(key, {t: Date.now(), v}); }catch(_){}
+          return v;
+        }catch(_){}
       }
-      const out = { data, incMap };
-      TREND_CACHE.set(key, {ts: now, data: out});
-      try{ setCachedTrending(chainKey, data, inc); }catch(e){}
-      return out;
+
+      // Default: GeckoTerminal trending pools
+      const url = `${GECKO}/networks/${encodeURIComponent(net)}/trending_pools?include=base_token`;
+      const j = await fetchJson(url, {timeout:12000, retries:1});
+      const arr = Array.isArray(j?.data) ? j.data : [];
+      const incArr = Array.isArray(j?.included) ? j.included : [];
+      const incMap = new Map();
+      for(const it of incArr){
+        if(it && it.id) incMap.set(it.id, it);
+      }
+
+      const v = { data: arr, incMap };
+      try{ trendingCache.set(key, {t: Date.now(), v}); }catch(_){}
+      return v;
     }
 
-    
-    // Render ticker items EXACT like main page
+
     function poolToTickerItem(p, n, incMap){
       const a = p?.attributes || {};
       const rel = p?.relationships || {};
@@ -7081,6 +7143,37 @@ async function openToken(input, opts={}){
           seenMakers = new Set();
 
           try{
+            // SOLANA: use mint as poolAddr and skip Gecko pool lookup (Gecko often 429 / "not found")
+            if(activeNet === 'solana' && v){
+              poolAddr = v;
+              poolId = `solana_${v}`;
+              const solMint = 'So11111111111111111111111111111111111111112';
+              const p0 = makeSolPoolFromDsPair(dsPair, v) || {
+                id: `solana_${v}`,
+                type:'pools',
+                attributes:{
+                  address: v,
+                  name: (curTokenSym ? `${curTokenSym}/SOL` : 'TOKEN/SOL'),
+                  base_token_price_usd: num(dsPair?.priceUsd) || 0,
+                  reserve_in_usd: num(dsPair?.liquidity?.usd) || 0,
+                  market_cap_usd: num(dsPair?.marketCap) || 0,
+                  fdv_usd: num(dsPair?.fdv) || 0,
+                  volume_usd: { h24: num(dsPair?.volume?.h24) || 0 },
+                  price_change_percentage: { h24: num(dsPair?.priceChange?.h24) || 0 }
+                },
+                relationships:{
+                  base_token:{ data:{ id: v, type:'tokens' } },
+                  quote_token:{ data:{ id: solMint, type:'tokens' } }
+                }
+              };
+              try{ applyPool(p0); }catch(_){}
+              statusEl.textContent = 'Loading…';
+              await Promise.all([requestCandlesImmediate(true), loadTrades(true)]);
+              if(id !== reqIds.token) return;
+              clearTokenLoadingUI();
+              return;
+            }
+
             // 1) preferred pool first (when available via DexScreener)
             if(preferredPool){
               poolAddr = preferredPool;
