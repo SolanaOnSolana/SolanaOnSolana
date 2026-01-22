@@ -2902,7 +2902,33 @@ if(typeof DBG.metrics.lastClickAction==='undefined') DBG.metrics.lastClickAction
     const BDS = 'https://flat-grass-9c26solanaonsolana.simon-kaggwa-why.workers.dev/bds';
     // --- SOLANA (BDS) helpers (prevents Gecko "Token not found" / "Trending unavailable") ---
 // ---- SOLANA mint helper (CRITICAL)
+// ---- SOLANA mint helper (CRITICAL) — Birdeye needs the TOKEN MINT (addr), not poolId/poolAddr
 function solMintFromState(){
+  // Primary: your app stores the selected token address in `addr` (for Solana this IS the mint)
+  try{
+    const a = String(addr || '').trim();
+    if(a){
+      // if prefixed like "solana_<mint>" keep last part
+      const last = a.split('_').pop();
+      return (last || a).trim();
+    }
+  }catch(_){}
+
+  // Fallback: if something older set poolId as "solana_<mint>"
+  try{
+    const raw = String(poolId || '').trim();
+    if(raw){
+      const last = raw.split('_').pop();
+      return (last || raw).trim();
+    }
+  }catch(_){}
+
+  // Last fallback: default
+  try{
+    return (DEFAULT_TOKEN && DEFAULT_TOKEN.solana) ? DEFAULT_TOKEN.solana : '';
+  }catch(_){}
+  return '';
+}
   // Birdeye needs the Solana MINT (base token address), not the pool address.
   // Prefer resolved token address from DexScreener / app state.
   try{
