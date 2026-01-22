@@ -2,115 +2,3010 @@
 
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>DexGuard – SOL Restart (STEP 1)</title>
-  <style>
-    /* KEEP YOUR EXISTING THEME / LAYOUT CSS HERE */
-    body{margin:0;background:#0b1020;color:#e5e7eb;font-family:system-ui,-apple-system,Segoe UI,Roboto}
-    .wrap{padding:16px}
-    .row{display:flex;gap:12px;align-items:center}
-    .card{background:#0f1530;border-radius:14px;padding:14px}
-    .muted{opacity:.7}
-    .btn{padding:8px 12px;border-radius:10px;background:#1b2250;color:#fff;border:0}
-    #chart{height:360px}
-    #trades{max-height:280px;overflow:auto}
+<meta charset="utf-8"/>
+<meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"/>
+<meta content="#070711" name="theme-color"/>
+<title>$SOS — DEX Terminal (Multi-Chain)</title>
+<meta content="$SOS DEX Terminal — across Solana, Ethereum, BNB, Base." name="description"/>
+<style>
+    :root{
+      --bg:#070711;
+      --bg2:#070711;
+      --bg3:#070711;
+      --panel: rgba(255,255,255,.06);
+      --panel2: rgba(255,255,255,.085);
+      --stroke: rgba(255,255,255,.12);
+      --text: rgba(255,255,255,.92);
+      --muted: rgba(255,255,255,.70);
+      --muted2: rgba(255,255,255,.55);
+      --g:#14F195;
+      --r:#FF4D6D;
+      --c:#00D1FF;
+      --p:#9945FF;
+      --radius: 22px;
+      --shadow: 0 14px 40px rgba(0,0,0,.55);
+      --max: 1280px;
+      --glass: blur(14px);
+      --t: .18s ease;
+    }
+
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+     margin:0;
+     color:var(--text);
+     font: 16px/1.6 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+     background: var(--bg);
+     overflow-x:hidden;
+     position: relative;
+     }
+
+    body::before{
+     content:"";
+     position: fixed;
+     inset: 0;
+     z-index: -1;
+     pointer-events: none;
+     background:
+     radial-gradient(1200px 760px at 10% 5%, rgba(153,69,255,.24), transparent 60%),
+     radial-gradient(1000px 720px at 90% 10%, rgba(20,241,149,.18), transparent 58%),
+     radial-gradient(900px 640px at 72% 92%, rgba(0,209,255,.14), transparent 58%),
+     radial-gradient(900px 640px at 0% 95%, rgba(0,209,255,.06), transparent 60%),
+     var(--bg);
+     transform: translateZ(0);
+     }
+a{color:inherit; text-decoration:none}
+    button,input,select{font:inherit}
+
+    .wrap{max-width:var(--max); margin:0 auto; padding: calc(var(--topbar-space, 84px) + 18px) 16px 28px}
+
+    .topbar{
+      display:flex; align-items:center; justify-content:space-between;
+      gap:12px;
+      padding:12px 12px;
+      border:1px solid var(--stroke);
+      background:linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.04));
+      border-radius: 26px;
+      box-shadow: var(--shadow);
+      backdrop-filter: var(--glass);
+      position:fixed; top: calc(env(safe-area-inset-top) + 10px); left:50%; transform: translateX(-50%); width: min(var(--max), calc(100vw - 24px)); z-index:2147483500;
+    }
+
+    
+
+    /* Topbar: replace $SOS title with Dexguard button */
+    .topbar #topDexguardBtn{ padding: 9px 16px; }
+    .topbar #topDexguardBtn .dexguardText{ font-size: 18px; }
+    .topbar #topDexguardBtn .dexguardChip{ font-size: 12px; }
+
+
+    /* Topbar brand area (legacy logo styles kept clean so CSS never breaks) */
+    .brand{display:flex; align-items:center; gap:10px; min-width:0}
+
+    /* Base (desktop) logo sizing to prevent huge logo rendering on PC */
+    .topLogo{
+      height: 34px;
+      width: auto;
+      max-width: 180px;
+      display: block;
+      object-fit: contain;
+    }
+
+    .logo{
+      width:38px; height:38px; border-radius:14px;
+      display:grid; place-items:center;
+      background:
+        radial-gradient(14px 14px at 35% 30%, rgba(20,241,149,.9), transparent 60%),
+        radial-gradient(14px 14px at 70% 35%, rgba(0,209,255,.9), transparent 60%),
+        radial-gradient(14px 14px at 50% 80%, rgba(153,69,255,.9), transparent 60%),
+        rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.14);
+    }
+    .logo span{font-weight:900; letter-spacing:-.02em}
+
+    /* Top-left DexGuard button (replaces old SOS title) */
+    .topbar .dexguardBtn{ padding:9px 16px; }
+    .topbar .dexguardText{ font-size:18px; }
+    @media (max-width:520px){
+      .topbar .dexguardText{ font-size:16px; }
+    }
+
+    .brandTxt{min-width:0}
+    .brandTxt .t1{font-weight:900; letter-spacing:-.02em; font-size:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+    .brandTxt .t2{font-size:12px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+
+    .actions{display:flex; align-items:center; gap:10px}
+
+    .pillRow{display:flex; align-items:center; gap:8px; flex-wrap:wrap}
+    .pill{
+      display:inline-flex; align-items:center; gap:7px;
+      padding:9px 12px;
+      border-radius: 999px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.05);
+      color: rgba(255,255,255,.85);
+      cursor:pointer;
+      user-select:none;
+      transition: transform var(--t), background var(--t), border-color var(--t);
+    }
+    .pill:hover{transform: translateY(-1px); background: rgba(255,255,255,.07)}
+    .pill.active{border-color: rgba(153,69,255,.55); background: rgba(153,69,255,.14)}
+    .pill .dot{width:10px; height:10px; border-radius:50%; background: rgba(255,255,255,.18); box-shadow: inset 0 0 0 1px rgba(255,255,255,.14)}
+    .pill.active .dot{background: var(--p)}
+
+    .btn{
+      display:inline-flex; align-items:center; justify-content:center;
+      gap:8px;
+      padding:10px 14px;
+      border-radius: 999px;
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      color: rgba(255,255,255,.88);
+      cursor:pointer;
+      transition: transform var(--t), background var(--t), border-color var(--t);
+    }
+    .btn:hover{transform: translateY(-1px); background: rgba(255,255,255,.085)}
+    .btn.primary{background: rgba(20,241,149,.14); border-color: rgba(20,241,149,.32)}
+    .btn.ghost{background: rgba(255,255,255,.03)}
+
+    /* Twitter/X button (topbar) */
+    .btn.xbtn{
+      background: rgba(0,0,0,.55);
+      border-color: rgba(255,255,255,.16);
+      color: rgba(255,255,255,.92);
+    }
+    .btn.xbtn:hover{ background: rgba(0,0,0,.70); }
+
+    /* Hide topbar chain pills + buy button (use lower controls instead) */
+    #netPills, #btnBuy{ display:none !important; }
+    .btn.xbtn svg{ width:14px; height:14px; display:block; }
+
+    /* Remove topbar chain pills + buy button (keep lower buttons) */
+    #netPills{ display:none !important; }
+    #btnBuy{ display:none !important; }
+
+    .panel{
+      margin-top:14px;
+      border:1px solid var(--stroke);
+      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      backdrop-filter: var(--glass);
+      overflow:hidden;
+    }
+
+    
+    /* ===== Dex-style Top Trending Bar + Search (MATCH MAIN PAGE) ===== */
+    :root{
+      --tickerSpeed: 8.2s;
+      --tickerDistance: 50%;
+
+      --solColor: #9945FF;
+      --ethColor: #627EEA;
+      --bnbColor: #F3BA2F;
+      --baseColor:#0052FF;
+
+      --netColor: var(--solColor);
+      --netGlow: rgba(153,69,255,.22);
+    }
+
+    body.net-sol{ --netColor: var(--solColor); --netGlow: rgba(153,69,255,.22); }
+    body.net-eth{ --netColor: var(--ethColor); --netGlow: rgba(98,126,234,.22); }
+    body.net-bnb{ --netColor: var(--bnbColor); --netGlow: rgba(243,186,47,.22); }
+    body.net-base{ --netColor: var(--baseColor); --netGlow: rgba(0,82,255,.22); }
+
+    /* Top trending bar container (inside panel) */
+    .topBar{
+      z-index: 60;
+      position: relative;
+      background: rgba(11,16,51,.45);
+      border-bottom: 1px solid rgba(255,255,255,.08);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+    }
+
+    .topBarInner{
+      padding: 14px 16px 12px;
+      display:flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .topRow{
+      display:flex;
+      align-items:center;
+      justify-content:flex-start;
+      gap: 12px;
+      flex-wrap:wrap;
+    }
+
+    /* keep chain pills close to LIVE TRENDING (not pushed to far right) */
+    .chainToggle{ margin-left: 10px; }
+
+    .bottomRow{
+      display:flex;
+      align-items:center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .hotBlock{ display:flex; align-items:center; gap: 12px; flex-wrap:wrap; }
+    .hotLabel{
+      display:inline-flex;
+      align-items:center;
+      gap: 10px;
+      padding: 9px 14px;
+      border-radius: 999px;
+      background: rgba(255,65,65,.10);
+      border: 1px solid rgba(255,65,65,.20);
+      box-shadow: 0 12px 32px rgba(0,0,0,.24);
+      font-weight: 1100;
+      letter-spacing: .6px;
+    }
+    .hotFire{ width: 18px; height: 18px; opacity: .95; display:grid; place-items:center; }
+
+    .dexguardBtn{
+      display:inline-flex;
+      align-items:center;
+      gap:12px;
+      padding: 9px 16px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.12);
+      background:
+        radial-gradient(140% 120% at 0% 0%, rgba(0,209,255,.18), rgba(0,209,255,0) 55%),
+        radial-gradient(140% 120% at 100% 100%, rgba(153,69,255,.18), rgba(153,69,255,0) 55%),
+        rgba(8,18,40,.50);
+      box-shadow: 0 12px 34px rgba(0,0,0,.28);
+      color: rgba(255,255,255,.92);
+      font-weight: 1050;
+      cursor:pointer;
+      user-select:none;
+      -webkit-tap-highlight-color: transparent;
+      transition: transform .15s ease, background .15s ease, border-color .15s ease, box-shadow .15s ease;
+      position:relative;
+      overflow:hidden;
+    }
+    .dexguardBtn:hover{
+      transform: translateY(-1px);
+      border-color: rgba(255,255,255,.18);
+      background:
+        radial-gradient(140% 120% at 0% 0%, rgba(0,209,255,.22), rgba(0,209,255,0) 60%),
+        radial-gradient(140% 120% at 100% 100%, rgba(153,69,255,.22), rgba(153,69,255,0) 60%),
+        rgba(8,18,40,.62);
+      box-shadow: 0 16px 46px rgba(0,0,0,.36);
+    }
+    .dexguardBtn:active{ transform: translateY(0px) scale(.995); }
+    .dexguardBtn::after{
+      content:"";
+      position:absolute;
+      inset:-60% -40%;
+      background: linear-gradient(120deg,
+        transparent 0%,
+        rgba(255,255,255,.00) 35%,
+        rgba(255,255,255,.22) 50%,
+        rgba(255,255,255,.06) 60%,
+        transparent 75%
+      );
+      transform: translateX(-170%) rotate(10deg);
+      opacity:0;
+      pointer-events:none;
+      mix-blend-mode: screen;
+      animation: dexguardShine 6.8s ease-in-out infinite;
+    }
+    @keyframes dexguardShine{
+      0%, 72%{ opacity:0; transform: translateX(-170%) rotate(10deg); }
+      78%{ opacity:.70; }
+      92%{ opacity:0; transform: translateX(170%) rotate(10deg); }
+      100%{ opacity:0; transform: translateX(170%) rotate(10deg); }
+    }
+
+    .dexguardChip{
+      position: relative;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      padding: 7px 14px;
+      border-radius: 999px;
+      background: rgba(3,12,24,.65);
+      border: 1px solid rgba(255,255,255,.10);
+      font-weight: 1100;
+      letter-spacing: .28em;
+      font-size: 13px;
+      color: rgba(255,255,255,.96);
+    }
+    .dexguardChip::before{
+      content:"";
+      position:absolute;
+      inset:-2px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, rgba(20,241,149,.88), rgba(0,209,255,.88), rgba(153,69,255,.88));
+      z-index:-1;
+      opacity:.9;
+    }
+    .dexguardText{
+      font-weight: 1050;
+      letter-spacing: -.2px;
+      font-size: 20px;
+      line-height: 1;
+    }
+
+    @media (max-width: 520px){
+      .dexguardText{ font-size: 18px; }
+      .dexguardBtn{ padding: 9px 14px; gap: 10px; }
+      .dexguardChip{ padding: 7px 12px; }
+    }
+
+    .chainToggle{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding: 6px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.04);
+    }
+
+    .chainBtn{
+      appearance:none;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.05);
+      color: rgba(255,255,255,.92);
+      font-weight: 1000;
+      font-size: 12px;
+      padding: 8px 10px;
+      border-radius: 999px;
+      cursor:pointer;
+      letter-spacing: .35px;
+      transition: transform .15s ease, background .15s ease, border-color .15s ease, box-shadow .15s ease;
+    }
+    .chainBtn:hover{ background: rgba(255,255,255,.09); transform: translateY(-1px); }
+    .chainBtn:active{ transform: translateY(0px) scale(.99); }
+
+    .chainBtn[data-net="solana"]{ border-color: rgba(153,69,255,.50); background: rgba(153,69,255,.10); box-shadow: 0 0 0 1px rgba(153,69,255,.12) inset, 0 10px 22px rgba(153,69,255,.10); }
+    .chainBtn[data-net="eth"]{ border-color: rgba(98,126,234,.50); background: rgba(98,126,234,.10); box-shadow: 0 0 0 1px rgba(98,126,234,.12) inset, 0 10px 22px rgba(98,126,234,.10); }
+    .chainBtn[data-net="bsc"]{ border-color: rgba(243,186,47,.52); background: rgba(243,186,47,.10); box-shadow: 0 0 0 1px rgba(243,186,47,.12) inset, 0 10px 22px rgba(243,186,47,.10); }
+    .chainBtn[data-net="base"]{ border-color: rgba(0,82,255,.52); background: rgba(0,82,255,.10); box-shadow: 0 0 0 1px rgba(0,82,255,.12) inset, 0 10px 22px rgba(0,82,255,.10); }
+
+    .chainBtn.active{
+      color: rgba(255,255,255,.96);
+      text-shadow: 0 1px 0 rgba(0,0,0,.35);
+      border: 1px solid rgba(255,255,255,.96);
+      box-shadow: 0 10px 26px rgba(0,0,0,.28);
+    }
+    body.net-sol .chainBtn.active{ background: linear-gradient(90deg, rgba(153,69,255,.96), rgba(153,69,255,.52)); }
+    body.net-eth .chainBtn.active{ background: linear-gradient(90deg, rgba(98,126,234,.96), rgba(98,126,234,.52)); }
+    body.net-bnb .chainBtn.active{ background: linear-gradient(90deg, rgba(243,186,47,.96), rgba(243,186,47,.50)); }
+    body.net-base .chainBtn.active{ background: linear-gradient(90deg, rgba(0,82,255,.96), rgba(0,82,255,.50)); }
+
+    .tickerWrap{
+      flex: 1;
+      min-width: 0;
+      position: relative;
+      overflow: hidden;
+      border-radius: 999px;
+      background: rgba(255,255,255,.05);
+      border: 1px solid rgba(255,255,255,.10);
+      box-shadow: 0 10px 30px rgba(0,0,0,.22);
+      padding: 10px 12px;
+    }
+
+    .tickerWrap:before,
+    .tickerWrap:after{
+      content:"";
+      position:absolute;
+      top:0; bottom:0;
+      width: 44px;
+      pointer-events:none;
+      z-index: 2;
+    }
+    .tickerWrap:before{ left:0; background: linear-gradient(90deg, rgba(11,16,51,.92), rgba(11,16,51,0)); }
+    .tickerWrap:after{ right:0; background: linear-gradient(270deg, rgba(11,16,51,.92), rgba(11,16,51,0)); }
+
+    .tickerTrack{
+      display:flex;
+      gap: 10px;
+      align-items:center;
+      white-space: nowrap;
+      will-change: transform;
+      animation: tickerMarquee var(--tickerSpeed) linear infinite;
+    }
+
+    .tickerWrap:hover .tickerTrack{ animation-play-state: paused; }
+
+    @keyframes tickerMarquee{
+      0%{ transform: translateX(0); }
+      100%{ transform: translateX(calc(-1 * var(--tickerDistance))); }
+    }
+
+    .tickerItem{
+      display:inline-flex;
+      align-items:center;
+      gap: 10px;
+      padding: 7px 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.10);
+      box-shadow: 0 0 0 1px var(--netGlow) inset;
+      color: rgba(255,255,255,.92);
+      font-weight: 900;
+      font-size: 13px;
+      letter-spacing: .1px;
+      cursor:pointer;
+    }
+
+    .tickerLogoWrap{
+      width:28px;
+      height:28px;
+      flex:0 0 28px;
+      border-radius: 6px;
+      overflow:hidden;
+      display:grid;
+      place-items:center;
+      background: rgba(255,255,255,.07);
+      border: 1px solid rgba(255,255,255,.10);
+      box-shadow: 0 8px 18px rgba(0,0,0,.22);
+    }
+    .tickerLogo{ width:100%; height:100%; object-fit: cover; display:block; }
+    .tickerLogoFallback{ font-size: 12px; font-weight: 1100; color: rgba(255,255,255,.90); line-height: 1; }
+    .tickerItem.top1 .tickerLogoWrap{ border-color: rgba(255,215,0,.35); box-shadow: 0 0 0 1px rgba(255,215,0,.15) inset, 0 10px 22px rgba(0,0,0,.22); }
+
+    .tickerItem .rank{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      min-width: 28px;
+      height: 22px;
+      padding: 0 8px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.08);
+      border: 1px solid rgba(255,255,255,.10);
+      font-size: 12px;
+      font-weight: 1000;
+      color: var(--netColor);
+    }
+    .tickerItem .sym{ font-weight: 950; }
+
+    .tickerPct{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      height: 22px;
+      padding: 0 8px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.10);
+      font-size: 12px;
+      font-weight: 950;
+      color: rgba(255,255,255,.90);
+    }
+    .tickerPct.up{ color: rgba(20,241,149,.98); background: rgba(20,241,149,.10); border-color: rgba(20,241,149,.22); }
+    .tickerPct.down{ color: rgba(255,90,90,.96); background: rgba(255,90,90,.10); border-color: rgba(255,90,90,.22); }
+
+    .tickerItem.top1{
+      background: rgba(255,215,0,.10);
+      border-color: rgba(255,215,0,.32);
+      box-shadow: 0 0 0 1px rgba(255,215,0,.18) inset, 0 12px 30px rgba(0,0,0,.26);
+    }
+    .tickerItem.top1 .rank{
+      background: linear-gradient(90deg, #F3BA2F, #FFD700, #FFF2B0);
+      color: rgba(10,10,22,.92);
+      border: 0;
+      font-weight: 1100;
+    }
+
+    /* Search (styled like main page) */
+    .dexSearch{position: relative; width: 360px; max-width: 44vw; z-index: 99999; isolation:isolate; }
+    .dexSearchInner{
+      display:flex;
+      gap: 8px;
+      align-items:center;
+      padding: 10px 12px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.05);
+      border: 1px solid rgba(255,255,255,.10);
+      box-shadow: 0 10px 30px rgba(0,0,0,.22);
+    }
+    .dexInput{
+      flex: 1;
+      min-width: 0;
+      background: transparent;
+      border: 0;
+      outline: none;
+      color: rgba(255,255,255,.92);
+      font-weight: 850;
+      font-size: 13px;
+    }
+    .dexInput::placeholder{ color: rgba(255,255,255,.55); font-weight: 800; }
+
+    /* Re-skin existing results dropdown to match main page style */
+    .results{
+      z-index: 1000001;
+display:none;
+      position:absolute;
+      top: calc(100% + 10px);
+      right: 0;
+      left: auto;
+      width: min(560px, calc(100vw - 28px));
+      max-height: 60vh;
+      overflow:auto;
+      padding: 10px;
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,.14);
+      /* IMPORTANT: fully readable dropdown (no chart bleed-through) */
+      background: rgba(12,16,40,.98);
+      box-shadow: 0 26px 90px rgba(0,0,0,.78);
+      isolation: isolate;
+      z-index: 999999;
+    }
+
+    /* Search modal scrim: blocks chart/trades from showing through while searching */
+    .searchScrim{
+      display:none;
+      position:fixed;
+      inset:0;
+      background: rgba(7,7,17,.72);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      z-index: 999990;
+    }
+    .dexSearch.open .searchScrim{ display:block; }
+
+
+    /* Keep DexGuard search row markup, but make it feel like the main dropdown */
+    .resItem{
+      border-radius: 16px;
+      margin-bottom: 10px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: #141c44;
+      padding: 10px 10px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 10px;
+      cursor:pointer;
+      transition: background .15s ease, border-color .15s ease, transform .15s ease;
+    }
+    .resItem:hover{ background: #18214f; border-color: rgba(255,255,255,.18); transform: translateY(-1px); }
+    .resItem:last-child{ margin-bottom: 0; }
+
+    .resL{ display:flex; align-items:center; gap: 10px; min-width:0; }
+    .resLogo{
+      width: 36px;
+      height: 36px;
+      border-radius: 12px;
+      overflow:hidden;
+      display:grid;
+      place-items:center;
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.10);
+      flex: 0 0 36px;
+    }
+    .resLogo img{ width:100%; height:100%; object-fit:cover; display:block; }
+    .resLogo .fb{ font-weight:1100; color: rgba(255,255,255,.92); }
+
+    .resTxt{ min-width:0; }
+    .resName{ font-weight: 1000; letter-spacing:-.01em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .resMeta{ font-size: 12px; color: rgba(255,255,255,.64); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top: 2px; }
+    .resR{ display:flex; gap: 8px; align-items:center; flex-wrap:wrap; justify-content:flex-end; }
+
+    /* Hide legacy UI bits so the bar looks identical */
+    #btnGo{ display:none !important; }
+    #modeHint{ display:none !important; }
+
+    @media (max-width: 860px){
+      .dexSearch{ width: 100%; max-width: 100%; }
+      .bottomRow{ flex-direction: column; align-items: stretch; }
+    }
+    /* Layout: chart on top, trades underneath (desktop + mobile) */
+    .grid{
+      display:grid;
+      grid-template-columns: 1fr;
+      gap:14px;
+      padding:14px;
+    }
+
+    .card{
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.045);
+      border-radius: 20px;
+      overflow:hidden;
+    }
+
+    .cardHd{
+      display:flex; align-items:center; justify-content:space-between;
+      gap:12px;
+      padding:14px 14px;
+      border-bottom:1px solid rgba(255,255,255,.07);
+    }
+    .pair{display:flex; align-items:center; gap:10px; min-width:0}
+    .tlogo{width:38px; height:38px; border-radius:14px; overflow:hidden; display:grid; place-items:center; background: rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.10)}
+    .tlogo img{width:100%; height:100%; object-fit:cover}
+    .tlogo .fb{font-weight:900; opacity:.9}
+    .pairTxt{min-width:0}
+    .pairName{font-weight:950; letter-spacing:-.02em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+    .pairNameSub{font-size:12px; font-weight:800; opacity:.72; margin-left:8px; letter-spacing:0;}
+    .pairMeta{font-size:12px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+
+    .stats{display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end}
+    .statPill{
+      display:inline-flex; align-items:center; gap:8px;
+      padding:8px 10px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.10);
+      font-size:12px;
+      color: rgba(255,255,255,.86);
+      white-space:nowrap;
+    }
+    .statPill.up{border-color: rgba(20,241,149,.30); background: rgba(20,241,149,.10); color: rgba(20,241,149,.92)}
+    .statPill.down{border-color: rgba(255,77,109,.28); background: rgba(255,77,109,.10); color: rgba(255,77,109,.92)}
+
+    #chartWrap{height: clamp(380px, 52vh, 600px); position:relative; z-index:0}
+    #chart{position:absolute; inset:0; z-index:1}
+    /* Ensure dropdowns/menus always sit above the chart canvas */
+    #chart canvas{position:relative; z-index:1}
+
+    .controls{
+      display:flex; align-items:center; justify-content:space-between;
+      gap:10px;
+      padding:12px 12px;
+      border-top:1px solid rgba(255,255,255,.07);
+      background: rgba(0,0,0,.10);
+      flex-wrap:wrap;
+    }
+
+    .tfRow{display:flex; gap:6px; flex-wrap:wrap}
+    .tf{padding:8px 10px; border-radius: 999px; border:1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.05); cursor:pointer; font-weight:850; font-size:12px}
+    .tf.active{border-color: rgba(0,209,255,.42); background: rgba(0,209,255,.14)}
+
+    .rightCtl{display:flex; gap:8px; align-items:center; flex-wrap:wrap}
+    .sel{padding:9px 10px; border-radius: 999px; border:1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.05); color: var(--text)}
+
+    .tableHd{
+      display:flex; align-items:flex-end; justify-content:space-between;
+      padding:14px 14px;
+      border-bottom:1px solid rgba(255,255,255,.07);
+    }
+    .ttl{font-weight:950; letter-spacing:-.02em}
+    .sub{font-size:12px; color:var(--muted)}
+
+    .trades{
+      height: 600px;
+      overflow:auto;
+    }
+
+    .tradeHead, .tradeRow{
+      display:grid;
+      grid-template-columns: 90px 70px 90px 1fr 110px 1fr 34px;
+      gap:10px;
+      align-items:center;
+      padding:10px 12px;
+      border-bottom:1px solid rgba(255,255,255,.06);
+      font-size:13px;
+    }
+    .tradeHead{
+      position:sticky; top:0; z-index:5;
+      background: rgba(12,12,20,.92);
+      backdrop-filter: blur(12px);
+      font-size:12px;
+      color: rgba(255,255,255,.72);
+      font-weight:900;
+    }
+    .tradeRow:hover{background: rgba(255,255,255,.05)}
+    .typeBadge{
+      display:inline-flex; align-items:center; justify-content:center;
+      padding:6px 10px;
+      border-radius:999px;
+      font-weight:950;
+      font-size:12px;
+      letter-spacing:-.01em;
+      border:1px solid rgba(255,255,255,.10);
+      width:fit-content;
+    }
+    .typeBadge.buy{background: rgba(20,241,149,.10); border-color: rgba(20,241,149,.30); color: rgba(20,241,149,.95)}
+    .typeBadge.sell{background: rgba(255,77,109,.10); border-color: rgba(255,77,109,.28); color: rgba(255,77,109,.95)}
+
+    .mono{font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1}
+    .maker{display:flex; align-items:center; gap:8px; min-width:0}
+    .maker .addr{white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color: rgba(255,255,255,.85)}
+    .maker .new{font-size:11px; padding:4px 8px; border-radius:999px; border:1px solid rgba(153,69,255,.30); background: rgba(153,69,255,.12); color: rgba(153,69,255,.95); font-weight:900}
+
+    .iconBtn{width:30px; height:30px; border-radius: 999px; border:1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.05); display:grid; place-items:center; cursor:pointer}
+    .iconBtn:hover{background: rgba(255,255,255,.08)}
+
+    .toast{
+      position:fixed;
+      left:50%; transform: translateX(-50%);
+      bottom:18px;
+      background: rgba(10,10,18,.92);
+      border:1px solid rgba(255,255,255,.14);
+      color: rgba(255,255,255,.92);
+      padding:12px 14px;
+      border-radius: 14px;
+      box-shadow: 0 14px 60px rgba(0,0,0,.65);
+      backdrop-filter: blur(14px);
+      display:none;
+      z-index:60;
+      max-width: calc(100% - 24px);
+    }
+
+    /* Mobile-first: keep it clean */
+    .mobileTabs{display:none}
+    .tabBar{
+      display:flex; gap:8px;
+      padding:12px 12px;
+      border-top:1px solid rgba(255,255,255,.06);
+      background: rgba(0,0,0,.12);
+    }
+    .tab{
+      flex:1;
+      padding:10px 12px;
+      border-radius: 14px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.05);
+      font-weight:950;
+      cursor:pointer;
+      text-align:center;
+    }
+    .tab.active{border-color: rgba(153,69,255,.55); background: rgba(153,69,255,.14)}
+
+    @media (max-width: 980px){
+      .grid{grid-template-columns: 1fr}
+      .trades{height: 420px}
+      #chartWrap{height: clamp(340px, 48vh, 520px)}
+      .topbar{position:fixed; top: calc(env(safe-area-inset-top) + 10px); left:50%; transform: translateX(-50%); width: min(var(--max), calc(100vw - 20px));}
+    }
+
+    @media (max-width: 640px){
+      /* Remove the harsh green mid-page wash on small screens */
+      body{
+        background:
+          radial-gradient(900px 520px at 25% 0%, rgba(153,69,255,.22), transparent 60%),
+          radial-gradient(900px 520px at 85% 18%, rgba(0,209,255,.14), transparent 60%),
+          var(--bg);
+      }
+
+      .wrap{padding: calc(var(--topbar-space, 84px) + 12px) 10px 18px}
+
+      /* Cleaner, less "thick" top header */
+      .topbar{
+        padding:10px 10px;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+      }
+      .actions{justify-content:space-between; width:100%; gap:8px; flex-wrap:wrap}
+      .btn{padding:10px 12px; font-size:13px}
+      .pill{padding:8px 10px}
+
+      /* Make the trending/search header feel compact & aligned */
+      .topBarInner{padding:12px 12px 12px}
+      .hotLabel{padding:10px 12px; font-size:13px}
+      .chainBtn{padding:8px 10px; font-size:12px}
+      .dexSearchInner{padding:10px 12px}
+      .results{left:0; right:0; width: calc(100vw - 24px)}
+
+      .tickerTrack{animation-duration: 22s}
+      .grid{padding:12px}
+      .stats{justify-content:flex-start}
+
+      /* Always show chart then trades (no tabs) */
+      .mobileTabs{display:none !important}
+      #mobileTradesWrap{display:none !important}
+      .desktopOnly{display:block}
+
+      #chartWrap{height: clamp(360px, 52vh, 560px)}
+      .trades{height: 520px}
+
+      /* Trades table: keep it readable */
+      .tradeHead, .tradeRow{grid-template-columns: 62px 64px 78px 1fr 0 0 34px}
+      .tradeHead .hideM, .tradeRow .hideM{display:none}
+      .maker .new{display:none}
+    }
+  
+
+/* ================================
+   DexGuard UI/UX Premium Patch (Design-only)
+   ================================ */
+
+/* Design tokens */
+:root{
+  --s-1:8px;
+  --s-2:12px;
+  --s-3:16px;
+  --s-4:20px;
+  --s-5:24px;
+  --r-1:14px;
+  --r-2:18px;
+  --r-3:22px;
+  --e-1: 0 10px 28px rgba(0,0,0,.36);
+  --e-2: 0 18px 54px rgba(0,0,0,.55);
+  --glassSm: blur(10px);
+  --glassNone: blur(0px);
+  --hit:44px;
+}
+
+/* Mobile-only performance: reduce expensive blur on large surfaces */
+@media (max-width: 760px){
+  .panel{
+    /* Avoid expensive blur on large surfaces */
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    /* Avoid heavy shadows on full-width panels */
+    box-shadow: var(--e-1) !important;
+  }
+  .topBar{
+    /* Keep glass subtle (no heavy blur on wide area) */
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+}
+
+/* ===== Mobile-first: compact sticky top bar + proper hierarchy ===== */
+@media (max-width: 740px){
+  .wrap{
+    padding: calc(var(--topbar-space, 84px) + 10px) 10px 110px; /* reserve space for bottom sheet */
+  }
+
+  .topbar{
+    position: fixed;
+    top: calc(env(safe-area-inset-top) + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(var(--max), calc(100vw - 20px));
+    z-index: 1000;
+    padding: 10px 10px;
+    border-radius: var(--r-2);
+    backdrop-filter: var(--glassSm);
+    -webkit-backdrop-filter: var(--glassSm);
+  }
+  .brand{ gap: 10px; }
+  #topDexguardBtn{
+    min-height: var(--hit);
+    padding: 8px 14px;
+  }
+  .actions{
+    gap: 8px;
+    flex-wrap: nowrap;
+    justify-content: flex-end;
+    width: auto;
+  }
+  #btnBack{
+    min-height: var(--hit);
+    padding: 10px 12px;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+  #btnX{
+    width: var(--hit);
+    height: var(--hit);
+    padding: 0;
+    justify-content: center;
+  }
+  #btnX span{ display:none; }
+
+  /* Trending/search header: compact, app-like */
+  .topBarInner{
+    padding: 10px 10px 10px;
+    gap: 10px;
+  }
+  .topRow{
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: space-between;
+  }
+  .hotLabel{
+    display:none; /* keep accessible via ticker; don't dominate */
+  }
+  .chainToggle{
+    margin-left: 0;
+    width: 100%;
+    justify-content: space-between;
+  }
+  .chainBtn{
+    flex: 1;
+    text-align: center;
+    min-height: 40px;
+    padding: 10px 10px;
+    font-size: 12px;
+  }
+
+  .bottomRow{
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+  .tickerWrap{
+    padding: 8px 10px;
+    border-radius: 18px;
+  }
+  .tickerTrack{ animation-duration: 22s; }
+  .tickerItem{ font-size: 12px; padding: 8px 10px; }
+
+  /* Search: prominent + thumb friendly */
+  .dexSearch{ width: 100%; max-width: 100%; }
+  .dexSearchInner{
+    min-height: var(--hit);
+    padding: 10px 12px;
+    border-radius: 18px;
+  }
+  .dexInput{
+    font-size: 14px;
+    font-weight: 900;
+  }
+  .results{
+    max-height: 58vh;
+    border-radius: 18px;
+  }
+
+  /* Main content hierarchy */
+  #chartWrap{ height: clamp(360px, 52vh, 560px); }
+  .card{
+    border-radius: var(--r-3);
+  }
+  .cardHd{
+    padding: 12px 12px;
+    gap: 10px;
+  }
+  .tlogo{
+    width: 40px;
+    height: 40px;
+    border-radius: 14px;
+  }
+  .pairName{
+    font-size: 15px;
+  }
+  .stats{
+    justify-content: flex-start;
+    gap: 8px;
+  }
+
+  /* Hide legacy mobile tabs wrapper entirely */
+  .mobileTabs{ display:none !important; }
+  #mobileTradesWrap{ display:none !important; }
+
+  /* ===== Live Trades bottom sheet ===== */
+  #tradesCard{
+    --sheetPeek: 58px;
+    --sheetH: clamp(240px, 42vh, 420px);
+    position: fixed !important;
+    left: 10px;
+    right: 10px;
+    bottom: calc(env(safe-area-inset-bottom) + 10px);
+    margin: 0 !important;
+    height: var(--sheetH);
+    max-height: 45vh;
+    max-width: none !important;
+    z-index: 95;
+    box-shadow: var(--e-2);
+    transform: translateY(calc(100% - var(--sheetPeek)));
+    transition: transform .20s cubic-bezier(.2,.9,.2,1);
+    will-change: transform;
+    background: rgba(10,12,22,.72);
+    backdrop-filter: var(--glassSm);
+    -webkit-backdrop-filter: var(--glassSm);
+    border-radius: 20px;
+    overflow: hidden;
+  }
+  #tradesCard.sheetOpen{
+    transform: translateY(0);
+  }
+  #tradesCard .tableHd{
+    padding: 10px 12px;
+    border-bottom: 1px solid rgba(255,255,255,.08);
+    background: rgba(10,12,22,.74);
+    backdrop-filter: var(--glassSm);
+    -webkit-backdrop-filter: var(--glassSm);
+    cursor: pointer;
+    user-select: none;
+  }
+  #tradesCard .tableHd::before{
+    content:"";
+    display:block;
+    width: 46px;
+    height: 4px;
+    border-radius: 999px;
+    background: rgba(255,255,255,.18);
+    margin: 2px auto 8px;
+  }
+  #tradesCard .tableHd .ttl{
+    font-size: 14px;
+    letter-spacing: -.01em;
+  }
+  #tradesCard .tableHd .sub{
+    font-size: 12px;
+  }
+  #tradesCard .tableHd{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap: 10px;
+  }
+  #tradesCard .tableHd .sheetRight{
+    display:flex;
+    align-items:center;
+    gap: 8px;
+  }
+  #tradesCard:not(.sheetOpen) .trades{
+    display:none;
+  }
+  #tradesCard.sheetOpen .trades{
+    height: calc(var(--sheetH) - 78px);
+    max-height: calc(45vh - 78px);
+    overflow:auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  #tradesCard .sheetToggleBtn{
+    width: 40px;
+    height: 40px;
+  }
+  #tradesCard.sheetOpen .sheetToggleBtn{
+    transform: rotate(180deg);
+  }
+
+
+  /* Trades columns: reduce clutter on mobile */
+  .tradeHead, .tradeRow{
+    grid-template-columns: 64px 64px 84px 1fr 0 0 34px !important;
+  }
+  .maker .new{ display:none !important; }
+}
+
+/* ===== Desktop premium grid balancing ===== */
+@media (min-width: 980px){
+  .grid{
+    gap: 16px;
+    padding: 16px;
+  }
+  #chartWrap{ height: clamp(460px, 56vh, 720px); }
+  .cardHd{ padding: 16px 16px; }
+  .controls{ padding: 12px 14px; }
+  .trades{ height: 560px; }
+}
+
+/* ================================
+   DexGuard Targeted UI PATCH (A/B/C) — FIXED (no nested @media)
+   ================================ */
+@media (max-width: 760px){
+  /* Header pills stay single-row with horizontal scroll if needed (no wrapping) */
+  #netPills{
+    display:flex;
+    flex-wrap: nowrap !important;
+    gap: 8px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    max-width: 52vw;
+  }
+  #netPills::-webkit-scrollbar{ display:none; }
+
+  /* TASK C — Search dropdown never clipped */
+  .panel{ overflow: visible !important; }
+  .topBar{ z-index: 5000 !important; }
+  .dexSearch{ z-index: 6000 !important; }
+  .results{ z-index: 7000 !important; }
+  .grid{ position: relative; z-index: 1; }
+
+  /* TASK B — Live Trades stays under chart, expands downward only (accordion) */
+  #tradesCard{
+    position: relative !important;
+    left: auto !important; right: auto !important; bottom: auto !important;
+    transform: none !important;
+    height: auto !important;
+    max-height: none !important;
+    margin: 0 !important;
+  }
+  #tradesCard .tableHd{
+    cursor: pointer;
+    user-select: none;
+  }
+  #tradesCard .tableHd .sheetRight{ display:flex; align-items:center; gap:10px; }
+  #tradesCard .accToggleBtn{
+    width: 40px;
+    height: 40px;
+    display: grid;
+    place-items: center;
+    border-radius: 999px;
+    border: 1px solid rgba(255,255,255,.12);
+    background: rgba(255,255,255,.05);
+  }
+  #tradesCard .accToggleBtn:hover{ background: rgba(255,255,255,.08); }
+  #tradesCard .accToggleBtn svg{ transition: transform var(--t); }
+  #tradesCard.open .accToggleBtn svg{ transform: rotate(180deg); }
+
+  /* collapsed: header only */
+  #tradesCard:not(.open) .trades{ display:none !important; }
+
+  /* expanded: internal scrolling region, still in page flow */
+  #tradesCard.open .trades{
+    display:block !important;
+    height: auto !important;
+    max-height: clamp(240px, 45vh, 600px);
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+@media (max-width: 640px){
+  #netPills{ max-width: 44vw; }
+  .pill{ min-height: 40px; padding: 8px 10px; }
+}
+
+@media (max-width: 980px){
+  #tradesCard.open .trades{ max-height: clamp(220px, 42vh, 520px); }
+}
+
+/* ===== DexGuard Live Terminal Patch: Split Panel + Live Txns ===== */
+@media (max-width: 760px){
+  #btnRefresh,#btnFit{display:none !important;}
+}
+.splitRoot{display:flex; flex-direction:column; height:clamp(520px,70vh,780px); min-height:480px; max-height:820px; margin-top:10px;}
+.splitChart{flex:1 1 auto; min-height:220px; position:relative; display:flex; flex-direction:column;}
+.splitChart #chartWrap{flex:1 1 auto; height:100% !important; min-height:220px;}
+.splitHandle{flex:0 0 14px; height:14px; cursor:ns-resize; touch-action:none; user-select:none; display:flex; align-items:center; justify-content:center;
+  background:rgba(255,255,255,.03); border-top:1px solid rgba(255,255,255,.06); border-bottom:1px solid rgba(255,255,255,.06);}
+.splitHandle::before{content:""; width:52px; height:4px; border-radius:999px; background:rgba(255,255,255,.18);}
+.splitPanel{flex:0 0 var(--split-bottom,260px); min-height:160px; max-height:calc(100% - 220px); overflow:hidden; display:flex; flex-direction:column;
+  background:rgba(0,0,0,.12); border-radius:16px;}
+.splitTabs{display:flex; gap:8px; padding:10px 10px 8px; align-items:center; border-bottom:1px solid rgba(255,255,255,.07); background:rgba(0,0,0,.16);}
+.splitTab{appearance:none; border:1px solid rgba(255,255,255,.10); background:rgba(255,255,255,.03); color:rgba(255,255,255,.88); padding:8px 10px; border-radius:12px;
+  font-weight:650; font-size:12px; letter-spacing:.2px; cursor:pointer;}
+.splitTab.active{background:rgba(255,184,0,.14); border-color:rgba(255,184,0,.22); color:#ffd37a;}
+.splitBody{flex:1; overflow:auto; -webkit-overflow-scrolling:touch;}
+.tradeRow.enter{animation:tradeEnter .26s ease-out both;}
+@keyframes tradeEnter{from{opacity:0; transform:translateY(-10px);}to{opacity:1; transform:translateY(0);}}
+/* Hide legacy mobile chart/trades tabs (split panel replaces them) */
+.mobileTabs{display:none !important;}
+#mobileTradesWrap{display:none !important;}
+
+
+
+/* ================================
+   MOBILE-ONLY GAP + APP-FEEL PATCH (step01)
+   - Tightens spacing, removes blank areas under chart/trades
+   - Keeps consistent 10–12px side padding
+   - Does NOT affect desktop
+   ================================ */
+@media (max-width: 760px){
+  .wrap{
+    max-width: 100% !important;
+    margin: 0 auto !important;
+    padding: 10px 12px 16px !important;
+  }
+
+  .topbar{
+    margin: 8px 0 10px !important;
+    padding: 8px 10px !important;
+    border-radius: 18px !important;
+  }
+
+  .topBarInner{
+    padding: 10px 10px 10px !important;
+    gap: 8px !important;
+  }
+
+  .grid{
+    padding: 10px !important;
+    gap: 10px !important;
+  }
+
+  .card{ border-radius: 18px !important; }
+  .cardHd{ padding: 10px 12px !important; }
+  .controls{ padding: 8px 10px !important; gap: 8px !important; }
+
+  /* Prevent large blank areas under the chart */
+  #chartWrap{
+    height: clamp(280px, 46vh, 460px) !important;
+  }
+
+  /* If split layout is enabled, remove its fixed height clamps on mobile */
+  .splitRoot{
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    margin-top: 8px !important;
+  }
+  .splitChart #chartWrap{
+    height: auto !important;
+    min-height: 220px !important;
+  }
+  .splitPanel{
+    flex: 0 0 auto !important;
+    min-height: 140px !important;
+    max-height: none !important;
+  }
+
+  /* Trades: avoid huge empty space; keep it scrollable within a sensible max-height */
+  .trades{
+    height: auto !important;
+    max-height: clamp(260px, 38vh, 420px) !important;
+    overflow: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Tighten ticker/search blocks */
+  .tickerWrap{ padding: 8px 10px !important; }
+  .dexSearchInner{ padding: 10px 10px !important; }
+
+  /* Reduce extra vertical padding/margins around panels/cards */
+  .panel{ margin-top: 0 !important; }
+}
+
+
+
+/* ================================
+   MOBILE-ONLY TOP APP BAR (step02)
+   Dexscreener-style single-row header:
+   left = logo, right = Back + X
+   Safe-area aware (iPhone notch)
+   Desktop unchanged
+   ================================ */
+@media (max-width: 760px){
+  /* Reserve space for fixed app bar (safe-area + bar height) */
+  :root{ --appbarH: 56px; }
+
+  .wrap{
+    /* keep side padding from step01, but add top space for fixed bar */
+    padding-top: calc(env(safe-area-inset-top) + var(--appbarH) + 10px) !important;
+  }
+
+  .topbar{
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+    transform: none !important;
+    margin: 0 !important;
+
+    /* Safe-area padding for iOS */
+    padding-top: calc(env(safe-area-inset-top) + 8px) !important;
+    padding-bottom: 8px !important;
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+
+    border-radius: 0 0 18px 18px !important;
+    box-shadow: 0 10px 26px rgba(0,0,0,.55) !important;
+
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 10px !important;
+
+    /* App-bar look */
+    background: rgba(12,16,40,.92) !important;
+    backdrop-filter: blur(14px) !important;
+    -webkit-backdrop-filter: blur(14px) !important;
+    border: 1px solid rgba(255,255,255,.10) !important;
+    border-left: 0 !important;
+    border-right: 0 !important;
+    border-top: 0 !important;
+
+    z-index: 99999 !important;
+  }
+
+  .topbar .brand{
+    flex: 0 1 auto !important;
+    min-width: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+  }
+
+  /* Logo sizing like an app bar */
+  .topLogo{
+    height: 28px !important;
+    max-width: 160px !important;
+  }
+
+  .topbar .actions{
+    flex: 0 0 auto !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    flex-wrap: nowrap !important;
+    gap: 8px !important;
+    white-space: nowrap !important;
+    width: auto !important;
+    min-width: 0 !important;
+  }
+
+  /* Only show Back + X on mobile app bar (keep IDs intact) */
+  #netPills{ display: none !important; }
+  #btnBuy{ display: none !important; }
+
+  #btnBack{
+    min-height: 40px !important;
+    height: 40px !important;
+    padding: 0 12px !important;
+    font-size: 12px !important;
+    border-radius: 999px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  #btnX{
+    width: 40px !important;
+    height: 40px !important;
+    min-height: 40px !important;
+    padding: 0 !important;
+    border-radius: 999px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+  #btnX span{ display: none !important; }
+
+  /* Absolutely prevent any wrapping/stacking */
+  .topbar, .topbar *{ max-width: 100%; }
+}
+
+/* Extra small devices */
+@media (max-width: 360px){
+  .topLogo{ max-width: 140px !important; }
+  #btnBack{ padding: 0 10px !important; font-size: 11px !important; }
+}
+
+
+
+/* ================================
+   MOBILE-ONLY CHAIN SEGMENTED CONTROL (step03)
+   - Dexscreener-style segmented control under the app bar
+   - Equal-width, thumb-friendly (min 44px)
+   - Keeps existing data-net attributes + event logic intact
+   - Desktop unchanged
+   ================================ */
+@media (max-width: 760px){
+  /* Place segmented control on its own line under the header area */
+  .topRow{
+    flex-direction: column !important;
+    align-items: stretch !important;
+    justify-content: flex-start !important;
+    gap: 10px !important;
+    flex-wrap: nowrap !important;
+  }
+
+  /* Segmented control container */
+  #trendToggle.chainToggle{
+    width: 100% !important;
+    margin: 0 !important;
+    display: flex !important;
+    align-items: stretch !important;
+    justify-content: space-between !important;
+    gap: 0 !important;
+    padding: 4px !important;
+    border-radius: 16px !important;
+    background: rgba(255,255,255,.06) !important;
+    border: 1px solid rgba(255,255,255,.12) !important;
+    box-shadow: 0 10px 24px rgba(0,0,0,.28) !important;
+    overflow: hidden !important;
+  }
+
+  /* Segments */
+  #trendToggle.chainToggle .chainBtn{
+    flex: 1 1 0 !important;
+    min-height: 44px !important;
+    height: 44px !important;
+    padding: 0 10px !important;
+    margin: 0 !important;
+
+    border: 0 !important;
+    border-radius: 12px !important;
+    background: transparent !important;
+    box-shadow: none !important;
+
+    font-size: 12px !important;
+    font-weight: 1050 !important;
+    letter-spacing: .35px !important;
+    color: rgba(255,255,255,.84) !important;
+
+    transform: none !important; /* prevent bounce inside segmented control */
+  }
+
+  #trendToggle.chainToggle .chainBtn:hover{
+    background: rgba(255,255,255,.05) !important;
+  }
+  #trendToggle.chainToggle .chainBtn:active{
+    background: rgba(255,255,255,.08) !important;
+  }
+
+  /* Theme-highlight active chain (purple/blue) */
+  #trendToggle.chainToggle .chainBtn.active{
+    color: rgba(255,255,255,.98) !important;
+    text-shadow: 0 1px 0 rgba(0,0,0,.30) !important;
+    background: linear-gradient(90deg, rgba(153,69,255,.95), rgba(0,209,255,.72)) !important;
+    box-shadow: 0 12px 28px rgba(153,69,255,.18) !important;
+  }
+
+  /* Subtle dividers between segments (disabled around active) */
+  #trendToggle.chainToggle .chainBtn + .chainBtn{
+    box-shadow: inset 1px 0 0 rgba(255,255,255,.08) !important;
+  }
+  #trendToggle.chainToggle .chainBtn.active + .chainBtn,
+  #trendToggle.chainToggle .chainBtn + .chainBtn.active{
+    box-shadow: none !important;
+  }
+}
+
+
+
+/* ================================
+   MOBILE-ONLY SEARCH APP BAR (step04)
+   - Full-width, Dexscreener-style search
+   - Sticky ONLY on mobile (no overlap; stays in flow)
+   - Respects safe areas + fixed app bar
+   - Keeps existing input id/name + JS handlers unchanged
+   ================================ */
+@media (max-width: 760px){
+  /* Put search first in the bottom row for an app-like hierarchy */
+  .bottomRow{ position: relative !important; }
+  .bottomRow .dexSearch{ order: 0 !important; }
+  .bottomRow .tickerWrap{ order: 1 !important; }
+
+  /* Sticky search under the fixed top app bar */
+  .dexSearch{
+    width: 100% !important;
+    max-width: 100% !important;
+    position: sticky !important;
+    top: calc(env(safe-area-inset-top) + var(--appbarH, 56px) + 8px) !important;
+    z-index: 9000 !important;
+
+    /* keep spacing consistent and prevent "floating overlap" feel */
+    margin: 0 !important;
+  }
+
+  /* Give the sticky region a subtle backing so content never reads "under" it */
+  .dexSearch::before{
+    content:"";
+    position:absolute;
+    left:-12px; right:-12px;
+    top:-10px;
+    height: calc(100% + 20px);
+    background: rgba(7,7,17,.92);
+    border-bottom: 1px solid rgba(255,255,255,.08);
+    border-radius: 0 0 16px 16px;
+    z-index: -1;
+    pointer-events:none;
+  }
+
+  .dexSearchInner{
+    width: 100% !important;
+    min-height: 48px !important;
+    padding: 10px 12px !important;
+    border-radius: 16px !important;
+    background: rgba(12,16,40,.92) !important;
+    border: 1px solid rgba(255,255,255,.14) !important;
+    box-shadow: 0 12px 34px rgba(0,0,0,.34) !important;
+    backdrop-filter: blur(14px) !important;
+    -webkit-backdrop-filter: blur(14px) !important;
+  }
+
+  .dexInput{
+    font-size: 14px !important;
+    font-weight: 950 !important;
+    letter-spacing: -.01em !important;
+  }
+
+  /* Results dropdown: keep anchored to sticky search and fully readable */
+  .dexSearch .results{
+    top: calc(100% + 10px) !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: calc(100vw - 24px) !important; /* matches wrap side padding (12px) */
+    max-height: 62vh !important;
+    border-radius: 18px !important;
+  }
+
+  /* Ensure sticky search never causes hidden content behind it */
+  .topBarInner{ scroll-margin-top: calc(env(safe-area-inset-top) + var(--appbarH, 56px) + 16px) !important; }
+}
+
+/* ================================
+   MOBILE-ONLY SEARCH MODAL / SHEET (step05)
+   - Dark backdrop blocks chart bleed-through
+   - Results sit above EVERYTHING (z-index)
+   - Backdrop tap closes results (existing handler)
+   - Disables body scroll while open
+   - Desktop unchanged
+   ================================ */
+@media (max-width: 760px){
+  body.searchModalOpen{
+    overflow: hidden !important;
+    touch-action: none;
+  }
+
+  /* Backdrop (reuse existing #searchScrim so IDs/handlers stay the same) */
+  #searchScrim.searchScrim{
+    display: none;
+    position: fixed !important;
+    inset: 0 !important;
+    background: rgba(0,0,0,.72) !important;
+    backdrop-filter: blur(10px) !important;
+    -webkit-backdrop-filter: blur(10px) !important;
+    z-index: 1000000 !important;
+  }
+  .dexSearch.open #searchScrim.searchScrim{
+    display: block !important;
+  }
+
+  /* Results as modal/sheet overlay */
+  #results.results{
+    position: fixed !important;
+    left: 12px !important;
+    right: 12px !important;
+    bottom: calc(env(safe-area-inset-bottom) + 12px) !important;
+    top: auto !important;
+    width: auto !important;
+
+    max-height: min(72vh, calc(100vh - (env(safe-area-inset-top) + var(--appbarH, 56px) + 120px))) !important;
+
+    border-radius: 18px !important;
+    background: rgba(12,16,40,.98) !important;
+    box-shadow: 0 26px 90px rgba(0,0,0,.78) !important;
+
+    z-index: 1000001 !important;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Make sure the sticky search stays above content but below the modal stack */
+  .dexSearch{
+    z-index: 9999 !important;
+  }
+}
+
+
+
+/* ================================
+   MOBILE-ONLY TOKEN STATS GRID (step06)
+   - Price / Liq / MCap / 24h as a 2x2 Dexscreener-style grid
+   - Uses existing rendered values (no data fetching changes)
+   - Desktop unchanged
+   ================================ */
+@media (max-width: 760px){
+  /* Stack token header + stats for readability */
+  #chartCard .cardHd{
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+  }
+  #chartCard .pair{ width: 100% !important; }
+
+  /* 2x2 grid */
+  #stats.stats{
+    width: 100% !important;
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+    justify-content: stretch !important;
+    align-items: stretch !important;
+  }
+
+  /* Small cards/pills */
+  #stats .statPill{
+    white-space: normal !important;
+    border-radius: 14px !important;
+    padding: 10px 10px !important;
+    min-height: 44px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    justify-content: center !important;
+    gap: 2px !important;
+    background: rgba(255,255,255,.05) !important;
+    border: 1px solid rgba(255,255,255,.12) !important;
+  }
+  #stats .statPill:only-child{
+    grid-column: 1 / -1 !important;
+  }
+
+  #stats .statPill .k{
+    font-size: 11px !important;
+    font-weight: 900 !important;
+    letter-spacing: .18px !important;
+    color: rgba(255,255,255,.62) !important;
+    line-height: 1.1 !important;
+  }
+  #stats .statPill .v{
+    font-size: 13px !important;
+    font-weight: 1050 !important;
+    letter-spacing: -.01em !important;
+    color: rgba(255,255,255,.92) !important;
+    line-height: 1.15 !important;
+  }
+
+  /* Up/Down tint like Dexscreener */
+  #stats .statPill.up{
+    border-color: rgba(20,241,149,.30) !important;
+    background: rgba(20,241,149,.10) !important;
+  }
+  #stats .statPill.up .v{ color: rgba(20,241,149,.96) !important; }
+
+  #stats .statPill.down{
+    border-color: rgba(255,77,109,.28) !important;
+    background: rgba(255,77,109,.10) !important;
+  }
+  #stats .statPill.down .v{ color: rgba(255,77,109,.96) !important; }
+}
+
+
+
+/* ================================
+   MOBILE-ONLY CHART AREA (step07)
+   - Dexscreener-style: clean, full width, stable height
+   - Fixes weird scaling / overscroll issues on mobile
+   - Keeps dropdowns/menus above the chart
+   - Does NOT affect desktop
+   ================================ */
+@media (max-width: 760px){
+  /* Keep chart in a stable box so lightweight-charts can resize correctly */
+  #chartWrap{
+    width: 100% !important;
+    height: clamp(360px, 52vh, 560px) !important;
+    min-height: 360px !important;
+    max-height: 560px !important;
+
+    position: relative !important;
+    overflow: hidden !important;
+
+    /* Prevent iOS rubber-band / scroll-chaining weirdness while interacting with the chart */
+    overscroll-behavior: auto;
+    touch-action: pan-y pinch-zoom; /* allow vertical page scroll while keeping chart gestures responsive */
+  }
+
+  /* Allow page scroll even when swiping on the chart */
+  #chartWrap canvas{
+    touch-action: pan-y pinch-zoom;
+  }
+
+  /* Ensure the chart always fills the container (prevents odd scaling) */
+  #chart{
+    position: absolute !important;
+    inset: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+  }
+  #chart > div,
+  #chart canvas{
+    width: 100% !important;
+    height: 100% !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
+  }
+
+  /* Avoid any horizontal wobble from chart internals */
+  #chartWrap, #chart, .card{ max-width: 100% !important; }
+
+  /* Keep chart beneath any dropdowns/menus/modals */
+  #chartWrap{ z-index: 0 !important; }
+  #chart, #chart canvas{ z-index: 0 !important; }
+}
+
+
+
+/* ================================
+   MOBILE-ONLY TIMEFRAME PILL ROW (step08)
+   - Dexscreener-like pill row
+   - Horizontal scroll if needed, no wrapping
+   - Very clear active state (purple/blue theme)
+   - Keeps existing click handlers intact (CSS-only)
+   - Desktop unchanged
+   ================================ */
+@media (max-width: 760px){
+  /* Timeframes: single-line pill row with horizontal scroll */
+  #tfRow.tfRow{
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    gap: 8px !important;
+    padding: 4px 2px 2px !important;
+    margin: 0 !important;
+    white-space: nowrap;
+  }
+  #tfRow.tfRow::-webkit-scrollbar{ display:none; }
+
+  /* End padding so last pill isn't flush to the edge */
+  #tfRow.tfRow::after{
+    content:"";
+    flex: 0 0 10px;
+  }
+
+  /* Pills */
+  #tfRow.tfRow .tf{
+    flex: 0 0 auto !important;
+    min-height: 44px !important;
+    height: 44px !important;
+    padding: 0 14px !important;
+    border-radius: 999px !important;
+    border: 1px solid rgba(255,255,255,.14) !important;
+    background: rgba(255,255,255,.06) !important;
+    color: rgba(255,255,255,.88) !important;
+    font-weight: 1000 !important;
+    font-size: 12px !important;
+    letter-spacing: .25px !important;
+    cursor: pointer;
+    transform: none !important; /* avoid jitter while scrolling */
+  }
+  #tfRow.tfRow .tf:hover{ background: rgba(255,255,255,.09) !important; }
+  #tfRow.tfRow .tf:active{ background: rgba(255,255,255,.12) !important; }
+
+  /* Clear active state */
+  #tfRow.tfRow .tf.active{
+    color: rgba(255,255,255,.98) !important;
+    text-shadow: 0 1px 0 rgba(0,0,0,.30) !important;
+    background: linear-gradient(90deg, rgba(153,69,255,.95), rgba(0,209,255,.70)) !important;
+    border-color: rgba(255,255,255,.22) !important;
+    box-shadow: 0 12px 28px rgba(153,69,255,.18) !important;
+  }
+}
+
+
+/* ================================
+   MOBILE-ONLY MODE BAR (step09)
+   - Chart+Txns / Chart / Txns (Dexscreener-style)
+   - Wires to existing elements via minimal JS
+   - Desktop unchanged
+   ================================ */
+.modeBar{ display:none; }
+
+@media (max-width: 760px){
+  .modeBar{
+    display:flex;
+    gap:8px;
+    align-items:center;
+    justify-content:space-between;
+    padding: 10px 10px 12px;
+    border-top: 1px solid rgba(255,255,255,.07);
+    background: rgba(0,0,0,.10);
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .modeBar::-webkit-scrollbar{ display:none; }
+
+  .modeBtn{
+    flex: 1 0 auto;
+    min-height: 44px;
+    height: 44px;
+    padding: 0 14px;
+    border-radius: 999px;
+    border: 1px solid rgba(255,255,255,.12);
+    background: rgba(255,255,255,.05);
+    color: rgba(255,255,255,.88);
+    font-weight: 950;
+    font-size: 12px;
+    letter-spacing: .2px;
+    cursor: pointer;
+    white-space: nowrap;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    transition: transform .15s ease, background .15s ease, border-color .15s ease, box-shadow .15s ease;
+  }
+  .modeBtn:active{ transform: scale(.99); }
+
+  .modeBtn.active{
+    border-color: rgba(153,69,255,.55);
+    background: linear-gradient(90deg, rgba(153,69,255,.92), rgba(0,209,255,.62));
+    color: rgba(255,255,255,.98);
+    box-shadow: 0 12px 28px rgba(153,69,255,.16);
+    text-shadow: 0 1px 0 rgba(0,0,0,.28);
+  }
+
+  /* Mode behavior (mobile only) */
+  body[data-mmode="chart"] #tradesCard{ display:none !important; }
+  body[data-mmode="txns"] #chartWrap,
+  body[data-mmode="txns"] .controls{ display:none !important; }
+
+  body[data-mmode="txns"] #tradesCard{ display:block !important; }
+  body[data-mmode="chart"] #chartWrap,
+  body[data-mmode="chart"] .controls{ display:block !important; }
+  body[data-mmode="both"] #chartWrap,
+  body[data-mmode="both"] .controls{ display:block !important; }
+  body[data-mmode="both"] #tradesCard{ display:block !important; }
+
+  /* Ensure legacy mobile trades wrapper never conflicts */
+  #mobileTradesWrap{ display:none !important; }
+}
+
+
+
+/* ================================
+   MOBILE-ONLY LIVE TRADES ACCORDION (step10)
+   - Live Trades sits under the chart in normal page flow (NOT floating)
+   - Default collapsed; tap header to toggle
+   - When open: internal scroll with max-height clamp(240px–520px)
+   - Desktop unchanged
+   ================================ */
+@media (max-width: 760px){
+  /* Ensure the main trades card is visible on mobile (even if marked desktopOnly) */
+  #tradesCard.desktopOnly{ display: block !important; }
+
+  /* Force normal flow (override any old bottom-sheet rules) */
+  #tradesCard{
+    position: relative !important;
+    left: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    top: auto !important;
+    transform: none !important;
+
+    height: auto !important;
+    max-height: none !important;
+
+    margin: 10px 0 0 !important;
+    z-index: 2 !important;
+  }
+
+  #tradesCard .tableHd{
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 10px !important;
+
+    padding: 12px 12px !important;
+    border-bottom: 1px solid rgba(255,255,255,.10) !important;
+    cursor: pointer !important;
+    user-select: none !important;
+  }
+
+  #tradesCard .tableHd .ttl{
+    font-size: 14px !important;
+    letter-spacing: -.01em !important;
+  }
+  #tradesCard .tableHd .sub{
+    font-size: 12px !important;
+    opacity: .85 !important;
+  }
+
+  #tradesCard .sheetRight{
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+    flex: 0 0 auto !important;
+  }
+
+  #tradesCard .tradeChevron{
+    width: 40px !important;
+    height: 40px !important;
+    min-width: 40px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 999px !important;
+    background: rgba(255,255,255,.06) !important;
+    border: 1px solid rgba(255,255,255,.10) !important;
+    transition: transform .18s ease !important;
+  }
+  #tradesCard.open .tradeChevron{ transform: rotate(180deg) !important; }
+
+  /* Default collapsed */
+  #tradesCard:not(.open) .trades{ display: none !important; }
+
+  /* Open state: internal scrolling */
+  #tradesCard.open .trades{
+    display: block !important;
+    height: auto !important;
+    max-height: clamp(240px, 44vh, 520px) !important;
+    overflow: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Avoid extra gaps below the list */
+  #tradesCard .trades{ padding-bottom: 0 !important; }
+}
+
+
+
+/* ================================
+   MOBILE-ONLY TRADES COLUMN SIMPLIFY (step11)
+   - Keep: Age, Type, USD, Price (or Amount), Maker shortened, Link icon
+   - Hide nonessential columns on small screens (Amount)
+   - CSS/layout only; underlying data unchanged
+   ================================ */
+@media (max-width: 760px){
+  /* Show Price + Maker on mobile even if marked hideM */
+  .tradeHead .col.price.hideM, .tradeRow .col.price.hideM,
+  .tradeHead .col.maker.hideM, .tradeRow .col.maker.hideM{
+    display: block !important;
+  }
+
+  /* Hide Amount on mobile */
+  .tradeHead .col.amt, .tradeRow .col.amt{
+    display: none !important;
+  }
+
+  /* Dexscreener-like compact columns */
+  .tradeHead, .tradeRow{
+    grid-template-columns: 58px 64px 86px 1fr 1fr 34px !important;
+    gap: 8px !important;
+  }
+
+  /* Readability tuning */
+  .tradeRow{ font-size: 12px !important; }
+  .tradeHead{ font-size: 11px !important; }
+
+  /* Maker shortening */
+  .tradeRow .maker,
+  .tradeRow .col.maker{
+    min-width: 0 !important;
+  }
+  .tradeRow .maker .addr{
+    max-width: 10ch;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  /* In case maker is rendered as plain text inside the maker column */
+  .tradeRow .col.maker,
+  .tradeHead .col.maker{
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Keep the Type badge legible in tight rows */
+  .typeBadge{
+    padding: 6px 9px !important;
+    font-size: 11px !important;
+  }
+
+  /* Link icon remains thumb-friendly */
+  .iconBtn{
+    width: 34px !important;
+    height: 34px !important;
+  }
+}
+
+
+/* ================================
+   MOBILE-ONLY OVERLAY STACKING FIX (step13)
+   - Ensure overlays (search results, dropdowns, menus) always sit above chart canvas & panels
+   - Fix stacking contexts via isolation / z-index without changing desktop
+   ================================ */
+@media (max-width: 760px){
+  /* Create a predictable stacking root for the app */
+  body{
+    position: relative;
+    isolation: isolate; /* prevents weird stacking-context interactions */
+  }
+
+  /* Keep chart/canvas at the bottom of the local stacking order */
+  #chartCard, #chartWrap, #chart, #chart canvas{
+    position: relative;
+    z-index: 0 !important;
+  }
+
+  /* Panels/cards stay above the chart baseline but below overlays */
+  .panel, .grid, .card, .controls{
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Avoid accidental stacking contexts that trap z-index */
+  .panel, .card, .grid, #chartWrap, #chart{
+    transform: none !important;
+    filter: none !important;
+    will-change: auto !important;
+  }
+
+  /* Search overlay: always on top */
+  .searchScrim, #searchScrim{
+    position: fixed !important;
+    z-index: 2147483000 !important;
+  }
+  .results, #results{
+    z-index: 2147483001 !important;
+  }
+
+  /* Generic "overlay-ish" popups/tooltips (safe no-op if not present) */
+  [role="dialog"], [role="menu"], [role="listbox"], [role="tooltip"],
+  .dropdown, .dropdownMenu, .menu, .menuPanel, .popover, .tooltip, .contextMenu, .sheet{
+    z-index: 2147482990 !important;
+  }
+}
+
+
+/* ================================
+   MOBILE-ONLY SAFE-AREA + SCROLL POLISH (step14)
+   - Use env(safe-area-inset-top/bottom) for sticky bars + bottom spacing
+   - Prevent "rubber band" overlap on iOS
+   - Ensure overlays lock background scroll (works with existing searchModalOpen lock)
+   - Desktop unchanged
+   ================================ */
+@media (max-width: 760px){
+  :root{
+    --safeTop: env(safe-area-inset-top);
+    --safeBottom: env(safe-area-inset-bottom);
+  }
+
+  /* Give the whole page a safe bottom so nothing sits under the home indicator */
+  .wrap{
+    padding-bottom: calc(16px + var(--safeBottom)) !important;
+  }
+
+  /* Ensure fixed/sticky bars respect safe areas */
+  .topbar{
+    padding-top: calc(var(--safeTop) + 8px) !important;
+  }
+  .dexSearch{
+    top: calc(var(--safeTop) + var(--appbarH, 56px) + 8px) !important;
+  }
+
+  /* Any bottom UI (toast/sheets) should sit above the home indicator */
+  .toast{
+    bottom: calc(18px + var(--safeBottom)) !important;
+  }
+  /* Search results sheet already uses a bottom offset; enforce safe-area just in case */
+  #results.results, .results{
+    padding-bottom: max(10px, var(--safeBottom)) !important;
+  }
+
+  /* Reduce iOS rubber-band bounce that can cause fixed/sticky overlap */
+  html, body{
+    overscroll-behavior-x: none;
+    overscroll-behavior-y: none;
+  }
+
+  /* Nested scrollers stay smooth */
+  .trades, .results{
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* When an overlay is open, keep the background fully locked and non-bouncy */
+  body.searchModalOpen{
+    overscroll-behavior: none;
+    touch-action: none;
+  }
+}
+
+
+/* ================================
+   MOBILE-ONLY PERFORMANCE OPTIMIZATIONS (step15)
+   - Reduce expensive blurs and heavy shadows on large surfaces
+   - Keep core behavior unchanged
+   ================================ */
+@media (max-width: 760px){
+  /* Reduce blur cost on large overlays/panels */
+  .results,
+  #searchScrim.searchScrim,
+  .tickerWrap,
+  .card{
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  /* Soften big drop-shadows on full-width surfaces */
+  .results{
+    box-shadow: 0 18px 56px rgba(0,0,0,.74) !important;
+  }
+  .tickerWrap{
+    box-shadow: 0 8px 22px rgba(0,0,0,.22) !important;
+  }
+  .card{
+    box-shadow: none !important;
+  }
+}
+
+/* Respect reduced motion (disable marquee + other non-essential animations) */
+@media (prefers-reduced-motion: reduce){
+  .tickerTrack{ animation: none !important; }
+  .dexguardBtn::after{ animation: none !important; }
+  .tradeRow.enter{ animation: none !important; }
+}
+
+
+
+/* ================================
+   DESKTOP TOPBAR FLOW PATCH (non-sticky)
+   Requirement:
+   - Desktop: topbar stays above Live Trending (in normal page flow), NOT sticky/fixed.
+   - Mobile: keep current fixed app-bar behavior unchanged.
+   ================================ */
+@media (min-width: 761px){
+  :root{ --topbar-space: 0px !important; } /* remove reserved space used for fixed mobile appbar */
+  .topbar{
+    position: relative !important;
+    top: auto !important;
+    left: auto !important;
+    right: auto !important;
+    transform: none !important;
+    width: 100% !important;
+    z-index: 50 !important;
+    margin: 0 0 14px 0 !important;
+  }
+  .wrap{
+    padding-top: 18px !important; /* normal desktop spacing */
+  }
+}
+
+/* ===== DexGuard Micro 01: Runtime Error Banner (non-blocking) ===== */
+#rtErrBanner{
+  position:fixed;
+  top: calc(env(safe-area-inset-top) + 10px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2147483647;
+  max-width: min(560px, calc(100vw - 24px));
+  display:none;
+  align-items:center;
+  gap:10px;
+  padding: 10px 12px;
+  border-radius: 999px;
+  background: rgba(255,77,109,.14);
+  border: 1px solid rgba(255,77,109,.30);
+  color: rgba(255,255,255,.92);
+  box-shadow: 0 14px 60px rgba(0,0,0,.55);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  pointer-events: auto;
+  user-select: none;
+}
+#rtErrBanner.show{ display:flex; }
+#rtErrBanner .rtDot{
+  width: 10px; height: 10px; border-radius: 50%;
+  background: rgba(255,77,109,.95);
+  box-shadow: 0 0 0 3px rgba(255,77,109,.20);
+  flex: 0 0 10px;
+}
+#rtErrBanner .rtTxt{
+  font-weight: 900;
+  font-size: 13px;
+  letter-spacing: .1px;
+  line-height: 1.25;
+  overflow:hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#rtErrBanner .rtClose{
+  margin-left:auto;
+  width: 28px; height: 28px;
+  display:grid; place-items:center;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.14);
+  background: rgba(255,255,255,.06);
+  color: rgba(255,255,255,.92);
+  cursor:pointer;
+  pointer-events:auto;
+}
+#rtErrBanner .rtClose:hover{ background: rgba(255,255,255,.10); }
+@media (max-width: 520px){
+  #rtErrBanner .rtTxt{ font-size: 12px; }
+}
+/* ===== /Micro 01 ===== */
+
+
+/* ===== DexGuard Micro 02: Critical Render Guard Banner ===== */
+#rtStatusBanner{
+  position:fixed;
+  top: calc(env(safe-area-inset-top) + 56px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2147483646;
+  max-width: min(560px, calc(100vw - 24px));
+  display:none;
+  align-items:center;
+  gap:10px;
+  padding: 10px 12px;
+  border-radius: 999px;
+  background: rgba(255,184,0,.14);
+  border: 1px solid rgba(255,184,0,.30);
+  color: rgba(255,255,255,.92);
+  box-shadow: 0 14px 60px rgba(0,0,0,.55);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  pointer-events: auto;
+  user-select: none;
+}
+#rtStatusBanner.show{ display:flex; }
+#rtStatusBanner .rtDot{
+  width: 10px; height: 10px; border-radius: 50%;
+  background: rgba(255,184,0,.95);
+  box-shadow: 0 0 0 3px rgba(255,184,0,.20);
+  flex: 0 0 10px;
+}
+#rtStatusBanner .rtTxt{
+  font-weight: 900;
+  font-size: 13px;
+  letter-spacing: .1px;
+  line-height: 1.25;
+  overflow:hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#rtStatusBanner .rtClose{
+  margin-left:auto;
+  width: 28px; height: 28px;
+  display:grid; place-items:center;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.14);
+  background: rgba(255,255,255,.06);
+  color: rgba(255,255,255,.92);
+  cursor:pointer;
+  pointer-events:auto;
+}
+#rtStatusBanner .rtClose:hover{ background: rgba(255,255,255,.10); }
+/* ===== /Micro 02 ===== */
+
+
+/* ===== DexGuard Micro 13: Trades Animation (smooth insert + shift) ===== */
+.tradeRow{ will-change: transform, opacity; }
+.tradeRow.dg-new{
+  opacity: 0;
+  transform: translateY(-12px);
+}
+.tradeRow.dg-new.dg-in{
+  opacity: 1;
+  transform: translateY(0);
+  transition: transform .22s ease, opacity .22s ease;
+}
+/* Ensure shift animations are smooth but lightweight */
+.tradeRow.dg-shift{
+  transition: transform .22s ease;
+}
+/* ===== /Micro 13 ===== */
+
+
+
+/* ================================
+   MOBILE CHART HEIGHT BOOST (micro_18)
+   - Increase chart height on mobile only
+   - Desktop unchanged
+   ================================ */
+@media (max-width: 760px){
+  #chartWrap{
+    height: clamp(520px, 70vh, 820px) !important;
+    min-height: 520px !important;
+    max-height: 820px !important;
+  }
+}
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <div class="row">
-      <button class="btn" id="btn-load">Load SOL Token</button>
-      <span class="muted" id="status">idle</span>
-    </div>
-
-```
-<div class="card" style="margin-top:12px">
-  <div class="row"><strong>Chart</strong></div>
-  <div id="chart" class="muted">(chart renders here)</div>
+<div class="wrap">
+<div class="topbar">
+<div class="brand">
+<img alt="DexGuard" class="topLogo" decoding="async" id="topLogo" loading="eager" src="dexguard.png"/>
+</div>
+<div class="actions">
+<div class="pillRow" id="netPills"></div>
+<a class="btn ghost" href="/" id="btnBack">Back to Main</a>
+<a aria-label="Twitter/X" class="btn xbtn" href="https://www.x.com/solana_x1" id="btnX" rel="noreferrer" target="_blank">
+<svg aria-hidden="true" focusable="false" height="16" style="display:block" viewbox="0 0 24 24" width="16">
+<path d="M18.9 2H22l-6.8 7.8L23 22h-6.2l-4.8-7.1L5.8 22H2l7.4-8.5L1 2h6.3l4.3 6.4L18.9 2Zm-1.1 18h1.7L6.2 3.9H4.4L17.8 20Z" fill="currentColor"></path>
+</svg>
+<span>Twitter/X</span>
+</a>
+<a class="btn primary" href="#" id="btnBuy" rel="noreferrer" target="_blank">Buy</a>
+</div>
+</div>
+<div class="panel">
+<!-- TOP TRENDING BAR + SEARCH (MATCH MAIN PAGE) -->
+<div class="topBar" id="topBar">
+<div class="topBarInner">
+<div class="topRow">
+<div aria-label="Hot trending live" class="hotBlock">
+<div class="hotLabel" title="Live trending"><span class="hotFire">🔥</span><span>LIVE TRENDING</span></div>
+<div id="status" style="display:none">Booting…</div>
+<div id="clock" style="display:none"></div>
+</div>
+<div aria-label="Trending chain" class="chainToggle" id="trendToggle">
+<button class="chainBtn active" data-net="solana" type="button">SOL</button>
+<button class="chainBtn" data-net="eth" type="button">ETH</button>
+<button class="chainBtn" data-net="bsc" type="button">BNB</button>
+<button class="chainBtn" data-net="base" type="button">BASE</button>
+</div>
+</div>
+<div class="bottomRow">
+<div aria-label="Trending tokens" class="tickerWrap">
+<div class="tickerTrack" id="tickerTrack">
+<span class="tickerItem" style="opacity:.75"><span class="rank">…</span><span class="tickerLogoWrap"><span class="tickerLogoFallback">•</span></span><span class="sym">Trending</span></span>
+<span class="tickerItem" style="opacity:.75"><span class="rank">…</span><span class="tickerLogoWrap"><span class="tickerLogoFallback">•</span></span><span class="sym">Trending</span></span>
+<span class="tickerItem" style="opacity:.75"><span class="rank">…</span><span class="tickerLogoWrap"><span class="tickerLogoFallback">•</span></span><span class="sym">Trending</span></span>
+<span class="tickerItem" style="opacity:.75"><span class="rank">…</span><span class="tickerLogoWrap"><span class="tickerLogoFallback">•</span></span><span class="sym">Trending</span></span>
+</div>
+</div>
+<div aria-label="Search token by name or contract" class="dexSearch" role="search">
+<div class="dexSearchInner">
+<input autocomplete="off" class="dexInput" id="q" placeholder="Search token / paste contract…" spellcheck="false"/>
+<div class="hint" id="modeHint">auto</div>
+<button class="btn" id="btnGo" type="button">Open</button>
+</div>
+<div class="results" id="results"></div>
+<div aria-hidden="true" class="searchScrim" id="searchScrim"></div>
+</div>
+</div>
+</div>
+</div>
+<div class="grid">
+<div class="card" id="chartCard">
+<div class="cardHd">
+<div class="pair">
+<div class="tlogo" id="tokenLogo"><span class="fb" id="tokenLogoFb">$</span></div>
+<div class="pairTxt">
+<div class="pairName" id="pairName">—</div>
+<div class="pairMeta" id="pairMeta">Paste a token / choose a trending token</div>
+</div>
+</div>
+<div class="stats" id="stats"></div>
+</div>
+<div id="chartWrap"><div id="chart"></div></div>
+<div class="controls">
+<div class="tfRow" id="tfRow"></div>
+<div class="rightCtl">
+<button class="btn" id="btnFit" type="button">Fit</button>
+<button class="btn" id="btnRefresh" type="button">Refresh</button>
+<select class="sel" id="poolSel" title="Pool"></select>
+</div>
+</div>
+<!-- ================================
+               MOBILE MODE BAR (step09)
+               Dexscreener-like: Chart+Txns / Chart / Txns
+               ================================ -->
+<div aria-label="View mode" class="modeBar" id="modeBar">
+<button class="modeBtn active" data-mode="both" type="button">Chart+Txns</button>
+<button class="modeBtn" data-mode="chart" type="button">Chart</button>
+<button class="modeBtn" data-mode="txns" type="button">Txns</button>
+</div>
+<div class="mobileTabs">
+<div class="tabBar">
+<button class="tab active" id="tabChart" type="button">Chart</button>
+<button class="tab" id="tabTrades" type="button">Trades</button>
+</div>
+</div>
+</div>
+<div class="card desktopOnly" id="tradesCard">
+<div aria-expanded="false" aria-label="Toggle Live Trades" class="tableHd" role="button">
+<div>
+<div class="ttl">Live Trades</div>
+<div class="sub" id="tradesSub">Buys / Sells (live)</div>
+</div>
+<div class="sheetRight">
+<div class="sub" id="tradesStat">—</div>
+<span aria-hidden="true" class="tradeChevron"><svg aria-hidden="true" focusable="false" height="18" style="display:block" viewbox="0 0 24 24" width="18"><path d="M6.7 8.7a1 1 0 0 1 1.4 0L12 12.6l3.9-3.9a1 1 0 1 1 1.4 1.4l-4.6 4.6a1 1 0 0 1-1.4 0L6.7 10.1a1 1 0 0 1 0-1.4z" fill="currentColor"></path></svg></span>
+</div>
+</div>
+<div class="trades" id="trades">
+<div class="tradeHead">
+<div class="col age">Age</div>
+<div class="col type">Type</div>
+<div class="col usd">USD</div>
+<div class="col amt">Amount</div>
+<div class="col price hideM">Price</div>
+<div class="col maker hideM">Maker</div>
+<div class="col links"></div>
+</div>
+</div>
+</div>
+</div>
+<div class="grid mobileTabs" id="mobileTradesWrap" style="display:none; padding-top:0">
+<div class="card" style="grid-column:1/-1">
+<div class="tableHd">
+<div>
+<div class="ttl">Live Trades</div>
+<div class="sub" id="tradesSubM">Buys / Sells (live)</div>
+</div>
+<div class="sub" id="tradesStatM">—</div>
+</div>
+<div class="trades" id="tradesM">
+<div class="tradeHead">
+<div class="col age">Age</div>
+<div class="col type">Type</div>
+<div class="col usd">USD</div>
+<div class="col amt">Amount</div>
+<div class="col price hideM">Price</div>
+<div class="col maker hideM">Maker</div>
+<div class="col links"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="toast" id="toast"></div>
 </div>
 
-<div class="card" style="margin-top:12px">
-  <div class="row"><strong>Live Trades</strong></div>
-  <div id="trades" class="muted"></div>
-</div>
-```
 
-  </div>
+
+
+
+<pre id="dgDebugText"></pre>
 
 <script>
-// ===================== CONFIG =====================
-// Your Cloudflare Worker base
-const BDS = 'https://flat-grass-9c26solanaonsolana.simon-kaggwa-why.workers.dev/bds';
-// Known-good SOL token mint for testing (PEPE example)
-const TEST_MINT = 'B5WTLaRwaUQpKk7ir1wniNB6m5o8GgMrimhKM';
+/* DexGuard v2 (Step 1) — SOLANA core live chart + trades via Birdeye (BDS worker) + DexScreener discovery
+   - Keep existing HTML/CSS design (this file)
+   - SOL only for now
+*/
+(() => {
+  'use strict';
 
-// ===================== HELPERS =====================
-async function fetchJson(url){
-  const r = await fetch(url);
-  if(!r.ok) throw new Error(r.status);
-  return r.json();
-}
+  const DS = "https://api.dexscreener.com/latest/dex";
+  const BDS = "https://flat-grass-9c26solanaonsolana.simon-kaggwa-why.workers.dev/bds";
 
-function solMintFromState(){
-  // STEP 1: fixed mint (proves pipeline works)
-  return TEST_MINT;
-}
+  const NET_LABEL = { solana:'SOL' };
+  const DEFAULT_TOKEN = {
+    solana: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v' // USDC
+  };
 
-// ===================== BIRDEYE CALLS =====================
-async function bdsOhlcv(tf='15m', bars=300){
-  const mint = solMintFromState();
-  const type = tf;
-  const now = Math.floor(Date.now()/1000);
-  const secPer = tf==='1m'?60:tf==='5m'?300:tf==='15m'?900:3600;
-  const from = now - bars*secPer;
-  const url = `${BDS}/defi/ohlcv?address=${encodeURIComponent(mint)}&type=${type}&time_from=${from}&time_to=${now}`;
-  const j = await fetchJson(url);
-  const items = j?.data?.items || [];
-  return items.map(x=>({
-    time: x.unix_time,
-    open: x.o, high: x.h, low: x.l, close: x.c, volume: x.v
-  }));
-}
+  // DOM
+  const $ = (id)=>document.getElementById(id);
+  const elQ = $('q');
+  const elResults = $('results');
+  const elPairName = $('pairName');
+  const elPairMeta = $('pairMeta');
+  const elStats = $('stats');
+  const elChart = $('chart');
+  const elTrades = $('trades');
+  const elTickerTrack = $('tickerTrack');
+  const elTokenLogo = $('tokenLogo');
+  const elTokenLogoFb = $('tokenLogoFb');
+  const elStatus = $('status');
+  const elTfRow = $('tfRow');
 
-async function bdsTrades(limit=50){
-  const mint = solMintFromState();
-  const url = `${BDS}/defi/txs/token?address=${encodeURIComponent(mint)}&offset=0&limit=${limit}`;
-  const j = await fetchJson(url);
-  return j?.data?.items || [];
-}
+  // State
+  let activeNet = 'solana';
+  let curMint = DEFAULT_TOKEN.solana;
+  let curPair = null; // DexScreener pair
+  let activeTF = '15m'; // 1m/5m/15m/1h/4h/1d/1w/ALL
+  let chart = null;
+  let candleSeries = null;
+  let volSeries = null;
+  let rawCandles = [];
+  let lastTradeSig = null;
 
-// ===================== RENDER =====================
-function renderChart(candles){
-  const el = document.getElementById('chart');
-  el.textContent = `Candles loaded: ${candles.length}`;
-}
+  // polling
+  let tradesTimer = null;
+  let candlesTimer = null;
+  let searchTimer = null;
+  let resizeRaf = 0;
+  let inFlight = { token: null, trades: null, candles: null, search: null };
+  const abort = (k)=>{ try{ inFlight[k]?.abort(); }catch(_){} inFlight[k]=null; };
 
-function renderTrades(items){
-  const el = document.getElementById('trades');
-  el.innerHTML = items.map(t=>{
-    const side = t.side || 'swap';
-    const usd = t.volumeUsd || t.valueUsd || '';
-    return `<div>${side} · $${usd}</div>`;
-  }).join('');
-}
+  const sleep = (ms)=>new Promise(r=>setTimeout(r, ms));
+  const nowSec = ()=>Math.floor(Date.now()/1000);
 
-// ===================== BOOT =====================
-document.getElementById('btn-load').onclick = async ()=>{
-  const s = document.getElementById('status');
-  try{
-    s.textContent = 'loading…';
-    const candles = await bdsOhlcv('15m', 300);
-    renderChart(candles);
-    const trades = await bdsTrades(50);
-    renderTrades(trades);
-    s.textContent = 'ok';
-  }catch(e){
-    s.textContent = 'error';
-    console.error(e);
+  function shortAddr(a){
+    a = String(a||'');
+    if(a.length<=10) return a;
+    return a.slice(0,5)+'…'+a.slice(-4);
   }
-};
-</script>
 
-</body>
+  function setStatus(msg){
+    try{ if(elStatus) elStatus.textContent = msg || ''; }catch(_){}
+  }
+
+  // Combine AbortSignals (tiny helper)
+  function AbortSignalAny(signals){
+    const ctrl = new AbortController();
+    const onAbort = ()=>{ try{ ctrl.abort(); }catch(_){} };
+    for(const s of signals){
+      if(!s) continue;
+      if(s.aborted){ onAbort(); break; }
+      try{ s.addEventListener('abort', onAbort, {once:true}); }catch(_){}
+    }
+    return ctrl.signal;
+  }
+
+  async function fetchJson(url, {timeout=12000, signal, retries=0}={}){
+    let lastErr = null;
+    for(let i=0;i<=retries;i++){
+      try{
+        const ctrl = new AbortController();
+        const t = setTimeout(()=>ctrl.abort(new Error('timeout')), timeout);
+        const sig = signal ? AbortSignalAny([signal, ctrl.signal]) : ctrl.signal;
+        const res = await fetch(url, {
+          method:'GET',
+          headers: { 'accept':'application/json' },
+          signal: sig,
+          cache: 'no-store',
+        });
+        clearTimeout(t);
+        if(!res.ok) throw new Error('HTTP '+res.status);
+        return await res.json();
+      }catch(e){
+        lastErr = e;
+        if(signal?.aborted) throw e;
+        if(i<retries) await sleep(250*(i+1));
+      }
+    }
+    throw lastErr;
+  }
+
+  // ---- Timeframe mapping
+  function tfToBirdeyeType(tfKey){
+    const k = String(tfKey||'').toLowerCase();
+    if(k==='1m') return '1m';
+    if(k==='5m') return '5m';
+    if(k==='15m') return '15m';
+    if(k==='1h') return '1H';
+    if(k==='4h') return '4H';
+    if(k==='1d') return '1D';
+    if(k==='1w') return '1W';
+    return '15m';
+  }
+  function tfSec(tfKey){
+    const k = String(tfKey||'').toLowerCase();
+    if(k==='1m') return 60;
+    if(k==='5m') return 300;
+    if(k==='15m') return 900;
+    if(k==='1h') return 3600;
+    if(k==='4h') return 14400;
+    if(k==='1d') return 86400;
+    if(k==='1w') return 604800;
+    return 900;
+  }
+  function tfBars(tfKey){
+    const k = String(tfKey||'').toLowerCase();
+    if(k==='1m') return 500;
+    if(k==='5m') return 500;
+    if(k==='15m') return 600;
+    if(k==='1h') return 600;
+    if(k==='4h') return 600;
+    if(k==='1d') return 500;
+    if(k==='1w') return 400;
+    if(k==='all') return 800;
+    return 600;
+  }
+
+  // ---- DexScreener discovery
+  async function dsSearch(q, signal){
+    const url = DS + '/search?q=' + encodeURIComponent(q);
+    const j = await fetchJson(url, {timeout:12000, retries:0, signal});
+    return Array.isArray(j?.pairs) ? j.pairs : [];
+  }
+  async function dsTokenPairs(mint, signal){
+    const url = DS + '/tokens/' + encodeURIComponent(mint);
+    const j = await fetchJson(url, {timeout:12000, retries:0, signal});
+    return Array.isArray(j?.pairs) ? j.pairs : [];
+  }
+  function pickBestPair(pairs){
+    if(!pairs || !pairs.length) return null;
+    const sols = pairs.filter(p=>String(p?.chainId||'').toLowerCase()==='solana');
+    const arr = sols.length ? sols : pairs;
+    arr.sort((a,b)=> (Number(b?.liquidity?.usd||0) - Number(a?.liquidity?.usd||0)));
+    return arr[0] || null;
+  }
+
+  // ---- Birdeye (via worker)
+  async function bdsOhlcvToken(tfKey, signal){
+    const mint = String(curMint||'').trim();
+    if(!mint) return [];
+    const type = tfToBirdeyeType(tfKey);
+    const bars = tfBars(tfKey);
+    const sec = tfSec(tfKey);
+    const to = nowSec();
+    const from = Math.max(0, to - (bars*sec));
+    const url = `${BDS}/defi/ohlcv?address=${encodeURIComponent(mint)}&type=${encodeURIComponent(type)}&time_from=${from}&time_to=${to}`;
+    const j = await fetchJson(url, {timeout:14000, retries:0, signal});
+    const items = (j?.data?.items && Array.isArray(j.data.items)) ? j.data.items :
+                  (Array.isArray(j?.data) ? j.data : (Array.isArray(j) ? j : []));
+    const candles = items.map(x => ({
+      time: Number(x?.unix_time || x?.time || x?.t || 0),
+      open: Number(x?.o ?? x?.open ?? 0),
+      high: Number(x?.h ?? x?.high ?? 0),
+      low:  Number(x?.l ?? x?.low ?? 0),
+      close:Number(x?.c ?? x?.close ?? 0),
+      volume:Number(x?.v ?? x?.volume ?? 0),
+      v_usd:Number(x?.v_usd ?? 0)
+    }))
+    .filter(c => c.time>0 && isFinite(c.open) && isFinite(c.close))
+    .sort((a,b)=>a.time-b.time);
+    return candles;
+  }
+
+  async function bdsTradesToken(limit=80, signal){
+    const mint = String(curMint||'').trim();
+    if(!mint) return [];
+    const url = `${BDS}/defi/txs/token?address=${encodeURIComponent(mint)}&offset=0&limit=${encodeURIComponent(limit)}`;
+    const j = await fetchJson(url, {timeout:14000, retries:0, signal});
+    const items = (j?.data?.items && Array.isArray(j.data.items)) ? j.data.items :
+                  (Array.isArray(j?.data) ? j.data : (Array.isArray(j) ? j : []));
+    return items;
+  }
+
+  // ---- Formatting
+  function fmtNum(n, d=2){
+    const x = Number(n);
+    if(!isFinite(x)) return '—';
+    if(Math.abs(x) >= 1e9) return (x/1e9).toFixed(2)+'B';
+    if(Math.abs(x) >= 1e6) return (x/1e6).toFixed(2)+'M';
+    if(Math.abs(x) >= 1e3) return (x/1e3).toFixed(2)+'K';
+    if(Math.abs(x) < 1) return x.toFixed(6);
+    return x.toFixed(d);
+  }
+  function fmtUsd(n){
+    const x = Number(n);
+    if(!isFinite(x)) return '—';
+    const abs = Math.abs(x);
+    if(abs>=1e9) return '$'+(x/1e9).toFixed(2)+'B';
+    if(abs>=1e6) return '$'+(x/1e6).toFixed(2)+'M';
+    if(abs>=1e3) return '$'+(x/1e3).toFixed(2)+'K';
+    if(abs>=1) return '$'+x.toFixed(2);
+    return '$'+x.toFixed(6);
+  }
+  function pctBadge(p){
+    const x = Number(p);
+    if(!isFinite(x)) return '—';
+    const sign = x>0?'+':'';
+    return sign + x.toFixed(2) + '%';
+  }
+
+  // ---- UI
+  function setTokenHeader(pair){
+    if(!pair) return;
+    const base = pair.baseToken || {};
+    const quote = pair.quoteToken || {};
+    try{ if(elPairName) elPairName.textContent = `${base.symbol||'TOKEN'}/${quote.symbol||'SOL'}`; }catch(_){}
+    try{
+      const dex = pair.dexId ? String(pair.dexId) : '';
+      const pa = pair.pairAddress ? shortAddr(pair.pairAddress) : '';
+      if(elPairMeta) elPairMeta.textContent = `${NET_LABEL.solana} • ${dex} • ${pa}`;
+    }catch(_){}
+
+    try{
+      const logo = base.logoURI || base.icon || base.image || '';
+      if(elTokenLogo && logo) elTokenLogo.src = logo;
+      if(elTokenLogoFb && logo) elTokenLogoFb.src = logo;
+    }catch(_){}
+
+    try{
+      if(!elStats) return;
+      const price = pair.priceUsd;
+      const liq = pair.liquidity?.usd;
+      const mcap = pair.marketCap || pair.fdv || null;
+      const ch24 = pair.priceChange?.h24;
+      elStats.innerHTML = `
+        <div class="statPill">Price <b>${fmtUsd(price)}</b></div>
+        <div class="statPill">Liq <b>${fmtUsd(liq)}</b></div>
+        <div class="statPill">MCap <b>${fmtUsd(mcap)}</b></div>
+        <div class="statPill ${Number(ch24)>=0?'pos':''} ${Number(ch24)<0?'neg':''}">24h <b>${pctBadge(ch24)}</b></div>
+      `;
+    }catch(_){}
+  }
+
+  function ensureChart(){
+    if(chart) return;
+    if(!elChart) return;
+    try{ elChart.innerHTML = ''; }catch(_){}
+    chart = LightweightCharts.createChart(elChart, {
+      width: Math.max(1, elChart.clientWidth||1),
+      height: Math.max(1, elChart.clientHeight||420),
+      layout: { background: { type:'solid', color:'transparent' }, textColor: '#cfd6ff' },
+      grid: { vertLines: { color:'rgba(255,255,255,0.06)' }, horzLines: { color:'rgba(255,255,255,0.06)' } },
+      rightPriceScale: { borderColor:'rgba(255,255,255,0.08)' },
+      timeScale: { borderColor:'rgba(255,255,255,0.08)', timeVisible: true, secondsVisible: false },
+      crosshair: { mode: 0 },
+      handleScroll: true,
+      handleScale: true,
+    });
+    candleSeries = chart.addCandlestickSeries({
+      upColor: '#2dd4bf',
+      downColor: '#fb7185',
+      wickUpColor: '#2dd4bf',
+      wickDownColor: '#fb7185',
+      borderVisible: false
+    });
+    volSeries = chart.addHistogramSeries({
+      priceFormat: { type:'volume' },
+      priceScaleId: '',
+      scaleMargins: { top: 0.85, bottom: 0 },
+    });
+
+    const doResize = ()=>{
+      if(!chart || !elChart) return;
+      const w = elChart.clientWidth||0;
+      const h = elChart.clientHeight||0;
+      if(w<2 || h<2) return;
+      chart.resize(w, h);
+    };
+    const ro = new ResizeObserver(()=>{
+      if(resizeRaf) cancelAnimationFrame(resizeRaf);
+      resizeRaf = requestAnimationFrame(doResize);
+    });
+    try{ ro.observe(elChart); }catch(_){}
+  }
+
+  function applyCandles(fit=true){
+    ensureChart();
+    if(!candleSeries) return;
+    const data = rawCandles.map(c=>({time:c.time, open:c.open, high:c.high, low:c.low, close:c.close}));
+    candleSeries.setData(data);
+    try{
+      const vols = rawCandles.map(c=>({ time:c.time, value: Number(c.volume||0) }));
+      volSeries.setData(vols);
+    }catch(_){}
+    if(fit){ try{ chart.timeScale().fitContent(); }catch(_){} }
+  }
+
+  function renderTrades(items){
+    if(!elTrades) return;
+    const rows = [];
+    for(const it of items.slice(0, 80)){
+      const side = String(it?.side || it?.kind || it?.type || '').toLowerCase();
+      const isBuy = side.includes('buy');
+      const t = Number(it?.blockUnixTime || it?.time || it?.timestamp || it?.unix_time || 0);
+      const price = Number(it?.base?.price || it?.tokenPrice || it?.price || 0);
+      const baseAmt = Number(it?.base?.uiAmount ?? it?.base_amount ?? it?.baseAmount ?? 0);
+      const usd = Number(it?.volumeUsd ?? it?.valueUsd ?? (baseAmt*price) ?? 0);
+      const when = t ? new Date(t*1000).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'}) : '—';
+      rows.push(`
+        <div class="tradeRow ${isBuy?'buy':'sell'}">
+          <div class="tradeSide">${isBuy?'Buy':'Sell'}</div>
+          <div class="tradePrice">${fmtUsd(price)}</div>
+          <div class="tradeAmt">${fmtNum(baseAmt, 2)}</div>
+          <div class="tradeUsd">${fmtUsd(usd)}</div>
+          <div class="tradeTime">${when}</div>
+        </div>
+      `);
+    }
+    elTrades.innerHTML = rows.join('') || '<div class="muted">No trades yet</div>';
+  }
+
+  function updateLastCandleFromTrade(tr){
+    try{
+      if(!rawCandles || rawCandles.length===0) return;
+      const t = Number(tr?.blockUnixTime || tr?.time || tr?.timestamp || tr?.unix_time || 0);
+      const price = Number(tr?.base?.price || tr?.tokenPrice || tr?.price || 0);
+      if(!t || !isFinite(price) || price<=0) return;
+      const sec = tfSec(activeTF==='ALL' ? '15m' : activeTF);
+      const bucket = Math.floor(t / sec) * sec;
+      const last = rawCandles[rawCandles.length-1];
+      if(!last) return;
+      if(bucket > last.time){
+        rawCandles.push({ time: bucket, open:last.close, high:price, low:price, close:price, volume: 0 });
+      } else {
+        if(last.time !== bucket) return;
+        last.close = price;
+        if(price > last.high) last.high = price;
+        if(price < last.low) last.low = price;
+      }
+      ensureChart();
+      const c = rawCandles[rawCandles.length-1];
+      candleSeries.update({time:c.time, open:c.open, high:c.high, low:c.low, close:c.close});
+    }catch(_){}
+  }
+
+  function renderTfButtons(){
+    if(!elTfRow) return;
+    const tfs = ['1m','5m','15m','1h','4h','1d','1w','ALL'];
+    elTfRow.innerHTML = tfs.map(k=>`<button class="tfPill ${k===activeTF?'active':''}" data-tf="${k}">${k}</button>`).join('');
+    elTfRow.querySelectorAll('[data-tf]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const k = btn.getAttribute('data-tf');
+        if(!k || k===activeTF) return;
+        activeTF = k;
+        renderTfButtons();
+        loadCandles(true);
+      });
+    });
+  }
+
+  async function loadTrending(){
+    if(!elTickerTrack) return;
+    try{
+      abort('search');
+      const ctrl = new AbortController(); inFlight.search = ctrl;
+      const pairs = await dsSearch('solana', ctrl.signal);
+      const sols = pairs.filter(p=>String(p.chainId||'').toLowerCase()==='solana').slice(0, 14);
+      elTickerTrack.innerHTML = sols.map(p=>{
+        const b = p.baseToken||{};
+        const ch = Number(p.priceChange?.h24||0);
+        const cls = ch>=0 ? 'pos' : 'neg';
+        return `<button class="tickBtn" data-mint="${b.address||''}">
+          <img class="tickIco" src="${b.logoURI||''}" alt="">
+          <span>${b.symbol||'TOKEN'}</span>
+          <em class="${cls}">${pctBadge(ch)}</em>
+        </button>`;
+      }).join('');
+      elTickerTrack.querySelectorAll('[data-mint]').forEach(btn=>{
+        btn.addEventListener('click', ()=>{
+          const m = btn.getAttribute('data-mint');
+          if(m) selectMint(m);
+        });
+      });
+    }catch(e){
+      try{ elTickerTrack.innerHTML = '<div class="muted">Trending unavailable</div>'; }catch(_){}
+    }
+  }
+
+  async function loadToken(){
+    setStatus('Loading…');
+    try{
+      abort('token');
+      const ctrl = new AbortController(); inFlight.token = ctrl;
+      const pairs = await dsTokenPairs(curMint, ctrl.signal);
+      const best = pickBestPair(pairs);
+      curPair = best;
+      if(best) setTokenHeader(best);
+    }catch(e){ curPair=null; }
+    await loadCandles(true);
+    await loadTrades(true);
+    setStatus('');
+  }
+
+  async function loadCandles(fit=true){
+    try{
+      abort('candles');
+      const ctrl = new AbortController(); inFlight.candles = ctrl;
+      const candles = await bdsOhlcvToken(activeTF==='ALL' ? '15m' : activeTF, ctrl.signal);
+      rawCandles = candles || [];
+      if(rawCandles.length){
+        applyCandles(fit);
+      } else {
+        ensureChart();
+        try{ candleSeries.setData([]); }catch(_){}
+      }
+    }catch(e){}
+  }
+
+  async function loadTrades(initial=false){
+    try{
+      abort('trades');
+      const ctrl = new AbortController(); inFlight.trades = ctrl;
+      const items = await bdsTradesToken(80, ctrl.signal);
+      if(!Array.isArray(items)) return;
+      const top = items[0];
+      const sig = String(top?.txHash || top?.tx_hash || top?.blockUnixTime || top?.time || '');
+      if(initial || !lastTradeSig || sig !== lastTradeSig){
+        lastTradeSig = sig || lastTradeSig;
+        renderTrades(items);
+        if(top) updateLastCandleFromTrade(top);
+      }
+    }catch(e){}
+  }
+
+  function startLive(){
+    stopLive();
+    tradesTimer = setInterval(()=>loadTrades(false), 2000);
+    candlesTimer = setInterval(()=>loadCandles(false), 60000);
+  }
+  function stopLive(){
+    if(tradesTimer) clearInterval(tradesTimer);
+    if(candlesTimer) clearInterval(candlesTimer);
+    tradesTimer=null; candlesTimer=null;
+  }
+
+  function selectMint(mint){
+    mint = String(mint||'').trim();
+    if(!mint || mint===curMint) return;
+    curMint = mint;
+    lastTradeSig = null;
+    loadToken();
+  }
+
+  // ---- Search UI
+  function showResults(pairs){
+    if(!elResults) return;
+    if(!pairs || !pairs.length){
+      elResults.style.display='none';
+      elResults.innerHTML='';
+      return;
+    }
+    const sols = pairs.filter(p=>String(p.chainId||'').toLowerCase()==='solana').slice(0, 20);
+    if(!sols.length){
+      elResults.innerHTML = '<div class="muted">No Solana results</div>';
+      elResults.style.display='block';
+      return;
+    }
+    elResults.innerHTML = sols.map(p=>{
+      const b=p.baseToken||{};
+      const q=p.quoteToken||{};
+      return `<button class="resRow" data-mint="${b.address||''}">
+        <img class="resIco" src="${b.logoURI||''}" alt="">
+        <div class="resMain">
+          <div class="resSym">${b.symbol||'TOKEN'}<span class="resQuote">/${q.symbol||'SOL'}</span></div>
+          <div class="resSub">${shortAddr(b.address)}</div>
+        </div>
+        <div class="resRight">
+          <div class="resPrice">${fmtUsd(p.priceUsd)}</div>
+          <div class="resLiq">Liq ${fmtUsd(p.liquidity?.usd)}</div>
+        </div>
+      </button>`;
+    }).join('');
+    elResults.style.display='block';
+    elResults.querySelectorAll('[data-mint]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const m = btn.getAttribute('data-mint');
+        elResults.style.display='none';
+        if(elQ) elQ.value = '';
+        if(m) selectMint(m);
+      });
+    });
+  }
+
+  function wireSearch(){
+    if(!elQ || !elResults) return;
+    elQ.addEventListener('input', ()=>{
+      const q = String(elQ.value||'').trim();
+      if(searchTimer) clearTimeout(searchTimer);
+      if(!q){ showResults([]); return; }
+      searchTimer = setTimeout(async ()=>{
+        try{
+          abort('search');
+          const ctrl = new AbortController(); inFlight.search = ctrl;
+          const pairs = await dsSearch(q, ctrl.signal);
+          showResults(pairs);
+        }catch(e){ showResults([]); }
+      }, 250);
+    });
+    document.addEventListener('click', (e)=>{
+      try{
+        if(!elResults) return;
+        const t=e.target;
+        if(elResults.contains(t) || elQ.contains(t)) return;
+        elResults.style.display='none';
+      }catch(_){}
+    }, true);
+  }
+
+  function wireChains(){
+    document.querySelectorAll('button.chainBtn').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const net = btn.getAttribute('data-net');
+        if(net==='solana'){
+          activeNet='solana';
+          document.querySelectorAll('button.chainBtn').forEach(b=>b.classList.toggle('active', b===btn));
+          selectMint(DEFAULT_TOKEN.solana);
+        } else {
+          document.querySelectorAll('button.chainBtn').forEach(b=>b.classList.toggle('active', b===btn));
+          setStatus('Only SOL is enabled in Step 1');
+          setTimeout(()=>setStatus(''), 1800);
+        }
+      });
+    });
+  }
+
+  function injectMinimalCss(){
+    const css = `
+      .statPill{display:inline-flex;align-items:center;gap:8px;padding:10px 14px;border-radius:999px;border:1px solid rgba(255,255,255,0.08);background:rgba(0,0,0,0.18);margin-right:10px;font-size:13px}
+      .statPill b{font-weight:700}
+      .statPill.pos b{color:#34d399}
+      .statPill.neg b{color:#fb7185}
+      .tfPill{padding:10px 14px;border-radius:999px;border:1px solid rgba(255,255,255,0.12);background:rgba(0,0,0,0.18);color:inherit;margin-right:8px}
+      .tfPill.active{border-color:rgba(168,85,247,0.9);box-shadow:0 0 0 2px rgba(168,85,247,0.25) inset}
+      .tradeRow{display:grid;grid-template-columns:64px 110px 90px 110px 86px;gap:10px;padding:10px 12px;border-bottom:1px solid rgba(255,255,255,0.06);font-size:13px}
+      .tradeRow .tradeSide{font-weight:700}
+      .tradeRow.buy .tradeSide{color:#34d399}
+      .tradeRow.sell .tradeSide{color:#fb7185}
+      .tradeRow .tradeTime{opacity:0.8;text-align:right}
+      #results{display:none;}
+      .resRow{width:100%;display:flex;gap:10px;align-items:center;padding:10px 12px;border-bottom:1px solid rgba(255,255,255,0.06);background:rgba(0,0,0,0.35);color:inherit;text-align:left}
+      .resIco{width:26px;height:26px;border-radius:999px;flex:0 0 auto}
+      .resMain{flex:1 1 auto;min-width:0}
+      .resSym{font-weight:700}
+      .resQuote{opacity:0.7;font-weight:600;margin-left:4px}
+      .resSub{opacity:0.65;font-size:12px}
+      .resRight{text-align:right;opacity:0.9}
+      .resPrice{font-weight:700}
+      .resLiq{opacity:0.7;font-size:12px}
+      .tickBtn{display:inline-flex;align-items:center;gap:8px;padding:8px 10px;border-radius:999px;border:1px solid rgba(255,255,255,0.10);background:rgba(0,0,0,0.22);color:inherit;margin-right:10px}
+      .tickIco{width:18px;height:18px;border-radius:999px}
+      .tickBtn em{font-style:normal;font-weight:700}
+      .tickBtn em.pos{color:#34d399}
+      .tickBtn em.neg{color:#fb7185}
+      .muted{opacity:0.7;padding:12px}
+    `;
+    const st = document.createElement('style');
+    st.textContent = css;
+    document.head.appendChild(st);
+  }
+
+  async function boot(){
+    injectMinimalCss();
+    wireChains();
+    wireSearch();
+    renderTfButtons();
+    await loadTrending();
+    await loadToken();
+    startLive();
+  }
+
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
+
+})();
+</script></body>
 </html>
