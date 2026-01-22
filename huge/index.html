@@ -170,13 +170,28 @@
       crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
     });
     const candleSeries = chart.addCandlestickSeries({
-      upColor: "#22c55e",
+upColor: "#22c55e",
       downColor: "#ef4444",
       borderUpColor: "#22c55e",
       borderDownColor: "#ef4444",
       wickUpColor: "#22c55e",
       wickDownColor: "#ef4444",
-    });
+      priceFormat: { type: "price", precision: 10, minMove: 0.0000000001 },
+    }
+    );
+
+    function setSeriesPrecisionFromPrice(p) {
+      const n = Number(p);
+      if (!Number.isFinite(n) || n <= 0) return;
+      // Choose precision so small prices don't render as 0.00
+      let precision = 2;
+      if (n < 1) {
+        precision = Math.min(12, Math.max(2, Math.ceil(-Math.log10(n)) + 2));
+      }
+      const minMove = Math.pow(10, -precision);
+      candleSeries.applyOptions({ priceFormat: { type: "price", precision, minMove } });
+    }
+
 
     function resizeChart() {
       const rect = chartEl.getBoundingClientRect();
@@ -210,6 +225,29 @@
     el("limit100").onclick = () => { tradesLimit = 100; setActiveLimitButtons(); tick(lastAddr, true); };
     setActiveLimitButtons();
 
+    
+    async function fetchTradesPagesForChart(addr, pages = 4, pageSize = 100) {
+      const all = [];
+      for (let i = 0; i < pages; i++) {
+        const offset = i * pageSize;
+        const res = await api(`/api/trades?chain=${CHAIN}&address=${encodeURIComponent(addr)}&limit=${pageSize}&offset=${offset}`);
+        if (!(res && res.ok && Array.isArray(res.items) && res.items.length)) break;
+        all.push(...res.items);
+        // stop early if the last page seems exhausted
+        if (res.items.length < pageSize) break;
+      }
+      // Deduplicate by tx+time+price if available
+      const seen = new Set();
+      const out = [];
+      for (const x of all) {
+        const k = `${x.tx||""}|${x.t||""}|${x.price||""}`;
+        if (seen.has(k)) continue;
+        seen.add(k);
+        out.push(x);
+      }
+      return out;
+    }
+
     function synthCandlesFromTrades(trades, tfSec, limit=200) {
       const items = Array.isArray(trades) ? trades.slice() : [];
       items.sort((a,b)=> (a.t||0)-(b.t||0)); // oldest->newest
@@ -238,13 +276,15 @@
       el("candlesCount").textContent = String(candles.length);
       el("candlesMeta").textContent = metaText || "ok";
       el("chartMeta").textContent = metaText || "ok";
-      // keep last candle visible
+            try { setSeriesPrecisionFromPrice(candles[candles.length-1]?.close); } catch(_) {}
+// keep last candle visible
       try { chart.timeScale().scrollToRealTime(); } catch {}
       return true;
     }
 
     function updateLastCandleFromTrade(price, tSec) {
       if (!Number.isFinite(price) || !Number.isFinite(tSec)) return;
+      try { setSeriesPrecisionFromPrice(price); } catch(_) {}
       if (!Array.isArray(state.candles) || state.candles.length === 0) return;
 
       const last = state.candles[state.candles.length - 1];
@@ -455,9 +495,17 @@
 
       // If candles missing, synth from trades (only if we have trades)
       if ((!state.candles || !state.candles.length) && t && t.ok && Array.isArray(t.items) && t.items.length) {
-        const synth = synthCandlesFromTrades(t.items, TF_SEC, 200);
+        let synth = synthCandlesFromTrades(t.items, TF_SEC, 200);
+        // If too few candles (e.g. only last seconds of trades), fetch more pages for chart history
+        if (synth.length < 20) {
+          try {
+            const more = await fetchTradesPagesForChart(addr, 4, 100);
+            if (more && more.length) synth = synthCandlesFromTrades(more, TF_SEC, 200);
+          } catch (_) {}
+        }
         if (synth.length) {
           applyCandles(synth, "synthetic");
+          chart.timeScale().fitContent();
         }
       }
 
@@ -492,6 +540,13 @@
 
     function start(addr) {
       lastAddr = addr;
+      // Always default to 15m on new token
+      try { candleSeries.setData([]); } catch(_) {}
+      state.candles = null;
+      state.lastTradePrice = null;
+      state.lastTradeTs = null;
+      state.lastCandlesFetchAt = 0;
+      state.lastDsAt = 0;
       if (pollTimer) clearInterval(pollTimer);
       tick(addr, true);
       pollTimer = setInterval(() => tick(lastAddr, false), 2000);
