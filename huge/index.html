@@ -170,6 +170,7 @@ function fmtNum(x, d=8){
     // price
     try{
       const r = await api(`/api/price?chain=${encodeURIComponent(chain)}&address=${encodeURIComponent(addr)}${pairParam}`);
+      if(!state.pair && r.j?.pair) state.pair = r.j.pair;
       $('srcPrice').textContent = 'price: ' + (r.j?.source || '—');
       $('kpiPrice').textContent = fmtNum(r.j?.price, 10);
     }catch(e){
@@ -179,6 +180,7 @@ function fmtNum(x, d=8){
     // trades
     try{
       const r = await api(`/api/trades?chain=${encodeURIComponent(chain)}&address=${encodeURIComponent(addr)}&limit=30`);
+      if(!state.pair && r.j?.pair) state.pair = r.j.pair;
       $('srcTrades').textContent = 'trades: ' + (r.j?.source || '—');
       const items = Array.isArray(r.j?.items) ? r.j.items : [];
       $('kpiLast').textContent = items[0]?.price ? fmtNum(items[0].price, 10) : '—';
@@ -227,7 +229,7 @@ function fmtNum(x, d=8){
     state.pair = '';
     try{
       const tp = await api(`/api/token-pairs?chain=${encodeURIComponent(state.chain)}&address=${encodeURIComponent(state.address)}`);
-      const items = Array.isArray(tp?.items) ? tp.items : [];
+      const items = Array.isArray(tp?.j?.items) ? tp.j.items : [];
       if(items.length){
         items.sort((a,b)=>(Number(b.liquidityUsd||0)-Number(a.liquidityUsd||0)));
         state.pair = items[0]?.pairAddress || '';
