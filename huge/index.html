@@ -91,6 +91,7 @@
     address: '',
     timer: null,
     workerBase: '',
+    pair: '',
   };
 
   
@@ -164,10 +165,11 @@ function fmtNum(x, d=8){
     if(!state.address) return;
     const chain = state.chain;
     const addr = state.address;
+    const pairParam = state.pair ? `&pair=${encodeURIComponent(state.pair)}` : '';
 
     // price
     try{
-      const r = await api(`/api/price?chain=${encodeURIComponent(chain)}&address=${encodeURIComponent(addr)}`);
+      const r = await api(`/api/price?chain=${encodeURIComponent(chain)}&address=${encodeURIComponent(addr)}${pairParam}`);
       $('srcPrice').textContent = 'price: ' + (r.j?.source || '—');
       $('kpiPrice').textContent = fmtNum(r.j?.price, 10);
     }catch(e){
@@ -218,9 +220,23 @@ function fmtNum(x, d=8){
     }
   }
 
-  function start(){
+  async function start(){
     if(state.timer) clearInterval(state.timer);
-    refreshOnce();
+
+    // Resolve best pair so /api/price|candles|trades can work reliably
+    state.pair = '';
+    try{
+      const tp = await api(`/api/token-pairs?chain=${encodeURIComponent(state.chain)}&address=${encodeURIComponent(state.address)}`);
+      const items = Array.isArray(tp?.items) ? tp.items : [];
+      if(items.length){
+        items.sort((a,b)=>(Number(b.liquidityUsd||0)-Number(a.liquidityUsd||0)));
+        state.pair = items[0]?.pairAddress || '';
+      }
+    }catch(_){
+      state.pair = '';
+    }
+
+    await refreshOnce();
     state.timer = setInterval(refreshOnce, 3000);
   }
 
