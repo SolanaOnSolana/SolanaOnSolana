@@ -284,9 +284,15 @@ if (ds && ds.ok && Array.isArray(ds.pairs) && ds.pairs.length) {
   bestPair = ds.pairs.slice().sort((a,b)=> (b?.liquidity?.usd||0) - (a?.liquidity?.usd||0))[0] || null;
 }
 const pairAddr = bestPair?.pairAddress || "";
-const c = pairAddr
-  ? await api(`/api/candles?chain=${CHAIN}&pair=${encodeURIComponent(pairAddr)}&tf=15m&limit=200`)
-  : await api(`/api/candles?chain=${CHAIN}&address=${encodeURIComponent(addr)}&tf=15m&limit=200`);
+let c = null;
+if (pairAddr) {
+  c = await api(`/api/candles?chain=${CHAIN}&pair=${encodeURIComponent(pairAddr)}&tf=15m&limit=200`);
+  if (!(c && c.ok)) {
+    c = await api(`/api/candles?chain=${CHAIN}&address=${encodeURIComponent(addr)}&tf=15m&limit=200`);
+  }
+} else {
+  c = await api(`/api/candles?chain=${CHAIN}&address=${encodeURIComponent(addr)}&tf=15m&limit=200`);
+}
 
       // PRICE (prefer Birdeye; fallback to DexScreener pair priceUsd)
 const dsPrice = (bestPair && bestPair.priceUsd != null) ? Number(bestPair.priceUsd) : null;
