@@ -94,14 +94,24 @@
     pair: '',
   };
 
+  function dgGuessWorkerBase(){
+    // try saved
+    try{ const s = localStorage.getItem('dg_worker_base'); if(s) return dgNormalizeBase(s); }catch(e){}
+    // if we are served from a worker, origin might already be correct
+    try{ if(location.hostname.endsWith('workers.dev')) return location.origin; }catch(e){}
+    return '';
+  }
+
   
   // ----- setters (were missing in v1.3.2) -----
-  function dgNormalizeBase(u){
-    u = String(u || '').trim();
-    if (!u) return '';
-    // strip trailing slash
-    while (u.endsWith('/')) u = u.slice(0, -1);
-    return u;
+  function dgNormalizeBase(raw){
+    let s = String(raw || '').trim();
+    if (!s) return '';
+    // Prevent wrong "dashboard" URL input
+    if (s.includes('dash.cloudflare.com')) return '';
+    if (!/^https?:\/\//i.test(s)) s = 'https://' + s;
+    s = s.replace(/\/+$/, '');
+    return s;
   }
   function dgSetWorkerBase(u){
     const base = dgNormalizeBase(u);
@@ -153,7 +163,7 @@ function fmtNum(x, d=8){
     el.className = 'v ' + (cls||'');
   }
 
-  async async function api(path){
+  async function api(path){
     const base = state.workerBase || location.origin;
     const url = base.replace(/\/$/,'') + path;
     const res = await fetch(url, { cache: 'no-store' });
