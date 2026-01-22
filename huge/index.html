@@ -131,7 +131,16 @@
       }
     }
 
-    let timer = null;
+    
+function refreshAges() {
+  const nodes = document.querySelectorAll(".ago[data-ts]");
+  for (const n of nodes) {
+    const ts = Number(n.getAttribute("data-ts"));
+    n.textContent = timeAgo(ts);
+  }
+}
+
+let timer = null;
     let lastAddr = "";
     let inFlight = false;
     let ageTimer = null;
@@ -175,20 +184,41 @@
       setStatus("warn", "loading…");
       el("hintPill").textContent = "—";
 
-      const [p, t, c, ds] = await Promise.all([
-        api(`/api/price?chain=${CHAIN}&address=${encodeURIComponent(addr)}`),
-        api(`/api/trades?chain=${CHAIN}&address=${encodeURIComponent(addr)}&limit=20`),
-        api(`/api/candles?chain=${CHAIN}&address=${encodeURIComponent(addr)}&tf=15m&limit=200`),
-        api(`/api/ds/tokenpairs?chain=${CHAIN}&token=${encodeURIComponent(addr)}`)
-      ]);
+      // 1) DexScreener first (gives us best pair + fallback price)
+const ds = await api(`/api/ds/tokenpairs?chain=${CHAIN}&token=${encodeURIComponent(addr)}`);
 
-      // PRICE
-      if (p && p.ok) {
-        el("price").textContent = fmt(Number(p.price), 8);
-        el("priceMeta").textContent = "ok";
-      } else {
-        el("price").textContent = "—";
-        el("priceMeta").textContent = p ? (`fail (${p.http||"?"})`) : "fail";
+// 2) Price + trades in parallel
+const [p, t] = await Promise.all([
+  api(`/api/price?chain=${CHAIN}&address=${encodeURIComponent(addr)}`),
+  api(`/api/trades?chain=${CHAIN}&address=${encodeURIComponent(addr)}&limit=20`)
+]);
+
+// 3) Candles: prefer BEST pair from DexScreener (much more reliable), fallback to token mint
+let bestPair = null;
+if (ds && ds.ok && Array.isArray(ds.pairs) && ds.pairs.length) {
+  bestPair = ds.pairs.slice().sort((a,b)=> (b?.liquidity?.usd||0) - (a?.liquidity?.usd||0))[0] || null;
+}
+const pairAddr = bestPair?.pairAddress || "";
+const c = pairAddr
+  ? await api(`/api/candles?chain=${CHAIN}&pair=${encodeURIComponent(pairAddr)}&tf=15m&limit=200`)
+  : await api(`/api/candles?chain=${CHAIN}&address=${encodeURIComponent(addr)}&tf=15m&limit=200`);
+
+      // PRICE (prefer Birdeye; fallback to DexScreener pair priceUsd)
+const dsPrice = (bestPair && bestPair.priceUsd != null) ? Number(bestPair.priceUsd) : null;
+
+if (p && p.ok && p.price != null) {
+  el("price").textContent = fmt(Number(p.price), 8);
+  el("priceMeta").textContent = "ok";
+} else if (dsPrice != null && Number.isFinite(dsPrice)) {
+  el("price").textContent = fmt(dsPrice, 8);
+  el("priceMeta").textContent = "fallback: dexscreener";
+} else {
+  el("price").textContent = "—";
+  el("priceMeta").textContent = p ? (`fail (${p.http||"?"})`) : "fail";
+  console.warn("[price fail]", p);
+}
+
+)`) : "fail";
         console.warn("[price fail]", p);
       }
 
@@ -278,22 +308,27 @@
         console.warn("[dexscreener fail]", ds);
       }
 
-      // Overall status
-      const bad = [];
-      if (!(p && p.ok)) bad.push("price");
-      if (!(t && t.ok)) bad.push("trades");
-      if (!(c && c.ok)) bad.push("candles");
-      if (!(ds && ds.ok)) bad.push("dexscreener");
+      // Overall status (don't scream "error" if core live feed is ok)
+const bad = [];
+if (!(t && t.ok)) bad.push("trades");
+if (!(ds && ds.ok)) bad.push("dexscreener");
 
-      if (bad.length === 0) {
-        setStatus("", "live");
-        el("hintPill").textContent = "all ok";
-      } else {
-        setStatus("bad", "error");
-        el("hintPill").textContent = "failed: " + bad.join(", ");
-      }
+const soft = [];
+if (!(p && p.ok) && !(dsPrice != null)) soft.push("price");
+if (!(c && c.ok)) soft.push("candles");
 
-      inFlight = false;
+if (bad.length === 0 && soft.length === 0) {
+  setStatus("", "live");
+  el("hintPill").textContent = "all ok";
+} else if (bad.length === 0 && soft.length > 0) {
+  setStatus("warn", "live");
+  el("hintPill").textContent = "degraded: " + soft.join(", ");
+} else {
+  setStatus("bad", "error");
+  el("hintPill").textContent = "failed: " + bad.concat(soft).join(", ");
+}
+
+inFlight = false;
     }
 
     function start(addr) {
@@ -304,6 +339,8 @@
       ensureAgeTicker();
       tick(addr);
       timer = setInterval(() => tick(lastAddr), 2000);
+      // update time-ago labels smoothly
+      if (!window.__ageTimer) window.__ageTimer = setInterval(refreshAges, 1000);
     }
 
     el("addr").addEventListener("change", (e) => start(e.target.value.trim()));
