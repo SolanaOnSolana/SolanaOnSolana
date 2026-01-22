@@ -20,6 +20,8 @@
     .sell{color:#fb7185}
     .warn{color:#fbbf24}
     .bad{color:#fb7185}
+    a{color:#93c5fd;text-decoration:none}
+    a:hover{text-decoration:underline}
     @media (max-width:720px){ .grid{grid-template-columns:1fr} }
   </style>
 </head>
@@ -47,16 +49,31 @@
         <div class="big" id="price">—</div>
         <div class="muted" id="priceMeta">—</div>
       </div>
+
       <div class="card">
         <div class="muted">Trades (last fetch)</div>
         <div class="big" id="tradesCount">—</div>
         <div class="muted" id="tradesMeta">—</div>
       </div>
+
       <div class="card">
-        <div class="muted">Candles (last fetch)</div>
+        <div class="muted">Candles (15m)</div>
         <div class="big" id="candlesCount">—</div>
         <div class="muted" id="candlesMeta">—</div>
       </div>
+    </div>
+
+    <div class="card" id="dsCard">
+      <div style="display:flex;gap:12px;align-items:center">
+        <img id="dsLogo" alt="" style="width:44px;height:44px;border-radius:10px;display:none;object-fit:cover;border:1px solid rgba(255,255,255,.12)">
+        <div style="flex:1">
+          <div class="big" id="dsName">—</div>
+          <div class="muted" id="dsSub">—</div>
+          <div class="muted" id="dsMeta" style="margin-top:6px">—</div>
+        </div>
+      </div>
+      <div class="muted" style="margin-top:10px" id="dsStats">—</div>
+      <div class="muted" style="margin-top:8px" id="dsLinks">—</div>
     </div>
 
     <div class="card">
@@ -107,9 +124,7 @@
         return { ok:false, http:r.status, error:"http_error", body:(text||"").slice(0,250), url: full };
       }
 
-      // normal json response (should include ok:true)
       if (j && typeof j === "object") return j;
-
       return { ok:false, http:r.status, error:"bad_json", body:(text||"").slice(0,250), url: full };
     }
 
@@ -126,10 +141,11 @@
       setStatus("warn", "loading…");
       el("hintPill").textContent = "—";
 
-      const [p, t, c] = await Promise.all([
+      const [p, t, c, ds] = await Promise.all([
         api(`/api/price?chain=${CHAIN}&address=${encodeURIComponent(addr)}`),
         api(`/api/trades?chain=${CHAIN}&address=${encodeURIComponent(addr)}&limit=20`),
-        api(`/api/candles?chain=${CHAIN}&address=${encodeURIComponent(addr)}&tf=15m&limit=200`)
+        api(`/api/candles?chain=${CHAIN}&address=${encodeURIComponent(addr)}&tf=15m&limit=200`),
+        api(`/api/ds/tokenpairs?chain=${CHAIN}&token=${encodeURIComponent(addr)}`)
       ]);
 
       // PRICE
@@ -173,11 +189,66 @@
         console.warn("[candles fail]", c);
       }
 
+      // DEXSCREENER
+      if (ds && ds.ok && Array.isArray(ds.pairs) && ds.pairs.length) {
+        // pick best pair: highest liquidity.usd
+        const best = ds.pairs.slice().sort((a,b)=> (b?.liquidity?.usd||0) - (a?.liquidity?.usd||0))[0];
+
+        const name = best?.baseToken?.name || "—";
+        const sym = best?.baseToken?.symbol || "—";
+        const dex = best?.dexId || "—";
+        const pair = best?.pairAddress || "—";
+        const quoteSym = best?.quoteToken?.symbol || "";
+
+        el("dsName").textContent = `${name} (${sym})`;
+        el("dsSub").textContent = `${sym}/${quoteSym}`.trim();
+
+        const liq = best?.liquidity?.usd;
+        const fdv = best?.fdv;
+        const mcap = best?.marketCap;
+        const vol24 = best?.volume?.h24;
+        const ch24 = best?.priceChange?.h24;
+
+        el("dsMeta").textContent = `dex: ${dex} • pair: ${pair.slice(0,4)}…${pair.slice(-4)}`;
+
+        el("dsStats").textContent =
+          `Liquidity: $${Number(liq||0).toLocaleString()} • FDV: $${Number(fdv||0).toLocaleString()} • MCap: $${Number(mcap||0).toLocaleString()} • Vol 24h: $${Number(vol24||0).toLocaleString()} • 24h: ${ch24 ?? "—"}%`;
+
+        // logo (if present)
+        const img = best?.info?.imageUrl || best?.imageUrl || null;
+        const logoEl = el("dsLogo");
+        if (img) {
+          logoEl.src = img;
+          logoEl.style.display = "";
+        } else {
+          logoEl.style.display = "none";
+          logoEl.removeAttribute("src");
+        }
+
+        // links
+        const links = [];
+        const websites = best?.info?.websites || [];
+        const socials = best?.info?.socials || [];
+        for (const w of websites) if (w?.url) links.push(`<a href="${w.url}" target="_blank" rel="noreferrer">Website</a>`);
+        for (const s of socials) if (s?.url) links.push(`<a href="${s.url}" target="_blank" rel="noreferrer">${s.type || "Social"}</a>`);
+        el("dsLinks").innerHTML = links.length ? ("Links: " + links.join(" • ")) : "Links: —";
+
+      } else {
+        el("dsName").textContent = "—";
+        el("dsSub").textContent = "—";
+        el("dsMeta").textContent = ds ? (`fail (${ds.http||"?"})`) : "fail";
+        el("dsStats").textContent = "—";
+        el("dsLinks").textContent = "Links: —";
+        el("dsLogo").style.display = "none";
+        console.warn("[dexscreener fail]", ds);
+      }
+
       // Overall status
       const bad = [];
       if (!(p && p.ok)) bad.push("price");
       if (!(t && t.ok)) bad.push("trades");
       if (!(c && c.ok)) bad.push("candles");
+      if (!(ds && ds.ok)) bad.push("dexscreener");
 
       if (bad.length === 0) {
         setStatus("", "live");
