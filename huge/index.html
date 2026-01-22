@@ -235,20 +235,41 @@ function fmtNum(x, d=8){
   async function start(){
     if(state.timer) clearInterval(state.timer);
 
-    // Resolve best pair so /api/price|candles|trades can work reliably
-    state.pair = '';
-    try{
-      const tp = await api(`/api/token-pairs?chain=${encodeURIComponent(state.chain)}&address=${encodeURIComponent(state.address)}`);
-      const items = Array.isArray(tp?.j?.items) ? tp.j.items : [];
-      if(items.length){
-        items.sort((a,b)=>(Number(b.liquidityUsd||0)-Number(a.liquidityUsd||0)));
-        state.pair = items[0]?.pairAddress || '';
-      }
-    }catch(_){
-      state.pair = '';
+// Resolve best pair so /api/price|candles|trades can work reliably.
+// If you know the Pool/Pair already, paste it into the "Pair/Pool" field.
+const manualPair = (state.pair || '').trim();
+if (manualPair) {
+  state.pair = manualPair;
+  $('srcPrice').textContent = 'price: manual_pair';
+  $('srcTrades').textContent = 'trades: manual_pair';
+  $('srcCandles').textContent = 'candles: manual_pair';
+} else {
+  state.pair = '';
+  try{
+    const tp = await api(`/api/token-pairs?chain=${encodeURIComponent(state.chain)}&address=${encodeURIComponent(state.address)}`);
+    const items = Array.isArray(tp?.j?.items) ? tp.j.items : [];
+    if(items.length){
+      items.sort((a,b)=>(Number(b.liquidityUsd||0)-Number(a.liquidityUsd||0)));
+      state.pair = items[0]?.pairAddress || '';
+      $('srcPrice').textContent = 'price: '+(tp.j.source||'dexscreener');
+      $('srcTrades').textContent = 'trades: '+(tp.j.source||'dexscreener');
+      $('srcCandles').textContent = 'candles: '+(tp.j.source||'dexscreener');
+    } else {
+      // Show a useful reason if worker detected DS block/unavailability.
+      const err = tp?.j?.error || 'pair_not_found';
+      $('srcPrice').textContent = 'price: '+err;
+      $('srcTrades').textContent = 'trades: '+err;
+      $('srcCandles').textContent = 'candles: '+err;
     }
+  }catch(_){
+    $('srcPrice').textContent = 'price: pair_resolve_failed';
+    $('srcTrades').textContent = 'trades: pair_resolve_failed';
+    $('srcCandles').textContent = 'candles: pair_resolve_failed';
+    state.pair = '';
+  }
+}
 
-    await refreshOnce();
+await refreshOnce();
     state.timer = setInterval(refreshOnce, 3000);
   }
 
@@ -270,6 +291,7 @@ function fmtNum(x, d=8){
     state.workerBase = $('worker').value.trim();
     dgSetWorkerBase(state.workerBase);
     state.address = $('mint').value.trim();
+    state.pair = ($('pair') ? $('pair').value.trim() : '');
     $('title').textContent = `${state.chain.toUpperCase()} / ${state.address || '—'}`;
     $('subtitle').textContent = state.workerBase ? state.workerBase : '(same origin)';
     start();
@@ -285,10 +307,12 @@ function fmtNum(x, d=8){
       const savedBase = (localStorage.getItem('dg_worker_base') || '').trim();
       const savedChain = (localStorage.getItem('dg_chain') || '').trim();
       const savedAddr = (localStorage.getItem('dg_addr') || '').trim();
+      const savedPair = (localStorage.getItem('dg_pair') || '').trim();
 
       if (savedBase) document.getElementById('worker').value = savedBase;
       if (savedChain) document.getElementById('chain').value = savedChain;
       if (savedAddr) document.getElementById('mint').value = savedAddr;
+      if (savedPair) document.getElementById('pair').value = savedPair;
 
       dgSetWorkerBase(document.getElementById('worker').value);
       dgSetChain(document.getElementById('chain').value);
