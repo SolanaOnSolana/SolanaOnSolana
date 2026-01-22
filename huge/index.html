@@ -164,12 +164,150 @@
       try { j = JSON.parse(text); } catch { /* keep null */ }
 
       if (!r.ok) {
-        return { ok:false, http:r.status, error:"http_error", body:(text||"").slice(0,250), url: full };
+        // Preserve HTTP status for diagnostics, but don't assume JSON shape
+        return { ok:false, http:r.status, error:"http_error", body:(text||"").slice(0,250), url: full, json: j };
       }
 
-      if (j && typeof j === "object") return j;
+      if (j && typeof j === "object") {
+        if (j.http == null) j.http = r.status;
+        if (j.url == null) j.url = full;
+        return j;
+      }
       return { ok:false, http:r.status, error:"bad_json", body:(text||"").slice(0,250), url: full };
     }
+
+
+
+// ---- Client-side GeckoTerminal fallback (works even if Worker is down)
+const GECKO_BASE = "https://api.geckoterminal.com/api/v2";
+function geckoNet(chain) {
+  const c = String(chain||"").toLowerCase();
+  if (c === "ethereum") return "eth";
+  if (c === "solana" || c === "sol") return "solana";
+  if (c === "bsc" || c === "bnb") return "bsc";
+  return c; // base, arbitrum, polygon_pos etc.
+}
+function geckoTf(tf) {
+  const s = String(tf||"").toLowerCase().trim();
+  const m = s.match(/^(\d+)([mhd])$/);
+  if (!m) return null;
+  const n = parseInt(m[1], 10);
+  const u = m[2];
+  if (!Number.isFinite(n) || n <= 0) return null;
+  if (u === "m") return { timeframe: "minute", aggregate: n };
+  if (u === "h") return { timeframe: "hour", aggregate: n };
+  if (u === "d") return { timeframe: "day", aggregate: n };
+  return null;
+}
+async function geckoFetchJson(url) {
+  const r = await fetch(url, { cache: "no-store", headers: { "accept": "application/json" } });
+  const t = await r.text();
+  let j = null;
+  try { j = JSON.parse(t); } catch (_) {}
+  return { r, t, j };
+}
+async function geckoPoolTradesClient(pool, limit=100) {
+  try {
+    const net = geckoNet(CHAIN);
+    if (!net || !pool) return { ok:false, error:"missing_pool" };
+    const u = new URL(`${GECKO_BASE}/networks/${net}/pools/${pool}/trades`);
+    // Gecko uses pagination in some stacks; if it doesn't, this is ignored by the server
+    u.searchParams.set("page[limit]", String(Math.min(100, Math.max(10, limit))));
+    const { r, t, j } = await geckoFetchJson(u.toString());
+    if (!r.ok) return { ok:false, http:r.status, error:"gecko_http", body:(t||"").slice(0,250) };
+    const data = j?.data || [];
+    const itemsAll = Array.isArray(data) ? data.map((it) => {
+      const a = it?.attributes || {};
+      let ts = a.block_timestamp ?? a.timestamp ?? a.time ?? a.datetime ?? a.created_at ?? null;
+      if (typeof ts === "string") {
+        const d = Date.parse(ts);
+        ts = Number.isFinite(d) ? d : ts;
+      }
+      const n = Number(ts);
+      const tt = Number.isFinite(n) ? (n > 1e12 ? Math.floor(n / 1000) : Math.floor(n)) : null;
+
+      const kind = String(a.kind ?? a.side ?? a.trade_type ?? "").toLowerCase();
+      let side = kind.includes("buy") ? "buy" : (kind.includes("sell") ? "sell" : null);
+      if (!side && typeof a.is_buy === "boolean") side = a.is_buy ? "buy" : "sell";
+
+      const usd = Number(a.volume_in_usd ?? a.trade_volume_in_usd ?? a.amount_in_usd ?? a.total_value_in_usd);
+      const price = Number(a.price_in_usd ?? a.trade_price_usd ?? a.price_usd);
+
+      const maker = a.taker_address ?? a.trader_address ?? a.from_address ?? a.wallet_address ?? null;
+      const tx = a.tx_hash ?? a.transaction_hash ?? a.tx ?? null;
+
+      return {
+        t: Number.isFinite(tt) ? tt : null,
+        side: side || "unknown",
+        usd: Number.isFinite(usd) ? usd : null,
+        price: Number.isFinite(price) ? price : null,
+        maker, tx
+      };
+    }).filter(x => x.t && x.price != null) : [];
+    return { ok:true, source:"gecko_client", count: itemsAll.length, items: itemsAll.slice(0, limit) };
+  } catch (e) {
+    return { ok:false, error:"gecko_client_exception", detail:String(e) };
+  }
+}
+
+async function geckoPoolOhlcvClient(pool, tf, limit=800, fromSec=null, toSec=null) {
+  try {
+    const net = geckoNet(CHAIN);
+    const tfm = geckoTf(tf);
+    if (!net || !pool || !tfm) return { ok:false, error:"missing_params" };
+
+    const baseUrl = `${GECKO_BASE}/networks/${net}/pools/${pool}/ohlcv/${tfm.timeframe}`;
+
+    const mk = (beforeVal) => {
+      const u = new URL(baseUrl);
+      u.searchParams.set("aggregate", String(tfm.aggregate));
+      u.searchParams.set("limit", String(Math.min(1000, Math.max(50, limit))));
+      u.searchParams.set("currency", "usd");
+      if (beforeVal != null) u.searchParams.set("before_timestamp", String(beforeVal));
+      return u.toString();
+    };
+
+    const beforeSec = toSec ? Math.floor(Number(toSec)) : null;
+    const beforeMs  = toSec ? Math.floor(Number(toSec) * 1000) : null;
+
+    const tries = [];
+    tries.push({ mode:"sec", url: mk(beforeSec) });
+    if (beforeMs != null) tries.push({ mode:"ms", url: mk(beforeMs) });
+
+    let lastErr = null;
+    for (const tr of tries) {
+      const { r, t, j } = await geckoFetchJson(tr.url);
+      if (!r.ok) { lastErr = { http:r.status, body:(t||"").slice(0,250), mode: tr.mode }; continue; }
+      const list = j?.data?.attributes?.ohlcv_list || [];
+      const itemsAll = Array.isArray(list) ? list.map((row) => {
+        const ts = Number(row?.[0]);
+        const tt = Number.isFinite(ts) ? (ts > 1e12 ? Math.floor(ts / 1000) : Math.floor(ts)) : null;
+        const o = Number(row?.[1]);
+        const c = Number(row?.[2]);
+        const h = Number(row?.[3]);
+        const l = Number(row?.[4]);
+        return {
+          time: tt,
+          open: Number.isFinite(o) ? o : null,
+          high: Number.isFinite(h) ? h : null,
+          low:  Number.isFinite(l) ? l : null,
+          close:Number.isFinite(c) ? c : null
+        };
+      }).filter(x => x.time && x.open != null && x.high != null && x.low != null && x.close != null) : [];
+
+      const items = (fromSec || toSec)
+        ? itemsAll.filter(x => (!fromSec || x.time >= fromSec) && (!toSec || x.time <= toSec))
+        : itemsAll;
+
+      if (items && items.length) return { ok:true, source:"gecko_client", mode: tr.mode, items };
+      lastErr = { http:200, body:"empty_ohlcv_list", mode: tr.mode };
+    }
+    return { ok:false, error:"gecko_empty", ...lastErr };
+  } catch (e) {
+    return { ok:false, error:"gecko_client_exception", detail:String(e) };
+  }
+}
+
 
     function setStatus(kind, msg) {
       const s = el("statusPill");
@@ -524,7 +662,19 @@ upColor: "#22c55e",
         if (applyCandles(candles, "ok")) return { ok:true };
       }
 
-      // If we already have candles, keep them stale (don't blank chart)
+      
+// Worker candles failed; try client-side GeckoTerminal using bestPair
+if (state.bestPair) {
+  const nowSec = Math.floor(Date.now() / 1000);
+  const to = nowSec;
+  const from = to - (800 * TF_SEC);
+  const gc = await geckoPoolOhlcvClient(state.bestPair, TF, 800, from, to);
+  if (gc && gc.ok && Array.isArray(gc.items) && gc.items.length) {
+    if (applyCandles(gc.items, "ok (gecko)")) return { ok:true, source:"gecko_client" };
+  }
+}
+
+// If we already have candles, keep them stale (don't blank chart)
       if (Array.isArray(state.candles) && state.candles.length) {
         el("candlesMeta").textContent = "stale";
         el("chartMeta").textContent = "stale";
@@ -613,7 +763,7 @@ async function tick(addr, force=false) {
       if (needDs) await fetchDexscreener(addr);
 
       const [p, t] = await Promise.all([
-        api(`/api/price?chain=${CHAIN}&address=${encodeURIComponent(addr)}`),
+        api(`/api/price?chain=${CHAIN}&address=${encodeURIComponent(addr)}${state.bestPair ? `&pair=${encodeURIComponent(state.bestPair)}` : ``}`),
         api(`/api/trades?chain=${CHAIN}&address=${encodeURIComponent(addr)}${state.bestPair ? `&pair=${encodeURIComponent(state.bestPair)}` : ``}&limit=${tradesLimit}`)
       ]);
 
@@ -648,11 +798,37 @@ async function tick(addr, force=false) {
             state.lastTradeTs = ts;
           }
         }
-      } else {
-        el("tradesCount").textContent = "—";
-        el("tradesMeta").textContent = t ? (`fail (${t.http||t.status||"?"})`) : "fail";
-        el("trades").innerHTML = "";
+} else {
+  // Worker failed (or is down). Try client-side GeckoTerminal using bestPair.
+  let usedFallback = false;
+  if (state.bestPair) {
+    const gt = await geckoPoolTradesClient(state.bestPair, tradesLimit);
+    if (gt && gt.ok && Array.isArray(gt.items)) {
+      usedFallback = true;
+      el("tradesCount").textContent = String(gt.count ?? gt.items.length ?? 0);
+      el("tradesMeta").textContent = "ok (gecko)";
+      renderTrades(gt.items);
+
+      const newest = gt.items[0];
+      if (newest) {
+        const pr = Number(newest.price);
+        const ts = Number(newest.t);
+        if (Number.isFinite(pr) && Number.isFinite(ts)) {
+          state.lastTradePrice = pr;
+          state.lastTradeTs = ts;
+        }
       }
+    }
+  }
+
+  if (!usedFallback) {
+    el("tradesCount").textContent = "—";
+    // keep 0 as 0 (don't turn into "?")
+    const code = (t && (t.http ?? t.status)) ?? "?";
+    el("tradesMeta").textContent = t ? (`fail (${code})`) : "fail";
+    el("trades").innerHTML = "";
+  }
+}
 
       // Candles less frequent
       const cRes = await fetchCandles(addr);
