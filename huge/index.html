@@ -1,758 +1,209 @@
 <!doctype html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>DexGuard v1 — Live Candles + Live Trades</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>DexGuard — No Birdeye (Solana live via Helius)</title>
   <style>
-    :root{
-      --bg:#0b0f14;
-      --panel:#0f1723;
-      --panel2:#101b2b;
-      --border:rgba(255,255,255,.08);
-      --muted:rgba(255,255,255,.65);
-      --text:rgba(255,255,255,.92);
-      --good:#16f195;
-      --bad:#ff4d6d;
-      --accent:#f5c15a;
-    }
-    *{box-sizing:border-box}
-    body{
-      margin:0;
-      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
-      background: radial-gradient(1200px 600px at 20% -10%, rgba(245,193,90,.10), transparent 60%),
-                  radial-gradient(900px 500px at 80% 0%, rgba(22,241,149,.08), transparent 55%),
-                  var(--bg);
-      color:var(--text);
-    }
-    .wrap{max-width:1200px;margin:0 auto;padding:18px}
-    .topbar{
-      display:flex;gap:12px;align-items:center;justify-content:space-between;
-      padding:14px 14px;border:1px solid var(--border);border-radius:16px;
-      background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.015));
-      position:sticky;top:10px;z-index:20;backdrop-filter: blur(10px);
-    }
+    :root { color-scheme: dark; --bg:#0b0f14; --panel:#101722; --muted:#9fb0c3; --fg:#e7edf4; --acc:#f5c84c; --red:#ff4d4f; --green:#2ecc71; }
+    body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.35 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial;}
+    header{display:flex;gap:12px;align-items:center;justify-content:space-between;padding:12px 14px;background:linear-gradient(180deg,#0f151f,#0b0f14);border-bottom:1px solid rgba(255,255,255,.06);position:sticky;top:0;z-index:50}
     .brand{display:flex;gap:10px;align-items:center}
-    .logo{
-      width:34px;height:34px;border-radius:10px;
-      background: linear-gradient(135deg, rgba(245,193,90,.35), rgba(22,241,149,.18));
-      border:1px solid var(--border);
-      display:flex;align-items:center;justify-content:center;
-      font-weight:800;color:rgba(255,255,255,.9);
-    }
-    .brand h1{margin:0;font-size:16px;letter-spacing:.2px}
-    .pillrow{display:flex;gap:8px;flex-wrap:wrap}
-    .pill{
-      border:1px solid var(--border);background:rgba(255,255,255,.02);
-      color:rgba(255,255,255,.85);
-      padding:8px 10px;border-radius:999px;cursor:pointer;
-      font-weight:650;font-size:12px;
-      user-select:none;
-    }
-    .pill.active{border-color:rgba(245,193,90,.65);background:rgba(245,193,90,.10);color:#fff}
-    .grid{
-      margin-top:14px;
-      display:grid;
-      grid-template-columns: 1.1fr .9fr;
-      gap:14px;
-      align-items:start;
-    }
-    .card{
-      border:1px solid var(--border);
-      border-radius:16px;
-      background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.015));
-      overflow:hidden;
-    }
-    .cardHd{
-      padding:12px 14px;
-      border-bottom:1px solid var(--border);
-      display:flex;align-items:center;justify-content:space-between;gap:10px;
-    }
-    .cardHd .ttl{font-weight:750;font-size:13px;color:rgba(255,255,255,.9)}
-    .cardBd{padding:14px}
-    .row{display:flex;gap:10px;align-items:center}
-    .col{display:flex;flex-direction:column;gap:6px}
-    label{font-size:12px;color:var(--muted)}
-    input{
-      width:100%;
-      padding:12px 12px;border-radius:12px;
-      border:1px solid var(--border);
-      background:rgba(0,0,0,.25);
-      color:var(--text);
-      outline:none;
-    }
-    .results{
-      margin-top:10px;
-      display:flex;flex-direction:column;gap:8px;
-      max-height:320px;overflow:auto;
-    }
-    .res{
-      padding:10px 10px;border-radius:14px;
-      border:1px solid var(--border);
-      background:rgba(255,255,255,.02);
-      cursor:pointer;
-      display:flex;align-items:center;justify-content:space-between;gap:10px;
-    }
-    .res:hover{background:rgba(255,255,255,.04)}
-    .res .a{display:flex;gap:10px;align-items:center;min-width:0}
-    .tokenIcon{
-      width:28px;height:28px;border-radius:10px;border:1px solid var(--border);
-      background:rgba(255,255,255,.02);flex:0 0 auto;
-      overflow:hidden;display:flex;align-items:center;justify-content:center;
-      font-weight:800;color:rgba(255,255,255,.85);
-    }
-    .tokenIcon img{width:100%;height:100%;object-fit:cover;display:block}
-    .res .name{font-weight:750;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .res .sub{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .kpiRow{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px}
-    .kpi{
-      padding:12px;border:1px solid var(--border);border-radius:14px;background:rgba(255,255,255,.02);
-    }
-    .kpi .k{font-size:12px;color:var(--muted)}
-    .kpi .v{margin-top:6px;font-size:18px;font-weight:800}
-    .kpi .s{margin-top:2px;font-size:12px;color:var(--muted)}
-    .chartWrap{height:420px}
-    #chart{width:100%;height:100%}
-    .tfRow{display:flex;gap:8px;flex-wrap:wrap}
-    .tf{padding:7px 10px;border-radius:999px;border:1px solid var(--border);background:rgba(255,255,255,.02);cursor:pointer;font-size:12px;font-weight:650}
-    .tf.active{border-color:rgba(22,241,149,.55);background:rgba(22,241,149,.10)}
-    table{width:100%;border-collapse:collapse}
-    th,td{padding:10px 8px;border-bottom:1px solid rgba(255,255,255,.06);font-size:12px}
-    th{color:rgba(255,255,255,.72);font-weight:700;text-align:left}
-    td{color:rgba(255,255,255,.88)}
-    .sideBuy{color:var(--good);font-weight:800}
-    .sideSell{color:var(--bad);font-weight:800}
-    .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace}
-    .right{text-align:right}
+    .dot{width:10px;height:10px;border-radius:50%;background:var(--acc);box-shadow:0 0 0 4px rgba(245,200,76,.08)}
+    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    input,select,button{background:var(--panel);color:var(--fg);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:10px 12px;outline:none}
+    input{min-width:320px}
+    button{cursor:pointer}
+    button.primary{border-color:rgba(245,200,76,.35);}
+    .grid{display:grid;grid-template-columns:2fr 1fr;gap:12px;padding:12px}
+    @media (max-width:980px){.grid{grid-template-columns:1fr} input{min-width:0;width:100%}}
+    .card{background:var(--panel);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:12px}
+    .kpis{display:flex;gap:12px;flex-wrap:wrap}
+    .kpi{min-width:140px}
+    .kpi .l{color:var(--muted);font-size:12px}
+    .kpi .v{font-size:16px;font-weight:700;margin-top:4px}
     .muted{color:var(--muted)}
-    .status{
-      display:flex;gap:8px;align-items:center;
-      font-size:12px;color:rgba(255,255,255,.8);
-      padding:6px 10px;border-radius:999px;border:1px solid var(--border);background:rgba(255,255,255,.02);
-    }
-    .dot{width:8px;height:8px;border-radius:999px;background:rgba(255,255,255,.25)}
-    .dot.live{background:rgba(22,241,149,.9)}
-    .dot.err{background:rgba(255,77,109,.95)}
-    .small{font-size:11px;color:var(--muted)}
-    @media (max-width: 980px){
-      .grid{grid-template-columns:1fr}
-      .chartWrap{height:360px}
-      .topbar{position:sticky;top:0;border-radius:0;border-left:none;border-right:none}
-      .wrap{padding:0}
-      .grid{padding:12px}
-    }
+    .warn{color:var(--acc)}
+    .err{color:var(--red)}
+    .ok{color:var(--green)}
+    .tbl{width:100%;border-collapse:collapse;margin-top:8px}
+    .tbl th,.tbl td{padding:8px 6px;border-bottom:1px solid rgba(255,255,255,.08);text-align:left;font-size:12px}
+    .pill{display:inline-block;padding:2px 8px;border-radius:999px;border:1px solid rgba(255,255,255,.12);color:var(--muted);font-size:11px}
+    #chart{height:360px}
+    .small{font-size:12px}
   </style>
-  <script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
 </head>
 <body>
-  <div class="wrap">
-    <div class="topbar">
-      <div class="brand">
-        <div class="logo">DG</div>
-        <div class="col" style="gap:2px">
-          <h1 style="margin:0">DexGuard v1</h1>
-          <div class="small">Birdeye + DexScreener • Live candles + trades</div>
+  <header>
+    <div class="brand"><span class="dot"></span><div><div style="font-weight:800">DexGuard</div><div class="muted small">No Birdeye — Live SOL trades via Helius + DexScreener price</div></div></div>
+    <div class="row">
+      <select id="chain">
+        <option value="solana" selected>SOL</option>
+        <option value="ethereum">ETH (price only)</option>
+        <option value="bsc">BNB (price only)</option>
+        <option value="base">BASE (price only)</option>
+      </select>
+      <input id="worker" placeholder="Worker base URL (e.g. https://xxxx.workers.dev)" />
+      <input id="mint" placeholder="Token address/mint" />
+      <button id="btnLoad" class="primary">Load</button>
+    </div>
+  </header>
+
+  <div class="grid">
+    <div class="card">
+      <div class="row" style="justify-content:space-between;align-items:flex-end">
+        <div>
+          <div id="title" style="font-weight:800;font-size:16px">—</div>
+          <div class="muted small" id="subtitle">—</div>
+        </div>
+        <div class="row">
+          <span class="pill" id="srcPrice">price: —</span>
+          <span class="pill" id="srcTrades">trades: —</span>
+          <span class="pill" id="srcCandles">candles: —</span>
         </div>
       </div>
-
-      <div class="pillrow" id="chains">
-        <div class="pill active" data-chain="solana">SOL</div>
-        <div class="pill" data-chain="ethereum">ETH</div>
-        <div class="pill" data-chain="bsc">BNB</div>
-        <div class="pill" data-chain="base">BASE</div>
+      <div class="kpis" style="margin-top:10px">
+        <div class="kpi"><div class="l">Price (USD)</div><div class="v" id="kpiPrice">—</div></div>
+        <div class="kpi"><div class="l">Last Trade</div><div class="v" id="kpiLast">—</div></div>
+        <div class="kpi"><div class="l">Status</div><div class="v" id="kpiStatus">—</div></div>
       </div>
-
-      <div class="status" id="status">
-        <div class="dot" id="dot"></div>
-        <div id="statusText">idle</div>
+      <div style="margin-top:10px" class="muted small">Chart is a lightweight placeholder here (your main Dex UI can keep using lightweight-charts). This page is for API verification without Birdeye.</div>
+      <div id="chart" class="card" style="margin-top:10px;background:#0b0f14;border-style:dashed;border-color:rgba(255,255,255,.15)">
+        <div class="muted" style="padding:14px">(Use your main app chart. If you want, I can patch your main HTML to read /api/candles + /api/trades from this worker.)</div>
       </div>
     </div>
 
-    <div class="grid">
-      <div class="card">
-        <div class="cardHd">
-          <div class="ttl">Search</div>
-          <div class="small mono" id="workerInfo">worker: (set below)</div>
-        </div>
-        <div class="cardBd">
-          <label>Worker base (your Cloudflare Workers URL)</label>
-          <input id="workerBase" placeholder="https://YOUR-WORKER.workers.dev" />
-
-          <div style="height:10px"></div>
-
-          <label>Search tokens (name / symbol) — click a result</label>
-          <input id="q" placeholder="e.g. bonk, wif, pepe" />
-
-          <div class="results" id="results"></div>
-
-          <div class="kpiRow">
-            <div class="kpi">
-              <div class="k">Price (USD)</div>
-              <div class="v" id="kpiPrice">—</div>
-              <div class="s" id="kpiPriceSrc">—</div>
-            </div>
-            <div class="kpi">
-              <div class="k">Trades (last fetch)</div>
-              <div class="v" id="kpiTrades">—</div>
-              <div class="s" id="kpiTradesSrc">—</div>
-            </div>
-            <div class="kpi">
-              <div class="k">Candles (<span id="tfLbl">15m</span>)</div>
-              <div class="v" id="kpiCandles">—</div>
-              <div class="s" id="kpiCandlesSrc">—</div>
-            </div>
-          </div>
-
-          <div style="height:12px"></div>
-          <div class="small">
-            Selected token: <span class="mono" id="selAddr">—</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="cardHd">
-          <div class="ttl">Timeframe</div>
-          <div class="small">Default = 15m</div>
-        </div>
-        <div class="cardBd">
-          <div class="tfRow" id="tfs">
-            <div class="tf" data-tf="1m">1m</div>
-            <div class="tf" data-tf="5m">5m</div>
-            <div class="tf active" data-tf="15m">15m</div>
-            <div class="tf" data-tf="1h">1h</div>
-            <div class="tf" data-tf="4h">4h</div>
-            <div class="tf" data-tf="1d">1d</div>
-          </div>
-
-          <div style="height:10px"></div>
-          <div class="small">
-            Poll trades every <span class="mono">3s</span> • Age counters tick every <span class="mono">1s</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="card" style="grid-column:1 / -1">
-        <div class="cardHd">
-          <div class="ttl">Chart</div>
-          <div class="small" id="chartMeta">—</div>
-        </div>
-        <div class="cardBd">
-          <div class="chartWrap"><div id="chart"></div></div>
-        </div>
-      </div>
-
-      <div class="card" style="grid-column:1 / -1">
-        <div class="cardHd">
-          <div class="ttl">Live trades</div>
-          <div class="small" id="tradesMeta">—</div>
-        </div>
-        <div class="cardBd">
-          <table>
-            <thead>
-              <tr>
-                <th>Age</th>
-                <th>Side</th>
-                <th class="right">USD</th>
-                <th class="right">Price</th>
-                <th>Maker</th>
-                <th>Tx</th>
-              </tr>
-            </thead>
-            <tbody id="trades"></tbody>
-          </table>
-        </div>
-      </div>
-
+    <div class="card">
+      <div style="font-weight:800">Live Trades</div>
+      <div class="muted small">Solana only (needs HELIUS_API_KEY in Worker env)</div>
+      <table class="tbl" id="tradesTbl">
+        <thead><tr><th>Time</th><th>Side</th><th>Price</th><th>USD</th><th>TX</th></tr></thead>
+        <tbody></tbody>
+      </table>
     </div>
   </div>
 
 <script>
-(function(){
-  // ---------- State
+  const $ = (id)=>document.getElementById(id);
+
   const state = {
     chain: 'solana',
-    tf: '15m',
+    address: '',
+    timer: null,
     workerBase: '',
-    selected: null,  // { address, symbol, name, imageUrl }
-    chart: null,
-    series: null,
-    candles: [],
-    lastTradeTs: 0,
-    pollTimer: 0,
-    ageTimer: 0,
-    lastTrades: [],
-    seenTx: new Set(),
-    inFlight: { search: 0, token: 0, candles: 0, trades: 0, price: 0 },
   };
 
-  // ---------- Helpers
-  const $ = (id)=>document.getElementById(id);
-  const fmtUsd = (n)=> (n==null || !isFinite(n)) ? '—' : ('$' + Number(n).toLocaleString(undefined,{maximumFractionDigits:2}));
-  const fmtPrice = (n)=>{
-    if(n==null || !isFinite(n)) return '—';
-    const x = Number(n);
-    if(x === 0) return '0';
-    const abs = Math.abs(x);
-    if(abs < 0.0001) return x.toExponential(4);
-    if(abs < 1) return x.toFixed(8).replace(/0+$/,'').replace(/\.$/,'');
-    if(abs < 1000) return x.toFixed(6).replace(/0+$/,'').replace(/\.$/,'');
-    return x.toLocaleString(undefined,{maximumFractionDigits:2});
-  };
-  const short = (s)=> !s ? '—' : (s.length<=10 ? s : (s.slice(0,4)+'…'+s.slice(-4)));
-  function isQuotaError(j){
-    const body = (j && (j.body || j.detail || j.message)) ? String(j.body || j.detail || j.message) : '';
-    const err = (j && j.error) ? String(j.error) : '';
-    return err.includes('birdeye_quota') || body.includes('Compute units usage limit exceeded');
-  }
-  let backoffUntil = 0;
-  function applyBackoff(sec){
-    const until = Date.now() + (sec*1000);
-    backoffUntil = Math.max(backoffUntil, until);
-    setStatus('err', `Birdeye limit — waiting ${sec}s`);
+  function fmtNum(x, d=8){
+    const n = Number(x);
+    if(!isFinite(n)) return '—';
+    return n.toLocaleString(undefined,{maximumFractionDigits:d});
   }
 
-  const setStatus = (mode, text)=>{
-    $('statusText').textContent = text || mode;
-    const dot = $('dot');
-    dot.classList.remove('live','err');
-    if(mode==='live') dot.classList.add('live');
-    if(mode==='err') dot.classList.add('err');
-  };
-
-  function wb(){
-    const v = (state.workerBase || '').trim().replace(/\/+$/,'');
-    if(!v) throw new Error('Set worker base first');
-    return v;
+  function fmtTime(sec){
+    if(!sec) return '—';
+    const dt = new Date(sec*1000);
+    return dt.toLocaleTimeString();
   }
 
-  function api(path, params){
-    const u = new URL(wb() + path);
-    Object.entries(params||{}).forEach(([k,v])=> u.searchParams.set(k, String(v)));
-    return u.toString();
+  function shortTx(s){
+    if(!s) return '—';
+    return s.slice(0,6)+'…'+s.slice(-6);
   }
 
-  // ---------- Chart
-  function initChart(){
-    const el = $('chart');
-    el.innerHTML = '';
-    const chart = LightweightCharts.createChart(el, {
-      layout: { background: { color: 'transparent' }, textColor: 'rgba(255,255,255,.85)' },
-      grid: { vertLines: { color: 'rgba(255,255,255,.06)' }, horzLines: { color: 'rgba(255,255,255,.06)' } },
-      rightPriceScale: { borderColor: 'rgba(255,255,255,.10)' },
-      timeScale: { borderColor: 'rgba(255,255,255,.10)' },
-      crosshair: { mode: 1 },
-      handleScroll: true,
-      handleScale: true,
-    });
-    const series = chart.addCandlestickSeries({
-      upColor: 'rgba(22,241,149,1)',
-      downColor: 'rgba(255,77,109,1)',
-      wickUpColor: 'rgba(22,241,149,1)',
-      wickDownColor: 'rgba(255,77,109,1)',
-      borderVisible: false,
-    });
-    state.chart = chart;
-    state.series = series;
-
-    const ro = new ResizeObserver(()=>{
-      try{
-        const r = el.getBoundingClientRect();
-        const w = Math.max(10, Math.floor(r.width));
-        const h = Math.max(10, Math.floor(r.height));
-        chart.resize(w, h);
-      }catch(_){}
-    });
-    ro.observe(el);
+  function setStatus(msg, cls){
+    const el = $('kpiStatus');
+    el.textContent = msg;
+    el.className = 'v ' + (cls||'');
   }
 
-  function applyCandles(items){
-    const out = (items||[]).map(c=>({
-      time: Number(c.t),
-      open: Number(c.o),
-      high: Number(c.h),
-      low: Number(c.l),
-      close: Number(c.c),
-    })).filter(x=> x.time && isFinite(x.open) && isFinite(x.high) && isFinite(x.low) && isFinite(x.close))
-      .sort((a,b)=>a.time-b.time);
-
-    state.candles = out;
-    state.series.setData(out);
-    state.chart.timeScale().fitContent();
-    $('chartMeta').textContent = `ok • ${out.length} candles`;
+  async function api(path){
+    const base = state.workerBase || location.origin;
+    const url = base.replace(/\/$/,'') + path;
+    const res = await fetch(url, { cache: 'no-store' });
+    const j = await res.json().catch(()=>null);
+    return { res, j, url };
   }
 
-  function tfSec(tf){
-    const map = {"1m":60,"5m":300,"15m":900,"1h":3600,"4h":14400,"1d":86400};
-    return map[tf] || 900;
-  }
+  async function refreshOnce(){
+    if(!state.address) return;
+    const chain = state.chain;
+    const addr = state.address;
 
-  function updateLastCandleFromTrade(price, ts){
-    // ts in unix seconds
-    if(!state.candles || !state.candles.length) return;
-    const sec = tfSec(state.tf);
-    const bucket = Math.floor(Number(ts) / sec) * sec;
-
-    const last = state.candles[state.candles.length - 1];
-    if(!last || !last.time) return;
-
-    // Same candle
-    if(bucket === last.time){
-      const prevClose = last.close;
-      last.close = price;
-      last.high = Math.max(last.high, price);
-      last.low = Math.min(last.low, price);
-      state.series.update(last);
-      return;
-    }
-
-    // New candle (rollover) — fill missing buckets flat
-    if(bucket > last.time){
-      let t = last.time + sec;
-      let prev = last;
-      let guard = 0;
-      while(t < bucket && guard < 300){
-        const o = prev.close;
-        const flat = { time:t, open:o, high:o, low:o, close:o };
-        state.candles.push(flat);
-        state.series.update(flat);
-        prev = flat;
-        t += sec;
-        guard++;
-      }
-      const o = prev.close;
-      const c = { time: bucket, open:o, high: Math.max(o, price), low: Math.min(o, price), close: price };
-      state.candles.push(c);
-      state.series.update(c);
-    }
-  }
-
-  // ---------- UI: chains
-  function bindChains(){
-    const row = $('chains');
-    row.addEventListener('click', (e)=>{
-      const b = e.target.closest('.pill');
-      if(!b) return;
-      [...row.querySelectorAll('.pill')].forEach(x=>x.classList.remove('active'));
-      b.classList.add('active');
-      state.chain = b.dataset.chain;
-      // clear results + selected token
-      $('results').innerHTML = '';
-      $('q').value = '';
-      setSelected(null);
-      setStatus('idle', `chain: ${state.chain}`);
-    });
-  }
-
-  // ---------- Search
-  let qTimer = 0;
-  function bindSearch(){
-    $('q').addEventListener('input', ()=>{
-      clearTimeout(qTimer);
-      qTimer = setTimeout(runSearch, 250);
-    });
-  }
-
-  async function runSearch(){
-    const q = $('q').value.trim();
-    if(q.length < 2) { $('results').innerHTML = ''; return; }
-    const id = ++state.inFlight.search;
-    setStatus('idle', 'search…');
-
+    // price
     try{
-      const r = await fetch(api('/api/search', { chain: state.chain, q, limit: 20 }));
-      const j = await r.json();
-      if(id !== state.inFlight.search) return;
-      if(!j.ok){ setStatus('err','search error'); $('results').innerHTML = ''; return; }
+      const r = await api(`/api/price?chain=${encodeURIComponent(chain)}&address=${encodeURIComponent(addr)}`);
+      $('srcPrice').textContent = 'price: ' + (r.j?.source || '—');
+      $('kpiPrice').textContent = fmtNum(r.j?.price, 10);
+    }catch(e){
+      $('srcPrice').textContent = 'price: error';
+    }
 
-      const items = j.items || [];
-      $('results').innerHTML = items.map((p, idx)=>{
-        const sym = (p.base?.symbol || '???');
-        const nm = (p.base?.name || sym);
-        const icon = p.imageUrl ? `<img src="${p.imageUrl}" alt="">` : sym.slice(0,1);
-        const liq = (p.liquidityUsd!=null) ? fmtUsd(p.liquidityUsd) : '—';
-        const pr = (p.priceUsd!=null) ? fmtPrice(p.priceUsd) : '—';
-        const sub = `${p.dexId||''} • liq ${liq} • $${pr}`;
-        const addr = p.base?.address || '';
-        return `
-          <div class="res" data-addr="${addr}" data-symbol="${(p.base?.symbol||'')}" data-name="${(p.base?.name||'')}" data-img="${p.imageUrl||''}">
-            <div class="a" style="min-width:0">
-              <div class="tokenIcon">${icon}</div>
-              <div style="min-width:0">
-                <div class="name">${nm} (${sym})</div>
-                <div class="sub">${sub}</div>
-              </div>
-            </div>
-            <div class="mono muted">${short(addr)}</div>
-          </div>
+    // trades
+    try{
+      const r = await api(`/api/trades?chain=${encodeURIComponent(chain)}&address=${encodeURIComponent(addr)}&limit=30`);
+      $('srcTrades').textContent = 'trades: ' + (r.j?.source || '—');
+      const items = Array.isArray(r.j?.items) ? r.j.items : [];
+      $('kpiLast').textContent = items[0]?.price ? fmtNum(items[0].price, 10) : '—';
+
+      const tb = $('tradesTbl').querySelector('tbody');
+      tb.innerHTML = '';
+      for(const tr of items.slice(0,30)){
+        const trEl = document.createElement('tr');
+        const side = (tr.side||'').toLowerCase();
+        trEl.innerHTML = `
+          <td class="muted">${fmtTime(tr.t)}</td>
+          <td class="${side==='buy'?'ok':side==='sell'?'err':'muted'}">${(tr.side||'—').toUpperCase()}</td>
+          <td>${fmtNum(tr.price, 10)}</td>
+          <td class="muted">${fmtNum(tr.usd, 2)}</td>
+          <td class="muted">${shortTx(tr.tx)}</td>
         `;
-      }).join('');
-
-      setStatus('idle', `found: ${items.length}`);
-    }catch(e){
-      if(id !== state.inFlight.search) return;
-      setStatus('err','search failed');
-      $('results').innerHTML = '';
-    }
-  }
-
-  function bindResults(){
-    $('results').addEventListener('click', async (e)=>{
-      const row = e.target.closest('.res');
-      if(!row) return;
-      const addr = row.dataset.addr;
-      if(!addr) return;
-      const meta = { address: addr, symbol: row.dataset.symbol || null, name: row.dataset.name || null, imageUrl: row.dataset.img || null };
-      await loadToken(meta);
-    });
-  }
-
-  // ---------- Selection / Loading
-  function setSelected(meta){
-    state.selected = meta;
-    $('selAddr').textContent = meta?.address || '—';
-    $('kpiPrice').textContent = '—';
-    $('kpiPriceSrc').textContent = '—';
-    $('kpiTrades').textContent = '—';
-    $('kpiTradesSrc').textContent = '—';
-    $('kpiCandles').textContent = '—';
-    $('kpiCandlesSrc').textContent = '—';
-    $('trades').innerHTML = '';
-    $('tradesMeta').textContent = '—';
-    $('chartMeta').textContent = '—';
-    state.candles = [];
-    state.lastTrades = [];
-    state.seenTx = new Set();
-    state.lastTradeTs = 0;
-  }
-
-  async function loadToken(meta){
-    const id = ++state.inFlight.token;
-    setSelected(meta);
-    setStatus('idle', 'loading…');
-
-    // Immediately kick chart/trades loops
-    await Promise.allSettled([refreshCandles(true), refreshTrades(true), refreshPrice()]);
-    if(id !== state.inFlight.token) return;
-
-    // Start polling loop
-    stopPolling();
-    startPolling();
-    setStatus('live', 'live');
-  }
-
-  function startPolling(){
-    // Trades every 3s; price every 3s; candles every 12s
-    state.pollTimer = setInterval(()=>{
-      refreshTrades(false);
-      refreshPrice();
-      // candle refresh less often
-      if((Date.now() / 1000) % 12 < 3) refreshCandles(false);
-    }, 3000);
-
-    // Age counters
-    state.ageTimer = setInterval(()=>renderAges(), 1000);
-  }
-
-  function stopPolling(){
-    if(state.pollTimer) { clearInterval(state.pollTimer); state.pollTimer = 0; }
-    if(state.ageTimer) { clearInterval(state.ageTimer); state.ageTimer = 0; }
-  }
-
-  async function refreshPrice(){
-    if(!state.selected?.address) return;
-    if(Date.now() < backoffUntil) return;
-    const id = ++state.inFlight.price;
-    try{
-      const r = await fetch(api('/api/price', { chain: state.chain, address: state.selected.address }));
-      const j = await r.json();
-      if(id !== state.inFlight.price) return;
-      if(isQuotaError(j)){ applyBackoff(j.retryAfterSec||30); return; }
-      if(j.ok){
-        $('kpiPrice').textContent = fmtPrice(j.price);
-        $('kpiPriceSrc').textContent = 'ok (birdeye)';
-      }else{
-        $('kpiPrice').textContent = '—';
-        $('kpiPriceSrc').textContent = 'fail';
+        tb.appendChild(trEl);
       }
-    }catch(_){}
-  }
 
-  async function refreshCandles(force){
-    if(!state.selected?.address) return;
-    if(Date.now() < backoffUntil) return;
-    const id = ++state.inFlight.candles;
-    try{
-      const r = await fetch(api('/api/candles', { chain: state.chain, address: state.selected.address, pair: state.selected.pairAddress || '', tf: state.tf, limit: 800 }));
-      const j = await r.json();
-      if(id !== state.inFlight.candles) return;
-
-      if(isQuotaError(j)){ applyBackoff(j.retryAfterSec||30); return; }
-
-      if(j.ok && Array.isArray(j.items) && j.items.length){
-        applyCandles(j.items);
-        $('kpiCandles').textContent = String(j.items.length);
-        $('kpiCandlesSrc').textContent = (String(j.source||'').includes('helius') ? 'ok (helius)' : 'ok (birdeye)');
-      }else{
-        $('kpiCandles').textContent = '—';
-        $('kpiCandlesSrc').textContent = 'fail';
+      if(chain !== 'solana'){
+        setStatus('EVM chains: price only (no free live trades).', 'warn');
+      } else if(r.j?.source === 'missing_helius_key'){
+        setStatus('Missing HELIUS_API_KEY in Worker env.', 'err');
+      } else {
+        setStatus('OK', 'ok');
       }
     }catch(e){
-      if(id !== state.inFlight.candles) return;
-      $('kpiCandles').textContent = '—';
-      $('kpiCandlesSrc').textContent = 'fail';
+      $('srcTrades').textContent = 'trades: error';
+      setStatus('Error fetching trades', 'err');
     }
-  }
 
-  async function refreshTrades(reset){
-    if(!state.selected?.address) return;
-    if(Date.now() < backoffUntil) return;
-    const id = ++state.inFlight.trades;
-
+    // candles (smoke test)
     try{
-      const r = await fetch(api('/api/trades', { chain: state.chain, address: state.selected.address, limit: 50, offset: 0 }));
-      const j = await r.json();
-      if(id !== state.inFlight.trades) return;
-
-      if(isQuotaError(j)){ applyBackoff(j.retryAfterSec||30); $('kpiTradesSrc').textContent='rate limit'; return; }
-
-      if(!(j.ok && Array.isArray(j.items))){
-        $('kpiTrades').textContent = '—';
-        $('kpiTradesSrc').textContent = 'fail';
-        $('tradesMeta').textContent = 'failed';
-        return;
-      }
-
-      const list = j.items.slice(0, 50);
-
-      // de-dupe by tx hash
-      const newly = [];
-      for(const t of list){
-        const key = t.tx || (t.t + '|' + t.price + '|' + t.maker);
-        if(!state.seenTx.has(key)){
-          state.seenTx.add(key);
-          newly.push(t);
-        }
-      }
-
-      // Keep a rolling window (newest first)
-      const merged = [...list].sort((a,b)=> (b.t||0)-(a.t||0));
-      state.lastTrades = merged.slice(0, 100);
-
-      // Update chart from newest trade (even if duplicate)
-      const newest = merged[0];
-      if(newest && isFinite(newest.price) && newest.t){
-        state.lastTradeTs = newest.t;
-        updateLastCandleFromTrade(Number(newest.price), Number(newest.t));
-      }
-
-      renderTradesTable();
-
-      $('kpiTrades').textContent = String(list.length);
-      $('kpiTradesSrc').textContent = (String(j.source||'').includes('helius') ? 'ok (helius)' : 'ok (birdeye)');
-      $('tradesMeta').textContent = `ok • ${list.length} items`;
+      const now = Math.floor(Date.now()/1000);
+      const r = await api(`/api/candles?chain=${encodeURIComponent(chain)}&address=${encodeURIComponent(addr)}&tf=15m&limit=60&to=${now}`);
+      $('srcCandles').textContent = 'candles: ' + (r.j?.source || '—') + ' ('+(r.j?.count ?? '0')+')';
     }catch(e){
-      if(id !== state.inFlight.trades) return;
-      $('kpiTrades').textContent = '—';
-      $('kpiTradesSrc').textContent = 'fail';
-      $('tradesMeta').textContent = 'failed';
+      $('srcCandles').textContent = 'candles: error';
     }
   }
 
-  function renderTradesTable(){
-    const now = Math.floor(Date.now()/1000);
-    const rows = (state.lastTrades || []).slice(0, 50).map(t=>{
-      const age = (t.t ? Math.max(0, now - t.t) : null);
-      const side = (t.side || 'unknown').toLowerCase();
-      const sideCls = side==='buy' ? 'sideBuy' : (side==='sell' ? 'sideSell' : 'muted');
-      const txUrl = txLink(state.chain, t.tx);
-      return `
-        <tr data-ts="${t.t||''}">
-          <td class="mono muted age">${age==null ? '—' : (age+'s')}</td>
-          <td class="${sideCls}">${side.toUpperCase()}</td>
-          <td class="right mono">${t.usd==null ? '—' : fmtUsd(t.usd)}</td>
-          <td class="right mono">${fmtPrice(t.price)}</td>
-          <td class="mono">${short(t.maker)}</td>
-          <td class="mono">${t.tx ? `<a href="${txUrl}" target="_blank" rel="noreferrer" style="color:rgba(245,193,90,.9);text-decoration:none">view</a>` : '—'}</td>
-        </tr>
-      `;
-    }).join('');
-    $('trades').innerHTML = rows || '';
-    renderAges();
+  function start(){
+    if(state.timer) clearInterval(state.timer);
+    refreshOnce();
+    state.timer = setInterval(refreshOnce, 3000);
   }
 
-  function renderAges(){
-    const now = Math.floor(Date.now()/1000);
-    document.querySelectorAll('#trades tr').forEach(tr=>{
-      const ts = Number(tr.getAttribute('data-ts')||0);
-      const ageEl = tr.querySelector('.age');
-      if(!ageEl) return;
-      if(!ts) { ageEl.textContent='—'; return; }
-      ageEl.textContent = Math.max(0, now - ts) + 's';
-    });
-  }
+  $('chain').addEventListener('change', ()=>{
+    state.chain = $('chain').value;
+  });
 
-  function txLink(chain, hash){
-    if(!hash) return '#';
-    if(chain === 'solana') return `https://solscan.io/tx/${hash}`;
-    if(chain === 'ethereum') return `https://etherscan.io/tx/${hash}`;
-    if(chain === 'bsc') return `https://bscscan.com/tx/${hash}`;
-    if(chain === 'base') return `https://basescan.org/tx/${hash}`;
-    return '#';
-  }
+  $('btnLoad').addEventListener('click', ()=>{
+    state.chain = $('chain').value;
+    state.workerBase = $('worker').value.trim();
+    state.address = $('mint').value.trim();
+    $('title').textContent = `${state.chain.toUpperCase()} / ${state.address || '—'}`;
+    $('subtitle').textContent = state.workerBase ? state.workerBase : '(same origin)';
+    start();
+  });
 
-  // ---------- Timeframes
-  function bindTfs(){
-    $('tfs').addEventListener('click', (e)=>{
-      const b = e.target.closest('.tf');
-      if(!b) return;
-      [...$('tfs').querySelectorAll('.tf')].forEach(x=>x.classList.remove('active'));
-      b.classList.add('active');
-      state.tf = b.dataset.tf;
-      $('tfLbl').textContent = state.tf;
-      if(state.selected?.address){
-        refreshCandles(true);
-      }
-    });
-  }
-
-  // ---------- Worker base handling
-  function bindWorkerBase(){
-    const input = $('workerBase');
-    const stored = localStorage.getItem('DG_WORKER_BASE') || '';
-    if(stored) {
-      input.value = stored;
-      state.workerBase = stored.trim().replace(/\/+$/,'');
-      $('workerInfo').textContent = `worker: ${state.workerBase}`;
-    }
-
-    input.addEventListener('change', ()=>{
-      const raw = input.value.trim();
-      if(raw && !/^https?:\/\//i.test(raw)) {
-        state.workerBase = '';
-        localStorage.removeItem('DG_WORKER_BASE');
-        $('workerInfo').textContent = `worker: (invalid URL)`;
-        setStatus('err', 'worker base must be a URL');
-        return;
-      }
-
-      state.workerBase = input.value.trim().replace(/\/+$/,'');
-      localStorage.setItem('DG_WORKER_BASE', state.workerBase);
-      $('workerInfo').textContent = `worker: ${state.workerBase || '(set below)'}`;
-      setStatus('idle', state.workerBase ? 'worker set' : 'set worker base');
-    });
-  }
-
-  // ---------- Boot
-  initChart();
-  bindChains();
-  bindSearch();
-  bindResults();
-  bindTfs();
-  bindWorkerBase();
-  setStatus('idle','set worker base');
-
-})();
+  // Prefill (optional)
+  $('worker').value = '';
+  $('mint').value = 'DezXA8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263';
 </script>
 </body>
 </html>
