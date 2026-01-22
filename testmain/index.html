@@ -3881,10 +3881,12 @@ function toggleMenu(){
   var bar = pre.querySelector('[data-prog]');
   var pct = pre.querySelector('[data-pct]');
   var start = (window.performance && performance.now) ? performance.now() : Date.now();
-  var minShow = 950;
+  var minShow = 2600;
   var prog = 0;
   var done = false;
-  var raf = 0;
+    var minDoneShow = 900;
+  var doneAt = 0;
+var raf = 0;
 
   function clamp(n,min,max){ return n<min?min:(n>max?max:n); }
 
@@ -3911,7 +3913,11 @@ function toggleMenu(){
     var elapsed = now - start;
     var wait = Math.max(0, minShow - elapsed);
 
-    setTimeout(function(){
+    
+    if(doneAt){
+      wait = Math.max(wait, minDoneShow - (now - doneAt));
+    }
+setTimeout(function(){
       pre.classList.add('dg-preload-exit');
       htmlEl.classList.remove('dg-preload-lock');
 
@@ -3925,10 +3931,10 @@ function toggleMenu(){
   requestAnimationFrame(function(){ requestAnimationFrame(step); });
 
   // Mark done when full page resources are loaded
-  window.addEventListener('load', function(){ done = true; }, { once: true });
+  window.addEventListener('load', function(){ done = true; doneAt = ((window.performance && performance.now) ? performance.now() : Date.now()); }, { once: true });
 
   // Safety: if load doesn't fire (blocked/slow), auto-finish
-  setTimeout(function(){ done = true; }, 6500);
+  setTimeout(function(){ if(!done){ done = true; doneAt = ((window.performance && performance.now) ? performance.now() : Date.now()); } }, 9000);
 })();
 </script>
 
