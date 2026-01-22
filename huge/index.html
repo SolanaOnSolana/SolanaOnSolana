@@ -1,960 +1,729 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>DexGuard v0</title>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>DexGuard v1 — Live Candles + Live Trades</title>
   <style>
-    body{margin:0;font-family:system-ui;background:#0b0f14;color:#e7eef7}
-    header{padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-    .pill{padding:6px 10px;border:1px solid rgba(255,255,255,.12);border-radius:999px;font-size:12px;opacity:.95}
-    main{padding:14px;display:grid;gap:12px;max-width:1000px;margin:0 auto}
-    input{width:100%;padding:12px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:#0f1520;color:#e7eef7}
-    .grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
-    .card{border:1px solid rgba(255,255,255,.10);background:#0f1520;border-radius:12px;padding:12px}
-    .muted{opacity:.7;font-size:12px}
-    .big{font-size:20px;font-weight:700}
-    table{width:100%;border-collapse:collapse;font-size:12px}
-    td,th{padding:8px 6px;border-bottom:1px solid rgba(255,255,255,.08);text-align:left}
-    .buy{color:#4ade80}
-    .sell{color:#fb7185}
-    .warn{color:#fbbf24}
-    .bad{color:#fb7185}
-    a{color:#93c5fd;text-decoration:none}
-    a:hover{text-decoration:underline}
-    #chart{height:380px; width:100%;}
-    .row{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
-    .btn{cursor:pointer;user-select:none;padding:8px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:#0b0f14;color:#e7eef7;font-size:12px}
-    .btn:hover{border-color:rgba(255,255,255,.22)}
-    .searchWrap{position:relative}
-    .results{position:absolute;left:0;right:0;top:calc(100% + 8px);background:#0f1520;border:1px solid rgba(255,255,255,.12);border-radius:12px;max-height:320px;overflow:auto;z-index:50;box-shadow:0 18px 40px rgba(0,0,0,.55)}
-    .resultRow{display:flex;gap:10px;align-items:center;padding:10px 10px;border-bottom:1px solid rgba(255,255,255,.08);cursor:pointer}
-    .resultRow:last-child{border-bottom:none}
-    .resultRow:hover{background:rgba(255,255,255,.04)}
-    .resultLogo{width:28px;height:28px;border-radius:8px;object-fit:cover;border:1px solid rgba(255,255,255,.12);background:#0b0f14}
-    .resultMain{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
-    .resultTitle{font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .resultSub{font-size:12px;opacity:.7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-
-
-    @media (max-width:720px){
+    :root{
+      --bg:#0b0f14;
+      --panel:#0f1723;
+      --panel2:#101b2b;
+      --border:rgba(255,255,255,.08);
+      --muted:rgba(255,255,255,.65);
+      --text:rgba(255,255,255,.92);
+      --good:#16f195;
+      --bad:#ff4d6d;
+      --accent:#f5c15a;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      background: radial-gradient(1200px 600px at 20% -10%, rgba(245,193,90,.10), transparent 60%),
+                  radial-gradient(900px 500px at 80% 0%, rgba(22,241,149,.08), transparent 55%),
+                  var(--bg);
+      color:var(--text);
+    }
+    .wrap{max-width:1200px;margin:0 auto;padding:18px}
+    .topbar{
+      display:flex;gap:12px;align-items:center;justify-content:space-between;
+      padding:14px 14px;border:1px solid var(--border);border-radius:16px;
+      background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.015));
+      position:sticky;top:10px;z-index:20;backdrop-filter: blur(10px);
+    }
+    .brand{display:flex;gap:10px;align-items:center}
+    .logo{
+      width:34px;height:34px;border-radius:10px;
+      background: linear-gradient(135deg, rgba(245,193,90,.35), rgba(22,241,149,.18));
+      border:1px solid var(--border);
+      display:flex;align-items:center;justify-content:center;
+      font-weight:800;color:rgba(255,255,255,.9);
+    }
+    .brand h1{margin:0;font-size:16px;letter-spacing:.2px}
+    .pillrow{display:flex;gap:8px;flex-wrap:wrap}
+    .pill{
+      border:1px solid var(--border);background:rgba(255,255,255,.02);
+      color:rgba(255,255,255,.85);
+      padding:8px 10px;border-radius:999px;cursor:pointer;
+      font-weight:650;font-size:12px;
+      user-select:none;
+    }
+    .pill.active{border-color:rgba(245,193,90,.65);background:rgba(245,193,90,.10);color:#fff}
+    .grid{
+      margin-top:14px;
+      display:grid;
+      grid-template-columns: 1.1fr .9fr;
+      gap:14px;
+      align-items:start;
+    }
+    .card{
+      border:1px solid var(--border);
+      border-radius:16px;
+      background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.015));
+      overflow:hidden;
+    }
+    .cardHd{
+      padding:12px 14px;
+      border-bottom:1px solid var(--border);
+      display:flex;align-items:center;justify-content:space-between;gap:10px;
+    }
+    .cardHd .ttl{font-weight:750;font-size:13px;color:rgba(255,255,255,.9)}
+    .cardBd{padding:14px}
+    .row{display:flex;gap:10px;align-items:center}
+    .col{display:flex;flex-direction:column;gap:6px}
+    label{font-size:12px;color:var(--muted)}
+    input{
+      width:100%;
+      padding:12px 12px;border-radius:12px;
+      border:1px solid var(--border);
+      background:rgba(0,0,0,.25);
+      color:var(--text);
+      outline:none;
+    }
+    .results{
+      margin-top:10px;
+      display:flex;flex-direction:column;gap:8px;
+      max-height:320px;overflow:auto;
+    }
+    .res{
+      padding:10px 10px;border-radius:14px;
+      border:1px solid var(--border);
+      background:rgba(255,255,255,.02);
+      cursor:pointer;
+      display:flex;align-items:center;justify-content:space-between;gap:10px;
+    }
+    .res:hover{background:rgba(255,255,255,.04)}
+    .res .a{display:flex;gap:10px;align-items:center;min-width:0}
+    .tokenIcon{
+      width:28px;height:28px;border-radius:10px;border:1px solid var(--border);
+      background:rgba(255,255,255,.02);flex:0 0 auto;
+      overflow:hidden;display:flex;align-items:center;justify-content:center;
+      font-weight:800;color:rgba(255,255,255,.85);
+    }
+    .tokenIcon img{width:100%;height:100%;object-fit:cover;display:block}
+    .res .name{font-weight:750;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .res .sub{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .kpiRow{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px}
+    .kpi{
+      padding:12px;border:1px solid var(--border);border-radius:14px;background:rgba(255,255,255,.02);
+    }
+    .kpi .k{font-size:12px;color:var(--muted)}
+    .kpi .v{margin-top:6px;font-size:18px;font-weight:800}
+    .kpi .s{margin-top:2px;font-size:12px;color:var(--muted)}
+    .chartWrap{height:420px}
+    #chart{width:100%;height:100%}
+    .tfRow{display:flex;gap:8px;flex-wrap:wrap}
+    .tf{padding:7px 10px;border-radius:999px;border:1px solid var(--border);background:rgba(255,255,255,.02);cursor:pointer;font-size:12px;font-weight:650}
+    .tf.active{border-color:rgba(22,241,149,.55);background:rgba(22,241,149,.10)}
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:10px 8px;border-bottom:1px solid rgba(255,255,255,.06);font-size:12px}
+    th{color:rgba(255,255,255,.72);font-weight:700;text-align:left}
+    td{color:rgba(255,255,255,.88)}
+    .sideBuy{color:var(--good);font-weight:800}
+    .sideSell{color:var(--bad);font-weight:800}
+    .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace}
+    .right{text-align:right}
+    .muted{color:var(--muted)}
+    .status{
+      display:flex;gap:8px;align-items:center;
+      font-size:12px;color:rgba(255,255,255,.8);
+      padding:6px 10px;border-radius:999px;border:1px solid var(--border);background:rgba(255,255,255,.02);
+    }
+    .dot{width:8px;height:8px;border-radius:999px;background:rgba(255,255,255,.25)}
+    .dot.live{background:rgba(22,241,149,.9)}
+    .dot.err{background:rgba(255,77,109,.95)}
+    .small{font-size:11px;color:var(--muted)}
+    @media (max-width: 980px){
       .grid{grid-template-columns:1fr}
-      #chart{height:320px}
+      .chartWrap{height:360px}
+      .topbar{position:sticky;top:0;border-radius:0;border-left:none;border-right:none}
+      .wrap{padding:0}
+      .grid{padding:12px}
     }
   </style>
+  <script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
 </head>
 <body>
-  <header>
-    <div class="pill">DexGuard v0</div>
-    <div class="pill" id="chainPill">chain: solana</div>
-    <div class="pill" id="statusPill">idle</div>
-    <div class="pill muted" id="hintPill">—</div>
-  </header>
-
-  <main>
-    <div class="card">
-      <div class="muted">Token address (paste mint)</div>
-      <div class="muted" style="margin-top:10px">Search (name / symbol)</div>
-      <div class="searchWrap" style="margin-top:6px">
-        <input id="search" placeholder="Search tokens… (e.g. bonk, wif)" autocomplete="off" />
-        <div id="searchResults" class="results" style="display:none"></div>
+  <div class="wrap">
+    <div class="topbar">
+      <div class="brand">
+        <div class="logo">DG</div>
+        <div class="col" style="gap:2px">
+          <h1 style="margin:0">DexGuard v1</h1>
+          <div class="small">Birdeye + DexScreener • Live candles + trades</div>
+        </div>
       </div>
-<input id="addr" placeholder="e.g. BONK: DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263" />
-      <div class="muted" style="margin-top:8px">
-        Worker base:
-        <span id="base"></span>
+
+      <div class="pillrow" id="chains">
+        <div class="pill active" data-chain="solana">SOL</div>
+        <div class="pill" data-chain="ethereum">ETH</div>
+        <div class="pill" data-chain="bsc">BNB</div>
+        <div class="pill" data-chain="base">BASE</div>
+      </div>
+
+      <div class="status" id="status">
+        <div class="dot" id="dot"></div>
+        <div id="statusText">idle</div>
       </div>
     </div>
 
     <div class="grid">
       <div class="card">
-        <div class="muted">Price (USD)</div>
-        <div class="big" id="price">—</div>
-        <div class="muted" id="priceMeta">—</div>
+        <div class="cardHd">
+          <div class="ttl">Search</div>
+          <div class="small mono" id="workerInfo">worker: (set below)</div>
+        </div>
+        <div class="cardBd">
+          <label>Worker base (your Cloudflare Workers URL)</label>
+          <input id="workerBase" placeholder="https://YOUR-WORKER.workers.dev" />
+
+          <div style="height:10px"></div>
+
+          <label>Search tokens (name / symbol) — click a result</label>
+          <input id="q" placeholder="e.g. bonk, wif, pepe" />
+
+          <div class="results" id="results"></div>
+
+          <div class="kpiRow">
+            <div class="kpi">
+              <div class="k">Price (USD)</div>
+              <div class="v" id="kpiPrice">—</div>
+              <div class="s" id="kpiPriceSrc">—</div>
+            </div>
+            <div class="kpi">
+              <div class="k">Trades (last fetch)</div>
+              <div class="v" id="kpiTrades">—</div>
+              <div class="s" id="kpiTradesSrc">—</div>
+            </div>
+            <div class="kpi">
+              <div class="k">Candles (<span id="tfLbl">15m</span>)</div>
+              <div class="v" id="kpiCandles">—</div>
+              <div class="s" id="kpiCandlesSrc">—</div>
+            </div>
+          </div>
+
+          <div style="height:12px"></div>
+          <div class="small">
+            Selected token: <span class="mono" id="selAddr">—</span>
+          </div>
+        </div>
       </div>
 
       <div class="card">
-        <div class="muted">Trades (last fetch)</div>
-        <div class="big" id="tradesCount">—</div>
-        <div class="muted" id="tradesMeta">—</div>
-      </div>
+        <div class="cardHd">
+          <div class="ttl">Timeframe</div>
+          <div class="small">Default = 15m</div>
+        </div>
+        <div class="cardBd">
+          <div class="tfRow" id="tfs">
+            <div class="tf" data-tf="1m">1m</div>
+            <div class="tf" data-tf="5m">5m</div>
+            <div class="tf active" data-tf="15m">15m</div>
+            <div class="tf" data-tf="1h">1h</div>
+            <div class="tf" data-tf="4h">4h</div>
+            <div class="tf" data-tf="1d">1d</div>
+          </div>
 
-      <div class="card">
-        <div class="muted">Candles (15m)</div>
-        <div class="big" id="candlesCount">—</div>
-        <div class="muted" id="candlesMeta">—</div>
-      </div>
-    </div>
-
-    <div class="card" id="dsCard">
-      <div style="display:flex;gap:12px;align-items:center">
-        <img id="dsLogo" alt="" style="width:44px;height:44px;border-radius:10px;display:none;object-fit:cover;border:1px solid rgba(255,255,255,.12)">
-        <div style="flex:1">
-          <div class="big" id="dsName">—</div>
-          <div class="muted" id="dsSub">—</div>
-          <div class="muted" id="dsMeta" style="margin-top:6px">—</div>
+          <div style="height:10px"></div>
+          <div class="small">
+            Poll trades every <span class="mono">3s</span> • Age counters tick every <span class="mono">1s</span>
+          </div>
         </div>
       </div>
-      <div class="muted" style="margin-top:10px" id="dsStats">—</div>
-      <div class="muted" style="margin-top:8px" id="dsLinks">—</div>
-    </div>
 
-    <div class="card">
-      <div class="row" style="margin-bottom:8px">
-        <div class="muted">Chart</div>
-        <div class="muted" id="chartMeta">—</div>
-      </div>
-      <div id="chart"></div>
-    </div>
-
-    <div class="card">
-      <div class="row" style="margin-bottom:8px">
-        <div class="muted">Live trades</div>
-        <div class="row">
-          <div class="muted">limit:</div>
-          <button class="btn" id="limit50">50</button>
-          <button class="btn" id="limit100">100</button>
-          <button class="btn" id="limit200">200</button>
+      <div class="card" style="grid-column:1 / -1">
+        <div class="cardHd">
+          <div class="ttl">Chart</div>
+          <div class="small" id="chartMeta">—</div>
+        </div>
+        <div class="cardBd">
+          <div class="chartWrap"><div id="chart"></div></div>
         </div>
       </div>
-      <table>
-        <thead>
-          <tr><th>Time</th><th>Side</th><th>USD</th><th>Price</th><th>Maker</th></tr>
-        </thead>
-        <tbody id="trades"></tbody>
-      </table>
+
+      <div class="card" style="grid-column:1 / -1">
+        <div class="cardHd">
+          <div class="ttl">Live trades</div>
+          <div class="small" id="tradesMeta">—</div>
+        </div>
+        <div class="cardBd">
+          <table>
+            <thead>
+              <tr>
+                <th>Age</th>
+                <th>Side</th>
+                <th class="right">USD</th>
+                <th class="right">Price</th>
+                <th>Maker</th>
+                <th>Tx</th>
+              </tr>
+            </thead>
+            <tbody id="trades"></tbody>
+          </table>
+        </div>
+      </div>
+
     </div>
-  </main>
+  </div>
 
-  <script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
-  <script>
-    const WORKER_BASE = "https://flat-grass-9c26solanaonsolana.simon-kaggwa-why.workers.dev";
-    const CHAIN = "solana";
-    const TF = "15m";
-    const TF_SEC = 900; // 15m
+<script>
+(function(){
+  // ---------- State
+  const state = {
+    chain: 'solana',
+    tf: '15m',
+    workerBase: '',
+    selected: null,  // { address, symbol, name, imageUrl }
+    chart: null,
+    series: null,
+    candles: [],
+    lastTradeTs: 0,
+    pollTimer: 0,
+    ageTimer: 0,
+    lastTrades: [],
+    seenTx: new Set(),
+    inFlight: { search: 0, token: 0, candles: 0, trades: 0, price: 0 },
+  };
 
-    document.getElementById("base").textContent = WORKER_BASE;
+  // ---------- Helpers
+  const $ = (id)=>document.getElementById(id);
+  const fmtUsd = (n)=> (n==null || !isFinite(n)) ? '—' : ('$' + Number(n).toLocaleString(undefined,{maximumFractionDigits:2}));
+  const fmtPrice = (n)=>{
+    if(n==null || !isFinite(n)) return '—';
+    const x = Number(n);
+    if(x === 0) return '0';
+    const abs = Math.abs(x);
+    if(abs < 0.0001) return x.toExponential(4);
+    if(abs < 1) return x.toFixed(8).replace(/0+$/,'').replace(/\.$/,'');
+    if(abs < 1000) return x.toFixed(6).replace(/0+$/,'').replace(/\.$/,'');
+    return x.toLocaleString(undefined,{maximumFractionDigits:2});
+  };
+  const short = (s)=> !s ? '—' : (s.length<=10 ? s : (s.slice(0,4)+'…'+s.slice(-4)));
+  const setStatus = (mode, text)=>{
+    $('statusText').textContent = text || mode;
+    const dot = $('dot');
+    dot.classList.remove('live','err');
+    if(mode==='live') dot.classList.add('live');
+    if(mode==='err') dot.classList.add('err');
+  };
 
-    const el = (id) => document.getElementById(id);
-    const fmt = (n, d=6) => (Number.isFinite(n) ? n.toFixed(d) : "—");
-    const short = (s) => s ? (s.slice(0,4)+"…"+s.slice(-4)) : "—";
-
-    function timeAgoFromTs(tSec) {
-      const dt = (Date.now()/1000 - tSec);
-      if (!Number.isFinite(dt)) return "—";
-      if (dt < 60) return Math.floor(dt) + "s";
-      if (dt < 3600) return Math.floor(dt/60) + "m";
-      if (dt < 86400) return Math.floor(dt/3600) + "h";
-      if (dt < 86400*30) return Math.floor(dt/86400) + "d";
-      if (dt < 86400*365) return Math.floor(dt/(86400*30)) + "mo";
-      return Math.floor(dt/(86400*365)) + "y";
-    }
-
-    async function api(path) {
-      const full = WORKER_BASE + path;
-      let r, text;
-      try {
-        r = await fetch(full, { cache: "no-store" });
-        text = await r.text();
-      } catch (e) {
-        return { ok:false, http:0, error:"network_error", detail:String(e), url: full };
-      }
-
-      let j = null;
-      try { j = JSON.parse(text); } catch { /* keep null */ }
-
-      if (!r.ok) {
-        // Preserve HTTP status for diagnostics, but don't assume JSON shape
-        return { ok:false, http:r.status, error:"http_error", body:(text||"").slice(0,250), url: full, json: j };
-      }
-
-      if (j && typeof j === "object") {
-        if (j.http == null) j.http = r.status;
-        if (j.url == null) j.url = full;
-        return j;
-      }
-      return { ok:false, http:r.status, error:"bad_json", body:(text||"").slice(0,250), url: full };
-    }
-
-
-
-// ---- Client-side GeckoTerminal fallback (works even if Worker is down)
-const GECKO_BASE = "https://api.geckoterminal.com/api/v2";
-function geckoNet(chain) {
-  const c = String(chain||"").toLowerCase();
-  if (c === "ethereum") return "eth";
-  if (c === "solana" || c === "sol") return "solana";
-  if (c === "bsc" || c === "bnb") return "bsc";
-  return c; // base, arbitrum, polygon_pos etc.
-}
-function geckoTf(tf) {
-  const s = String(tf||"").toLowerCase().trim();
-  const m = s.match(/^(\d+)([mhd])$/);
-  if (!m) return null;
-  const n = parseInt(m[1], 10);
-  const u = m[2];
-  if (!Number.isFinite(n) || n <= 0) return null;
-  if (u === "m") return { timeframe: "minute", aggregate: n };
-  if (u === "h") return { timeframe: "hour", aggregate: n };
-  if (u === "d") return { timeframe: "day", aggregate: n };
-  return null;
-}
-async function geckoFetchJson(url) {
-  const r = await fetch(url, { cache: "no-store", headers: { "accept": "application/json" } });
-  const t = await r.text();
-  let j = null;
-  try { j = JSON.parse(t); } catch (_) {}
-  return { r, t, j };
-}
-async function geckoPoolTradesClient(pool, limit=100) {
-  try {
-    const net = geckoNet(CHAIN);
-    if (!net || !pool) return { ok:false, error:"missing_pool" };
-    const u = new URL(`${GECKO_BASE}/networks/${net}/pools/${pool}/trades`);
-    // Gecko uses pagination in some stacks; if it doesn't, this is ignored by the server
-    u.searchParams.set("page[limit]", String(Math.min(100, Math.max(10, limit))));
-    const { r, t, j } = await geckoFetchJson(u.toString());
-    if (!r.ok) return { ok:false, http:r.status, error:"gecko_http", body:(t||"").slice(0,250) };
-    const data = j?.data || [];
-    const itemsAll = Array.isArray(data) ? data.map((it) => {
-      const a = it?.attributes || {};
-      let ts = a.block_timestamp ?? a.timestamp ?? a.time ?? a.datetime ?? a.created_at ?? null;
-      if (typeof ts === "string") {
-        const d = Date.parse(ts);
-        ts = Number.isFinite(d) ? d : ts;
-      }
-      const n = Number(ts);
-      const tt = Number.isFinite(n) ? (n > 1e12 ? Math.floor(n / 1000) : Math.floor(n)) : null;
-
-      const kind = String(a.kind ?? a.side ?? a.trade_type ?? "").toLowerCase();
-      let side = kind.includes("buy") ? "buy" : (kind.includes("sell") ? "sell" : null);
-      if (!side && typeof a.is_buy === "boolean") side = a.is_buy ? "buy" : "sell";
-
-      const usd = Number(a.volume_in_usd ?? a.trade_volume_in_usd ?? a.amount_in_usd ?? a.total_value_in_usd);
-      // Price: prefer USD, but accept other numeric price fields if USD isn't present
-let price = Number(a.price_in_usd ?? a.trade_price_usd ?? a.price_usd);
-if (!Number.isFinite(price)) {
-  price = Number(
-    a.price ??
-    a.trade_price ??
-    a.price_in_quote_token ??
-    a.price_in_base_token ??
-    a.price_in_token ??
-    a.execution_price ??
-    a.avg_price
-  );
-}
-
-
-      const maker = a.taker_address ?? a.trader_address ?? a.from_address ?? a.wallet_address ?? null;
-      const tx = a.tx_hash ?? a.transaction_hash ?? a.tx ?? null;
-
-      return {
-        t: Number.isFinite(tt) ? tt : null,
-        side: side || "unknown",
-        usd: Number.isFinite(usd) ? usd : null,
-        price: Number.isFinite(price) ? price : null,
-        maker, tx
-      };
-    }).filter(x => x.t && x.price != null) : [];
-    return { ok:true, source:"gecko_client", count: itemsAll.length, items: itemsAll.slice(0, limit) };
-  } catch (e) {
-    return { ok:false, error:"gecko_client_exception", detail:String(e) };
+  function wb(){
+    const v = (state.workerBase || '').trim().replace(/\/+$/,'');
+    if(!v) throw new Error('Set worker base first');
+    return v;
   }
-}
 
-async function geckoPoolOhlcvClient(pool, tf, limit=800, fromSec=null, toSec=null) {
-  try {
-    const net = geckoNet(CHAIN);
-    const tfm = geckoTf(tf);
-    if (!net || !pool || !tfm) return { ok:false, error:"missing_params" };
-
-    const baseUrl = `${GECKO_BASE}/networks/${net}/pools/${pool}/ohlcv/${tfm.timeframe}`;
-
-    const mk = (beforeVal) => {
-      const u = new URL(baseUrl);
-      u.searchParams.set("aggregate", String(tfm.aggregate));
-      u.searchParams.set("limit", String(Math.min(1000, Math.max(50, limit))));
-      u.searchParams.set("currency", "usd");
-      if (beforeVal != null) u.searchParams.set("before_timestamp", String(beforeVal));
-      return u.toString();
-    };
-
-    const beforeSec = toSec ? Math.floor(Number(toSec)) : null;
-    const beforeMs  = toSec ? Math.floor(Number(toSec) * 1000) : null;
-
-    const tries = [];
-    tries.push({ mode:"sec", url: mk(beforeSec) });
-    if (beforeMs != null) tries.push({ mode:"ms", url: mk(beforeMs) });
-
-    let lastErr = null;
-    for (const tr of tries) {
-      const { r, t, j } = await geckoFetchJson(tr.url);
-      if (!r.ok) { lastErr = { http:r.status, body:(t||"").slice(0,250), mode: tr.mode }; continue; }
-      const list = j?.data?.attributes?.ohlcv_list || [];
-      const itemsAll = Array.isArray(list) ? list.map((row) => {
-        const ts = Number(row?.[0]);
-        const tt = Number.isFinite(ts) ? (ts > 1e12 ? Math.floor(ts / 1000) : Math.floor(ts)) : null;
-        const o = Number(row?.[1]);
-        const c = Number(row?.[2]);
-        const h = Number(row?.[3]);
-        const l = Number(row?.[4]);
-        // Sanitize values: ensure numeric + consistent (high >= max(open,close), low <= min(open,close))
-const oo = Number.isFinite(o) ? o : null;
-const hh = Number.isFinite(h) ? h : null;
-const ll = Number.isFinite(l) ? l : null;
-const cc = Number.isFinite(c) ? c : null;
-
-if (oo == null || hh == null || ll == null || cc == null) return null;
-
-const hi = Math.max(oo, hh, ll, cc);
-const lo = Math.min(oo, hh, ll, cc);
-
-return {
-  time: tt,
-  open: oo,
-  high: hi,
-  low:  lo,
-  close: cc
-};
-
-      }).filter(x => x && x.time && x.open != null && x.high != null && x.low != null && x.close != null) : [];
-
-      const items = (fromSec || toSec)
-        ? itemsAll.filter(x => (!fromSec || x.time >= fromSec) && (!toSec || x.time <= toSec))
-        : itemsAll;
-
-      if (items && items.length) return { ok:true, source:"gecko_client", mode: tr.mode, items };
-      lastErr = { http:200, body:"empty_ohlcv_list", mode: tr.mode };
-    }
-    return { ok:false, error:"gecko_empty", ...lastErr };
-  } catch (e) {
-    return { ok:false, error:"gecko_client_exception", detail:String(e) };
+  function api(path, params){
+    const u = new URL(wb() + path);
+    Object.entries(params||{}).forEach(([k,v])=> u.searchParams.set(k, String(v)));
+    return u.toString();
   }
-}
 
-
-    function setStatus(kind, msg) {
-      const s = el("statusPill");
-      s.textContent = msg;
-      s.className = "pill" + (kind === "bad" ? " bad" : kind === "warn" ? " warn" : "");
-    }
-
-    // ---- Chart setup
-    const chartEl = el("chart");
-    const chart = LightweightCharts.createChart(chartEl, {
-      layout: { background: { color: "#0f1520" }, textColor: "#e7eef7" },
-      grid: { vertLines: { color: "rgba(255,255,255,.08)" }, horzLines: { color: "rgba(255,255,255,.08)" } },
-      rightPriceScale: { borderColor: "rgba(255,255,255,.12)" },
-      timeScale: { borderColor: "rgba(255,255,255,.12)", timeVisible: true, secondsVisible: false },
-      crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+  // ---------- Chart
+  function initChart(){
+    const el = $('chart');
+    el.innerHTML = '';
+    const chart = LightweightCharts.createChart(el, {
+      layout: { background: { color: 'transparent' }, textColor: 'rgba(255,255,255,.85)' },
+      grid: { vertLines: { color: 'rgba(255,255,255,.06)' }, horzLines: { color: 'rgba(255,255,255,.06)' } },
+      rightPriceScale: { borderColor: 'rgba(255,255,255,.10)' },
+      timeScale: { borderColor: 'rgba(255,255,255,.10)' },
+      crosshair: { mode: 1 },
+      handleScroll: true,
+      handleScale: true,
     });
-    const candleSeries = chart.addCandlestickSeries({
-upColor: "#22c55e",
-      downColor: "#ef4444",
-      borderUpColor: "#22c55e",
-      borderDownColor: "#ef4444",
-      wickUpColor: "#22c55e",
-      wickDownColor: "#ef4444",
-      priceFormat: { type: "price", precision: 10, minMove: 0.0000000001 },
-    }
-    );
+    const series = chart.addCandlestickSeries({
+      upColor: 'rgba(22,241,149,1)',
+      downColor: 'rgba(255,77,109,1)',
+      wickUpColor: 'rgba(22,241,149,1)',
+      wickDownColor: 'rgba(255,77,109,1)',
+      borderVisible: false,
+    });
+    state.chart = chart;
+    state.series = series;
 
-    function setSeriesPrecisionFromPrice(p) {
-      const n = Number(p);
-      if (!Number.isFinite(n) || n <= 0) return;
-      // Choose precision so small prices don't render as 0.00
-      let precision = 2;
-      if (n < 1) {
-        precision = Math.min(12, Math.max(2, Math.ceil(-Math.log10(n)) + 2));
+    const ro = new ResizeObserver(()=>{
+      try{
+        const r = el.getBoundingClientRect();
+        const w = Math.max(10, Math.floor(r.width));
+        const h = Math.max(10, Math.floor(r.height));
+        chart.resize(w, h);
+      }catch(_){}
+    });
+    ro.observe(el);
+  }
+
+  function applyCandles(items){
+    const out = (items||[]).map(c=>({
+      time: Number(c.t),
+      open: Number(c.o),
+      high: Number(c.h),
+      low: Number(c.l),
+      close: Number(c.c),
+    })).filter(x=> x.time && isFinite(x.open) && isFinite(x.high) && isFinite(x.low) && isFinite(x.close))
+      .sort((a,b)=>a.time-b.time);
+
+    state.candles = out;
+    state.series.setData(out);
+    state.chart.timeScale().fitContent();
+    $('chartMeta').textContent = `ok • ${out.length} candles`;
+  }
+
+  function tfSec(tf){
+    const map = {"1m":60,"5m":300,"15m":900,"1h":3600,"4h":14400,"1d":86400};
+    return map[tf] || 900;
+  }
+
+  function updateLastCandleFromTrade(price, ts){
+    // ts in unix seconds
+    if(!state.candles || !state.candles.length) return;
+    const sec = tfSec(state.tf);
+    const bucket = Math.floor(Number(ts) / sec) * sec;
+
+    const last = state.candles[state.candles.length - 1];
+    if(!last || !last.time) return;
+
+    // Same candle
+    if(bucket === last.time){
+      const prevClose = last.close;
+      last.close = price;
+      last.high = Math.max(last.high, price);
+      last.low = Math.min(last.low, price);
+      state.series.update(last);
+      return;
+    }
+
+    // New candle (rollover) — fill missing buckets flat
+    if(bucket > last.time){
+      let t = last.time + sec;
+      let prev = last;
+      let guard = 0;
+      while(t < bucket && guard < 300){
+        const o = prev.close;
+        const flat = { time:t, open:o, high:o, low:o, close:o };
+        state.candles.push(flat);
+        state.series.update(flat);
+        prev = flat;
+        t += sec;
+        guard++;
       }
-      const minMove = Math.pow(10, -precision);
-      candleSeries.applyOptions({ priceFormat: { type: "price", precision, minMove } });
+      const o = prev.close;
+      const c = { time: bucket, open:o, high: Math.max(o, price), low: Math.min(o, price), close: price };
+      state.candles.push(c);
+      state.series.update(c);
     }
+  }
 
+  // ---------- UI: chains
+  function bindChains(){
+    const row = $('chains');
+    row.addEventListener('click', (e)=>{
+      const b = e.target.closest('.pill');
+      if(!b) return;
+      [...row.querySelectorAll('.pill')].forEach(x=>x.classList.remove('active'));
+      b.classList.add('active');
+      state.chain = b.dataset.chain;
+      // clear results + selected token
+      $('results').innerHTML = '';
+      $('q').value = '';
+      setSelected(null);
+      setStatus('idle', `chain: ${state.chain}`);
+    });
+  }
 
-    function resizeChart() {
-      const rect = chartEl.getBoundingClientRect();
-      chart.applyOptions({ width: Math.max(10, Math.floor(rect.width)), height: Math.max(10, Math.floor(rect.height)) });
+  // ---------- Search
+  let qTimer = 0;
+  function bindSearch(){
+    $('q').addEventListener('input', ()=>{
+      clearTimeout(qTimer);
+      qTimer = setTimeout(runSearch, 250);
+    });
+  }
+
+  async function runSearch(){
+    const q = $('q').value.trim();
+    if(q.length < 2) { $('results').innerHTML = ''; return; }
+    const id = ++state.inFlight.search;
+    setStatus('idle', 'search…');
+
+    try{
+      const r = await fetch(api('/api/search', { chain: state.chain, q, limit: 20 }));
+      const j = await r.json();
+      if(id !== state.inFlight.search) return;
+      if(!j.ok){ setStatus('err','search error'); $('results').innerHTML = ''; return; }
+
+      const items = j.items || [];
+      $('results').innerHTML = items.map((p, idx)=>{
+        const sym = (p.base?.symbol || '???');
+        const nm = (p.base?.name || sym);
+        const icon = p.imageUrl ? `<img src="${p.imageUrl}" alt="">` : sym.slice(0,1);
+        const liq = (p.liquidityUsd!=null) ? fmtUsd(p.liquidityUsd) : '—';
+        const pr = (p.priceUsd!=null) ? fmtPrice(p.priceUsd) : '—';
+        const sub = `${p.dexId||''} • liq ${liq} • $${pr}`;
+        const addr = p.base?.address || '';
+        return `
+          <div class="res" data-addr="${addr}" data-symbol="${(p.base?.symbol||'')}" data-name="${(p.base?.name||'')}" data-img="${p.imageUrl||''}">
+            <div class="a" style="min-width:0">
+              <div class="tokenIcon">${icon}</div>
+              <div style="min-width:0">
+                <div class="name">${nm} (${sym})</div>
+                <div class="sub">${sub}</div>
+              </div>
+            </div>
+            <div class="mono muted">${short(addr)}</div>
+          </div>
+        `;
+      }).join('');
+
+      setStatus('idle', `found: ${items.length}`);
+    }catch(e){
+      if(id !== state.inFlight.search) return;
+      setStatus('err','search failed');
+      $('results').innerHTML = '';
     }
-    window.addEventListener("resize", () => resizeChart());
-    setTimeout(resizeChart, 0);
+  }
 
-    // ---- State
-    let pollTimer = null;
-    let agoTimer = null;
-    let lastAddr = "";
-    let inFlight = false;
-    let tradesLimit = 100;
+  function bindResults(){
+    $('results').addEventListener('click', async (e)=>{
+      const row = e.target.closest('.res');
+      if(!row) return;
+      const addr = row.dataset.addr;
+      if(!addr) return;
+      const meta = { address: addr, symbol: row.dataset.symbol || null, name: row.dataset.name || null, imageUrl: row.dataset.img || null };
+      await loadToken(meta);
+    });
+  }
 
-    const state = {
-      ds: null,
-      bestPair: null,
-      candles: null,
-      lastTradePrice: null,
-      lastTradeTs: null,
-      lastCandlesFetchAt: 0,
-      lastDsAt: 0,
-    };
+  // ---------- Selection / Loading
+  function setSelected(meta){
+    state.selected = meta;
+    $('selAddr').textContent = meta?.address || '—';
+    $('kpiPrice').textContent = '—';
+    $('kpiPriceSrc').textContent = '—';
+    $('kpiTrades').textContent = '—';
+    $('kpiTradesSrc').textContent = '—';
+    $('kpiCandles').textContent = '—';
+    $('kpiCandlesSrc').textContent = '—';
+    $('trades').innerHTML = '';
+    $('tradesMeta').textContent = '—';
+    $('chartMeta').textContent = '—';
+    state.candles = [];
+    state.lastTrades = [];
+    state.seenTx = new Set();
+    state.lastTradeTs = 0;
+  }
 
-    function setActiveLimitButtons() {
-      el("limit50").style.opacity = tradesLimit === 50 ? "1" : ".6";
-      el("limit100").style.opacity = tradesLimit === 100 ? "1" : ".6";
-      el("limit200").style.opacity = tradesLimit === 200 ? "1" : ".6";
-    }
-    el("limit50").onclick = () => { tradesLimit = 50; setActiveLimitButtons(); tick(lastAddr, true); };
-    el("limit100").onclick = () => { tradesLimit = 100; setActiveLimitButtons(); tick(lastAddr, true); };
-    el("limit200").onclick = () => { tradesLimit = 200; setActiveLimitButtons(); tick(lastAddr, true); };
-    setActiveLimitButtons();
+  async function loadToken(meta){
+    const id = ++state.inFlight.token;
+    setSelected(meta);
+    setStatus('idle', 'loading…');
 
-    
-    async function fetchTradesPagesForChart(addr, pages = 4, pageSize = 100) {
-      const all = [];
-      const pairQ = state.bestPair ? `&pair=${encodeURIComponent(state.bestPair)}` : "";
-      for (let i = 0; i < pages; i++) {
-        const offset = i * pageSize;
-        const res = await api(`/api/trades?chain=${CHAIN}&address=${encodeURIComponent(addr)}${pairQ}&limit=${pageSize}&offset=${offset}`);
-        if (!(res && res.ok && Array.isArray(res.items) && res.items.length)) break;
-        all.push(...res.items);
-        // stop early if the last page seems exhausted
-        if (res.items.length < pageSize) break;
+    // Immediately kick chart/trades loops
+    await Promise.allSettled([refreshCandles(true), refreshTrades(true), refreshPrice()]);
+    if(id !== state.inFlight.token) return;
+
+    // Start polling loop
+    stopPolling();
+    startPolling();
+    setStatus('live', 'live');
+  }
+
+  function startPolling(){
+    // Trades every 3s; price every 3s; candles every 12s
+    state.pollTimer = setInterval(()=>{
+      refreshTrades(false);
+      refreshPrice();
+      // candle refresh less often
+      if((Date.now() / 1000) % 12 < 3) refreshCandles(false);
+    }, 3000);
+
+    // Age counters
+    state.ageTimer = setInterval(()=>renderAges(), 1000);
+  }
+
+  function stopPolling(){
+    if(state.pollTimer) { clearInterval(state.pollTimer); state.pollTimer = 0; }
+    if(state.ageTimer) { clearInterval(state.ageTimer); state.ageTimer = 0; }
+  }
+
+  async function refreshPrice(){
+    if(!state.selected?.address) return;
+    const id = ++state.inFlight.price;
+    try{
+      const r = await fetch(api('/api/price', { chain: state.chain, address: state.selected.address }));
+      const j = await r.json();
+      if(id !== state.inFlight.price) return;
+      if(j.ok){
+        $('kpiPrice').textContent = fmtPrice(j.price);
+        $('kpiPriceSrc').textContent = 'ok (birdeye)';
+      }else{
+        $('kpiPrice').textContent = '—';
+        $('kpiPriceSrc').textContent = 'fail';
       }
-      // Deduplicate by tx+time+price if available
-      const seen = new Set();
-      const out = [];
-      for (const x of all) {
-        const k = `${x.tx||""}|${x.t||""}|${x.price||""}`;
-        if (seen.has(k)) continue;
-        seen.add(k);
-        out.push(x);
+    }catch(_){}
+  }
+
+  async function refreshCandles(force){
+    if(!state.selected?.address) return;
+    const id = ++state.inFlight.candles;
+    try{
+      const r = await fetch(api('/api/candles', { chain: state.chain, address: state.selected.address, tf: state.tf, limit: 800 }));
+      const j = await r.json();
+      if(id !== state.inFlight.candles) return;
+
+      if(j.ok && Array.isArray(j.items) && j.items.length){
+        applyCandles(j.items);
+        $('kpiCandles').textContent = String(j.items.length);
+        $('kpiCandlesSrc').textContent = 'ok (birdeye)';
+      }else{
+        $('kpiCandles').textContent = '—';
+        $('kpiCandlesSrc').textContent = 'fail';
       }
-      return out;
+    }catch(e){
+      if(id !== state.inFlight.candles) return;
+      $('kpiCandles').textContent = '—';
+      $('kpiCandlesSrc').textContent = 'fail';
     }
+  }
 
-    function synthCandlesFromTrades(trades, tfSec, limit=800) {
-      const items = Array.isArray(trades) ? trades.slice() : [];
-      items.sort((a,b)=> (a.t||0)-(b.t||0)); // oldest->newest
-      const buckets = new Map();
-      for (const tr of items) {
-        const t = Number(tr.t);
-        const p = Number(tr.price);
-        if (!Number.isFinite(t) || !Number.isFinite(p)) continue;
-        const b = Math.floor(t / tfSec) * tfSec;
-        const c = buckets.get(b) || { time: b, open: p, high: p, low: p, close: p };
-        // first trade in bucket defines open (we are going oldest->newest)
-        if (c.open == null) c.open = p;
-        c.high = Math.max(c.high, p);
-        c.low = Math.min(c.low, p);
-        c.close = p;
-        buckets.set(b, c);
-      }
-      const out = Array.from(buckets.values()).sort((a,b)=>a.time-b.time);
-      return out.slice(-limit);
-    }
+  async function refreshTrades(reset){
+    if(!state.selected?.address) return;
+    const id = ++state.inFlight.trades;
 
-    function applyCandles(candles, metaText) {
-      if (!Array.isArray(candles) || candles.length === 0) return false;
+    try{
+      const r = await fetch(api('/api/trades', { chain: state.chain, address: state.selected.address, limit: 50, offset: 0 }));
+      const j = await r.json();
+      if(id !== state.inFlight.trades) return;
 
-      // Sanitize + sort ascending by time (Lightweight Charts expects monotonic time)
-      const cleaned = [];
-      const seen = new Set();
-      for (const x of candles) {
-        if (!x) continue;
-        let t = Number(x.time ?? x.t);
-        if (!Number.isFinite(t)) continue;
-        if (t > 1e12) t = Math.floor(t / 1000); // ms -> sec
-        t = Math.floor(t);
-        const o = Number(x.open ?? x.o);
-        const h = Number(x.high ?? x.h);
-        const l = Number(x.low  ?? x.l);
-        const c = Number(x.close?? x.c);
-        if (![o,h,l,c].every(Number.isFinite)) continue;
-
-        const hi = Math.max(o,h,l,c);
-        const lo = Math.min(o,h,l,c);
-        const key = String(t);
-        // keep last occurrence if duplicates
-        if (seen.has(key)) {
-          // overwrite previous
-          for (let i = cleaned.length - 1; i >= 0; i--) {
-            if (cleaned[i].time === t) { cleaned[i] = { time:t, open:o, high:hi, low:lo, close:c }; break; }
-          }
-        } else {
-          seen.add(key);
-          cleaned.push({ time:t, open:o, high:hi, low:lo, close:c });
-        }
-      }
-      cleaned.sort((a,b)=>a.time-b.time);
-      if (!cleaned.length) return false;
-
-      candleSeries.setData(cleaned);
-
-      try { chart.timeScale().fitContent(); } catch {}
-      state.candles = cleaned.slice();
-      el("candlesCount").textContent = String(cleaned.length);
-      el("candlesMeta").textContent = metaText || "ok";
-      el("chartMeta").textContent = metaText || "ok";
-            try { setSeriesPrecisionFromPrice(cleaned[cleaned.length-1]?.close); } catch(_) {}
-// keep last candle visible
-      try { chart.timeScale().fitContent(); } catch {}
-      return true;
-    }
-
-    function updateLastCandleFromTrade(price, tSec) {
-      if (!Number.isFinite(price) || !Number.isFinite(tSec)) return;
-      try { setSeriesPrecisionFromPrice(price); } catch(_) {}
-      if (!Array.isArray(state.candles) || state.candles.length === 0) return;
-
-      const last = state.candles[state.candles.length - 1];
-      const bucket = Math.floor(tSec / TF_SEC) * TF_SEC;
-
-      if (last.time !== bucket) {
-        const prevClose = Number(last.close);
-        const open = Number.isFinite(prevClose) ? prevClose : price;
-        const c = { time: bucket, open, high: Math.max(open, price), low: Math.min(open, price), close: price };
-        state.candles.push(c);
-        if (state.candles.length > 260) state.candles = state.candles.slice(-260);
-        candleSeries.update(c);
-        el("candlesCount").textContent = String(state.candles.length);
+      if(!(j.ok && Array.isArray(j.items))){
+        $('kpiTrades').textContent = '—';
+        $('kpiTradesSrc').textContent = 'fail';
+        $('tradesMeta').textContent = 'failed';
         return;
       }
 
-      const upd = {
-        time: last.time,
-        open: last.open,
-        high: Math.max(Number(last.high), price),
-        low: Math.min(Number(last.low), price),
-        close: price
-      };
-      state.candles[state.candles.length - 1] = upd;
-      candleSeries.update(upd);
-    }
+      const list = j.items.slice(0, 50);
 
-    function renderTrades(items) {
-      const rows = (items || []).map(x => `
-        <tr>
-          <td class="muted ago" data-ts="${Number(x.t)}">${timeAgoFromTs(Number(x.t))}</td>
-          <td class="${x.side === "buy" ? "buy" : (x.side === "sell" ? "sell" : "")}">${x.side || "—"}</td>
-          <td>$${fmt(Number(x.usd), 4)}</td>
-          <td>${fmt(Number(x.price), 10)}</td>
-          <td class="muted">${short(x.maker)}</td>
+      // de-dupe by tx hash
+      const newly = [];
+      for(const t of list){
+        const key = t.tx || (t.t + '|' + t.price + '|' + t.maker);
+        if(!state.seenTx.has(key)){
+          state.seenTx.add(key);
+          newly.push(t);
+        }
+      }
+
+      // Keep a rolling window (newest first)
+      const merged = [...list].sort((a,b)=> (b.t||0)-(a.t||0));
+      state.lastTrades = merged.slice(0, 100);
+
+      // Update chart from newest trade (even if duplicate)
+      const newest = merged[0];
+      if(newest && isFinite(newest.price) && newest.t){
+        state.lastTradeTs = newest.t;
+        updateLastCandleFromTrade(Number(newest.price), Number(newest.t));
+      }
+
+      renderTradesTable();
+
+      $('kpiTrades').textContent = String(list.length);
+      $('kpiTradesSrc').textContent = 'ok (birdeye)';
+      $('tradesMeta').textContent = `ok • ${list.length} items`;
+    }catch(e){
+      if(id !== state.inFlight.trades) return;
+      $('kpiTrades').textContent = '—';
+      $('kpiTradesSrc').textContent = 'fail';
+      $('tradesMeta').textContent = 'failed';
+    }
+  }
+
+  function renderTradesTable(){
+    const now = Math.floor(Date.now()/1000);
+    const rows = (state.lastTrades || []).slice(0, 50).map(t=>{
+      const age = (t.t ? Math.max(0, now - t.t) : null);
+      const side = (t.side || 'unknown').toLowerCase();
+      const sideCls = side==='buy' ? 'sideBuy' : (side==='sell' ? 'sideSell' : 'muted');
+      const txUrl = txLink(state.chain, t.tx);
+      return `
+        <tr data-ts="${t.t||''}">
+          <td class="mono muted age">${age==null ? '—' : (age+'s')}</td>
+          <td class="${sideCls}">${side.toUpperCase()}</td>
+          <td class="right mono">${t.usd==null ? '—' : fmtUsd(t.usd)}</td>
+          <td class="right mono">${fmtPrice(t.price)}</td>
+          <td class="mono">${short(t.maker)}</td>
+          <td class="mono">${t.tx ? `<a href="${txUrl}" target="_blank" rel="noreferrer" style="color:rgba(245,193,90,.9);text-decoration:none">view</a>` : '—'}</td>
         </tr>
-      `).join("");
-      el("trades").innerHTML = rows;
-    }
-
-    function startAgoTicker() {
-      if (agoTimer) clearInterval(agoTimer);
-      agoTimer = setInterval(() => {
-        document.querySelectorAll(".ago").forEach(td => {
-          const ts = Number(td.getAttribute("data-ts"));
-          td.textContent = timeAgoFromTs(ts);
-        });
-      }, 500);
-    }
-    startAgoTicker();
-
-    // ---- DexScreener search (click to load)
-    let searchDebounce = null;
-    let lastSearchQ = "";
-    const searchEl = el("search");
-    const resEl = el("searchResults");
-
-    function hideResults() {
-      resEl.style.display = "none";
-      resEl.innerHTML = "";
-    }
-
-    function showResults(rowsHtml) {
-      resEl.innerHTML = rowsHtml;
-      resEl.style.display = rowsHtml ? "" : "none";
-    }
-
-    function esc(s) {
-      return String(s||"").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-    }
-
-    async function runSearch(q) {
-      const qq = (q || "").trim();
-      if (qq.length < 2) { hideResults(); return; }
-      lastSearchQ = qq;
-      const r = await api(`/api/ds/search?chain=${CHAIN}&q=${encodeURIComponent(qq)}&limit=12`);
-      if (qq !== lastSearchQ) return;
-      if (!(r && r.ok && Array.isArray(r.pairs) && r.pairs.length)) { hideResults(); return; }
-
-      const rows = r.pairs.map(p => {
-        const img = p?.info?.imageUrl || p?.imageUrl || "";
-        const name = p?.baseToken?.name || "";
-        const sym = p?.baseToken?.symbol || "";
-        const addr = p?.baseToken?.address || "";
-        const quote = p?.quoteToken?.symbol || "";
-        const dex = p?.dexId || "";
-        const liq = p?.liquidity?.usd || 0;
-        const priceUsd = p?.priceUsd;
-        return `
-          <div class="resultRow" data-addr="${esc(addr)}">
-            ${img ? `<img class="resultLogo" src="${esc(img)}" alt="">` : `<div class="resultLogo"></div>`}
-            <div class="resultMain">
-              <div class="resultTitle">${esc(name)} <span style="opacity:.7">(${esc(sym)})</span></div>
-              <div class="resultSub">${esc(sym)}/${esc(quote)} • ${esc(dex)} • liq $${Number(liq||0).toLocaleString()} • $${priceUsd ? Number(priceUsd).toFixed(8) : "—"}</div>
-            </div>
-            <div class="muted">${addr ? esc(addr.slice(0,4)+"…"+addr.slice(-4)) : "—"}</div>
-          </div>
-        `;
-      }).join("");
-
-      showResults(rows);
-    }
-
-    searchEl.addEventListener("input", (e) => {
-      const q = e.target.value;
-      if (searchDebounce) clearTimeout(searchDebounce);
-      searchDebounce = setTimeout(() => runSearch(q), 250);
-    });
-
-    searchEl.addEventListener("focus", () => {
-      const q = searchEl.value.trim();
-      if (q.length >= 2) runSearch(q);
-    });
-
-    document.addEventListener("click", (e) => {
-      if (!resEl.contains(e.target) && e.target !== searchEl) hideResults();
-    });
-
-    resEl.addEventListener("click", (e) => {
-      const row = e.target.closest(".resultRow");
-      if (!row) return;
-      const addr = row.getAttribute("data-addr");
-      if (addr && addr.length > 20) {
-        hideResults();
-        searchEl.value = "";
-        el("addr").value = addr;
-        start(addr);
-      }
-    });
-
-
-    async function fetchDexscreener(addr) {
-      const ds = await api(`/api/ds/tokenpairs?chain=${CHAIN}&token=${encodeURIComponent(addr)}`);
-      state.ds = ds;
-
-      if (ds && ds.ok && Array.isArray(ds.pairs) && ds.pairs.length) {
-        const best = ds.pairs.slice().sort((a,b)=> (b?.liquidity?.usd||0) - (a?.liquidity?.usd||0))[0];
-        state.bestPair = best?.pairAddress || null;
-        state.launchSec = Math.floor(Number(best?.pairCreatedAt || 0) / 1000) || 0;
-
-        const name = best?.baseToken?.name || "—";
-        const sym = best?.baseToken?.symbol || "—";
-        const dex = best?.dexId || "—";
-        const pair = best?.pairAddress || "—";
-        const quoteSym = best?.quoteToken?.symbol || "";
-
-        el("dsName").textContent = `${name} (${sym})`;
-        el("dsSub").textContent = `${sym}/${quoteSym}`.trim();
-        el("dsMeta").textContent = `dex: ${dex} • pair: ${pair.slice(0,4)}…${pair.slice(-4)}`;
-
-        const liq = best?.liquidity?.usd;
-        const fdv = best?.fdv;
-        const mcap = best?.marketCap;
-        const vol24 = best?.volume?.h24;
-        const ch24 = best?.priceChange?.h24;
-
-        el("dsStats").textContent =
-          `Liquidity: $${Number(liq||0).toLocaleString()} • FDV: $${Number(fdv||0).toLocaleString()} • MCap: $${Number(mcap||0).toLocaleString()} • Vol 24h: $${Number(vol24||0).toLocaleString()} • 24h: ${ch24 ?? "—"}%`;
-
-        const img = best?.info?.imageUrl || best?.imageUrl || null;
-        const logoEl = el("dsLogo");
-        if (img) { logoEl.src = img; logoEl.style.display = ""; }
-        else { logoEl.style.display = "none"; logoEl.removeAttribute("src"); }
-
-        const links = [];
-        const websites = best?.info?.websites || [];
-        const socials = best?.info?.socials || [];
-        for (const w of websites) if (w?.url) links.push(`<a href="${w.url}" target="_blank" rel="noreferrer">Website</a>`);
-        for (const s of socials) if (s?.url) links.push(`<a href="${s.url}" target="_blank" rel="noreferrer">${s.type || "Social"}</a>`);
-        el("dsLinks").innerHTML = links.length ? ("Links: " + links.join(" • ")) : "Links: —";
-
-        state.lastDsAt = Date.now();
-        return true;
-      }
-
-      el("dsName").textContent = "—";
-      el("dsSub").textContent = "—";
-      el("dsMeta").textContent = ds ? (`fail (${ds.http||"?"})`) : "fail";
-      el("dsStats").textContent = "—";
-      el("dsLinks").textContent = "Links: —";
-      el("dsLogo").style.display = "none";
-      return false;
-    }
-
-    async function fetchCandles(addr) {
-      // fetch candles rarely; chart moves via trades
-      const now = Date.now();
-      if (now - state.lastCandlesFetchAt < 20000) return { ok: true, skipped: true };
-      state.lastCandlesFetchAt = now;
-
-      // Prefer pair (if known) - worker will internally fallback if pair unsupported
-      let c = null;
-      if (state.bestPair) {
-        c = await api(`/api/candles?chain=${CHAIN}&pair=${encodeURIComponent(state.bestPair)}&tf=${TF}&limit=800`);
-        if (c && c.ok && Array.isArray(c.items) && c.items.length) {
-          const candles = c.items.map(x => ({
-            time: Number(x.t),
-            open: Number(x.o),
-            high: Number(x.h),
-            low: Number(x.l),
-            close: Number(x.c),
-          })).filter(o => Number.isFinite(o.time) && Number.isFinite(o.open) && Number.isFinite(o.high) && Number.isFinite(o.low) && Number.isFinite(o.close));
-          if (applyCandles(candles, "ok")) return { ok:true };
-        }
-      }
-
-      const c2 = await api(`/api/candles?chain=${CHAIN}&address=${encodeURIComponent(addr)}&tf=${TF}&limit=800`);
-      if (c2 && c2.ok && Array.isArray(c2.items) && c2.items.length) {
-        const candles = c2.items.map(x => ({
-          time: Number(x.t),
-          open: Number(x.o),
-          high: Number(x.h),
-          low: Number(x.l),
-          close: Number(x.c),
-        })).filter(o => Number.isFinite(o.time) && Number.isFinite(o.open) && Number.isFinite(o.high) && Number.isFinite(o.low) && Number.isFinite(o.close));
-        if (applyCandles(candles, "ok")) return { ok:true };
-      }
-
-      
-// Worker candles failed; try client-side GeckoTerminal using bestPair
-if (state.bestPair) {
-  const nowSec = Math.floor(Date.now() / 1000);
-  const to = nowSec;
-  const from = to - (800 * TF_SEC);
-  const gc = await geckoPoolOhlcvClient(state.bestPair, TF, 800, from, to);
-  if (gc && gc.ok && Array.isArray(gc.items) && gc.items.length) {
-    if (applyCandles(gc.items, "ok (gecko)")) return { ok:true, source:"gecko_client" };
-  }
-}
-
-// If we already have candles, keep them stale (don't blank chart)
-      if (Array.isArray(state.candles) && state.candles.length) {
-        el("candlesMeta").textContent = "stale";
-        el("chartMeta").textContent = "stale";
-        return { ok:false, stale:true, http: (c2?.http || c?.http || "?") };
-      }
-
-      // no candles yet -> leave room for synthetic from trades
-      el("candlesCount").textContent = "—";
-      el("candlesMeta").textContent = `fail (${(c2?.http||c2?.status||c?.http||c?.status||"?")})`;
-      el("chartMeta").textContent = `fail (${(c2?.http||c2?.status||c?.http||c?.status||"?")})`;
-      return { ok:false, http: (c2?.http||c2?.status||c?.http||c?.status||"?") };
-    }
-
-    
-    async function backfillToLaunch(addr) {
-      if (state.backfillRunning) return;
-      if (!Array.isArray(state.candles) || state.candles.length < 10) return;
-      const launch = Number(state.launchSec || 0);
-      if (!Number.isFinite(launch) || launch <= 0) return;
-
-      state.backfillRunning = true;
-      state.backfillStop = false;
-
-      const maxChunks = 30; // safety: prevents endless loops
-      let chunks = 0;
-
-      while (!state.backfillStop && chunks < maxChunks) {
-        if (!Array.isArray(state.candles) || state.candles.length === 0) break;
-        const earliest = Number(state.candles[0].time);
-        if (!Number.isFinite(earliest) || earliest <= launch + TF_SEC) break;
-
-        const to = earliest;
-        const from = Math.max(launch, to - (TF_SEC * 1000)); // 1000 candles per chunk
-        const targetPair = state.bestPair ? `&pair=${encodeURIComponent(state.bestPair)}` : `&address=${encodeURIComponent(addr)}`;
-        const url = `/api/candles?chain=${CHAIN}${targetPair}&tf=${TF}&from=${from}&to=${to}&limit=1000`;
-
-        const r = await api(url);
-        if (!(r && r.ok && Array.isArray(r.items) && r.items.length)) {
-          // stop quietly; keep what we have
-          break;
-        }
-
-        const add = r.items.map(x => ({
-          time: Number(x.t),
-          open: Number(x.o),
-          high: Number(x.h),
-          low: Number(x.l),
-          close: Number(x.c),
-        })).filter(o => Number.isFinite(o.time) && Number.isFinite(o.open) && Number.isFinite(o.high) && Number.isFinite(o.low) && Number.isFinite(o.close));
-
-        if (!add.length) break;
-
-        // merge + dedupe by time
-        const map = new Map();
-        for (const c of add) map.set(c.time, c);
-        for (const c of state.candles) map.set(c.time, c);
-        const merged = Array.from(map.values()).sort((a,b)=>a.time-b.time);
-
-        // cap to avoid memory blow-up (but still large enough to show full history for many tokens)
-        state.candles = merged.slice(-20000);
-        candleSeries.setData(state.candles);
-        el("candlesCount").textContent = String(state.candles.length);
-        el("candlesMeta").textContent = "ok";
-        el("chartMeta").textContent = "ok";
-        try { chart.timeScale().fitContent(); } catch {}
-
-        chunks += 1;
-
-        // be nice to API / UI
-        await new Promise(r => setTimeout(r, 250));
-      }
-
-      state.backfillRunning = false;
-    }
-
-async function tick(addr, force=false) {
-      if (!addr || addr.length < 20) return;
-      if (inFlight) return;
-      inFlight = true;
-
-      setStatus("warn", "loading…");
-      el("hintPill").textContent = "—";
-
-      const now = Date.now();
-      const needDs = force || (now - state.lastDsAt > 30000) || !state.bestPair;
-      if (needDs) await fetchDexscreener(addr);
-
-      const [p, t] = await Promise.all([
-        api(`/api/price?chain=${CHAIN}&address=${encodeURIComponent(addr)}${state.bestPair ? `&pair=${encodeURIComponent(state.bestPair)}` : ``}`),
-        api(`/api/trades?chain=${CHAIN}&address=${encodeURIComponent(addr)}${state.bestPair ? `&pair=${encodeURIComponent(state.bestPair)}` : ``}&limit=${tradesLimit}`)
-      ]);
-
-      // PRICE (fallback to dexscreener priceUsd)
-      if (p && p.ok && Number.isFinite(Number(p.price))) {
-        el("price").textContent = fmt(Number(p.price), 10);
-        el("priceMeta").textContent = "ok";
-      } else {
-        const dsPrice = state.ds?.pairs?.[0]?.priceUsd;
-        if (dsPrice != null && Number.isFinite(Number(dsPrice))) {
-          el("price").textContent = fmt(Number(dsPrice), 10);
-          el("priceMeta").textContent = "fallback: dexscreener";
-        } else {
-          el("price").textContent = "—";
-          el("priceMeta").textContent = p ? (`fail (${p.http||p.status||"?"})`) : "fail";
-        }
-      }
-
-      // TRADES
-      if (t && t.ok && Array.isArray(t.items)) {
-        el("tradesCount").textContent = String(t.count ?? t.items.length ?? 0);
-        el("tradesMeta").textContent = "ok";
-        renderTrades(t.items);
-
-        // newest trade for chart live update
-        const newest = t.items[0];
-        if (newest) {
-          const pr = Number(newest.price);
-          const ts = Number(newest.t);
-          if (Number.isFinite(pr) && Number.isFinite(ts)) {
-            state.lastTradePrice = pr;
-            state.lastTradeTs = ts;
-          }
-        }
-} else {
-  // Worker failed (or is down). Try client-side GeckoTerminal using bestPair.
-  let usedFallback = false;
-  if (state.bestPair) {
-    const gt = await geckoPoolTradesClient(state.bestPair, tradesLimit);
-    if (gt && gt.ok && Array.isArray(gt.items)) {
-      usedFallback = true;
-      el("tradesCount").textContent = String(gt.count ?? gt.items.length ?? 0);
-      el("tradesMeta").textContent = "ok (gecko)";
-      renderTrades(gt.items);
-
-      const newest = gt.items[0];
-      if (newest) {
-        const pr = Number(newest.price);
-        const ts = Number(newest.t);
-        if (Number.isFinite(pr) && Number.isFinite(ts)) {
-          state.lastTradePrice = pr;
-          state.lastTradeTs = ts;
-        }
-      }
-    }
+      `;
+    }).join('');
+    $('trades').innerHTML = rows || '';
+    renderAges();
   }
 
-  if (!usedFallback) {
-    el("tradesCount").textContent = "—";
-    // keep 0 as 0 (don't turn into "?")
-    const code = (t && (t.http ?? t.status)) ?? "?";
-    el("tradesMeta").textContent = t ? (`fail (${code})`) : "fail";
-    el("trades").innerHTML = "";
+  function renderAges(){
+    const now = Math.floor(Date.now()/1000);
+    document.querySelectorAll('#trades tr').forEach(tr=>{
+      const ts = Number(tr.getAttribute('data-ts')||0);
+      const ageEl = tr.querySelector('.age');
+      if(!ageEl) return;
+      if(!ts) { ageEl.textContent='—'; return; }
+      ageEl.textContent = Math.max(0, now - ts) + 's';
+    });
   }
-}
 
-      // Candles less frequent
-      const cRes = await fetchCandles(addr);
+  function txLink(chain, hash){
+    if(!hash) return '#';
+    if(chain === 'solana') return `https://solscan.io/tx/${hash}`;
+    if(chain === 'ethereum') return `https://etherscan.io/tx/${hash}`;
+    if(chain === 'bsc') return `https://bscscan.com/tx/${hash}`;
+    if(chain === 'base') return `https://basescan.org/tx/${hash}`;
+    return '#';
+  }
 
-      // If candles missing, synth from trades (only if we have trades)
-      if ((!state.candles || !state.candles.length) && t && t.ok && Array.isArray(t.items) && t.items.length) {
-        let synth = synthCandlesFromTrades(t.items, TF_SEC, 200);
-        // If too few candles (e.g. only last seconds of trades), fetch more pages for chart history
-        if (synth.length < 20) {
-          try {
-            const more = await fetchTradesPagesForChart(addr, 4, 100);
-            if (more && more.length) synth = synthCandlesFromTrades(more, TF_SEC, 200);
-          } catch (_) {}
-        }
-        if (synth.length) {
-          applyCandles(synth, "synthetic");
-          backfillToLaunch(addr);
-          chart.timeScale().fitContent();
-        }
+  // ---------- Timeframes
+  function bindTfs(){
+    $('tfs').addEventListener('click', (e)=>{
+      const b = e.target.closest('.tf');
+      if(!b) return;
+      [...$('tfs').querySelectorAll('.tf')].forEach(x=>x.classList.remove('active'));
+      b.classList.add('active');
+      state.tf = b.dataset.tf;
+      $('tfLbl').textContent = state.tf;
+      if(state.selected?.address){
+        refreshCandles(true);
       }
+    });
+  }
 
-      // Live move (always try)
-      if (Number.isFinite(state.lastTradePrice) && Number.isFinite(state.lastTradeTs)) {
-        updateLastCandleFromTrade(state.lastTradePrice, state.lastTradeTs);
-      }
-
-      // Overall status (price is ok if fallback works)
-      const bad = [];
-      if (!(t && t.ok)) bad.push("trades");
-      const priceOk = (p && p.ok) || (state.ds?.pairs?.[0]?.priceUsd != null);
-      if (!priceOk) bad.push("price");
-
-      let degraded = false;
-      if (!state.candles || !state.candles.length) {
-        bad.push("candles");
-      } else if (cRes && cRes.ok === false) {
-        degraded = true;
-      }
-
-      if (bad.length === 0) {
-        setStatus("", "live");
-        el("hintPill").textContent = degraded ? "degraded: candles" : "all ok";
-      } else {
-        setStatus("bad", "error");
-        el("hintPill").textContent = "failed: " + bad.join(", ");
-      }
-
-      inFlight = false;
+  // ---------- Worker base handling
+  function bindWorkerBase(){
+    const input = $('workerBase');
+    const stored = localStorage.getItem('DG_WORKER_BASE') || '';
+    if(stored) {
+      input.value = stored;
+      state.workerBase = stored.trim().replace(/\/+$/,'');
+      $('workerInfo').textContent = `worker: ${state.workerBase}`;
     }
 
-    function start(addr) {
-      lastAddr = addr;
-      // Always default to 15m on new token
-      try { candleSeries.setData([]); } catch(_) {}
-      state.candles = null;
-      state.lastTradePrice = null;
-      state.lastTradeTs = null;
-      state.lastCandlesFetchAt = 0;
-      state.lastDsAt = 0;
-      if (pollTimer) clearInterval(pollTimer);
-      tick(addr, true);
-      pollTimer = setInterval(() => tick(lastAddr, false), 2000);
-    }
+    input.addEventListener('change', ()=>{
+      state.workerBase = input.value.trim().replace(/\/+$/,'');
+      localStorage.setItem('DG_WORKER_BASE', state.workerBase);
+      $('workerInfo').textContent = `worker: ${state.workerBase || '(set below)'}`;
+      setStatus('idle', state.workerBase ? 'worker set' : 'set worker base');
+    });
+  }
 
-    el("addr").addEventListener("change", (e) => start(e.target.value.trim()));
-    el("addr").value = "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263";
-    start(el("addr").value.trim());
-  </script>
+  // ---------- Boot
+  initChart();
+  bindChains();
+  bindSearch();
+  bindResults();
+  bindTfs();
+  bindWorkerBase();
+  setStatus('idle','set worker base');
+
+})();
+</script>
 </body>
 </html>
