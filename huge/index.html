@@ -583,7 +583,7 @@
     if(Date.now() < backoffUntil) return;
     const id = ++state.inFlight.candles;
     try{
-      const r = await fetch(api('/api/candles', { chain: state.chain, address: state.selected.address, tf: state.tf, limit: 800 }));
+      const r = await fetch(api('/api/candles', { chain: state.chain, address: state.selected.address, pair: state.selected.pairAddress || '', tf: state.tf, limit: 800 }));
       const j = await r.json();
       if(id !== state.inFlight.candles) return;
 
@@ -592,7 +592,7 @@
       if(j.ok && Array.isArray(j.items) && j.items.length){
         applyCandles(j.items);
         $('kpiCandles').textContent = String(j.items.length);
-        $('kpiCandlesSrc').textContent = 'ok (birdeye)';
+        $('kpiCandlesSrc').textContent = (String(j.source||'').includes('helius') ? 'ok (helius)' : 'ok (birdeye)');
       }else{
         $('kpiCandles').textContent = '—';
         $('kpiCandlesSrc').textContent = 'fail';
@@ -649,7 +649,7 @@
       renderTradesTable();
 
       $('kpiTrades').textContent = String(list.length);
-      $('kpiTradesSrc').textContent = 'ok (birdeye)';
+      $('kpiTradesSrc').textContent = (String(j.source||'').includes('helius') ? 'ok (helius)' : 'ok (birdeye)');
       $('tradesMeta').textContent = `ok • ${list.length} items`;
     }catch(e){
       if(id !== state.inFlight.trades) return;
