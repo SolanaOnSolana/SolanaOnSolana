@@ -6,8 +6,8 @@
   <title>DexGuard v0</title>
   <style>
     body{margin:0;font-family:system-ui;background:#0b0f14;color:#e7eef7}
-    header{padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;gap:10px;align-items:center}
-    .pill{padding:6px 10px;border:1px solid rgba(255,255,255,.12);border-radius:999px;font-size:12px;opacity:.9}
+    header{padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    .pill{padding:6px 10px;border:1px solid rgba(255,255,255,.12);border-radius:999px;font-size:12px;opacity:.95}
     main{padding:14px;display:grid;gap:12px;max-width:900px;margin:0 auto}
     input{width:100%;padding:12px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:#0f1520;color:#e7eef7}
     .grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
@@ -18,6 +18,8 @@
     td,th{padding:8px 6px;border-bottom:1px solid rgba(255,255,255,.08);text-align:left}
     .buy{color:#4ade80}
     .sell{color:#fb7185}
+    .warn{color:#fbbf24}
+    .bad{color:#fb7185}
     @media (max-width:720px){ .grid{grid-template-columns:1fr} }
   </style>
 </head>
@@ -25,7 +27,8 @@
   <header>
     <div class="pill">DexGuard v0</div>
     <div class="pill" id="chainPill">chain: solana</div>
-    <div class="pill muted" id="statusPill">idle</div>
+    <div class="pill" id="statusPill">idle</div>
+    <div class="pill muted" id="hintPill">—</div>
   </header>
 
   <main>
@@ -42,14 +45,17 @@
       <div class="card">
         <div class="muted">Price (USD)</div>
         <div class="big" id="price">—</div>
+        <div class="muted" id="priceMeta">—</div>
       </div>
       <div class="card">
         <div class="muted">Trades (last fetch)</div>
         <div class="big" id="tradesCount">—</div>
+        <div class="muted" id="tradesMeta">—</div>
       </div>
       <div class="card">
         <div class="muted">Candles (last fetch)</div>
         <div class="big" id="candlesCount">—</div>
+        <div class="muted" id="candlesMeta">—</div>
       </div>
     </div>
 
@@ -82,15 +88,43 @@
 
     let timer = null;
     let lastAddr = "";
+    let inFlight = false;
 
     async function api(path) {
-      const r = await fetch(WORKER_BASE + path, { cache: "no-store" });
-      if (!r.ok) throw new Error("HTTP " + r.status);
-      return await r.json();
+      const full = WORKER_BASE + path;
+      let r, text;
+      try {
+        r = await fetch(full, { cache: "no-store" });
+        text = await r.text();
+      } catch (e) {
+        return { ok:false, http:0, error:"network_error", detail:String(e), url: full };
+      }
+
+      let j = null;
+      try { j = JSON.parse(text); } catch { /* keep null */ }
+
+      if (!r.ok) {
+        return { ok:false, http:r.status, error:"http_error", body:(text||"").slice(0,250), url: full };
+      }
+
+      // normal json response (should include ok:true)
+      if (j && typeof j === "object") return j;
+
+      return { ok:false, http:r.status, error:"bad_json", body:(text||"").slice(0,250), url: full };
+    }
+
+    function setStatus(kind, msg) {
+      const s = el("statusPill");
+      s.textContent = msg;
+      s.className = "pill" + (kind === "bad" ? " bad" : kind === "warn" ? " warn" : "");
     }
 
     async function tick(addr) {
-      el("statusPill").textContent = "loading…";
+      if (inFlight) return;
+      inFlight = true;
+
+      setStatus("warn", "loading…");
+      el("hintPill").textContent = "—";
 
       const [p, t, c] = await Promise.all([
         api(`/api/price?chain=${CHAIN}&address=${encodeURIComponent(addr)}`),
@@ -98,23 +132,62 @@
         api(`/api/candles?chain=${CHAIN}&address=${encodeURIComponent(addr)}&tf=15m&limit=200`)
       ]);
 
-      el("price").textContent = p.ok ? fmt(p.price, 8) : "—";
-      el("tradesCount").textContent = t.ok ? String(t.count) : "—";
-      el("candlesCount").textContent = c.ok ? String(c.count) : "—";
+      // PRICE
+      if (p && p.ok) {
+        el("price").textContent = fmt(Number(p.price), 8);
+        el("priceMeta").textContent = "ok";
+      } else {
+        el("price").textContent = "—";
+        el("priceMeta").textContent = p ? (`fail (${p.http||"?"})`) : "fail";
+        console.warn("[price fail]", p);
+      }
 
-      if (t.ok) {
-        el("trades").innerHTML = t.items.map(x => `
+      // TRADES
+      if (t && t.ok) {
+        el("tradesCount").textContent = String(t.count ?? (t.items?.length ?? 0));
+        el("tradesMeta").textContent = "ok";
+        const rows = (t.items || []).map(x => `
           <tr>
-            <td class="muted">${timeAgo(x.t)}</td>
-            <td class="${x.side === "buy" ? "buy" : (x.side === "sell" ? "sell" : "")}">${x.side}</td>
-            <td>$${fmt(x.usd, 4)}</td>
-            <td>${fmt(x.price, 10)}</td>
+            <td class="muted">${timeAgo(Number(x.t))}</td>
+            <td class="${x.side === "buy" ? "buy" : (x.side === "sell" ? "sell" : "")}">${x.side || "—"}</td>
+            <td>$${fmt(Number(x.usd), 4)}</td>
+            <td>${fmt(Number(x.price), 10)}</td>
             <td class="muted">${short(x.maker)}</td>
           </tr>
         `).join("");
+        el("trades").innerHTML = rows;
+      } else {
+        el("tradesCount").textContent = "—";
+        el("tradesMeta").textContent = t ? (`fail (${t.http||"?"})`) : "fail";
+        el("trades").innerHTML = "";
+        console.warn("[trades fail]", t);
       }
 
-      el("statusPill").textContent = "live";
+      // CANDLES
+      if (c && c.ok) {
+        el("candlesCount").textContent = String(c.count ?? (c.items?.length ?? 0));
+        el("candlesMeta").textContent = "ok";
+      } else {
+        el("candlesCount").textContent = "—";
+        el("candlesMeta").textContent = c ? (`fail (${c.http||"?"})`) : "fail";
+        console.warn("[candles fail]", c);
+      }
+
+      // Overall status
+      const bad = [];
+      if (!(p && p.ok)) bad.push("price");
+      if (!(t && t.ok)) bad.push("trades");
+      if (!(c && c.ok)) bad.push("candles");
+
+      if (bad.length === 0) {
+        setStatus("", "live");
+        el("hintPill").textContent = "all ok";
+      } else {
+        setStatus("bad", "error");
+        el("hintPill").textContent = "failed: " + bad.join(", ");
+      }
+
+      inFlight = false;
     }
 
     function start(addr) {
@@ -122,11 +195,8 @@
       lastAddr = addr;
       if (timer) clearInterval(timer);
 
-      tick(addr).catch(err => { el("statusPill").textContent = "error"; console.error(err); });
-
-      timer = setInterval(() => {
-        tick(lastAddr).catch(err => { el("statusPill").textContent = "error"; console.error(err); });
-      }, 2000);
+      tick(addr);
+      timer = setInterval(() => tick(lastAddr), 2000);
     }
 
     el("addr").addEventListener("change", (e) => start(e.target.value.trim()));
