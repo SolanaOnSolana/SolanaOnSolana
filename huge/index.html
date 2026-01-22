@@ -93,7 +93,43 @@
     workerBase: '',
   };
 
-  function fmtNum(x, d=8){
+  
+  // ----- setters (were missing in v1.3.2) -----
+  function dgNormalizeBase(u){
+    u = String(u || '').trim();
+    if (!u) return '';
+    // strip trailing slash
+    while (u.endsWith('/')) u = u.slice(0, -1);
+    return u;
+  }
+  function dgSetWorkerBase(u){
+    const base = dgNormalizeBase(u);
+    state.workerBase = base;
+    try { localStorage.setItem('dg_worker_base', base); } catch(_){}
+    const el = document.getElementById('worker');
+    if (el && el.value !== base) el.value = base;
+    return base;
+  }
+  function dgSetChain(c){
+    c = String(c || 'solana').trim().toLowerCase();
+    if (c === 'eth') c = 'ethereum';
+    if (c === 'bnb') c = 'bsc';
+    state.chain = c || 'solana';
+    try { localStorage.setItem('dg_chain', state.chain); } catch(_){}
+    const el = document.getElementById('chain');
+    if (el && el.value !== state.chain) el.value = state.chain;
+    return state.chain;
+  }
+  function dgSetAddr(a){
+    a = String(a || '').trim();
+    state.address = a;
+    try { localStorage.setItem('dg_addr', a); } catch(_){}
+    const el = document.getElementById('mint');
+    if (el && el.value !== a) el.value = a;
+    return a;
+  }
+
+function fmtNum(x, d=8){
     const n = Number(x);
     if(!isFinite(n)) return '—';
     return n.toLocaleString(undefined,{maximumFractionDigits:d});
@@ -214,6 +250,30 @@
   // Prefill (optional)
   $('worker').value = '';
   $('mint').value = 'DezXA8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263';
+
+  // ----- boot -----
+  window.addEventListener('DOMContentLoaded', () => {
+    try {
+      const savedBase = (localStorage.getItem('dg_worker_base') || '').trim();
+      const savedChain = (localStorage.getItem('dg_chain') || '').trim();
+      const savedAddr = (localStorage.getItem('dg_addr') || '').trim();
+
+      if (savedBase) document.getElementById('worker').value = savedBase;
+      if (savedChain) document.getElementById('chain').value = savedChain;
+      if (savedAddr) document.getElementById('mint').value = savedAddr;
+
+      dgSetWorkerBase(document.getElementById('worker').value);
+      dgSetChain(document.getElementById('chain').value);
+      dgSetAddr(document.getElementById('mint').value);
+
+      start();
+      // one immediate refresh so UI doesn't look stuck
+      refreshOnce().catch(()=>{});
+    } catch (e) {
+      console.error('[DG] boot error', e);
+    }
+  });
+
 </script>
 </body>
 </html>
