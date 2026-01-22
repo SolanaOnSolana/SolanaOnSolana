@@ -26,6 +26,17 @@
     .row{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
     .btn{cursor:pointer;user-select:none;padding:8px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:#0b0f14;color:#e7eef7;font-size:12px}
     .btn:hover{border-color:rgba(255,255,255,.22)}
+    .searchWrap{position:relative}
+    .results{position:absolute;left:0;right:0;top:calc(100% + 8px);background:#0f1520;border:1px solid rgba(255,255,255,.12);border-radius:12px;max-height:320px;overflow:auto;z-index:50;box-shadow:0 18px 40px rgba(0,0,0,.55)}
+    .resultRow{display:flex;gap:10px;align-items:center;padding:10px 10px;border-bottom:1px solid rgba(255,255,255,.08);cursor:pointer}
+    .resultRow:last-child{border-bottom:none}
+    .resultRow:hover{background:rgba(255,255,255,.04)}
+    .resultLogo{width:28px;height:28px;border-radius:8px;object-fit:cover;border:1px solid rgba(255,255,255,.12);background:#0b0f14}
+    .resultMain{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
+    .resultTitle{font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .resultSub{font-size:12px;opacity:.7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+
     @media (max-width:720px){
       .grid{grid-template-columns:1fr}
       #chart{height:320px}
@@ -43,7 +54,12 @@
   <main>
     <div class="card">
       <div class="muted">Token address (paste mint)</div>
-      <input id="addr" placeholder="e.g. BONK: DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263" />
+      <div class="muted" style="margin-top:10px">Search (name / symbol)</div>
+      <div class="searchWrap" style="margin-top:6px">
+        <input id="search" placeholder="Search tokens… (e.g. bonk, wif)" autocomplete="off" />
+        <div id="searchResults" class="results" style="display:none"></div>
+      </div>
+<input id="addr" placeholder="e.g. BONK: DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263" />
       <div class="muted" style="margin-top:8px">
         Worker base:
         <span id="base"></span>
@@ -98,6 +114,7 @@
           <div class="muted">limit:</div>
           <button class="btn" id="limit50">50</button>
           <button class="btn" id="limit100">100</button>
+          <button class="btn" id="limit200">200</button>
         </div>
       </div>
       <table>
@@ -220,17 +237,20 @@ upColor: "#22c55e",
     function setActiveLimitButtons() {
       el("limit50").style.opacity = tradesLimit === 50 ? "1" : ".6";
       el("limit100").style.opacity = tradesLimit === 100 ? "1" : ".6";
+      el("limit200").style.opacity = tradesLimit === 200 ? "1" : ".6";
     }
     el("limit50").onclick = () => { tradesLimit = 50; setActiveLimitButtons(); tick(lastAddr, true); };
     el("limit100").onclick = () => { tradesLimit = 100; setActiveLimitButtons(); tick(lastAddr, true); };
+    el("limit200").onclick = () => { tradesLimit = 200; setActiveLimitButtons(); tick(lastAddr, true); };
     setActiveLimitButtons();
 
     
     async function fetchTradesPagesForChart(addr, pages = 4, pageSize = 100) {
       const all = [];
+      const pairQ = state.bestPair ? `&pair=${encodeURIComponent(state.bestPair)}` : "";
       for (let i = 0; i < pages; i++) {
         const offset = i * pageSize;
-        const res = await api(`/api/trades?chain=${CHAIN}&address=${encodeURIComponent(addr)}&limit=${pageSize}&offset=${offset}`);
+        const res = await api(`/api/trades?chain=${CHAIN}&address=${encodeURIComponent(addr)}${pairQ}&limit=${pageSize}&offset=${offset}`);
         if (!(res && res.ok && Array.isArray(res.items) && res.items.length)) break;
         all.push(...res.items);
         // stop early if the last page seems exhausted
@@ -248,7 +268,7 @@ upColor: "#22c55e",
       return out;
     }
 
-    function synthCandlesFromTrades(trades, tfSec, limit=200) {
+    function synthCandlesFromTrades(trades, tfSec, limit=800) {
       const items = Array.isArray(trades) ? trades.slice() : [];
       items.sort((a,b)=> (a.t||0)-(b.t||0)); // oldest->newest
       const buckets = new Map();
@@ -272,13 +292,14 @@ upColor: "#22c55e",
     function applyCandles(candles, metaText) {
       if (!Array.isArray(candles) || candles.length === 0) return false;
       candleSeries.setData(candles);
+      try { chart.timeScale().fitContent(); } catch {}
       state.candles = candles.slice();
       el("candlesCount").textContent = String(candles.length);
       el("candlesMeta").textContent = metaText || "ok";
       el("chartMeta").textContent = metaText || "ok";
             try { setSeriesPrecisionFromPrice(candles[candles.length-1]?.close); } catch(_) {}
 // keep last candle visible
-      try { chart.timeScale().scrollToRealTime(); } catch {}
+      try { chart.timeScale().fitContent(); } catch {}
       return true;
     }
 
@@ -336,6 +357,86 @@ upColor: "#22c55e",
     }
     startAgoTicker();
 
+    // ---- DexScreener search (click to load)
+    let searchDebounce = null;
+    let lastSearchQ = "";
+    const searchEl = el("search");
+    const resEl = el("searchResults");
+
+    function hideResults() {
+      resEl.style.display = "none";
+      resEl.innerHTML = "";
+    }
+
+    function showResults(rowsHtml) {
+      resEl.innerHTML = rowsHtml;
+      resEl.style.display = rowsHtml ? "" : "none";
+    }
+
+    function esc(s) {
+      return String(s||"").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    async function runSearch(q) {
+      const qq = (q || "").trim();
+      if (qq.length < 2) { hideResults(); return; }
+      lastSearchQ = qq;
+      const r = await api(`/api/ds/search?chain=${CHAIN}&q=${encodeURIComponent(qq)}&limit=12`);
+      if (qq !== lastSearchQ) return;
+      if (!(r && r.ok && Array.isArray(r.pairs) && r.pairs.length)) { hideResults(); return; }
+
+      const rows = r.pairs.map(p => {
+        const img = p?.info?.imageUrl || p?.imageUrl || "";
+        const name = p?.baseToken?.name || "";
+        const sym = p?.baseToken?.symbol || "";
+        const addr = p?.baseToken?.address || "";
+        const quote = p?.quoteToken?.symbol || "";
+        const dex = p?.dexId || "";
+        const liq = p?.liquidity?.usd || 0;
+        const priceUsd = p?.priceUsd;
+        return `
+          <div class="resultRow" data-addr="${esc(addr)}">
+            ${img ? `<img class="resultLogo" src="${esc(img)}" alt="">` : `<div class="resultLogo"></div>`}
+            <div class="resultMain">
+              <div class="resultTitle">${esc(name)} <span style="opacity:.7">(${esc(sym)})</span></div>
+              <div class="resultSub">${esc(sym)}/${esc(quote)} • ${esc(dex)} • liq $${Number(liq||0).toLocaleString()} • $${priceUsd ? Number(priceUsd).toFixed(8) : "—"}</div>
+            </div>
+            <div class="muted">${addr ? esc(addr.slice(0,4)+"…"+addr.slice(-4)) : "—"}</div>
+          </div>
+        `;
+      }).join("");
+
+      showResults(rows);
+    }
+
+    searchEl.addEventListener("input", (e) => {
+      const q = e.target.value;
+      if (searchDebounce) clearTimeout(searchDebounce);
+      searchDebounce = setTimeout(() => runSearch(q), 250);
+    });
+
+    searchEl.addEventListener("focus", () => {
+      const q = searchEl.value.trim();
+      if (q.length >= 2) runSearch(q);
+    });
+
+    document.addEventListener("click", (e) => {
+      if (!resEl.contains(e.target) && e.target !== searchEl) hideResults();
+    });
+
+    resEl.addEventListener("click", (e) => {
+      const row = e.target.closest(".resultRow");
+      if (!row) return;
+      const addr = row.getAttribute("data-addr");
+      if (addr && addr.length > 20) {
+        hideResults();
+        searchEl.value = "";
+        el("addr").value = addr;
+        start(addr);
+      }
+    });
+
+
     async function fetchDexscreener(addr) {
       const ds = await api(`/api/ds/tokenpairs?chain=${CHAIN}&token=${encodeURIComponent(addr)}`);
       state.ds = ds;
@@ -343,6 +444,7 @@ upColor: "#22c55e",
       if (ds && ds.ok && Array.isArray(ds.pairs) && ds.pairs.length) {
         const best = ds.pairs.slice().sort((a,b)=> (b?.liquidity?.usd||0) - (a?.liquidity?.usd||0))[0];
         state.bestPair = best?.pairAddress || null;
+        state.launchSec = Math.floor(Number(best?.pairCreatedAt || 0) / 1000) || 0;
 
         const name = best?.baseToken?.name || "—";
         const sym = best?.baseToken?.symbol || "—";
@@ -397,7 +499,7 @@ upColor: "#22c55e",
       // Prefer pair (if known) - worker will internally fallback if pair unsupported
       let c = null;
       if (state.bestPair) {
-        c = await api(`/api/candles?chain=${CHAIN}&pair=${encodeURIComponent(state.bestPair)}&tf=${TF}&limit=200`);
+        c = await api(`/api/candles?chain=${CHAIN}&pair=${encodeURIComponent(state.bestPair)}&tf=${TF}&limit=800`);
         if (c && c.ok && Array.isArray(c.items) && c.items.length) {
           const candles = c.items.map(x => ({
             time: Number(x.t),
@@ -410,7 +512,7 @@ upColor: "#22c55e",
         }
       }
 
-      const c2 = await api(`/api/candles?chain=${CHAIN}&address=${encodeURIComponent(addr)}&tf=${TF}&limit=200`);
+      const c2 = await api(`/api/candles?chain=${CHAIN}&address=${encodeURIComponent(addr)}&tf=${TF}&limit=800`);
       if (c2 && c2.ok && Array.isArray(c2.items) && c2.items.length) {
         const candles = c2.items.map(x => ({
           time: Number(x.t),
@@ -431,12 +533,74 @@ upColor: "#22c55e",
 
       // no candles yet -> leave room for synthetic from trades
       el("candlesCount").textContent = "—";
-      el("candlesMeta").textContent = `fail (${(c2?.http||c?.http||"?")})`;
-      el("chartMeta").textContent = `fail (${(c2?.http||c?.http||"?")})`;
-      return { ok:false, http: (c2?.http||c?.http||"?") };
+      el("candlesMeta").textContent = `fail (${(c2?.http||c2?.status||c?.http||c?.status||"?")})`;
+      el("chartMeta").textContent = `fail (${(c2?.http||c2?.status||c?.http||c?.status||"?")})`;
+      return { ok:false, http: (c2?.http||c2?.status||c?.http||c?.status||"?") };
     }
 
-    async function tick(addr, force=false) {
+    
+    async function backfillToLaunch(addr) {
+      if (state.backfillRunning) return;
+      if (!Array.isArray(state.candles) || state.candles.length < 10) return;
+      const launch = Number(state.launchSec || 0);
+      if (!Number.isFinite(launch) || launch <= 0) return;
+
+      state.backfillRunning = true;
+      state.backfillStop = false;
+
+      const maxChunks = 30; // safety: prevents endless loops
+      let chunks = 0;
+
+      while (!state.backfillStop && chunks < maxChunks) {
+        if (!Array.isArray(state.candles) || state.candles.length === 0) break;
+        const earliest = Number(state.candles[0].time);
+        if (!Number.isFinite(earliest) || earliest <= launch + TF_SEC) break;
+
+        const to = earliest;
+        const from = Math.max(launch, to - (TF_SEC * 1000)); // 1000 candles per chunk
+        const targetPair = state.bestPair ? `&pair=${encodeURIComponent(state.bestPair)}` : `&address=${encodeURIComponent(addr)}`;
+        const url = `/api/candles?chain=${CHAIN}${targetPair}&tf=${TF}&from=${from}&to=${to}&limit=1000`;
+
+        const r = await api(url);
+        if (!(r && r.ok && Array.isArray(r.items) && r.items.length)) {
+          // stop quietly; keep what we have
+          break;
+        }
+
+        const add = r.items.map(x => ({
+          time: Number(x.t),
+          open: Number(x.o),
+          high: Number(x.h),
+          low: Number(x.l),
+          close: Number(x.c),
+        })).filter(o => Number.isFinite(o.time) && Number.isFinite(o.open) && Number.isFinite(o.high) && Number.isFinite(o.low) && Number.isFinite(o.close));
+
+        if (!add.length) break;
+
+        // merge + dedupe by time
+        const map = new Map();
+        for (const c of add) map.set(c.time, c);
+        for (const c of state.candles) map.set(c.time, c);
+        const merged = Array.from(map.values()).sort((a,b)=>a.time-b.time);
+
+        // cap to avoid memory blow-up (but still large enough to show full history for many tokens)
+        state.candles = merged.slice(-20000);
+        candleSeries.setData(state.candles);
+        el("candlesCount").textContent = String(state.candles.length);
+        el("candlesMeta").textContent = "ok";
+        el("chartMeta").textContent = "ok";
+        try { chart.timeScale().fitContent(); } catch {}
+
+        chunks += 1;
+
+        // be nice to API / UI
+        await new Promise(r => setTimeout(r, 250));
+      }
+
+      state.backfillRunning = false;
+    }
+
+async function tick(addr, force=false) {
       if (!addr || addr.length < 20) return;
       if (inFlight) return;
       inFlight = true;
@@ -450,7 +614,7 @@ upColor: "#22c55e",
 
       const [p, t] = await Promise.all([
         api(`/api/price?chain=${CHAIN}&address=${encodeURIComponent(addr)}`),
-        api(`/api/trades?chain=${CHAIN}&address=${encodeURIComponent(addr)}&limit=${tradesLimit}`)
+        api(`/api/trades?chain=${CHAIN}&address=${encodeURIComponent(addr)}${state.bestPair ? `&pair=${encodeURIComponent(state.bestPair)}` : ``}&limit=${tradesLimit}`)
       ]);
 
       // PRICE (fallback to dexscreener priceUsd)
@@ -464,7 +628,7 @@ upColor: "#22c55e",
           el("priceMeta").textContent = "fallback: dexscreener";
         } else {
           el("price").textContent = "—";
-          el("priceMeta").textContent = p ? (`fail (${p.http||"?"})`) : "fail";
+          el("priceMeta").textContent = p ? (`fail (${p.http||p.status||"?"})`) : "fail";
         }
       }
 
@@ -486,7 +650,7 @@ upColor: "#22c55e",
         }
       } else {
         el("tradesCount").textContent = "—";
-        el("tradesMeta").textContent = t ? (`fail (${t.http||"?"})`) : "fail";
+        el("tradesMeta").textContent = t ? (`fail (${t.http||t.status||"?"})`) : "fail";
         el("trades").innerHTML = "";
       }
 
@@ -505,6 +669,7 @@ upColor: "#22c55e",
         }
         if (synth.length) {
           applyCandles(synth, "synthetic");
+          backfillToLaunch(addr);
           chart.timeScale().fitContent();
         }
       }
