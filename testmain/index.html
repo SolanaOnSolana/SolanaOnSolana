@@ -2237,281 +2237,330 @@ body.net-base .chainBtn.active{ background: linear-gradient(90deg, rgba(0,82,255
 }
 </style>
 
-<!-- DexGuard Guardian Loader (v3) -->
+<!-- DexGuard Guardian Loader (ULTRA v4) -->
 <style id="dg-loader-style">
   :root{
     --dg-gold:#ffcf4a;
-    --dg-cyan:#66dcff;
+    --dg-gold2:#ffe6a1;
+    --dg-cyan:#64ddff;
     --dg-ink:#f6f0d9;
     --dg-muted:rgba(246,240,217,.72);
-    --dg-bg0:#05050a;
-    --dg-bg1:#0a0a12;
+    --dg-bg0:#04040a;
+    --dg-bg1:#0a0a14;
   }
 
-  /* Page reveal (smooth handoff) */
+  /* Smooth page handoff */
   html.dg-boot body{ overflow:hidden !important; }
   html.dg-boot body > *:not(#dgLoader){
     opacity:0;
-    transform: translateY(14px) scale(1.015);
-    filter: blur(8px);
-    transition: opacity .55s ease, transform .75s cubic-bezier(.2,.9,.2,1), filter .6s ease;
+    transform: translateY(18px) scale(1.02);
+    filter: blur(10px);
+    transition: opacity .7s ease, transform .9s cubic-bezier(.18,.9,.2,1), filter .7s ease;
   }
   html.dg-ready body > *:not(#dgLoader){
     opacity:1; transform:none; filter:none;
   }
 
-  /* Fullscreen overlay */
+  /* Ultra overlay */
   #dgLoader{
     position:fixed; inset:0;
     z-index:2147483000;
-    display:flex; align-items:center; justify-content:center;
+    display:grid; place-items:center;
     padding: calc(18px + env(safe-area-inset-top)) 18px calc(22px + env(safe-area-inset-bottom));
     background:
-      radial-gradient(1200px 800px at 50% 40%, rgba(255,207,74,.10), transparent 58%),
-      radial-gradient(950px 650px at 70% 65%, rgba(102,220,255,.10), transparent 62%),
-      radial-gradient(900px 520px at 30% 70%, rgba(255,255,255,.06), transparent 60%),
-      linear-gradient(180deg, rgba(5,5,10,.98), rgba(8,8,16,.98));
+      radial-gradient(1200px 850px at 50% 35%, rgba(255,207,74,.12), transparent 60%),
+      radial-gradient(1000px 800px at 70% 70%, rgba(100,221,255,.12), transparent 62%),
+      radial-gradient(900px 650px at 30% 75%, rgba(255,255,255,.06), transparent 62%),
+      linear-gradient(180deg, rgba(4,4,10,.985), rgba(10,10,20,.99));
     overflow:hidden;
     transform: translateZ(0);
     -webkit-font-smoothing: antialiased;
   }
 
-  /* subtle animated energy fog */
-  #dgLoader:before{
+  /* Animated energy field + grain */
+  #dgLoader::before{
     content:"";
-    position:absolute; inset:-20%;
+    position:absolute; inset:-30%;
     background:
-      radial-gradient(closest-side at 25% 40%, rgba(255,207,74,.13), transparent 65%),
-      radial-gradient(closest-side at 70% 65%, rgba(102,220,255,.12), transparent 70%),
-      radial-gradient(closest-side at 55% 30%, rgba(255,255,255,.06), transparent 70%);
-    filter: blur(18px);
-    opacity:.9;
-    animation: dgFog 6.5s ease-in-out infinite alternate;
+      conic-gradient(from 210deg at 50% 50%,
+        rgba(255,207,74,.00),
+        rgba(255,207,74,.12),
+        rgba(100,221,255,.10),
+        rgba(255,255,255,.06),
+        rgba(255,207,74,.00));
+    filter: blur(38px);
+    opacity:.85;
+    animation: dgField 7.2s ease-in-out infinite alternate;
     pointer-events:none;
   }
-  @keyframes dgFog{
-    from{ transform: translate3d(-2%, -1%, 0) scale(1.02) rotate(-2deg); }
-    to{ transform: translate3d(2%, 1%, 0) scale(1.06) rotate(2deg); }
+  #dgLoader::after{
+    content:"";
+    position:absolute; inset:0;
+    background-image:
+      radial-gradient(circle at 20% 30%, rgba(255,255,255,.045), transparent 35%),
+      radial-gradient(circle at 70% 60%, rgba(255,255,255,.03), transparent 40%),
+      repeating-linear-gradient(0deg, rgba(255,255,255,.018) 0, rgba(255,255,255,.018) 1px, transparent 2px, transparent 6px);
+    mix-blend-mode: overlay;
+    opacity:.28;
+    pointer-events:none;
+    transform: translateZ(0);
+  }
+  @keyframes dgField{
+    from{ transform: translate3d(-2%, -1%, 0) scale(1.02) rotate(-6deg); }
+    to  { transform: translate3d( 2%,  1%, 0) scale(1.08) rotate( 6deg); }
   }
 
-  /* Center stack */
+  /* Layout */
   #dgLoader .dgWrap{
     position:relative;
-    width:min(720px, 96vw);
-    display:flex;
-    flex-direction:column;
-    align-items:center;
+    width:min(860px, 96vw);
+    display:grid;
+    grid-template-columns: 1fr;
     gap: 14px;
+    align-items:center;
   }
 
-  #dgLoader .dgTopline{
-    width:100%;
+  #dgLoader .dgTop{
     display:flex;
     justify-content:space-between;
     align-items:center;
     gap:12px;
-    color:rgba(246,240,217,.82);
-    font-weight:800;
-    letter-spacing:.35px;
-    font-size: 13px;
-    text-transform: uppercase;
   }
+
   #dgLoader .dgBrand{
-    display:flex; align-items:center; gap:10px;
+    display:flex; align-items:center; gap:12px;
+    color: rgba(246,240,217,.88);
+    font-weight: 900;
+    letter-spacing: .35px;
+    text-transform: uppercase;
+    font-size: 12.5px;
   }
   #dgLoader .dgDot{
     width:10px; height:10px; border-radius:999px;
     background: radial-gradient(circle at 30% 30%, #fff, var(--dg-gold));
-    box-shadow: 0 0 22px rgba(255,207,74,.55);
+    box-shadow: 0 0 26px rgba(255,207,74,.58), 0 0 44px rgba(255,207,74,.18);
   }
-  #dgLoader .dgTag{
-    padding: 7px 10px;
+  #dgLoader .dgPill{
+    display:flex; align-items:center; gap:8px;
+    padding: 8px 12px;
     border-radius: 999px;
-    border:1px solid rgba(255,207,74,.22);
+    border: 1px solid rgba(255,207,74,.22);
     background: rgba(255,207,74,.07);
-    color: rgba(255,207,74,.92);
-    font-weight:900;
+    color: rgba(255,207,74,.95);
+    font-weight: 900;
+    letter-spacing: .2px;
     font-size: 12px;
-    letter-spacing:.25px;
     white-space:nowrap;
+    box-shadow: 0 0 0 1px rgba(255,255,255,.03) inset;
+  }
+  #dgLoader .dgPill i{
+    width:8px; height:8px; border-radius:999px;
+    background: radial-gradient(circle at 30% 30%, #fff, rgba(100,221,255,.95));
+    box-shadow: 0 0 18px rgba(100,221,255,.35);
+    display:inline-block;
   }
 
-  /* Scene */
-  #dgLoader .dgScene{
+  /* Scene frame (no "ad-card") */
+  #dgLoader .dgFrame{
     position:relative;
     width:100%;
-    height: clamp(260px, 40vh, 380px);
-    border-radius: 24px;
-    border:1px solid rgba(255,255,255,.06);
+    height: clamp(310px, 46vh, 460px);
+    border-radius: 28px;
+    border: 1px solid rgba(255,255,255,.07);
     background:
-      radial-gradient(260px 210px at 50% 35%, rgba(255,207,74,.12), transparent 70%),
-      radial-gradient(300px 240px at 50% 70%, rgba(102,220,255,.10), transparent 70%),
+      radial-gradient(340px 260px at 50% 34%, rgba(255,207,74,.14), transparent 70%),
+      radial-gradient(380px 300px at 50% 72%, rgba(100,221,255,.12), transparent 72%),
       linear-gradient(180deg, rgba(255,255,255,.02), rgba(0,0,0,0));
     box-shadow:
-      0 30px 120px rgba(0,0,0,.65),
+      0 40px 160px rgba(0,0,0,.70),
       0 0 0 1px rgba(255,207,74,.05) inset;
     overflow:hidden;
+    transform: translateZ(0);
   }
 
-  /* scan line */
+  /* Scan beam */
   #dgLoader .dgScan{
     position:absolute; left:-20%; right:-20%;
-    height:2px; top:15%;
-    background: linear-gradient(90deg, transparent, rgba(255,207,74,.55), rgba(102,220,255,.45), transparent);
-    filter: blur(.2px);
-    opacity:.0;
-    animation: dgScan 1.6s ease-in-out infinite;
+    height: 2px;
+    top: 10%;
+    opacity:0;
+    background: linear-gradient(90deg, transparent, rgba(255,207,74,.70), rgba(100,221,255,.55), transparent);
+    filter: drop-shadow(0 0 14px rgba(255,207,74,.18));
+    animation: dgScan 1.35s ease-in-out infinite;
     pointer-events:none;
   }
   @keyframes dgScan{
-    0%{ transform: translateY(0); opacity:0; }
-    20%{ opacity:.9; }
-    55%{ opacity:.5; }
-    100%{ transform: translateY(250px); opacity:0; }
+    0%   { transform: translateY(0);   opacity:0; }
+    18%  { opacity:.95; }
+    60%  { opacity:.45; }
+    100% { transform: translateY(280px); opacity:0; }
   }
 
   #dgLoader svg{ width:100%; height:100%; display:block; }
 
-  .dgStroke{
-    fill:none;
-    stroke-linecap:round;
-    stroke-linejoin:round;
-  }
-  .dgGold{ stroke: rgba(255,207,74,.95); filter: drop-shadow(0 0 14px rgba(255,207,74,.22)); }
-  .dgCyan{ stroke: rgba(102,220,255,.80); filter: drop-shadow(0 0 14px rgba(102,220,255,.18)); }
-  .dgDim{ stroke: rgba(255,255,255,.10); filter:none; }
+  /* SVG styling */
+  .dgStroke{ fill:none; stroke-linecap:round; stroke-linejoin:round; }
+  .dgGold{ stroke: rgba(255,207,74,.96); filter: drop-shadow(0 0 18px rgba(255,207,74,.20)); }
+  .dgCyan{ stroke: rgba(100,221,255,.82); filter: drop-shadow(0 0 16px rgba(100,221,255,.18)); }
+  .dgDim { stroke: rgba(255,255,255,.10); filter:none; }
+  .dgThin{ stroke-width: 3.5; }
+  .dgMid { stroke-width: 8.5; }
+  .dgThick{ stroke-width: 11; }
 
-  /* chain draw */
+  /* Chain draw */
   .dgChain{
-    stroke-width: 10;
-    stroke-dasharray: 520;
-    stroke-dashoffset: 520;
-    animation: dgDraw 1.15s cubic-bezier(.2,.9,.2,1) forwards;
+    stroke-dasharray: 720;
+    stroke-dashoffset: 720;
+    animation: dgDraw 1.05s cubic-bezier(.2,.92,.2,1) forwards;
   }
   .dgChain.b{ animation-delay: .10s; }
-  .dgChain.c{ animation-delay: .18s; }
+  .dgChain.c{ animation-delay: .20s; }
   @keyframes dgDraw{ to{ stroke-dashoffset: 0; } }
 
-  /* pull + merge */
+  /* Tighten */
   #dgLoader.dg-stage2 .dgChains{
-    animation: dgPull .85s cubic-bezier(.2,.9,.2,1) forwards;
+    animation: dgTighten .85s cubic-bezier(.2,.9,.2,1) forwards;
   }
-  @keyframes dgPull{
-    to{ transform: scale(1.07) translateY(-8px); opacity:.95; }
+  @keyframes dgTighten{
+    to{ transform: scale(1.10) translateY(-10px); opacity:.95; }
   }
 
-  /* snap/vanish + shield reveal */
-  .dgShield, .dgRing, .dgCore{
+  /* Snap flash */
+  #dgLoader .dgFlash{
+    opacity:0;
+    transition: opacity .18s ease;
+  }
+  #dgLoader.dg-snap .dgFlash{ opacity:1; }
+
+  /* Reveal shield/core */
+  .dgShield, .dgRing, .dgCore, .dgSig{
     opacity:0;
     transform: scale(.78);
     transform-origin: 50% 55%;
-    transition: opacity .55s ease, transform .85s cubic-bezier(.2,.9,.2,1);
+    transition: opacity .55s ease, transform .9s cubic-bezier(.18,.92,.2,1);
   }
   #dgLoader.dg-stage3 .dgChains{
-    opacity:.12;
+    opacity:.10;
     transform: scale(.92);
-    transition: opacity .55s ease, transform .85s cubic-bezier(.2,.9,.2,1);
+    transition: opacity .55s ease, transform .9s cubic-bezier(.18,.92,.2,1);
   }
   #dgLoader.dg-stage3 .dgShield,
   #dgLoader.dg-stage3 .dgRing,
-  #dgLoader.dg-stage3 .dgCore{
+  #dgLoader.dg-stage3 .dgCore,
+  #dgLoader.dg-stage3 .dgSig{
     opacity:1;
-    transform: scale(1.03);
+    transform: scale(1.04);
   }
 
-  /* core pulse */
+  /* Core pulse */
   .dgPulse{
-    animation: dgPulse 1.45s ease-in-out infinite;
     transform-origin:50% 50%;
+    animation: dgPulse 1.35s ease-in-out infinite;
   }
   @keyframes dgPulse{
-    0%,100%{ transform: scale(1); opacity:.75; }
-    50%{ transform: scale(1.08); opacity:1; }
+    0%,100%{ transform: scale(1); opacity:.72; }
+    50%{ transform: scale(1.10); opacity:1; }
   }
 
-  /* sparks */
+  /* Sparks */
   .dgSpark{
     opacity:0;
     animation: dgSpark 1.7s ease-in-out infinite;
   }
   .dgSpark:nth-child(1){ animation-delay:.05s }
   .dgSpark:nth-child(2){ animation-delay:.22s }
-  .dgSpark:nth-child(3){ animation-delay:.39s }
+  .dgSpark:nth-child(3){ animation-delay:.40s }
   .dgSpark:nth-child(4){ animation-delay:.58s }
   .dgSpark:nth-child(5){ animation-delay:.74s }
   @keyframes dgSpark{
-    0%{ transform: translateY(14px) scale(.55); opacity:0; }
-    25%{ opacity:.9; }
+    0%{ transform: translateY(16px) scale(.55); opacity:0; }
+    25%{ opacity:.95; }
     70%{ opacity:.85; }
-    100%{ transform: translateY(-22px) scale(1.12); opacity:0; }
+    100%{ transform: translateY(-24px) scale(1.12); opacity:0; }
   }
 
-  /* Progress ring */
+  /* Bottom status */
   #dgLoader .dgBottom{
-    width:100%;
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    gap:12px;
-    margin-top: 2px;
-    color: rgba(246,240,217,.68);
-    font-size: 13px;
+    display:flex; align-items:center; justify-content:space-between;
+    gap: 14px;
+    color: rgba(246,240,217,.70);
   }
-  #dgLoader .dgStatus{
+  #dgLoader .dgText{
     display:flex; flex-direction:column; gap:6px;
   }
   #dgLoader .dgLine{
-    color: rgba(246,240,217,.84);
-    font-weight:900;
-    letter-spacing:.2px;
+    font-weight: 950;
+    font-size: 14px;
+    letter-spacing:.15px;
+    color: rgba(246,240,217,.92);
   }
   #dgLoader .dgLine b{ color: var(--dg-gold); }
   #dgLoader .dgSub{
+    font-weight: 750;
+    font-size: 12.5px;
     color: rgba(246,240,217,.62);
-    font-weight:700;
   }
 
+  /* Progress ring */
   #dgLoader .dgRingWrap{
-    width: 58px; height:58px;
-    flex: 0 0 auto;
+    width: 62px; height: 62px;
     position:relative;
     display:grid; place-items:center;
+    flex:0 0 auto;
   }
-  #dgLoader .dgRingWrap svg{ width:58px; height:58px; }
+  #dgLoader .dgRingWrap svg{ width:62px; height:62px; }
   #dgLoader .dgPct{
     position:absolute;
-    font-weight:900;
+    font-weight: 950;
     font-size: 12px;
-    color: rgba(255,207,74,.92);
+    color: rgba(255,207,74,.95);
     letter-spacing:.2px;
+    text-shadow: 0 0 18px rgba(255,207,74,.18);
   }
   #dgLoader .dgRingTrack{ stroke: rgba(255,255,255,.10); }
   #dgLoader .dgRingProg{
-    stroke: rgba(255,207,74,.95);
-    filter: drop-shadow(0 0 10px rgba(255,207,74,.25));
+    stroke: rgba(255,207,74,.96);
+    filter: drop-shadow(0 0 12px rgba(255,207,74,.22));
     transform: rotate(-90deg);
     transform-origin: 50% 50%;
     stroke-linecap: round;
   }
 
-  /* Exit */
+  /* Exit with cinematic radial wipe */
   #dgLoader.dg-exit{
-    animation: dgExit .65s cubic-bezier(.2,.9,.2,1) forwards;
+    animation: dgFade .65s cubic-bezier(.18,.92,.2,1) forwards;
   }
-  @keyframes dgExit{
+  @keyframes dgFade{
     to{ opacity:0; transform: translateY(-10px) scale(1.02); }
   }
+  #dgLoader .dgWipe{
+    position:absolute; inset:0;
+    background: radial-gradient(circle at 50% 55%, rgba(255,207,74,.20), rgba(4,4,10,0) 58%);
+    opacity:0;
+    pointer-events:none;
+    mix-blend-mode: screen;
+  }
+  #dgLoader.dg-wipe .dgWipe{
+    opacity:1;
+    animation: dgWipe 0.85s cubic-bezier(.18,.92,.2,1) forwards;
+  }
+  @keyframes dgWipe{
+    from{ clip-path: circle(0% at 50% 55%); }
+    to  { clip-path: circle(150% at 50% 55%); }
+  }
+
+  /* Parallax (subtle) */
+  #dgLoader .dgPar{ will-change: transform; transition: transform .12s ease; }
 
   @media (prefers-reduced-motion: reduce){
-    #dgLoader:before, .dgScan, .dgChain, .dgPulse, .dgSpark{ animation:none !important; }
+    #dgLoader::before, #dgLoader .dgScan, .dgChain, .dgPulse, .dgSpark{ animation:none !important; }
     html.dg-boot body > *:not(#dgLoader){ transition:none !important; opacity:1; transform:none; filter:none; }
     #dgLoader{ transition:none !important; }
   }
-
   @media (max-width: 520px){
-    #dgLoader .dgScene{ border-radius: 18px; }
-    #dgLoader .dgTopline{ font-size: 12px; }
-    #dgLoader .dgTag{ font-size: 11px; padding: 6px 9px; }
+    #dgLoader .dgFrame{ border-radius: 18px; }
+    #dgLoader .dgLine{ font-size: 13.5px; }
+    #dgLoader .dgSub{ font-size: 12px; }
   }
 </style>
 
@@ -2520,116 +2569,131 @@ body.net-base .chainBtn.active{ background: linear-gradient(90deg, rgba(0,82,255
 <body>
 
 <div id="dgLoader" aria-hidden="false">
+  <div class="dgWipe"></div>
   <div class="dgWrap" role="status" aria-live="polite" aria-label="DexGuard loading">
-    <div class="dgTopline">
+    <div class="dgTop dgPar">
       <div class="dgBrand">
         <span class="dgDot" aria-hidden="true"></span>
-        <span>DexGuard</span>
+        <span>DexGuard Protocol</span>
       </div>
-      <div class="dgTag">Protector • Guardian</div>
+      <div class="dgPill"><i aria-hidden="true"></i><span>Protector • Guardian</span></div>
     </div>
 
-    <div class="dgScene" aria-hidden="true">
+    <div class="dgFrame dgPar" aria-hidden="true">
       <div class="dgScan"></div>
-      <svg viewBox="0 0 920 420" preserveAspectRatio="xMidYMid meet">
+      <svg viewBox="0 0 980 460" preserveAspectRatio="xMidYMid meet">
         <defs>
-          <radialGradient id="dgAuraGold" cx="50%" cy="45%" r="60%">
-            <stop offset="0%" stop-color="#fff0b8" stop-opacity="1"/>
-            <stop offset="45%" stop-color="#ffcf4a" stop-opacity="0.92"/>
+          <radialGradient id="dgAuraGold" cx="50%" cy="42%" r="62%">
+            <stop offset="0%" stop-color="#fff2bf" stop-opacity="1"/>
+            <stop offset="42%" stop-color="#ffcf4a" stop-opacity="0.92"/>
             <stop offset="100%" stop-color="#ffcf4a" stop-opacity="0"/>
           </radialGradient>
-          <radialGradient id="dgAuraCyan" cx="50%" cy="60%" r="60%">
-            <stop offset="0%" stop-color="#d6f7ff" stop-opacity="0.9"/>
-            <stop offset="55%" stop-color="#66dcff" stop-opacity="0.35"/>
-            <stop offset="100%" stop-color="#66dcff" stop-opacity="0"/>
+          <radialGradient id="dgAuraCyan" cx="50%" cy="65%" r="62%">
+            <stop offset="0%" stop-color="#d8f8ff" stop-opacity="0.85"/>
+            <stop offset="55%" stop-color="#64ddff" stop-opacity="0.32"/>
+            <stop offset="100%" stop-color="#64ddff" stop-opacity="0"/>
           </radialGradient>
           <linearGradient id="dgShieldGrad" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stop-color="#ffe6a1" stop-opacity="1"/>
-            <stop offset="55%" stop-color="#ffcf4a" stop-opacity="0.96"/>
-            <stop offset="100%" stop-color="#66dcff" stop-opacity="0.58"/>
+            <stop offset="0%" stop-color="#ffe9ad" stop-opacity="1"/>
+            <stop offset="55%" stop-color="#ffcf4a" stop-opacity="0.97"/>
+            <stop offset="100%" stop-color="#64ddff" stop-opacity="0.60"/>
           </linearGradient>
-          <filter id="dgBlur" x="-30%" y="-30%" width="160%" height="160%">
-            <feGaussianBlur stdDeviation="10"/>
+          <filter id="dgBlur" x="-35%" y="-35%" width="170%" height="170%">
+            <feGaussianBlur stdDeviation="12"/>
+          </filter>
+          <filter id="dgSoft" x="-30%" y="-30%" width="160%" height="160%">
+            <feGaussianBlur stdDeviation="5"/>
           </filter>
         </defs>
 
         <!-- aura -->
-        <circle cx="460" cy="210" r="155" fill="url(#dgAuraGold)" opacity="0.55" filter="url(#dgBlur)"/>
-        <circle cx="460" cy="250" r="175" fill="url(#dgAuraCyan)" opacity="0.35" filter="url(#dgBlur)"/>
+        <circle cx="490" cy="228" r="175" fill="url(#dgAuraGold)" opacity="0.55" filter="url(#dgBlur)"/>
+        <circle cx="490" cy="278" r="205" fill="url(#dgAuraCyan)" opacity="0.40" filter="url(#dgBlur)"/>
+
+        <!-- snap flash -->
+        <g class="dgFlash" filter="url(#dgSoft)">
+          <circle cx="490" cy="240" r="135" fill="rgba(255,207,74,.22)"/>
+          <circle cx="490" cy="240" r="190" fill="rgba(100,221,255,.10)"/>
+        </g>
 
         <!-- sparks -->
         <g opacity="0.95">
-          <circle class="dgSpark" cx="335" cy="295" r="5" fill="#ffcf4a"/>
-          <circle class="dgSpark" cx="605" cy="300" r="4" fill="#ffcf4a"/>
-          <circle class="dgSpark" cx="450" cy="312" r="3.5" fill="#66dcff"/>
-          <circle class="dgSpark" cx="520" cy="305" r="3" fill="#ffcf4a"/>
-          <circle class="dgSpark" cx="395" cy="305" r="3" fill="#ffcf4a"/>
+          <circle class="dgSpark" cx="365" cy="330" r="5.2" fill="#ffcf4a"/>
+          <circle class="dgSpark" cx="635" cy="336" r="4.2" fill="#ffcf4a"/>
+          <circle class="dgSpark" cx="490" cy="350" r="3.8" fill="#64ddff"/>
+          <circle class="dgSpark" cx="575" cy="342" r="3.2" fill="#ffcf4a"/>
+          <circle class="dgSpark" cx="410" cy="342" r="3.2" fill="#ffcf4a"/>
         </g>
 
-        <!-- faint ring -->
-        <circle cx="460" cy="210" r="120" class="dgStroke dgDim" stroke-width="6" opacity="0.8"/>
+        <!-- ring -->
+        <circle cx="490" cy="230" r="138" class="dgStroke dgDim dgMid" opacity="0.85"/>
 
         <!-- chains -->
         <g class="dgChains" opacity="0.92">
-          <!-- left -->
-          <path class="dgStroke dgGold dgChain" d="M150 270 C 245 135, 345 115, 430 165" />
-          <path class="dgStroke dgCyan dgChain b" d="M175 290 C 255 165, 355 145, 438 183" />
-          <!-- right -->
-          <path class="dgStroke dgGold dgChain c" d="M770 270 C 675 135, 575 115, 490 165" />
-          <path class="dgStroke dgCyan dgChain b" d="M745 290 C 665 165, 565 145, 482 183" />
+          <!-- left chain set -->
+          <path class="dgStroke dgGold dgThick dgChain" d="M120 310 C 240 120, 370 90, 470 160" />
+          <path class="dgStroke dgCyan dgMid dgChain b" d="M150 332 C 255 160, 388 132, 480 182" />
+          <path class="dgStroke dgGold dgThin dgChain c" d="M175 350 C 275 190, 405 170, 490 205" />
+          <!-- right chain set -->
+          <path class="dgStroke dgGold dgThick dgChain c" d="M860 310 C 740 120, 610 90, 510 160" />
+          <path class="dgStroke dgCyan dgMid dgChain b" d="M830 332 C 725 160, 592 132, 500 182" />
+          <path class="dgStroke dgGold dgThin dgChain" d="M805 350 C 705 190, 575 170, 490 205" />
           <!-- link nodes -->
-          <g opacity="0.7">
-            <circle cx="255" cy="190" r="9" fill="none" stroke="rgba(255,207,74,.75)" stroke-width="4"/>
-            <circle cx="665" cy="190" r="9" fill="none" stroke="rgba(255,207,74,.75)" stroke-width="4"/>
-            <circle cx="315" cy="160" r="7.5" fill="none" stroke="rgba(102,220,255,.55)" stroke-width="3.5"/>
-            <circle cx="605" cy="160" r="7.5" fill="none" stroke="rgba(102,220,255,.55)" stroke-width="3.5"/>
+          <g opacity="0.72">
+            <circle cx="270" cy="205" r="9.5" fill="none" stroke="rgba(255,207,74,.78)" stroke-width="4"/>
+            <circle cx="710" cy="205" r="9.5" fill="none" stroke="rgba(255,207,74,.78)" stroke-width="4"/>
+            <circle cx="338" cy="168" r="7.8" fill="none" stroke="rgba(100,221,255,.58)" stroke-width="3.6"/>
+            <circle cx="642" cy="168" r="7.8" fill="none" stroke="rgba(100,221,255,.58)" stroke-width="3.6"/>
           </g>
         </g>
 
-        <!-- merge ring -->
+        <!-- merge ring + signature -->
         <g class="dgRing">
-          <circle cx="460" cy="210" r="132" fill="none" stroke="rgba(255,207,74,.42)" stroke-width="10"/>
-          <circle cx="460" cy="210" r="132" fill="none" stroke="rgba(102,220,255,.30)" stroke-width="6" stroke-dasharray="18 20" opacity="0.95"/>
+          <circle cx="490" cy="230" r="150" fill="none" stroke="rgba(255,207,74,.40)" stroke-width="10"/>
+          <circle cx="490" cy="230" r="150" fill="none" stroke="rgba(100,221,255,.28)" stroke-width="6" stroke-dasharray="18 20" opacity="0.95"/>
         </g>
 
-        <!-- core -->
         <g class="dgCore">
-          <circle class="dgPulse" cx="460" cy="215" r="34" fill="rgba(255,207,74,.18)"/>
-          <circle class="dgPulse" cx="460" cy="215" r="20" fill="rgba(102,220,255,.14)"/>
+          <circle class="dgPulse" cx="490" cy="238" r="40" fill="rgba(255,207,74,.16)"/>
+          <circle class="dgPulse" cx="490" cy="238" r="22" fill="rgba(100,221,255,.14)"/>
+          <circle cx="490" cy="238" r="10" fill="rgba(255,255,255,.20)"/>
         </g>
 
         <!-- shield -->
         <g class="dgShield">
-          <path d="M460 88
-              C 535 121, 612 126, 675 140
-              C 675 265, 600 338, 460 382
-              C 320 338, 245 265, 245 140
-              C 308 126, 385 121, 460 88 Z"
-            fill="url(#dgShieldGrad)" opacity="0.96"
-            style="filter: drop-shadow(0 0 22px rgba(255,207,74,.28)) drop-shadow(0 0 32px rgba(102,220,255,.18));" />
-          <path d="M460 118
-              C 520 144, 580 148, 628 156
-              C 628 255, 570 312, 460 346
-              C 350 312, 292 255, 292 156
-              C 340 148, 400 144, 460 118 Z"
-            fill="rgba(0,0,0,0.16)" stroke="rgba(255,255,255,.10)" stroke-width="2"/>
-          <path d="M460 150 L 460 320" stroke="rgba(255,255,255,.16)" stroke-width="3" stroke-linecap="round"/>
-          <path d="M403 210 L 460 252 L 520 198" fill="none" stroke="rgba(255,255,255,.22)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M490 78
+              C 570 116, 650 122, 715 138
+              C 715 278, 635 360, 490 408
+              C 345 360, 265 278, 265 138
+              C 330 122, 410 116, 490 78 Z"
+            fill="url(#dgShieldGrad)" opacity="0.97"
+            style="filter: drop-shadow(0 0 28px rgba(255,207,74,.28)) drop-shadow(0 0 40px rgba(100,221,255,.18));" />
+          <path d="M490 112
+              C 552 142, 615 148, 666 158
+              C 666 268, 603 332, 490 368
+              C 377 332, 314 268, 314 158
+              C 365 148, 428 142, 490 112 Z"
+            fill="rgba(0,0,0,0.14)" stroke="rgba(255,255,255,.11)" stroke-width="2"/>
+          <!-- inner sig -->
+          <g class="dgSig" opacity="0.95">
+            <path d="M490 150 L 490 342" stroke="rgba(255,255,255,.18)" stroke-width="3" stroke-linecap="round"/>
+            <path d="M420 220 L 490 275 L 566 206" fill="none" stroke="rgba(255,255,255,.24)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+          </g>
         </g>
       </svg>
     </div>
 
-    <div class="dgBottom">
-      <div class="dgStatus">
+    <div class="dgBottom dgPar">
+      <div class="dgText">
         <div class="dgLine" id="dgLoaderStage">Binding <b>Guardian</b>…</div>
-        <div class="dgSub" id="dgLoaderHint">Forging protection layer…</div>
+        <div class="dgSub" id="dgLoaderHint">Fortifying entry layer…</div>
       </div>
 
       <div class="dgRingWrap" aria-hidden="true">
         <svg viewBox="0 0 44 44">
           <circle class="dgRingTrack" cx="22" cy="22" r="18" fill="none" stroke-width="4"></circle>
           <circle id="dgRingProg" class="dgRingProg" cx="22" cy="22" r="18" fill="none" stroke-width="4"
-                  stroke-dasharray="113.097" stroke-dashoffset="113.097"></circle>
+            stroke-dasharray="113.097" stroke-dashoffset="113.097"></circle>
         </svg>
         <div class="dgPct" id="dgLoaderPct">0%</div>
       </div>
@@ -4077,7 +4141,7 @@ function toggleMenu(){
     var loader = document.getElementById('dgLoader');
     if(!loader){ htmlEl.classList.remove('dg-boot'); htmlEl.classList.add('dg-ready'); return; }
 
-    var pct = document.getElementById('dgLoaderPct');
+    var pct   = document.getElementById('dgLoaderPct');
     var stage = document.getElementById('dgLoaderStage');
     var hint  = document.getElementById('dgLoaderHint');
     var ring  = document.getElementById('dgRingProg');
@@ -4086,12 +4150,12 @@ function toggleMenu(){
     var done = false;
     var doneAt = 0;
 
-    // readable + cinematic (no "blink")
-    var MIN_TOTAL = 3600;       // always show at least this long
-    var MIN_DONE_SHOW = 1200;   // once loaded, linger a bit
-    var SAFETY_DONE_MS = 14000;
+    // Cinematic (no blink)
+    var MIN_TOTAL = 4200;       // always show at least this long
+    var MIN_DONE_SHOW = 1400;   // once loaded, linger so it feels premium
+    var SAFETY_DONE_MS = 16000;
 
-    var prog = 0;   // 0..100
+    var prog = 0;
     var target = 0;
 
     function clamp(n,a,b){ return Math.max(a, Math.min(b,n)); }
@@ -4103,23 +4167,27 @@ function toggleMenu(){
         stage.innerHTML = 'Dragging <b>chains</b>…';
         hint.textContent = 'Locking the perimeter…';
       }else if(idx===2){
-        stage.innerHTML = 'Fusing <b>Guardian core</b>…';
-        hint.textContent = 'Compression + merge…';
+        stage.innerHTML = 'Compressing <b>Guardian core</b>…';
+        hint.textContent = 'Merging protection layers…';
       }else{
-        stage.innerHTML = 'Charging <b>protection shield</b>…';
+        stage.innerHTML = 'Igniting <b>Shield Protocol</b>…';
         hint.textContent = 'Finalizing safeguard…';
       }
     }
 
+    // Timeline (high-level narrative)
     setStage(1);
-    setTimeout(function(){ setStage(2); }, 1100);
-    setTimeout(function(){ setStage(3); }, 2150);
+    setTimeout(function(){ setStage(2); }, 1200);
+    setTimeout(function(){
+      loader.classList.add('dg-snap');   // flash
+      setTimeout(function(){ loader.classList.remove('dg-snap'); }, 220);
+    }, 2150);
+    setTimeout(function(){ setStage(3); }, 2350);
 
     function paint(){
       var p = clamp(prog,0,100);
       if(pct) pct.textContent = p.toFixed(0) + '%';
       if(ring){
-        // circumference for r=18 is ~113.097
         var C = 113.097;
         ring.style.strokeDashoffset = (C * (1 - (p/100))).toFixed(3);
       }
@@ -4129,18 +4197,15 @@ function toggleMenu(){
       var now = (window.performance && performance.now) ? performance.now() : Date.now();
       var elapsed = now - start;
 
-      // readiness -> target
-      if(document.readyState === 'interactive') target = Math.max(target, 58);
+      if(document.readyState === 'interactive') target = Math.max(target, 60);
       if(document.readyState === 'complete') target = 100;
 
-      // cap until real load completes
       var cap = (document.readyState === 'complete') ? 100 : 92;
-      target = clamp(target, 12, cap);
+      target = clamp(target, 14, cap);
 
       if(!done){
-        // smooth acceleration
-        prog += (target - prog) * 0.075;
-        // tiny drift feels "alive"
+        // Smooth accelerating motion
+        prog += (target - prog) * 0.08;
         prog += 0.10;
         prog = clamp(prog, 0, cap);
       }else{
@@ -4172,13 +4237,18 @@ function toggleMenu(){
 
     function exit(){
       try{
+        // Reveal page first, then cinematic wipe + fade
         htmlEl.classList.remove('dg-boot');
         htmlEl.classList.add('dg-ready');
-        loader.setAttribute('aria-hidden','true');
-        loader.classList.add('dg-exit');
+
+        loader.classList.add('dg-wipe');
         setTimeout(function(){
-          if(loader && loader.parentNode) loader.parentNode.removeChild(loader);
-        }, 720);
+          loader.setAttribute('aria-hidden','true');
+          loader.classList.add('dg-exit');
+          setTimeout(function(){
+            if(loader && loader.parentNode) loader.parentNode.removeChild(loader);
+          }, 760);
+        }, 180);
       }catch(e){
         if(loader && loader.parentNode) loader.parentNode.removeChild(loader);
         htmlEl.classList.remove('dg-boot');
@@ -4186,12 +4256,48 @@ function toggleMenu(){
       }
     }
 
+    // Real load signal
     window.addEventListener('load', function(){
       var now = (window.performance && performance.now) ? performance.now() : Date.now();
       done = true;
       doneAt = now;
       target = 100;
     }, { once:true });
+
+    // Premium parallax on desktop (disabled on touch)
+    (function(){
+      var isTouch = false;
+      try{ isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0); }catch(_){}
+      if(isTouch) return;
+
+      var wrap = loader.querySelector('.dgWrap');
+      if(!wrap) return;
+
+      var pars = loader.querySelectorAll('.dgPar');
+      if(!pars || !pars.length) return;
+
+      var cx = 0, cy = 0;
+      var raf = 0;
+
+      function onMove(ev){
+        var x = ev.clientX / window.innerWidth;
+        var y = ev.clientY / window.innerHeight;
+        cx = (x - 0.5);
+        cy = (y - 0.5);
+        if(!raf){
+          raf = requestAnimationFrame(function(){
+            raf = 0;
+            var tx = cx * 10;
+            var ty = cy * 8;
+            for(var i=0;i<pars.length;i++){
+              var z = (i===1 ? 1.0 : (i===0 ? 0.6 : 0.8));
+              pars[i].style.transform = 'translate3d(' + (-tx*z) + 'px,' + (-ty*z) + 'px,0)';
+            }
+          });
+        }
+      }
+      window.addEventListener('mousemove', onMove, { passive:true });
+    })();
 
     requestAnimationFrame(tick);
   }catch(_e){
