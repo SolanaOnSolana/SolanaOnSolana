@@ -2901,14 +2901,21 @@ if(typeof DBG.metrics.lastClickAction==='undefined') DBG.metrics.lastClickAction
     const DS = 'https://api.dexscreener.com/latest/dex';
     const BDS = 'https://flat-grass-9c26solanaonsolana.simon-kaggwa-why.workers.dev/bds';
     // --- SOLANA (BDS) helpers (prevents Gecko "Token not found" / "Trending unavailable") ---
+// ---- SOLANA mint helper (CRITICAL)
 function solMintFromState(){
-  // we store Solana "poolId" as the mint address (or prefixed). Normalize here.
-  const raw = String(poolId || '').trim();
-  if(!raw) return '';
-  // if prefixed like "solana_<mint>" keep last part
+  // In this app, Solana "token address" we want is stored in poolAddr (NOT poolId)
+  const raw = String(poolAddr || '').trim();
+  if(!raw) return (DEFAULT_TOKEN?.solana || '');
+
+  // If prefixed like "solana_<mint>" keep last part
   const last = raw.split('_').pop();
-  return (last || raw).trim();
+  const mint = (last || raw).trim();
+
+  // Quick sanity: Solana mints are typically 32-44 base58 chars; if too short, fallback
+  if(mint.length < 32) return (DEFAULT_TOKEN?.solana || '');
+  return mint;
 }
+
 
 function tfToBirdeyeType(tfKey){
   // your tf keys are like: 15m, 1h, 4h, 1d, 1w, ALL
