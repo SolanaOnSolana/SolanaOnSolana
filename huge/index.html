@@ -300,6 +300,18 @@
     return x.toLocaleString(undefined,{maximumFractionDigits:2});
   };
   const short = (s)=> !s ? '—' : (s.length<=10 ? s : (s.slice(0,4)+'…'+s.slice(-4)));
+  function isQuotaError(j){
+    const body = (j && (j.body || j.detail || j.message)) ? String(j.body || j.detail || j.message) : '';
+    const err = (j && j.error) ? String(j.error) : '';
+    return err.includes('birdeye_quota') || body.includes('Compute units usage limit exceeded');
+  }
+  let backoffUntil = 0;
+  function applyBackoff(sec){
+    const until = Date.now() + (sec*1000);
+    backoffUntil = Math.max(backoffUntil, until);
+    setStatus('err', `Birdeye limit — waiting ${sec}s`);
+  }
+
   const setStatus = (mode, text)=>{
     $('statusText').textContent = text || mode;
     const dot = $('dot');
@@ -549,11 +561,13 @@
 
   async function refreshPrice(){
     if(!state.selected?.address) return;
+    if(Date.now() < backoffUntil) return;
     const id = ++state.inFlight.price;
     try{
       const r = await fetch(api('/api/price', { chain: state.chain, address: state.selected.address }));
       const j = await r.json();
       if(id !== state.inFlight.price) return;
+      if(isQuotaError(j)){ applyBackoff(j.retryAfterSec||30); return; }
       if(j.ok){
         $('kpiPrice').textContent = fmtPrice(j.price);
         $('kpiPriceSrc').textContent = 'ok (birdeye)';
@@ -566,11 +580,14 @@
 
   async function refreshCandles(force){
     if(!state.selected?.address) return;
+    if(Date.now() < backoffUntil) return;
     const id = ++state.inFlight.candles;
     try{
       const r = await fetch(api('/api/candles', { chain: state.chain, address: state.selected.address, tf: state.tf, limit: 800 }));
       const j = await r.json();
       if(id !== state.inFlight.candles) return;
+
+      if(isQuotaError(j)){ applyBackoff(j.retryAfterSec||30); return; }
 
       if(j.ok && Array.isArray(j.items) && j.items.length){
         applyCandles(j.items);
@@ -589,12 +606,15 @@
 
   async function refreshTrades(reset){
     if(!state.selected?.address) return;
+    if(Date.now() < backoffUntil) return;
     const id = ++state.inFlight.trades;
 
     try{
       const r = await fetch(api('/api/trades', { chain: state.chain, address: state.selected.address, limit: 50, offset: 0 }));
       const j = await r.json();
       if(id !== state.inFlight.trades) return;
+
+      if(isQuotaError(j)){ applyBackoff(j.retryAfterSec||30); $('kpiTradesSrc').textContent='rate limit'; return; }
 
       if(!(j.ok && Array.isArray(j.items))){
         $('kpiTrades').textContent = '—';
@@ -707,6 +727,15 @@
     }
 
     input.addEventListener('change', ()=>{
+      const raw = input.value.trim();
+      if(raw && !/^https?:\/\//i.test(raw)) {
+        state.workerBase = '';
+        localStorage.removeItem('DG_WORKER_BASE');
+        $('workerInfo').textContent = `worker: (invalid URL)`;
+        setStatus('err', 'worker base must be a URL');
+        return;
+      }
+
       state.workerBase = input.value.trim().replace(/\/+$/,'');
       localStorage.setItem('DG_WORKER_BASE', state.workerBase);
       $('workerInfo').textContent = `worker: ${state.workerBase || '(set below)'}`;
