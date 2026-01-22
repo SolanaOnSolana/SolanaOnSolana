@@ -2427,6 +2427,109 @@ display:none;
   const DS = "https://api.dexscreener.com/latest/dex";
   const BDS = "https://flat-grass-9c26solanaonsolana.simon-kaggwa-why.workers.dev/bds";
 
+// ===================== SOLANA (BDS) helpers (required for charts/trades) =====================
+// Birdeye needs TOKEN MINT (base token address), not the LP/pool address.
+// We try multiple state vars because this project evolved over time.
+function solMintFromState(){
+  // Primary: selected token mint (most builds store this in `addr` for Solana)
+  try{
+    const a = String(addr || '').trim();
+    if(a && a.length > 30){
+      const last = a.split('_').pop();
+      return (last || a).trim();
+    }
+  }catch(_){}
+
+  // Secondary: some builds store it in curTokenAddr
+  try{
+    const a = String(curTokenAddr || '').trim();
+    if(a && a.length > 30){
+      const last = a.split('_').pop();
+      return (last || a).trim();
+    }
+  }catch(_){}
+
+  // Fallback: sometimes poolId is like "solana_<mint>"
+  try{
+    const raw = String(poolId || '').trim();
+    if(raw){
+      const last = raw.split('_').pop();
+      if(last && last.length > 30) return last.trim();
+      if(raw.length > 30) return raw;
+    }
+  }catch(_){}
+
+  // Last fallback: default token mint
+  try{
+    return (DEFAULT_TOKEN && DEFAULT_TOKEN.solana) ? DEFAULT_TOKEN.solana : '';
+  }catch(_){}
+  return '';
+}
+
+function tfToBirdeyeType(tfKey){
+  const k = String(tfKey || '').toLowerCase();
+  if(k === '1m') return '1m';
+  if(k === '5m') return '5m';
+  if(k === '15m') return '15m';
+  if(k === '1h' || k === '1hr') return '1H';
+  if(k === '4h' || k === '4hr') return '4H';
+  if(k === '1d' || k === '24h') return '1D';
+  if(k === '1w' || k === '7d') return '1W';
+  return '15m';
+}
+
+// Fetch Solana OHLCV from Birdeye via your Cloudflare Worker proxy (BDS).
+// Returns internal candles: {time, open, high, low, close, volume}
+async function bdsOhlcvToken(tfKey, bars=600, signal){
+  try{
+    // tolerate old call signature: (tfKey, signal)
+    if(bars && typeof bars === 'object' && bars.aborted !== undefined){
+      signal = bars;
+      bars = 600;
+    }
+  }catch(_){}
+
+  const mint = solMintFromState();
+  if(!mint) return [];
+
+  const type = tfToBirdeyeType(tfKey);
+
+  // seconds per bar for time window
+  const secPer =
+    (type === '1m') ? 60 :
+    (type === '5m') ? 300 :
+    (type === '15m') ? 900 :
+    (type === '1H') ? 3600 :
+    (type === '4H') ? 14400 :
+    (type === '1D') ? 86400 :
+    (type === '1W') ? 604800 : 900;
+
+  const now = Math.floor(Date.now()/1000);
+  const from = Math.max(0, now - (Math.max(50, Number(bars)||600) * secPer));
+
+  // Birdeye OHLCV endpoint (proxied): /defi/ohlcv?address=<mint>&type=<type>&time_from=<sec>&time_to=<sec>
+  const url = `${BDS}/defi/ohlcv?address=${encodeURIComponent(mint)}&type=${encodeURIComponent(type)}&time_from=${from}&time_to=${now}`;
+
+  const j = await fetchJson(url, { timeout: 16000, retries: 1, signal });
+
+  const items = (j?.data?.items && Array.isArray(j.data.items)) ? j.data.items :
+                (Array.isArray(j?.data) ? j.data : (Array.isArray(j) ? j : []));
+
+  const out = items.map(x => ({
+    time: Number(x?.unix_time || x?.t || x?.time || 0),
+    open: Number(x?.o ?? x?.open ?? 0),
+    high: Number(x?.h ?? x?.high ?? 0),
+    low:  Number(x?.l ?? x?.low ?? 0),
+    close:Number(x?.c ?? x?.close ?? 0),
+    volume:Number(x?.v ?? x?.volume ?? x?.v_usd ?? 0)
+  }))
+  .filter(c => c.time > 0 && isFinite(c.open) && isFinite(c.close))
+  .sort((a,b)=>a.time-b.time);
+
+  return out;
+}
+// =================================================================================================
+
   const NET_LABEL = { solana:'SOL' };
   const DEFAULT_TOKEN = {
     solana: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v' // USDC
@@ -2628,6 +2731,21 @@ display:none;
   function ensureChart(){
     if(chart) return;
     if(!elChart) return;
+    // Ensure LightweightCharts is available (auto-load if missing)
+    if(!(window.LightweightCharts && typeof window.LightweightCharts.createChart === 'function')){
+      try{
+        if(!document.getElementById('lwCharts')){
+          const s = document.createElement('script');
+          s.id = 'lwCharts';
+          s.src = 'https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js';
+          s.async = true;
+          s.onload = ()=>{ try{ ensureChart(); applyCandles(false); }catch(_){ } };
+          document.head.appendChild(s);
+        }
+      }catch(_){}
+      return;
+    }
+    try{ if((elChart.clientHeight||0) < 80) elChart.style.minHeight = '420px'; }catch(_){}
     try{ elChart.innerHTML = ''; }catch(_){}
     chart = LightweightCharts.createChart(elChart, {
       width: Math.max(1, elChart.clientWidth||1),
@@ -2790,11 +2908,19 @@ display:none;
   const ac = startRequest('candles');
   try{
     setStatus('Loading candles…');
+    const tfKey = (activeTF && (activeTF.k || activeTF.key)) ? (activeTF.k || activeTF.key) : '15m';
 
-    const tf = activeTF || '15m';
-    const candles = await bdsOhlcvToken(tf, 600, ac.signal);
+    let candles = [];
+    if(activeNet === 'solana'){
+      candles = await bdsOhlcvToken(tfKey, 600, ac.signal);
+    }else{
+      const gran = (activeTF && activeTF.gecko) ? activeTF.gecko : 'minute';
+      const url = geckoCandlesUrl(gran, null);
+      const j = await fetchJson(url, {timeout:16000, retries:1, signal: ac.signal});
+      candles = mapGeckoOhlcv(j);
+    }
+
     if(id !== reqIds.candles) return;
-
     rawCandles = Array.isArray(candles) ? candles : [];
     applyCandles(fit);
 
