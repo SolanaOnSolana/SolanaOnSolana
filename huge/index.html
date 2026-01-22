@@ -1,0 +1,137 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>DexGuard v0</title>
+  <style>
+    body{margin:0;font-family:system-ui;background:#0b0f14;color:#e7eef7}
+    header{padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;gap:10px;align-items:center}
+    .pill{padding:6px 10px;border:1px solid rgba(255,255,255,.12);border-radius:999px;font-size:12px;opacity:.9}
+    main{padding:14px;display:grid;gap:12px;max-width:900px;margin:0 auto}
+    input{width:100%;padding:12px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:#0f1520;color:#e7eef7}
+    .grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+    .card{border:1px solid rgba(255,255,255,.10);background:#0f1520;border-radius:12px;padding:12px}
+    .muted{opacity:.7;font-size:12px}
+    .big{font-size:20px;font-weight:700}
+    table{width:100%;border-collapse:collapse;font-size:12px}
+    td,th{padding:8px 6px;border-bottom:1px solid rgba(255,255,255,.08);text-align:left}
+    .buy{color:#4ade80}
+    .sell{color:#fb7185}
+    @media (max-width:720px){ .grid{grid-template-columns:1fr} }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="pill">DexGuard v0</div>
+    <div class="pill" id="chainPill">chain: solana</div>
+    <div class="pill muted" id="statusPill">idle</div>
+  </header>
+
+  <main>
+    <div class="card">
+      <div class="muted">Token address (paste mint)</div>
+      <input id="addr" placeholder="e.g. BONK: DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263" />
+      <div class="muted" style="margin-top:8px">
+        Worker base:
+        <span id="base"></span>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <div class="muted">Price (USD)</div>
+        <div class="big" id="price">—</div>
+      </div>
+      <div class="card">
+        <div class="muted">Trades (last fetch)</div>
+        <div class="big" id="tradesCount">—</div>
+      </div>
+      <div class="card">
+        <div class="muted">Candles (last fetch)</div>
+        <div class="big" id="candlesCount">—</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="muted" style="margin-bottom:8px">Live trades</div>
+      <table>
+        <thead>
+          <tr><th>Time</th><th>Side</th><th>USD</th><th>Price</th><th>Maker</th></tr>
+        </thead>
+        <tbody id="trades"></tbody>
+      </table>
+    </div>
+  </main>
+
+  <script>
+    const WORKER_BASE = "https://flat-grass-9c26solanaonsolana.simon-kaggwa-why.workers.dev";
+    const CHAIN = "solana";
+    document.getElementById("base").textContent = WORKER_BASE;
+
+    const el = (id) => document.getElementById(id);
+    const fmt = (n, d=6) => (Number.isFinite(n) ? n.toFixed(d) : "—");
+    const short = (s) => s ? (s.slice(0,4)+"…"+s.slice(-4)) : "—";
+    const timeAgo = (tSec) => {
+      const ms = (Date.now()/1000 - tSec);
+      if (!Number.isFinite(ms)) return "—";
+      if (ms < 60) return Math.floor(ms) + "s";
+      if (ms < 3600) return Math.floor(ms/60) + "m";
+      return Math.floor(ms/3600) + "h";
+    };
+
+    let timer = null;
+    let lastAddr = "";
+
+    async function api(path) {
+      const r = await fetch(WORKER_BASE + path, { cache: "no-store" });
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      return await r.json();
+    }
+
+    async function tick(addr) {
+      el("statusPill").textContent = "loading…";
+
+      const [p, t, c] = await Promise.all([
+        api(`/api/price?chain=${CHAIN}&address=${encodeURIComponent(addr)}`),
+        api(`/api/trades?chain=${CHAIN}&address=${encodeURIComponent(addr)}&limit=20`),
+        api(`/api/candles?chain=${CHAIN}&address=${encodeURIComponent(addr)}&tf=15m&limit=200`)
+      ]);
+
+      el("price").textContent = p.ok ? fmt(p.price, 8) : "—";
+      el("tradesCount").textContent = t.ok ? String(t.count) : "—";
+      el("candlesCount").textContent = c.ok ? String(c.count) : "—";
+
+      if (t.ok) {
+        el("trades").innerHTML = t.items.map(x => `
+          <tr>
+            <td class="muted">${timeAgo(x.t)}</td>
+            <td class="${x.side === "buy" ? "buy" : (x.side === "sell" ? "sell" : "")}">${x.side}</td>
+            <td>$${fmt(x.usd, 4)}</td>
+            <td>${fmt(x.price, 10)}</td>
+            <td class="muted">${short(x.maker)}</td>
+          </tr>
+        `).join("");
+      }
+
+      el("statusPill").textContent = "live";
+    }
+
+    function start(addr) {
+      if (!addr || addr.length < 20) return;
+      lastAddr = addr;
+      if (timer) clearInterval(timer);
+
+      tick(addr).catch(err => { el("statusPill").textContent = "error"; console.error(err); });
+
+      timer = setInterval(() => {
+        tick(lastAddr).catch(err => { el("statusPill").textContent = "error"; console.error(err); });
+      }, 2000);
+    }
+
+    el("addr").addEventListener("change", (e) => start(e.target.value.trim()));
+    el("addr").value = "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263";
+    start(el("addr").value.trim());
+  </script>
+</body>
+</html>
