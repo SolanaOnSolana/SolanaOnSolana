@@ -84,6 +84,17 @@
   </div>
 
 <script>
+  // Normalize worker base URL (must be https://<name>.<account>.workers.dev)
+  function normalizeWorkerBase(u) {
+    u = String(u || "").trim();
+    if (!u) return "";
+    // common mistake: paste Cloudflare dashboard URL
+    if (u.includes("dash.cloudflare.com")) return "__DASH__";
+    // remove trailing slashes
+    u = u.replace(/\/+$/, "");
+    return u;
+  }
+
   const $ = (id)=>document.getElementById(id);
 
   const state = {
@@ -176,6 +187,27 @@ function fmtNum(x, d=8){
     const chain = state.chain;
     const addr = state.address;
     const pairParam = state.pair ? `&pair=${encodeURIComponent(state.pair)}` : '';
+
+    // resolve (shows why "pair_not_found" happens)
+    try{
+      const rr = await api(`/api/resolve?chain=${encodeURIComponent(chain)}&address=${encodeURIComponent(addr)}${pairParam}`);
+      if(rr.j?.ok){
+        const mint = rr.j?.tokenMint || addr;
+        const p = rr.j?.pair || '—';
+        diag(`<b>Resolve:</b> <span class="ok">OK</span> • <b>mint</b>=${mint} • <b>pair</b>=${p} • <b>src</b>=${rr.j?.source||'—'}`);
+        if(!state.pair && rr.j?.pair) state.pair = rr.j.pair;
+      } else {
+        diag(`<b>Resolve:</b> <span class="bad">FAIL</span> • ${rr.j?.error||'unknown'}<br>${rr.j?.hint||''}`);
+        $('srcPrice').textContent = 'price: pair_not_found';
+        $('srcTrades').textContent = 'trades: pair_not_found';
+        $('srcCandles').textContent = 'candles: pair_not_found';
+        return;
+      }
+    } catch(e){
+      diag(`<b>Resolve:</b> <span class="bad">ERROR</span> • ${String(e)}`);
+      return;
+    }
+
 
     // price
     try{
@@ -325,6 +357,14 @@ await refreshOnce();
       console.error('[DG] boot error', e);
     }
   });
+
+
+  try {
+    const saved = localStorage.getItem('dg_worker');
+    if (saved && document.getElementById('worker') && !document.getElementById('worker').value) {
+      document.getElementById('worker').value = saved.trim();
+    }
+  } catch (e) {}
 
 </script>
 </body>
