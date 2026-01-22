@@ -231,7 +231,20 @@ async function geckoPoolTradesClient(pool, limit=100) {
       if (!side && typeof a.is_buy === "boolean") side = a.is_buy ? "buy" : "sell";
 
       const usd = Number(a.volume_in_usd ?? a.trade_volume_in_usd ?? a.amount_in_usd ?? a.total_value_in_usd);
-      const price = Number(a.price_in_usd ?? a.trade_price_usd ?? a.price_usd);
+      // Price: prefer USD, but accept other numeric price fields if USD isn't present
+let price = Number(a.price_in_usd ?? a.trade_price_usd ?? a.price_usd);
+if (!Number.isFinite(price)) {
+  price = Number(
+    a.price ??
+    a.trade_price ??
+    a.price_in_quote_token ??
+    a.price_in_base_token ??
+    a.price_in_token ??
+    a.execution_price ??
+    a.avg_price
+  );
+}
+
 
       const maker = a.taker_address ?? a.trader_address ?? a.from_address ?? a.wallet_address ?? null;
       const tx = a.tx_hash ?? a.transaction_hash ?? a.tx ?? null;
@@ -286,14 +299,26 @@ async function geckoPoolOhlcvClient(pool, tf, limit=800, fromSec=null, toSec=nul
         const c = Number(row?.[2]);
         const h = Number(row?.[3]);
         const l = Number(row?.[4]);
-        return {
-          time: tt,
-          open: Number.isFinite(o) ? o : null,
-          high: Number.isFinite(h) ? h : null,
-          low:  Number.isFinite(l) ? l : null,
-          close:Number.isFinite(c) ? c : null
-        };
-      }).filter(x => x.time && x.open != null && x.high != null && x.low != null && x.close != null) : [];
+        // Sanitize values: ensure numeric + consistent (high >= max(open,close), low <= min(open,close))
+const oo = Number.isFinite(o) ? o : null;
+const hh = Number.isFinite(h) ? h : null;
+const ll = Number.isFinite(l) ? l : null;
+const cc = Number.isFinite(c) ? c : null;
+
+if (oo == null || hh == null || ll == null || cc == null) return null;
+
+const hi = Math.max(oo, hh, ll, cc);
+const lo = Math.min(oo, hh, ll, cc);
+
+return {
+  time: tt,
+  open: oo,
+  high: hi,
+  low:  lo,
+  close: cc
+};
+
+      }).filter(x => x && x.time && x.open != null && x.high != null && x.low != null && x.close != null) : [];
 
       const items = (fromSec || toSec)
         ? itemsAll.filter(x => (!fromSec || x.time >= fromSec) && (!toSec || x.time <= toSec))
@@ -429,13 +454,47 @@ upColor: "#22c55e",
 
     function applyCandles(candles, metaText) {
       if (!Array.isArray(candles) || candles.length === 0) return false;
-      candleSeries.setData(candles);
+
+      // Sanitize + sort ascending by time (Lightweight Charts expects monotonic time)
+      const cleaned = [];
+      const seen = new Set();
+      for (const x of candles) {
+        if (!x) continue;
+        let t = Number(x.time ?? x.t);
+        if (!Number.isFinite(t)) continue;
+        if (t > 1e12) t = Math.floor(t / 1000); // ms -> sec
+        t = Math.floor(t);
+        const o = Number(x.open ?? x.o);
+        const h = Number(x.high ?? x.h);
+        const l = Number(x.low  ?? x.l);
+        const c = Number(x.close?? x.c);
+        if (![o,h,l,c].every(Number.isFinite)) continue;
+
+        const hi = Math.max(o,h,l,c);
+        const lo = Math.min(o,h,l,c);
+        const key = String(t);
+        // keep last occurrence if duplicates
+        if (seen.has(key)) {
+          // overwrite previous
+          for (let i = cleaned.length - 1; i >= 0; i--) {
+            if (cleaned[i].time === t) { cleaned[i] = { time:t, open:o, high:hi, low:lo, close:c }; break; }
+          }
+        } else {
+          seen.add(key);
+          cleaned.push({ time:t, open:o, high:hi, low:lo, close:c });
+        }
+      }
+      cleaned.sort((a,b)=>a.time-b.time);
+      if (!cleaned.length) return false;
+
+      candleSeries.setData(cleaned);
+
       try { chart.timeScale().fitContent(); } catch {}
-      state.candles = candles.slice();
-      el("candlesCount").textContent = String(candles.length);
+      state.candles = cleaned.slice();
+      el("candlesCount").textContent = String(cleaned.length);
       el("candlesMeta").textContent = metaText || "ok";
       el("chartMeta").textContent = metaText || "ok";
-            try { setSeriesPrecisionFromPrice(candles[candles.length-1]?.close); } catch(_) {}
+            try { setSeriesPrecisionFromPrice(cleaned[cleaned.length-1]?.close); } catch(_) {}
 // keep last candle visible
       try { chart.timeScale().fitContent(); } catch {}
       return true;
