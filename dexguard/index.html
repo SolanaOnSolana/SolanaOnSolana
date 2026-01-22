@@ -1,614 +1,730 @@
-const ALLOWED_CHAINS = new Set([
-  "solana","ethereum","bsc","base","arbitrum","avalanche","optimism","polygon","zksync","sui","monad",
-]);
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>DexGuard v0</title>
+  <style>
+    body{margin:0;font-family:system-ui;background:#0b0f14;color:#e7eef7}
+    header{padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    .pill{padding:6px 10px;border:1px solid rgba(255,255,255,.12);border-radius:999px;font-size:12px;opacity:.95}
+    main{padding:14px;display:grid;gap:12px;max-width:1000px;margin:0 auto}
+    input{width:100%;padding:12px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:#0f1520;color:#e7eef7}
+    .grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+    .card{border:1px solid rgba(255,255,255,.10);background:#0f1520;border-radius:12px;padding:12px}
+    .muted{opacity:.7;font-size:12px}
+    .big{font-size:20px;font-weight:700}
+    table{width:100%;border-collapse:collapse;font-size:12px}
+    td,th{padding:8px 6px;border-bottom:1px solid rgba(255,255,255,.08);text-align:left}
+    .buy{color:#4ade80}
+    .sell{color:#fb7185}
+    .warn{color:#fbbf24}
+    .bad{color:#fb7185}
+    a{color:#93c5fd;text-decoration:none}
+    a:hover{text-decoration:underline}
+    #chart{height:380px; width:100%;}
+    .row{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+    .btn{cursor:pointer;user-select:none;padding:8px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:#0b0f14;color:#e7eef7;font-size:12px}
+    .btn:hover{border-color:rgba(255,255,255,.22)}
+    .searchWrap{position:relative}
+    .results{position:absolute;left:0;right:0;top:calc(100% + 8px);background:#0f1520;border:1px solid rgba(255,255,255,.12);border-radius:12px;max-height:320px;overflow:auto;z-index:50;box-shadow:0 18px 40px rgba(0,0,0,.55)}
+    .resultRow{display:flex;gap:10px;align-items:center;padding:10px 10px;border-bottom:1px solid rgba(255,255,255,.08);cursor:pointer}
+    .resultRow:last-child{border-bottom:none}
+    .resultRow:hover{background:rgba(255,255,255,.04)}
+    .resultLogo{width:28px;height:28px;border-radius:8px;object-fit:cover;border:1px solid rgba(255,255,255,.12);background:#0b0f14}
+    .resultMain{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
+    .resultTitle{font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .resultSub{font-size:12px;opacity:.7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
-const TF_SECONDS = {
-  "1s": 1, "15s": 15, "30s": 30,
-  "1m": 60, "3m": 180, "5m": 300, "15m": 900, "30m": 1800,
-  "1h": 3600, "2h": 7200, "4h": 14400, "6h": 21600, "12h": 43200,
-  "1d": 86400,
-};
 
+    @media (max-width:720px){
+      .grid{grid-template-columns:1fr}
+      #chart{height:320px}
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="pill">DexGuard v0</div>
+    <div class="pill" id="chainPill">chain: solana</div>
+    <div class="pill" id="statusPill">idle</div>
+    <div class="pill muted" id="hintPill">—</div>
+  </header>
 
-const GECKO_BASE = "https://api.geckoterminal.com/api/v2";
+  <main>
+    <div class="card">
+      <div class="muted">Token address (paste mint)</div>
+      <div class="muted" style="margin-top:10px">Search (name / symbol)</div>
+      <div class="searchWrap" style="margin-top:6px">
+        <input id="search" placeholder="Search tokens… (e.g. bonk, wif)" autocomplete="off" />
+        <div id="searchResults" class="results" style="display:none"></div>
+      </div>
+<input id="addr" placeholder="e.g. BONK: DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263" />
+      <div class="muted" style="margin-top:8px">
+        Worker base:
+        <span id="base"></span>
+      </div>
+    </div>
 
-function geckoNetwork(chain) {
-  const c = (chain || "").toLowerCase();
-  if (c === "ethereum") return "eth";
-  if (c === "sol") return "solana";
-  if (c === "bnb") return "bsc";
-  return c; // solana, bsc, base, polygon_pos, etc.
-}
+    <div class="grid">
+      <div class="card">
+        <div class="muted">Price (USD)</div>
+        <div class="big" id="price">—</div>
+        <div class="muted" id="priceMeta">—</div>
+      </div>
 
-function geckoTf(tf) {
-  const s = (tf || "").toLowerCase().trim();
-  const m = s.match(/^(\d+)([mhd])$/);
-  if (!m) return null;
-  const n = parseInt(m[1], 10);
-  const u = m[2];
-  if (!Number.isFinite(n) || n <= 0) return null;
-  if (u === "m") return { timeframe: "minute", aggregate: n };
-  if (u === "h") return { timeframe: "hour", aggregate: n };
-  if (u === "d") return { timeframe: "day", aggregate: n };
-  return null;
-}
+      <div class="card">
+        <div class="muted">Trades (last fetch)</div>
+        <div class="big" id="tradesCount">—</div>
+        <div class="muted" id="tradesMeta">—</div>
+      </div>
 
-async function geckoUpstreamJson(url) {
-  const res = await fetch(url, { headers: { "accept": "application/json" } });
-  const text = await res.text();
-  let j = null;
-  try { j = JSON.parse(text); } catch (_) {}
-  return { res, text, j };
-}
+      <div class="card">
+        <div class="muted">Candles (15m)</div>
+        <div class="big" id="candlesCount">—</div>
+        <div class="muted" id="candlesMeta">—</div>
+      </div>
+    </div>
 
-async function geckoPoolOhlcv(chain, pool, tf, limit, fromSec, toSec) {
-  const net = geckoNetwork(chain);
-  const tfm = geckoTf(tf);
-  if (!net || !tfm) return null;
+    <div class="card" id="dsCard">
+      <div style="display:flex;gap:12px;align-items:center">
+        <img id="dsLogo" alt="" style="width:44px;height:44px;border-radius:10px;display:none;object-fit:cover;border:1px solid rgba(255,255,255,.12)">
+        <div style="flex:1">
+          <div class="big" id="dsName">—</div>
+          <div class="muted" id="dsSub">—</div>
+          <div class="muted" id="dsMeta" style="margin-top:6px">—</div>
+        </div>
+      </div>
+      <div class="muted" style="margin-top:10px" id="dsStats">—</div>
+      <div class="muted" style="margin-top:8px" id="dsLinks">—</div>
+    </div>
 
-  const baseUrl = `${GECKO_BASE}/networks/${net}/pools/${pool}/ohlcv/${tfm.timeframe}`;
-  const mkUrl = (beforeVal) => {
-    const u = new URL(baseUrl);
-    u.searchParams.set("aggregate", String(tfm.aggregate));
-    u.searchParams.set("limit", String(limit));
-    u.searchParams.set("currency", "usd");
-    if (beforeVal != null) u.searchParams.set("before_timestamp", String(beforeVal));
-    return u.toString();
-  };
+    <div class="card">
+      <div class="row" style="margin-bottom:8px">
+        <div class="muted">Chart</div>
+        <div class="muted" id="chartMeta">—</div>
+      </div>
+      <div id="chart"></div>
+    </div>
 
-  // GeckoTerminal's before_timestamp has historically been seconds; some stacks use ms.
-  const beforeSec = toSec ? Math.floor(Number(toSec)) : null;
-  const beforeMs  = toSec ? Math.floor(Number(toSec) * 1000) : null;
+    <div class="card">
+      <div class="row" style="margin-bottom:8px">
+        <div class="muted">Live trades</div>
+        <div class="row">
+          <div class="muted">limit:</div>
+          <button class="btn" id="limit50">50</button>
+          <button class="btn" id="limit100">100</button>
+          <button class="btn" id="limit200">200</button>
+        </div>
+      </div>
+      <table>
+        <thead>
+          <tr><th>Time</th><th>Side</th><th>USD</th><th>Price</th><th>Maker</th></tr>
+        </thead>
+        <tbody id="trades"></tbody>
+      </table>
+    </div>
+  </main>
 
-  // Try seconds first, then ms if empty or error.
-  const tries = [];
-  tries.push({ label: "sec", url: mkUrl(beforeSec) });
-  if (beforeMs != null) tries.push({ label: "ms", url: mkUrl(beforeMs) });
+  <script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+  <script>
+    const WORKER_BASE = "https://flat-grass-9c26solanaonsolana.simon-kaggwa-why.workers.dev";
+    const CHAIN = "solana";
+    const TF = "15m";
+    const TF_SEC = 900; // 15m
 
-  let lastFail = null;
+    document.getElementById("base").textContent = WORKER_BASE;
 
-  for (const tr of tries) {
-    const { res, text, j } = await geckoUpstreamJson(tr.url);
-    if (!res.ok) {
-      lastFail = { status: res.status, body: (text || "").slice(0, 500), mode: tr.label };
-      continue;
+    const el = (id) => document.getElementById(id);
+    const fmt = (n, d=6) => (Number.isFinite(n) ? n.toFixed(d) : "—");
+    const short = (s) => s ? (s.slice(0,4)+"…"+s.slice(-4)) : "—";
+
+    function timeAgoFromTs(tSec) {
+      const dt = (Date.now()/1000 - tSec);
+      if (!Number.isFinite(dt)) return "—";
+      if (dt < 60) return Math.floor(dt) + "s";
+      if (dt < 3600) return Math.floor(dt/60) + "m";
+      if (dt < 86400) return Math.floor(dt/3600) + "h";
+      if (dt < 86400*30) return Math.floor(dt/86400) + "d";
+      if (dt < 86400*365) return Math.floor(dt/(86400*30)) + "mo";
+      return Math.floor(dt/(86400*365)) + "y";
     }
 
-    const list = j?.data?.attributes?.ohlcv_list || [];
-    const itemsAll = Array.isArray(list) ? list.map((row) => {
-      const ts = Number(row?.[0]);
-      // Gecko returns ms for timestamps in many cases
-      const t = Number.isFinite(ts) ? (ts > 1e12 ? Math.floor(ts / 1000) : Math.floor(ts)) : null;
-      const o = safeNum(row?.[1]);
-      const c = safeNum(row?.[2]);
-      const h = safeNum(row?.[3]);
-      const l = safeNum(row?.[4]);
-      const v = safeNum(row?.[5]);
-      return { t, o, h, l, c, v };
-    }).filter(x => x.t && x.o != null && x.h != null && x.l != null && x.c != null) : [];
-
-    const items = (fromSec || toSec)
-      ? itemsAll.filter(x => (!fromSec || x.t >= fromSec) && (!toSec || x.t <= toSec))
-      : itemsAll;
-
-    if (items && items.length) {
-      return {
-        ok: true,
-        chain,
-        pair: pool,
-        tf,
-        from: fromSec || null,
-        to: toSec || null,
-        count: items.length,
-        items,
-        fetchedAt: Date.now(),
-        source: "gecko",
-        mode: tr.label,
-      };
-    }
-
-    // If response ok but empty, try next mode if available
-    lastFail = { status: 200, body: "empty_ohlcv_list", mode: tr.label };
-  }
-
-  return { ok: false, source: "gecko", status: lastFail?.status || 0, body: lastFail?.body || "", mode: lastFail?.mode || null };
-}
-
-
-async function geckoPoolTrades(chain, pool, limit) {
-  const net = geckoNetwork(chain);
-  if (!net) return null;
-
-  const u = new URL(`${GECKO_BASE}/networks/${net}/pools/${pool}/trades`);
-  const { res, text, j } = await geckoUpstreamJson(u.toString());
-  if (!res.ok) {
-    return { ok: false, source: "gecko", status: res.status, body: (text || "").slice(0, 500) };
-  }
-
-  const data = j?.data || [];
-  const itemsAll = Array.isArray(data) ? data.map((it) => {
-    const a = it?.attributes || {};
-    let ts = a.block_timestamp ?? a.timestamp ?? a.time ?? a.datetime ?? a.created_at ?? null;
-    if (typeof ts === "string") {
-      const d = Date.parse(ts);
-      ts = Number.isFinite(d) ? d : ts;
-    }
-    const n = Number(ts);
-    const t = Number.isFinite(n) ? (n > 1e12 ? Math.floor(n / 1000) : Math.floor(n)) : null;
-
-    const kind = String(a.kind ?? a.side ?? a.trade_type ?? "").toLowerCase();
-    let side = kind.includes("buy") ? "buy" : (kind.includes("sell") ? "sell" : null);
-    if (!side && typeof a.is_buy === "boolean") side = a.is_buy ? "buy" : "sell";
-
-    const usd = safeNum(a.volume_in_usd ?? a.trade_volume_in_usd ?? a.amount_in_usd ?? a.total_value_in_usd);
-    const price = safeNum(a.price_in_usd ?? a.trade_price_usd ?? a.price_usd);
-    const maker = a.taker_address ?? a.trader_address ?? a.from_address ?? a.wallet_address ?? null;
-    const tx = a.tx_hash ?? a.transaction_hash ?? a.tx ?? null;
-
-    return { t, side, usd, price, maker, tx };
-  }).filter(x => x.t && x.price != null) : [];
-
-  const items = itemsAll.slice(0, limit);
-
-  return {
-    ok: true,
-    chain,
-    pair: pool,
-    count: items.length,
-    items,
-    fetchedAt: Date.now(),
-    source: "gecko",
-  };
-}
-
-function corsHeaders() {
-  return {
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Methods": "GET,OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type",
-    "Access-Control-Max-Age": "86400",
-  };
-}
-
-function safeStringify(obj) {
-  try {
-    return JSON.stringify(obj, (_k, v) => (typeof v === "bigint" ? v.toString() : v));
-  } catch (e) {
-    // last resort
-    try { return JSON.stringify({ ok:false, error:"json_stringify_failed", detail: String(e) }); }
-    catch { return '{"ok":false,"error":"json_stringify_failed"}'; }
-  }
-}
-
-function json(data, status = 200, extraHeaders = {}) {
-  return new Response(safeStringify(data), {
-    status,
-    headers: { ...corsHeaders(), "Content-Type": "application/json", ...extraHeaders },
-  });
-}
-
-
-function clampInt(n, min, max) {
-  n = Number.isFinite(n) ? Math.trunc(n) : min;
-  return Math.max(min, Math.min(max, n));
-}
-
-function safeNum(x) {
-  const n = Number(x);
-  return Number.isFinite(n) ? n : null;
-}
-
-async function upstreamJson(url, init = {}) {
-  const res = await fetch(url, init);
-  const text = await res.text();
-  let j = null;
-  try { j = JSON.parse(text); } catch (_) {}
-  return { res, text, j };
-}
-
-async function cachedFetch(ctx, cacheKey, ttlSec, fetcher) {
-  const cache = caches.default;
-
-  // Try fresh first
-  try {
-    const r = await fetcher();
-    if (r) {
-      ctx.waitUntil(cache.put(cacheKey, r.clone()));
-      return r;
-    }
-  } catch (_) {
-    // ignore and try cache
-  }
-
-  const cached = await cache.match(cacheKey);
-  if (cached) {
-    const h = new Headers(cached.headers);
-    h.set("X-Cache", "stale");
-    return new Response(await cached.text(), { status: cached.status, headers: h });
-  }
-
-  // If no cache and fetcher failed, let fetcher throw/return null error handling happens above callers
-  return null;
-}
-
-function hasBirdeyeKey(env) {
-  const k = env && env.BIRDEYE_API_KEY;
-  return typeof k === "string" && k.trim().length > 10;
-}
-
-function birdeyeHeaders(env, chain) {
-  return {
-    "accept": "application/json",
-    ...(hasBirdeyeKey(env) ? { "X-API-KEY": env.BIRDEYE_API_KEY } : {}),
-    "x-chain": chain,
-  };
-}
-
-
-export default {
-  async fetch(request, env, ctx) {
-    try {
-    const url = new URL(request.url);
-
-    // CORS preflight
-    if (request.method === "OPTIONS") {
-      return new Response(null, { status: 204, headers: corsHeaders() });
-    }
-
-    // Birdeye is optional: if the API key is missing or invalid, endpoints will fall back where possible.
-
-    // ---------- /api/ds/tokenpairs ----------
-    
-    // ---------- /api/ds/search ----------
-    if (url.pathname === "/api/ds/search") {
-      const chain = (url.searchParams.get("chain") || "").toLowerCase();
-      const q = (url.searchParams.get("q") || "").trim();
-      const limit = clampInt(url.searchParams.get("limit"), 1, 25);
-
-      if (!q || q.length < 2) return json({ ok:false, error:"missing_query" }, 400);
-
-      const cache = caches.default;
-      const cacheKeyUrl = new URL(url.origin + url.pathname);
-      cacheKeyUrl.searchParams.set("chain", chain || "any");
-      cacheKeyUrl.searchParams.set("q", q.toLowerCase());
-      cacheKeyUrl.searchParams.set("limit", String(limit));
-      const cacheKey = new Request(cacheKeyUrl.toString(), { method:"GET" });
-
-      const cached = await cache.match(cacheKey);
-      if (cached) return cached;
-
-      const upstream = new URL("https://api.dexscreener.com/latest/dex/search");
-      upstream.searchParams.set("q", q);
-
-      let upstreamRes;
+    async function api(path) {
+      const full = WORKER_BASE + path;
+      let r, text;
       try {
-        upstreamRes = await fetch(upstream.toString(), { headers: { "accept": "application/json" } });
-      } catch {
-        return json({ ok:false, error:"upstream_fetch_failed" }, 200);
+        r = await fetch(full, { cache: "no-store" });
+        text = await r.text();
+      } catch (e) {
+        return { ok:false, http:0, error:"network_error", detail:String(e), url: full };
       }
 
-      const text = await upstreamRes.text();
-      if (!upstreamRes.ok) {
-        return json({ ok:false, error:"dexscreener_error", status: upstreamRes.status, body: text.slice(0,500) }, 200);
+      let j = null;
+      try { j = JSON.parse(text); } catch { /* keep null */ }
+
+      if (!r.ok) {
+        // Preserve HTTP status for diagnostics, but don't assume JSON shape
+        return { ok:false, http:r.status, error:"http_error", body:(text||"").slice(0,250), url: full, json: j };
       }
 
-      let j;
-      try { j = JSON.parse(text); } catch { return json({ ok:false, error:"invalid_upstream_json" }, 200); }
-
-      let pairs = Array.isArray(j?.pairs) ? j.pairs : [];
-      if (chain && chain !== "any") pairs = pairs.filter(p => String(p?.chainId || "").toLowerCase() === chain);
-
-      const out = { ok:true, chain: chain || "any", q, count: pairs.length, pairs: pairs.slice(0, limit) };
-
-      const resp = json(out, 200, { "Cache-Control": "public, max-age=10, stale-while-revalidate=60" });
-      ctx.waitUntil(cache.put(cacheKey, resp.clone()));
-      return resp;
-    }
-
-if (url.pathname === "/api/ds/tokenpairs") {
-      const chain = (url.searchParams.get("chain") || "solana").toLowerCase();
-      const token = (url.searchParams.get("token") || "").trim();
-      if (!ALLOWED_CHAINS.has(chain)) return json({ ok:false, error:"unsupported_chain", chain }, 400);
-      if (!token || token.length < 20) return json({ ok:false, error:"missing_or_invalid_token" }, 400);
-
-      const cacheKey = new Request(new URL(url.origin + url.pathname + `?chain=${encodeURIComponent(chain)}&token=${encodeURIComponent(token)}`).toString(), { method:"GET" });
-
-      const resp = await cachedFetch(ctx, cacheKey, 10, async () => {
-        const upstream = `https://api.dexscreener.com/latest/dex/tokens/${encodeURIComponent(token)}`;
-        const { res, j } = await upstreamJson(upstream, { headers: { "accept":"application/json" }});
-        if (!res.ok) return json({ ok:false, error:"dexscreener_error", status: res.status }, 200);
-        const pairs = Array.isArray(j?.pairs) ? j.pairs.filter(p => String(p?.chainId || "").toLowerCase() === chain) : [];
-        return json({ ok:true, chain, token, pairs, fetchedAt: Date.now(), source:"dexscreener" }, 200, {
-          "Cache-Control": "public, max-age=10, stale-while-revalidate=60",
-        });
-      });
-
-      return resp || json({ ok:false, error:"upstream_fetch_failed" }, 200);
-    }
-
-    // ---------- /api/price ----------
-    if (url.pathname === "/api/price") {
-      const chain = (url.searchParams.get("chain") || "solana").toLowerCase();
-      const address = (url.searchParams.get("address") || "").trim();
-      const pair = (url.searchParams.get("pair") || "").trim();
-      if (!ALLOWED_CHAINS.has(chain)) return json({ ok:false, error:"unsupported_chain", chain }, 400);
-      if ((!address || address.length < 20) && (!pair || pair.length < 20)) return json({ ok:false, error:"missing_or_invalid_address" }, 400);
-
-      const cacheKey = new Request(new URL(url.origin + url.pathname + `?chain=${encodeURIComponent(chain)}&address=${encodeURIComponent(address)}`).toString(), { method:"GET" });
-
-      const resp = await cachedFetch(ctx, cacheKey, 2, async () => {
-        const upstream = new URL("https://public-api.birdeye.so/defi/price");
-        upstream.searchParams.set("address", address);
-        const { res, text, j } = await upstreamJson(upstream.toString(), { headers: birdeyeHeaders(env, chain) });
-
-        if (url.searchParams.get("raw") === "1") {
-          return new Response(text, {
-            status: res.status,
-            headers: { ...corsHeaders(), "Content-Type":"application/json", "Cache-Control":"no-store" },
-          });
-        }
-
-        if (!res.ok) {
-          return json({ ok:false, error:"birdeye_error", status: res.status, body: (text||"").slice(0,500) }, 200);
-        }
-
-        const out = {
-          ok: true,
-          chain,
-          address,
-          price: j?.data?.value ?? null,
-          fetchedAt: Date.now(),
-          source: "birdeye",
-        };
-
-        return json(out, 200, {
-          "Cache-Control": "public, max-age=2, stale-while-revalidate=10, stale-if-error=60",
-        });
-      });
-
-      return resp || json({ ok:false, error:"upstream_fetch_failed" }, 200);
-    }
-
-    // ---------- /api/candles ----------
-    if (url.pathname === "/api/candles") {
-      const chain = (url.searchParams.get("chain") || "solana").toLowerCase();
-      const address = (url.searchParams.get("address") || "").trim();
-      const pair = (url.searchParams.get("pair") || "").trim();
-      const tf = (url.searchParams.get("tf") || "15m").toLowerCase();
-      if (!ALLOWED_CHAINS.has(chain)) return json({ ok:false, error:"unsupported_chain", chain }, 400);
-      if ((!address || address.length < 20) && (!pair || pair.length < 20)) {
-        return json({ ok:false, error:"missing_or_invalid_address" }, 400);
+      if (j && typeof j === "object") {
+        if (j.http == null) j.http = r.status;
+        if (j.url == null) j.url = full;
+        return j;
       }
-      if (!TF_SECONDS[tf]) return json({ ok:false, error:"unsupported_tf", tf }, 400);
-
-      const limit = clampInt(parseInt(url.searchParams.get("limit") || "200", 10), 50, 1000);
-      const nowSec = Math.floor(Date.now() / 1000);
-      const tfSec = TF_SECONDS[tf];
-      const timeTo = clampInt(parseInt(url.searchParams.get("to") || `${nowSec}`, 10), 0, 2147483647);
-      const timeFromDefault = timeTo - (limit * tfSec);
-      const timeFrom = clampInt(parseInt(url.searchParams.get("from") || `${timeFromDefault}`, 10), 0, 2147483647);
-
-      const cacheKeyUrl = new URL(url.origin + url.pathname);
-      cacheKeyUrl.searchParams.set("chain", chain);
-      cacheKeyUrl.searchParams.set("tf", tf);
-      cacheKeyUrl.searchParams.set("from", String(timeFrom));
-      cacheKeyUrl.searchParams.set("to", String(timeTo));
-      cacheKeyUrl.searchParams.set("limit", String(limit));
-      cacheKeyUrl.searchParams.set("address", address || "");
-      cacheKeyUrl.searchParams.set("pair", pair || "");
-      const cacheKey = new Request(cacheKeyUrl.toString(), { method:"GET" });
-
-      const doFetch = async () => {
-        // Try candidate address list: pair first (if provided), then token address.
-        const candidates = [];
-        if (pair) candidates.push(pair);
-        if (address && address !== pair) candidates.push(address);
-
-        let lastErr = null;
-
-        for (const addr of candidates) {
-          // Try v3
-          const upstream = new URL("https://public-api.birdeye.so/defi/v3/ohlcv");
-          upstream.searchParams.set("address", addr);
-          upstream.searchParams.set("type", tf);
-          upstream.searchParams.set("time_from", String(timeFrom));
-          upstream.searchParams.set("time_to", String(timeTo));
-          upstream.searchParams.set("currency", "usd");
-          upstream.searchParams.set("ui_amount_mode", "raw");
-
-          const { res, text, j } = await upstreamJson(upstream.toString(), { headers: birdeyeHeaders(env, chain) });
-
-          if (url.searchParams.get("raw") === "1") {
-            return new Response(text, {
-              status: res.status,
-              headers: { ...corsHeaders(), "Content-Type":"application/json", "Cache-Control":"no-store" },
-            });
-          }
-
-          if (!res.ok) {
-            lastErr = { status: res.status, body: (text||"").slice(0,500) };
-            // Try legacy endpoint as fallback
-            const legacy = new URL("https://public-api.birdeye.so/defi/ohlcv");
-            legacy.searchParams.set("address", addr);
-            legacy.searchParams.set("type", tf);
-            legacy.searchParams.set("time_from", String(timeFrom));
-            legacy.searchParams.set("time_to", String(timeTo));
-            legacy.searchParams.set("currency", "usd");
-            legacy.searchParams.set("ui_amount_mode", "raw");
-            const leg = await upstreamJson(legacy.toString(), { headers: birdeyeHeaders(env, chain) });
-            if (!leg.res.ok) {
-              lastErr = { status: leg.res.status, body: (leg.text||"").slice(0,500) };
-              continue;
-            }
-            // Parse legacy ok
-            const rawItems = leg.j?.data?.items || leg.j?.data?.ohlcv || leg.j?.data || [];
-            const items = Array.isArray(rawItems) ? rawItems.map((x) => ({
-              t: x?.unixTime ?? x?.unix_time ?? x?.time ?? x?.t ?? null,
-              o: safeNum(x?.o ?? x?.open),
-              h: safeNum(x?.h ?? x?.high),
-              l: safeNum(x?.l ?? x?.low),
-              c: safeNum(x?.c ?? x?.close),
-              v: safeNum(x?.v ?? x?.volume),
-            })).filter(c => c.t && c.o != null && c.h != null && c.l != null && c.c != null) : [];
-
-            return json({
-              ok:true, chain, address: address || null, pair: pair || null, tf,
-              from: timeFrom, to: timeTo, count: items.length, items,
-              fetchedAt: Date.now(), source:"birdeye"
-            }, 200, { "Cache-Control":"public, max-age=10, stale-while-revalidate=60, stale-if-error=300" });
-          }
-
-          // v3 ok parse
-          const rawItems = j?.data?.items || j?.data?.ohlcv || j?.data || [];
-          const items = Array.isArray(rawItems) ? rawItems.map((x) => ({
-            t: x?.unixTime ?? x?.unix_time ?? x?.time ?? x?.t ?? null,
-            o: safeNum(x?.o ?? x?.open),
-            h: safeNum(x?.h ?? x?.high),
-            l: safeNum(x?.l ?? x?.low),
-            c: safeNum(x?.c ?? x?.close),
-            v: safeNum(x?.v ?? x?.volume),
-          })).filter(c => c.t && c.o != null && c.h != null && c.l != null && c.c != null) : [];
-
-          return json({
-            ok:true, chain, address: address || null, pair: pair || null, tf,
-            from: timeFrom, to: timeTo, count: items.length, items,
-            fetchedAt: Date.now(), source:"birdeye"
-          }, 200, { "Cache-Control":"public, max-age=10, stale-while-revalidate=60, stale-if-error=300" });
-        }
-
-          // If Birdeye failed, try GeckoTerminal (pool OHLCV) when pair is provided
-  try {
-    if (pair) {
-      const g = await geckoPoolOhlcv(chain, pair, tf, limit, timeFrom, timeTo);
-      if (g && g.ok && Array.isArray(g.items) && g.items.length) {
-        return json(g, 200, { "Cache-Control":"public, max-age=10, stale-while-revalidate=60, stale-if-error=300" });
-      }
-    }
-  } catch (_) {}
-
-  return json({
-    ok:false,
-    error:"upstream_failed",
-    birdeye: lastErr ? { status: lastErr.status || 0, body: lastErr.body || "" } : null,
-    geckoTried: !!pair,
-  }, 200);
-};
-
-      const resp = await cachedFetch(ctx, cacheKey, 10, doFetch);
-      return resp || json({ ok:false, error:"upstream_fetch_failed" }, 200);
+      return { ok:false, http:r.status, error:"bad_json", body:(text||"").slice(0,250), url: full };
     }
 
-    // ---------- /api/trades ----------
-    if (url.pathname === "/api/trades") {
-      const chain = (url.searchParams.get("chain") || "solana").toLowerCase();
-      const address = (url.searchParams.get("address") || "").trim();
-      const pair = (url.searchParams.get("pair") || "").trim();
-      const limit = clampInt(parseInt(url.searchParams.get("limit") || "50", 10), 10, 100);
-      const offset = clampInt(parseInt(url.searchParams.get("offset") || "0", 10), 0, 5000);
+    function setStatus(kind, msg) {
+      const s = el("statusPill");
+      s.textContent = msg;
+      s.className = "pill" + (kind === "bad" ? " bad" : kind === "warn" ? " warn" : "");
+    }
 
-      if (!ALLOWED_CHAINS.has(chain)) return json({ ok:false, error:"unsupported_chain", chain }, 400);
-      if ((!address || address.length < 20) && (!pair || pair.length < 20)) return json({ ok:false, error:"missing_or_invalid_address" }, 400);
-
-      const cacheKeyUrl = new URL(url.origin + url.pathname);
-      cacheKeyUrl.searchParams.set("chain", chain);
-      cacheKeyUrl.searchParams.set("address", address);
-      cacheKeyUrl.searchParams.set("pair", pair);
-      cacheKeyUrl.searchParams.set("limit", String(limit));
-      cacheKeyUrl.searchParams.set("offset", String(offset));
-      const cacheKey = new Request(cacheKeyUrl.toString(), { method:"GET" });
-
-      const doFetch = async () => {let birdeyeErr = null;
-
-// 1) Birdeye token txs (works with token mint)
-if (address && address.length >= 20) {
-  const upstream = new URL("https://public-api.birdeye.so/defi/v3/token/txs");
-  upstream.searchParams.set("address", address);
-  upstream.searchParams.set("limit", String(limit));
-  upstream.searchParams.set("offset", String(offset));
-  // Avoid strict filters to reduce 4xx risk
-  // upstream.searchParams.set("sort_type", "desc");
-  // upstream.searchParams.set("tx_type", "swap");
-
-  const { res, text, j } = await upstreamJson(upstream.toString(), { headers: birdeyeHeaders(env, chain) });
-
-  if (url.searchParams.get("raw") === "1") {
-    return new Response(text, {
-      status: res.status,
-      headers: { ...corsHeaders(), "Content-Type":"application/json", "Cache-Control":"no-store" },
+    // ---- Chart setup
+    const chartEl = el("chart");
+    const chart = LightweightCharts.createChart(chartEl, {
+      layout: { background: { color: "#0f1520" }, textColor: "#e7eef7" },
+      grid: { vertLines: { color: "rgba(255,255,255,.08)" }, horzLines: { color: "rgba(255,255,255,.08)" } },
+      rightPriceScale: { borderColor: "rgba(255,255,255,.12)" },
+      timeScale: { borderColor: "rgba(255,255,255,.12)", timeVisible: true, secondsVisible: false },
+      crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
     });
-  }
+    const candleSeries = chart.addCandlestickSeries({
+upColor: "#22c55e",
+      downColor: "#ef4444",
+      borderUpColor: "#22c55e",
+      borderDownColor: "#ef4444",
+      wickUpColor: "#22c55e",
+      wickDownColor: "#ef4444",
+      priceFormat: { type: "price", precision: 10, minMove: 0.0000000001 },
+    }
+    );
 
-  if (res.ok) {
-    const raw = j?.data?.items || [];
-    const items = Array.isArray(raw) ? raw.map((x) => {
-      const txType = String(x?.tx_type ?? x?.side ?? "").toLowerCase();
-      const side = txType.includes("buy") ? "buy" : (txType.includes("sell") ? "sell" : "unknown");
+    function setSeriesPrecisionFromPrice(p) {
+      const n = Number(p);
+      if (!Number.isFinite(n) || n <= 0) return;
+      // Choose precision so small prices don't render as 0.00
+      let precision = 2;
+      if (n < 1) {
+        precision = Math.min(12, Math.max(2, Math.ceil(-Math.log10(n)) + 2));
+      }
+      const minMove = Math.pow(10, -precision);
+      candleSeries.applyOptions({ priceFormat: { type: "price", precision, minMove } });
+    }
 
-      const from = x?.from || null;
-      const to = x?.to || null;
-      const fromAddr = (from?.address || "").trim();
-      const toAddr = (to?.address || "").trim();
 
-      const tokenIsTo = toAddr === address;
-      const tokenIsFrom = fromAddr === address;
+    function resizeChart() {
+      const rect = chartEl.getBoundingClientRect();
+      chart.applyOptions({ width: Math.max(10, Math.floor(rect.width)), height: Math.max(10, Math.floor(rect.height)) });
+    }
+    window.addEventListener("resize", () => resizeChart());
+    setTimeout(resizeChart, 0);
 
-      const tokenAmount = tokenIsTo ? safeNum(to?.ui_amount) : (tokenIsFrom ? safeNum(from?.ui_amount) : null);
-      const usd = safeNum(x?.volume_usd);
-      const priceUsd = (usd != null && tokenAmount != null && tokenAmount !== 0)
-        ? Math.abs(usd / tokenAmount)
-        : safeNum(x?.price ?? x?.tradePrice);
+    // ---- State
+    let pollTimer = null;
+    let agoTimer = null;
+    let lastAddr = "";
+    let inFlight = false;
+    let tradesLimit = 100;
 
-      return {
-        t: x?.block_unix_time ?? null,
-        side,
-        price: priceUsd,
-        usd,
-        maker: x?.owner ?? null,
-        tx: x?.tx_hash ?? null,
+    const state = {
+      ds: null,
+      bestPair: null,
+      candles: null,
+      lastTradePrice: null,
+      lastTradeTs: null,
+      lastCandlesFetchAt: 0,
+      lastDsAt: 0,
+    };
+
+    function setActiveLimitButtons() {
+      el("limit50").style.opacity = tradesLimit === 50 ? "1" : ".6";
+      el("limit100").style.opacity = tradesLimit === 100 ? "1" : ".6";
+      el("limit200").style.opacity = tradesLimit === 200 ? "1" : ".6";
+    }
+    el("limit50").onclick = () => { tradesLimit = 50; setActiveLimitButtons(); tick(lastAddr, true); };
+    el("limit100").onclick = () => { tradesLimit = 100; setActiveLimitButtons(); tick(lastAddr, true); };
+    el("limit200").onclick = () => { tradesLimit = 200; setActiveLimitButtons(); tick(lastAddr, true); };
+    setActiveLimitButtons();
+
+    
+    async function fetchTradesPagesForChart(addr, pages = 4, pageSize = 100) {
+      const all = [];
+      const pairQ = state.bestPair ? `&pair=${encodeURIComponent(state.bestPair)}` : "";
+      for (let i = 0; i < pages; i++) {
+        const offset = i * pageSize;
+        const res = await api(`/api/trades?chain=${CHAIN}&address=${encodeURIComponent(addr)}${pairQ}&limit=${pageSize}&offset=${offset}`);
+        if (!(res && res.ok && Array.isArray(res.items) && res.items.length)) break;
+        all.push(...res.items);
+        // stop early if the last page seems exhausted
+        if (res.items.length < pageSize) break;
+      }
+      // Deduplicate by tx+time+price if available
+      const seen = new Set();
+      const out = [];
+      for (const x of all) {
+        const k = `${x.tx||""}|${x.t||""}|${x.price||""}`;
+        if (seen.has(k)) continue;
+        seen.add(k);
+        out.push(x);
+      }
+      return out;
+    }
+
+    function synthCandlesFromTrades(trades, tfSec, limit=800) {
+      const items = Array.isArray(trades) ? trades.slice() : [];
+      items.sort((a,b)=> (a.t||0)-(b.t||0)); // oldest->newest
+      const buckets = new Map();
+      for (const tr of items) {
+        const t = Number(tr.t);
+        const p = Number(tr.price);
+        if (!Number.isFinite(t) || !Number.isFinite(p)) continue;
+        const b = Math.floor(t / tfSec) * tfSec;
+        const c = buckets.get(b) || { time: b, open: p, high: p, low: p, close: p };
+        // first trade in bucket defines open (we are going oldest->newest)
+        if (c.open == null) c.open = p;
+        c.high = Math.max(c.high, p);
+        c.low = Math.min(c.low, p);
+        c.close = p;
+        buckets.set(b, c);
+      }
+      const out = Array.from(buckets.values()).sort((a,b)=>a.time-b.time);
+      return out.slice(-limit);
+    }
+
+    function applyCandles(candles, metaText) {
+      if (!Array.isArray(candles) || candles.length === 0) return false;
+      candleSeries.setData(candles);
+      try { chart.timeScale().fitContent(); } catch {}
+      state.candles = candles.slice();
+      el("candlesCount").textContent = String(candles.length);
+      el("candlesMeta").textContent = metaText || "ok";
+      el("chartMeta").textContent = metaText || "ok";
+            try { setSeriesPrecisionFromPrice(candles[candles.length-1]?.close); } catch(_) {}
+// keep last candle visible
+      try { chart.timeScale().fitContent(); } catch {}
+      return true;
+    }
+
+    function updateLastCandleFromTrade(price, tSec) {
+      if (!Number.isFinite(price) || !Number.isFinite(tSec)) return;
+      try { setSeriesPrecisionFromPrice(price); } catch(_) {}
+      if (!Array.isArray(state.candles) || state.candles.length === 0) return;
+
+      const last = state.candles[state.candles.length - 1];
+      const bucket = Math.floor(tSec / TF_SEC) * TF_SEC;
+
+      if (last.time !== bucket) {
+        const prevClose = Number(last.close);
+        const open = Number.isFinite(prevClose) ? prevClose : price;
+        const c = { time: bucket, open, high: Math.max(open, price), low: Math.min(open, price), close: price };
+        state.candles.push(c);
+        if (state.candles.length > 260) state.candles = state.candles.slice(-260);
+        candleSeries.update(c);
+        el("candlesCount").textContent = String(state.candles.length);
+        return;
+      }
+
+      const upd = {
+        time: last.time,
+        open: last.open,
+        high: Math.max(Number(last.high), price),
+        low: Math.min(Number(last.low), price),
+        close: price
       };
-    }).filter(r => r.t && r.price != null) : [];
-
-    return json({
-      ok:true, chain, address, pair: pair || null,
-      count: items.length,
-      items,
-      fetchedAt: Date.now(),
-      source:"birdeye",
-    }, 200, { "Cache-Control":"public, max-age=1, stale-while-revalidate=10, stale-if-error=30" });
-  }
-
-  birdeyeErr = { status: res.status, body: (text||"").slice(0,500) };
-}
-
-// 2) GeckoTerminal pool trades (works with pool address)
-try {
-  if (pair && pair.length >= 20) {
-    const g = await geckoPoolTrades(chain, pair, limit);
-    if (g && g.ok && Array.isArray(g.items)) {
-      return json(g, 200, { "Cache-Control":"public, max-age=10, stale-while-revalidate=60, stale-if-error=300" });
-    }
-  }
-} catch (_) {}
-
-return json({
-  ok:false,
-  error:"upstream_failed",
-  birdeye: birdeyeErr,
-  geckoTried: !!pair,
-}, 200);
-      };
-
-      const resp = await cachedFetch(ctx, cacheKey, 1, doFetch);
-      return resp || json({ ok:false, error:"upstream_fetch_failed" }, 200);
+      state.candles[state.candles.length - 1] = upd;
+      candleSeries.update(upd);
     }
 
-    return new Response("Not found", { status: 404, headers: corsHeaders() });
-    } catch (e) {
-      // Never let the Worker throw (prevents opaque 502s)
-      return json({ ok:false, error:"worker_exception", detail: String(e), stack: (e && e.stack) ? String(e.stack).slice(0, 1200) : null }, 200, {
-        "Cache-Control": "no-store",
-      });
+    function renderTrades(items) {
+      const rows = (items || []).map(x => `
+        <tr>
+          <td class="muted ago" data-ts="${Number(x.t)}">${timeAgoFromTs(Number(x.t))}</td>
+          <td class="${x.side === "buy" ? "buy" : (x.side === "sell" ? "sell" : "")}">${x.side || "—"}</td>
+          <td>$${fmt(Number(x.usd), 4)}</td>
+          <td>${fmt(Number(x.price), 10)}</td>
+          <td class="muted">${short(x.maker)}</td>
+        </tr>
+      `).join("");
+      el("trades").innerHTML = rows;
     }
 
-  },
-};
+    function startAgoTicker() {
+      if (agoTimer) clearInterval(agoTimer);
+      agoTimer = setInterval(() => {
+        document.querySelectorAll(".ago").forEach(td => {
+          const ts = Number(td.getAttribute("data-ts"));
+          td.textContent = timeAgoFromTs(ts);
+        });
+      }, 500);
+    }
+    startAgoTicker();
+
+    // ---- DexScreener search (click to load)
+    let searchDebounce = null;
+    let lastSearchQ = "";
+    const searchEl = el("search");
+    const resEl = el("searchResults");
+
+    function hideResults() {
+      resEl.style.display = "none";
+      resEl.innerHTML = "";
+    }
+
+    function showResults(rowsHtml) {
+      resEl.innerHTML = rowsHtml;
+      resEl.style.display = rowsHtml ? "" : "none";
+    }
+
+    function esc(s) {
+      return String(s||"").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    async function runSearch(q) {
+      const qq = (q || "").trim();
+      if (qq.length < 2) { hideResults(); return; }
+      lastSearchQ = qq;
+      const r = await api(`/api/ds/search?chain=${CHAIN}&q=${encodeURIComponent(qq)}&limit=12`);
+      if (qq !== lastSearchQ) return;
+      if (!(r && r.ok && Array.isArray(r.pairs) && r.pairs.length)) { hideResults(); return; }
+
+      const rows = r.pairs.map(p => {
+        const img = p?.info?.imageUrl || p?.imageUrl || "";
+        const name = p?.baseToken?.name || "";
+        const sym = p?.baseToken?.symbol || "";
+        const addr = p?.baseToken?.address || "";
+        const quote = p?.quoteToken?.symbol || "";
+        const dex = p?.dexId || "";
+        const liq = p?.liquidity?.usd || 0;
+        const priceUsd = p?.priceUsd;
+        return `
+          <div class="resultRow" data-addr="${esc(addr)}">
+            ${img ? `<img class="resultLogo" src="${esc(img)}" alt="">` : `<div class="resultLogo"></div>`}
+            <div class="resultMain">
+              <div class="resultTitle">${esc(name)} <span style="opacity:.7">(${esc(sym)})</span></div>
+              <div class="resultSub">${esc(sym)}/${esc(quote)} • ${esc(dex)} • liq $${Number(liq||0).toLocaleString()} • $${priceUsd ? Number(priceUsd).toFixed(8) : "—"}</div>
+            </div>
+            <div class="muted">${addr ? esc(addr.slice(0,4)+"…"+addr.slice(-4)) : "—"}</div>
+          </div>
+        `;
+      }).join("");
+
+      showResults(rows);
+    }
+
+    searchEl.addEventListener("input", (e) => {
+      const q = e.target.value;
+      if (searchDebounce) clearTimeout(searchDebounce);
+      searchDebounce = setTimeout(() => runSearch(q), 250);
+    });
+
+    searchEl.addEventListener("focus", () => {
+      const q = searchEl.value.trim();
+      if (q.length >= 2) runSearch(q);
+    });
+
+    document.addEventListener("click", (e) => {
+      if (!resEl.contains(e.target) && e.target !== searchEl) hideResults();
+    });
+
+    resEl.addEventListener("click", (e) => {
+      const row = e.target.closest(".resultRow");
+      if (!row) return;
+      const addr = row.getAttribute("data-addr");
+      if (addr && addr.length > 20) {
+        hideResults();
+        searchEl.value = "";
+        el("addr").value = addr;
+        start(addr);
+      }
+    });
+
+
+    async function fetchDexscreener(addr) {
+      const ds = await api(`/api/ds/tokenpairs?chain=${CHAIN}&token=${encodeURIComponent(addr)}`);
+      state.ds = ds;
+
+      if (ds && ds.ok && Array.isArray(ds.pairs) && ds.pairs.length) {
+        const best = ds.pairs.slice().sort((a,b)=> (b?.liquidity?.usd||0) - (a?.liquidity?.usd||0))[0];
+        state.bestPair = best?.pairAddress || null;
+        state.launchSec = Math.floor(Number(best?.pairCreatedAt || 0) / 1000) || 0;
+
+        const name = best?.baseToken?.name || "—";
+        const sym = best?.baseToken?.symbol || "—";
+        const dex = best?.dexId || "—";
+        const pair = best?.pairAddress || "—";
+        const quoteSym = best?.quoteToken?.symbol || "";
+
+        el("dsName").textContent = `${name} (${sym})`;
+        el("dsSub").textContent = `${sym}/${quoteSym}`.trim();
+        el("dsMeta").textContent = `dex: ${dex} • pair: ${pair.slice(0,4)}…${pair.slice(-4)}`;
+
+        const liq = best?.liquidity?.usd;
+        const fdv = best?.fdv;
+        const mcap = best?.marketCap;
+        const vol24 = best?.volume?.h24;
+        const ch24 = best?.priceChange?.h24;
+
+        el("dsStats").textContent =
+          `Liquidity: $${Number(liq||0).toLocaleString()} • FDV: $${Number(fdv||0).toLocaleString()} • MCap: $${Number(mcap||0).toLocaleString()} • Vol 24h: $${Number(vol24||0).toLocaleString()} • 24h: ${ch24 ?? "—"}%`;
+
+        const img = best?.info?.imageUrl || best?.imageUrl || null;
+        const logoEl = el("dsLogo");
+        if (img) { logoEl.src = img; logoEl.style.display = ""; }
+        else { logoEl.style.display = "none"; logoEl.removeAttribute("src"); }
+
+        const links = [];
+        const websites = best?.info?.websites || [];
+        const socials = best?.info?.socials || [];
+        for (const w of websites) if (w?.url) links.push(`<a href="${w.url}" target="_blank" rel="noreferrer">Website</a>`);
+        for (const s of socials) if (s?.url) links.push(`<a href="${s.url}" target="_blank" rel="noreferrer">${s.type || "Social"}</a>`);
+        el("dsLinks").innerHTML = links.length ? ("Links: " + links.join(" • ")) : "Links: —";
+
+        state.lastDsAt = Date.now();
+        return true;
+      }
+
+      el("dsName").textContent = "—";
+      el("dsSub").textContent = "—";
+      el("dsMeta").textContent = ds ? (`fail (${ds.http||"?"})`) : "fail";
+      el("dsStats").textContent = "—";
+      el("dsLinks").textContent = "Links: —";
+      el("dsLogo").style.display = "none";
+      return false;
+    }
+
+    async function fetchCandles(addr) {
+      // fetch candles rarely; chart moves via trades
+      const now = Date.now();
+      if (now - state.lastCandlesFetchAt < 20000) return { ok: true, skipped: true };
+      state.lastCandlesFetchAt = now;
+
+      // Prefer pair (if known) - worker will internally fallback if pair unsupported
+      let c = null;
+      if (state.bestPair) {
+        c = await api(`/api/candles?chain=${CHAIN}&pair=${encodeURIComponent(state.bestPair)}&tf=${TF}&limit=800`);
+        if (c && c.ok && Array.isArray(c.items) && c.items.length) {
+          const candles = c.items.map(x => ({
+            time: Number(x.t),
+            open: Number(x.o),
+            high: Number(x.h),
+            low: Number(x.l),
+            close: Number(x.c),
+          })).filter(o => Number.isFinite(o.time) && Number.isFinite(o.open) && Number.isFinite(o.high) && Number.isFinite(o.low) && Number.isFinite(o.close));
+          if (applyCandles(candles, "ok")) return { ok:true };
+        }
+      }
+
+      const c2 = await api(`/api/candles?chain=${CHAIN}&address=${encodeURIComponent(addr)}&tf=${TF}&limit=800`);
+      if (c2 && c2.ok && Array.isArray(c2.items) && c2.items.length) {
+        const candles = c2.items.map(x => ({
+          time: Number(x.t),
+          open: Number(x.o),
+          high: Number(x.h),
+          low: Number(x.l),
+          close: Number(x.c),
+        })).filter(o => Number.isFinite(o.time) && Number.isFinite(o.open) && Number.isFinite(o.high) && Number.isFinite(o.low) && Number.isFinite(o.close));
+        if (applyCandles(candles, "ok")) return { ok:true };
+      }
+
+      // If we already have candles, keep them stale (don't blank chart)
+      if (Array.isArray(state.candles) && state.candles.length) {
+        el("candlesMeta").textContent = "stale";
+        el("chartMeta").textContent = "stale";
+        return { ok:false, stale:true, http: (c2?.http || c?.http || "?") };
+      }
+
+      // no candles yet -> leave room for synthetic from trades
+      el("candlesCount").textContent = "—";
+      el("candlesMeta").textContent = `fail (${(c2?.http||c2?.status||c?.http||c?.status||"?")})`;
+      el("chartMeta").textContent = `fail (${(c2?.http||c2?.status||c?.http||c?.status||"?")})`;
+      return { ok:false, http: (c2?.http||c2?.status||c?.http||c?.status||"?") };
+    }
+
+    
+    async function backfillToLaunch(addr) {
+      if (state.backfillRunning) return;
+      if (!Array.isArray(state.candles) || state.candles.length < 10) return;
+      const launch = Number(state.launchSec || 0);
+      if (!Number.isFinite(launch) || launch <= 0) return;
+
+      state.backfillRunning = true;
+      state.backfillStop = false;
+
+      const maxChunks = 30; // safety: prevents endless loops
+      let chunks = 0;
+
+      while (!state.backfillStop && chunks < maxChunks) {
+        if (!Array.isArray(state.candles) || state.candles.length === 0) break;
+        const earliest = Number(state.candles[0].time);
+        if (!Number.isFinite(earliest) || earliest <= launch + TF_SEC) break;
+
+        const to = earliest;
+        const from = Math.max(launch, to - (TF_SEC * 1000)); // 1000 candles per chunk
+        const targetPair = state.bestPair ? `&pair=${encodeURIComponent(state.bestPair)}` : `&address=${encodeURIComponent(addr)}`;
+        const url = `/api/candles?chain=${CHAIN}${targetPair}&tf=${TF}&from=${from}&to=${to}&limit=1000`;
+
+        const r = await api(url);
+        if (!(r && r.ok && Array.isArray(r.items) && r.items.length)) {
+          // stop quietly; keep what we have
+          break;
+        }
+
+        const add = r.items.map(x => ({
+          time: Number(x.t),
+          open: Number(x.o),
+          high: Number(x.h),
+          low: Number(x.l),
+          close: Number(x.c),
+        })).filter(o => Number.isFinite(o.time) && Number.isFinite(o.open) && Number.isFinite(o.high) && Number.isFinite(o.low) && Number.isFinite(o.close));
+
+        if (!add.length) break;
+
+        // merge + dedupe by time
+        const map = new Map();
+        for (const c of add) map.set(c.time, c);
+        for (const c of state.candles) map.set(c.time, c);
+        const merged = Array.from(map.values()).sort((a,b)=>a.time-b.time);
+
+        // cap to avoid memory blow-up (but still large enough to show full history for many tokens)
+        state.candles = merged.slice(-20000);
+        candleSeries.setData(state.candles);
+        el("candlesCount").textContent = String(state.candles.length);
+        el("candlesMeta").textContent = "ok";
+        el("chartMeta").textContent = "ok";
+        try { chart.timeScale().fitContent(); } catch {}
+
+        chunks += 1;
+
+        // be nice to API / UI
+        await new Promise(r => setTimeout(r, 250));
+      }
+
+      state.backfillRunning = false;
+    }
+
+async function tick(addr, force=false) {
+      if (!addr || addr.length < 20) return;
+      if (inFlight) return;
+      inFlight = true;
+
+      setStatus("warn", "loading…");
+      el("hintPill").textContent = "—";
+
+      const now = Date.now();
+      const needDs = force || (now - state.lastDsAt > 30000) || !state.bestPair;
+      if (needDs) await fetchDexscreener(addr);
+
+      const [p, t] = await Promise.all([
+        api(`/api/price?chain=${CHAIN}&address=${encodeURIComponent(addr)}${state.bestPair ? `&pair=${encodeURIComponent(state.bestPair)}` : ``}`),
+        api(`/api/trades?chain=${CHAIN}&address=${encodeURIComponent(addr)}${state.bestPair ? `&pair=${encodeURIComponent(state.bestPair)}` : ``}&limit=${tradesLimit}`)
+      ]);
+
+      // PRICE (fallback to dexscreener priceUsd)
+      if (p && p.ok && Number.isFinite(Number(p.price))) {
+        el("price").textContent = fmt(Number(p.price), 10);
+        el("priceMeta").textContent = "ok";
+      } else {
+        const dsPrice = state.ds?.pairs?.[0]?.priceUsd;
+        if (dsPrice != null && Number.isFinite(Number(dsPrice))) {
+          el("price").textContent = fmt(Number(dsPrice), 10);
+          el("priceMeta").textContent = "fallback: dexscreener";
+        } else {
+          el("price").textContent = "—";
+          el("priceMeta").textContent = p ? (`fail (${p.http||p.status||"?"})`) : "fail";
+        }
+      }
+
+      // TRADES
+      if (t && t.ok && Array.isArray(t.items)) {
+        el("tradesCount").textContent = String(t.count ?? t.items.length ?? 0);
+        el("tradesMeta").textContent = "ok";
+        renderTrades(t.items);
+
+        // newest trade for chart live update
+        const newest = t.items[0];
+        if (newest) {
+          const pr = Number(newest.price);
+          const ts = Number(newest.t);
+          if (Number.isFinite(pr) && Number.isFinite(ts)) {
+            state.lastTradePrice = pr;
+            state.lastTradeTs = ts;
+          }
+        }
+      } else {
+        el("tradesCount").textContent = "—";
+        el("tradesMeta").textContent = t ? (`fail (${t.http||t.status||"?"})`) : "fail";
+        el("trades").innerHTML = "";
+      }
+
+      // Candles less frequent
+      const cRes = await fetchCandles(addr);
+
+      // If candles missing, synth from trades (only if we have trades)
+      if ((!state.candles || !state.candles.length) && t && t.ok && Array.isArray(t.items) && t.items.length) {
+        let synth = synthCandlesFromTrades(t.items, TF_SEC, 200);
+        // If too few candles (e.g. only last seconds of trades), fetch more pages for chart history
+        if (synth.length < 20) {
+          try {
+            const more = await fetchTradesPagesForChart(addr, 4, 100);
+            if (more && more.length) synth = synthCandlesFromTrades(more, TF_SEC, 200);
+          } catch (_) {}
+        }
+        if (synth.length) {
+          applyCandles(synth, "synthetic");
+          backfillToLaunch(addr);
+          chart.timeScale().fitContent();
+        }
+      }
+
+      // Live move (always try)
+      if (Number.isFinite(state.lastTradePrice) && Number.isFinite(state.lastTradeTs)) {
+        updateLastCandleFromTrade(state.lastTradePrice, state.lastTradeTs);
+      }
+
+      // Overall status (price is ok if fallback works)
+      const bad = [];
+      if (!(t && t.ok)) bad.push("trades");
+      const priceOk = (p && p.ok) || (state.ds?.pairs?.[0]?.priceUsd != null);
+      if (!priceOk) bad.push("price");
+
+      let degraded = false;
+      if (!state.candles || !state.candles.length) {
+        bad.push("candles");
+      } else if (cRes && cRes.ok === false) {
+        degraded = true;
+      }
+
+      if (bad.length === 0) {
+        setStatus("", "live");
+        el("hintPill").textContent = degraded ? "degraded: candles" : "all ok";
+      } else {
+        setStatus("bad", "error");
+        el("hintPill").textContent = "failed: " + bad.join(", ");
+      }
+
+      inFlight = false;
+    }
+
+    function start(addr) {
+      lastAddr = addr;
+      // Always default to 15m on new token
+      try { candleSeries.setData([]); } catch(_) {}
+      state.candles = null;
+      state.lastTradePrice = null;
+      state.lastTradeTs = null;
+      state.lastCandlesFetchAt = 0;
+      state.lastDsAt = 0;
+      if (pollTimer) clearInterval(pollTimer);
+      tick(addr, true);
+      pollTimer = setInterval(() => tick(lastAddr, false), 2000);
+    }
+
+    el("addr").addEventListener("change", (e) => start(e.target.value.trim()));
+    el("addr").value = "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263";
+    start(el("addr").value.trim());
+  </script>
+</body>
+</html>
