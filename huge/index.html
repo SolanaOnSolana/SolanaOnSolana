@@ -8,7 +8,7 @@
     body{margin:0;font-family:system-ui;background:#0b0f14;color:#e7eef7}
     header{padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;gap:10px;align-items:center;flex-wrap:wrap}
     .pill{padding:6px 10px;border:1px solid rgba(255,255,255,.12);border-radius:999px;font-size:12px;opacity:.95}
-    main{padding:14px;display:grid;gap:12px;max-width:900px;margin:0 auto}
+    main{padding:14px;display:grid;gap:12px;max-width:1000px;margin:0 auto}
     input{width:100%;padding:12px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:#0f1520;color:#e7eef7}
     .grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
     .card{border:1px solid rgba(255,255,255,.10);background:#0f1520;border-radius:12px;padding:12px}
@@ -22,8 +22,14 @@
     .bad{color:#fb7185}
     a{color:#93c5fd;text-decoration:none}
     a:hover{text-decoration:underline}
-    @media (max-width:720px){ .grid{grid-template-columns:1fr} }
-    #chart{min-height:260px}
+    #chart{height:380px; width:100%;}
+    .row{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+    .btn{cursor:pointer;user-select:none;padding:8px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:#0b0f14;color:#e7eef7;font-size:12px}
+    .btn:hover{border-color:rgba(255,255,255,.22)}
+    @media (max-width:720px){
+      .grid{grid-template-columns:1fr}
+      #chart{height:320px}
+    }
   </style>
 </head>
 <body>
@@ -77,14 +83,23 @@
       <div class="muted" style="margin-top:8px" id="dsLinks">—</div>
     </div>
 
+    <div class="card">
+      <div class="row" style="margin-bottom:8px">
+        <div class="muted">Chart</div>
+        <div class="muted" id="chartMeta">—</div>
+      </div>
+      <div id="chart"></div>
+    </div>
 
     <div class="card">
-      <div class="muted" style="margin-bottom:8px">Chart</div>
-      <div id="chart" style="height:360px;width:100%"></div>
-      <div class="muted" id="chartMeta" style="margin-top:8px">—</div>
-    </div>
-    <div class="card">
-      <div class="muted" style="margin-bottom:8px">Live trades</div>
+      <div class="row" style="margin-bottom:8px">
+        <div class="muted">Live trades</div>
+        <div class="row">
+          <div class="muted">limit:</div>
+          <button class="btn" id="limit50">50</button>
+          <button class="btn" id="limit100">100</button>
+        </div>
+      </div>
       <table>
         <thead>
           <tr><th>Time</th><th>Side</th><th>USD</th><th>Price</th><th>Maker</th></tr>
@@ -94,145 +109,28 @@
     </div>
   </main>
 
-  <script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+  <script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
   <script>
     const WORKER_BASE = "https://flat-grass-9c26solanaonsolana.simon-kaggwa-why.workers.dev";
     const CHAIN = "solana";
+    const TF = "15m";
+    const TF_SEC = 900; // 15m
+
     document.getElementById("base").textContent = WORKER_BASE;
 
     const el = (id) => document.getElementById(id);
     const fmt = (n, d=6) => (Number.isFinite(n) ? n.toFixed(d) : "—");
     const short = (s) => s ? (s.slice(0,4)+"…"+s.slice(-4)) : "—";
 
-    // Display helper used for first render
-    const timeAgo = (tSec) => {
-      const diff = (Date.now()/1000 - tSec);
-      if (!Number.isFinite(diff)) return "—";
-      if (diff < 60) return Math.floor(diff) + "s";
-      if (diff < 3600) return Math.floor(diff/60) + "m";
-      if (diff < 86400) return Math.floor(diff/3600) + "h";
-      if (diff < 86400*7) return Math.floor(diff/86400) + "d";
-      if (diff < 86400*30) return Math.floor(diff/(86400*7)) + "w";
-      if (diff < 86400*365) return Math.floor(diff/(86400*30)) + "mo";
-      return Math.floor(diff/(86400*365)) + "y";
-    };
-
-    // Live updater: refreshes all "time ago" cells every second (Dexscreener-style)
-    function tickAges() {
-      const nodes = document.querySelectorAll(".ago[data-ts]");
-      const now = Date.now() / 1000;
-      for (const n of nodes) {
-        const ts = Number(n.getAttribute("data-ts"));
-        if (!Number.isFinite(ts)) continue;
-        const diff = now - ts;
-
-        let txt = "—";
-        if (diff < 60) txt = Math.floor(diff) + "s";
-        else if (diff < 3600) txt = Math.floor(diff/60) + "m";
-        else if (diff < 86400) txt = Math.floor(diff/3600) + "h";
-        else if (diff < 86400*7) txt = Math.floor(diff/86400) + "d";
-        else if (diff < 86400*30) txt = Math.floor(diff/(86400*7)) + "w";
-        else if (diff < 86400*365) txt = Math.floor(diff/(86400*30)) + "mo";
-        else txt = Math.floor(diff/(86400*365)) + "y";
-
-        n.textContent = txt;
-      }
-    }
-
-    
-function refreshAges() {
-  const nodes = document.querySelectorAll(".ago[data-ts]");
-  for (const n of nodes) {
-    const ts = Number(n.getAttribute("data-ts"));
-    n.textContent = timeAgo(ts);
-  }
-}
-
-
-    // --- Lightweight chart (candles) ---
-    let chart = null;
-    let candleSeries = null;
-    let ro = null;
-
-    function ensureChart() {
-      if (chart && candleSeries) return;
-      const container = el("chart");
-      if (!container || typeof LightweightCharts === "undefined") return;
-
-      container.innerHTML = "";
-      const w = Math.max(1, container.clientWidth || 1);
-      const h = Math.max(260, container.clientHeight || 360);
-
-      chart = LightweightCharts.createChart(container, {
-        width: w,
-        height: h,
-        layout: { background: { type: "solid", color: "#0f1520" }, textColor: "#e7eef7" },
-        grid: { vertLines: { color: "rgba(255,255,255,.06)" }, horzLines: { color: "rgba(255,255,255,.06)" } },
-        rightPriceScale: { borderColor: "rgba(255,255,255,.10)" },
-        timeScale: { borderColor: "rgba(255,255,255,.10)", timeVisible: true, secondsVisible: false },
-        crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
-      });
-
-      candleSeries = chart.addCandlestickSeries({
-        upColor: "#22c55e",
-        downColor: "#ef4444",
-        borderUpColor: "#22c55e",
-        borderDownColor: "#ef4444",
-        wickUpColor: "#22c55e",
-        wickDownColor: "#ef4444",
-      });
-
-      if (ro) { try { ro.disconnect(); } catch (e) {} }
-      ro = new ResizeObserver(() => {
-        if (!chart) return;
-        const ww = container.clientWidth || 1;
-        const hh = container.clientHeight || 360;
-        if (ww > 0 && hh > 0) chart.applyOptions({ width: ww, height: hh });
-      });
-      ro.observe(container);
-    }
-
-    function normalizeSec(t) {
-      const n = Number(t);
-      if (!Number.isFinite(n)) return null;
-      if (n > 1e12) return Math.floor(n / 1000);
-      return Math.floor(n);
-    }
-
-    function renderCandles(items, tfLabel) {
-      try {
-        ensureChart();
-        if (!candleSeries) return;
-
-        const arr = Array.isArray(items) ? items : [];
-        const data = [];
-        for (const x of arr) {
-          const ts = normalizeSec(x.t);
-          const o = Number(x.o), h = Number(x.h), l = Number(x.l), c = Number(x.c);
-          if (!ts || !Number.isFinite(o) || !Number.isFinite(h) || !Number.isFinite(l) || !Number.isFinite(c)) continue;
-          data.push({ time: ts, open: o, high: h, low: l, close: c });
-        }
-        data.sort((a,b)=>a.time-b.time);
-        candleSeries.setData(data);
-        if (chart) chart.timeScale().fitContent();
-
-        const meta = document.getElementById("chartMeta");
-        if (meta) meta.textContent = data.length ? `ok • ${data.length} candles (${tfLabel || "15m"})` : "no candles";
-      } catch (e) {
-        console.warn("[chart render fail]", e);
-        const meta = document.getElementById("chartMeta");
-        if (meta) meta.textContent = "chart error";
-      }
-    }
-
-let timer = null;
-    let lastAddr = "";
-    let inFlight = false;
-    let ageTimer = null;
-
-    function ensureAgeTicker() {
-      if (ageTimer) return;
-      ageTimer = setInterval(tickAges, 1000);
+    function timeAgoFromTs(tSec) {
+      const dt = (Date.now()/1000 - tSec);
+      if (!Number.isFinite(dt)) return "—";
+      if (dt < 60) return Math.floor(dt) + "s";
+      if (dt < 3600) return Math.floor(dt/60) + "m";
+      if (dt < 86400) return Math.floor(dt/3600) + "h";
+      if (dt < 86400*30) return Math.floor(dt/86400) + "d";
+      if (dt < 86400*365) return Math.floor(dt/(86400*30)) + "mo";
+      return Math.floor(dt/(86400*365)) + "y";
     }
 
     async function api(path) {
@@ -262,92 +160,149 @@ let timer = null;
       s.className = "pill" + (kind === "bad" ? " bad" : kind === "warn" ? " warn" : "");
     }
 
-    async function tick(addr) {
-      if (inFlight) return;
-      inFlight = true;
+    // ---- Chart setup
+    const chartEl = el("chart");
+    const chart = LightweightCharts.createChart(chartEl, {
+      layout: { background: { color: "#0f1520" }, textColor: "#e7eef7" },
+      grid: { vertLines: { color: "rgba(255,255,255,.08)" }, horzLines: { color: "rgba(255,255,255,.08)" } },
+      rightPriceScale: { borderColor: "rgba(255,255,255,.12)" },
+      timeScale: { borderColor: "rgba(255,255,255,.12)", timeVisible: true, secondsVisible: false },
+      crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+    });
+    const candleSeries = chart.addCandlestickSeries({
+      upColor: "#22c55e",
+      downColor: "#ef4444",
+      borderUpColor: "#22c55e",
+      borderDownColor: "#ef4444",
+      wickUpColor: "#22c55e",
+      wickDownColor: "#ef4444",
+    });
 
-      setStatus("warn", "loading…");
-      el("hintPill").textContent = "—";
+    function resizeChart() {
+      const rect = chartEl.getBoundingClientRect();
+      chart.applyOptions({ width: Math.max(10, Math.floor(rect.width)), height: Math.max(10, Math.floor(rect.height)) });
+    }
+    window.addEventListener("resize", () => resizeChart());
+    setTimeout(resizeChart, 0);
 
-      // 1) DexScreener first (gives us best pair + fallback price)
-const ds = await api(`/api/ds/tokenpairs?chain=${CHAIN}&token=${encodeURIComponent(addr)}`);
+    // ---- State
+    let pollTimer = null;
+    let agoTimer = null;
+    let lastAddr = "";
+    let inFlight = false;
+    let tradesLimit = 100;
 
-// 2) Price + trades in parallel
-const [p, t] = await Promise.all([
-  api(`/api/price?chain=${CHAIN}&address=${encodeURIComponent(addr)}`),
-  api(`/api/trades?chain=${CHAIN}&address=${encodeURIComponent(addr)}&limit=20`)
-]);
+    const state = {
+      ds: null,
+      bestPair: null,
+      candles: null,
+      lastTradePrice: null,
+      lastTradeTs: null,
+      lastCandlesFetchAt: 0,
+      lastDsAt: 0,
+    };
 
-// 3) Candles: prefer BEST pair from DexScreener (much more reliable), fallback to token mint
-let bestPair = null;
-if (ds && ds.ok && Array.isArray(ds.pairs) && ds.pairs.length) {
-  bestPair = ds.pairs.slice().sort((a,b)=> (b?.liquidity?.usd||0) - (a?.liquidity?.usd||0))[0] || null;
-}
-const pairAddr = bestPair?.pairAddress || "";
-let c = null;
-if (pairAddr) {
-  c = await api(`/api/candles?chain=${CHAIN}&pair=${encodeURIComponent(pairAddr)}&tf=15m&limit=200`);
-  if (!(c && c.ok)) {
-    c = await api(`/api/candles?chain=${CHAIN}&address=${encodeURIComponent(addr)}&tf=15m&limit=200`);
-  }
-} else {
-  c = await api(`/api/candles?chain=${CHAIN}&address=${encodeURIComponent(addr)}&tf=15m&limit=200`);
-}
+    function setActiveLimitButtons() {
+      el("limit50").style.opacity = tradesLimit === 50 ? "1" : ".6";
+      el("limit100").style.opacity = tradesLimit === 100 ? "1" : ".6";
+    }
+    el("limit50").onclick = () => { tradesLimit = 50; setActiveLimitButtons(); tick(lastAddr, true); };
+    el("limit100").onclick = () => { tradesLimit = 100; setActiveLimitButtons(); tick(lastAddr, true); };
+    setActiveLimitButtons();
 
-      // PRICE (prefer Birdeye; fallback to DexScreener pair priceUsd)
-const dsPrice = (bestPair && bestPair.priceUsd != null) ? Number(bestPair.priceUsd) : null;
+    function synthCandlesFromTrades(trades, tfSec, limit=200) {
+      const items = Array.isArray(trades) ? trades.slice() : [];
+      items.sort((a,b)=> (a.t||0)-(b.t||0)); // oldest->newest
+      const buckets = new Map();
+      for (const tr of items) {
+        const t = Number(tr.t);
+        const p = Number(tr.price);
+        if (!Number.isFinite(t) || !Number.isFinite(p)) continue;
+        const b = Math.floor(t / tfSec) * tfSec;
+        const c = buckets.get(b) || { time: b, open: p, high: p, low: p, close: p };
+        // first trade in bucket defines open (we are going oldest->newest)
+        if (c.open == null) c.open = p;
+        c.high = Math.max(c.high, p);
+        c.low = Math.min(c.low, p);
+        c.close = p;
+        buckets.set(b, c);
+      }
+      const out = Array.from(buckets.values()).sort((a,b)=>a.time-b.time);
+      return out.slice(-limit);
+    }
 
-if (p && p.ok && p.price != null) {
-  el("price").textContent = fmt(Number(p.price), 8);
-  el("priceMeta").textContent = "ok";
-} else if (dsPrice != null && Number.isFinite(dsPrice)) {
-  el("price").textContent = fmt(dsPrice, 8);
-  el("priceMeta").textContent = "fallback: dexscreener";
-} else {
-  el("price").textContent = "—";
-  el("priceMeta").textContent = p ? (`fail (${p.http||"?"})`) : "fail";
-  console.warn("[price fail]", p);
-}
+    function applyCandles(candles, metaText) {
+      if (!Array.isArray(candles) || candles.length === 0) return false;
+      candleSeries.setData(candles);
+      state.candles = candles.slice();
+      el("candlesCount").textContent = String(candles.length);
+      el("candlesMeta").textContent = metaText || "ok";
+      el("chartMeta").textContent = metaText || "ok";
+      // keep last candle visible
+      try { chart.timeScale().scrollToRealTime(); } catch {}
+      return true;
+    }
 
+    function updateLastCandleFromTrade(price, tSec) {
+      if (!Number.isFinite(price) || !Number.isFinite(tSec)) return;
+      if (!Array.isArray(state.candles) || state.candles.length === 0) return;
 
-      // TRADES
-      if (t && t.ok) {
-        el("tradesCount").textContent = String(t.count ?? (t.items?.length ?? 0));
-        el("tradesMeta").textContent = "ok";
-        const rows = (t.items || []).map(x => `
-          <tr>
-            <td class="muted ago" data-ts="${Number(x.t)}">${timeAgo(Number(x.t))}</td>
-            <td class="${x.side === "buy" ? "buy" : (x.side === "sell" ? "sell" : "")}">${x.side || "—"}</td>
-            <td>$${fmt(Number(x.usd), 4)}</td>
-            <td>${fmt(Number(x.price), 10)}</td>
-            <td class="muted">${short(x.maker)}</td>
-          </tr>
-        `).join("");
-        el("trades").innerHTML = rows;
-        tickAges(); // immediate refresh so it feels live right away
-      } else {
-        el("tradesCount").textContent = "—";
-        el("tradesMeta").textContent = t ? (`fail (${t.http||"?"})`) : "fail";
-        el("trades").innerHTML = "";
-        console.warn("[trades fail]", t);
+      const last = state.candles[state.candles.length - 1];
+      const bucket = Math.floor(tSec / TF_SEC) * TF_SEC;
+
+      if (last.time !== bucket) {
+        const prevClose = Number(last.close);
+        const open = Number.isFinite(prevClose) ? prevClose : price;
+        const c = { time: bucket, open, high: Math.max(open, price), low: Math.min(open, price), close: price };
+        state.candles.push(c);
+        if (state.candles.length > 260) state.candles = state.candles.slice(-260);
+        candleSeries.update(c);
+        el("candlesCount").textContent = String(state.candles.length);
+        return;
       }
 
-      // CANDLES
-      if (c && c.ok) {
-        el("candlesCount").textContent = String(c.count ?? (c.items?.length ?? 0));
-        el("candlesMeta").textContent = "ok";
-        renderCandles(c.items || [], c.tf || "15m");
-      } else {
-        el("candlesCount").textContent = "—";
-        el("candlesMeta").textContent = c ? (`fail (${c.http||"?"})`) : "fail";
-        console.warn("[candles fail]", c);
-        const cm = document.getElementById("chartMeta"); if (cm) cm.textContent = c ? (`fail (${c.http||"?"})`) : "fail";
-      }
+      const upd = {
+        time: last.time,
+        open: last.open,
+        high: Math.max(Number(last.high), price),
+        low: Math.min(Number(last.low), price),
+        close: price
+      };
+      state.candles[state.candles.length - 1] = upd;
+      candleSeries.update(upd);
+    }
 
-      // DEXSCREENER
+    function renderTrades(items) {
+      const rows = (items || []).map(x => `
+        <tr>
+          <td class="muted ago" data-ts="${Number(x.t)}">${timeAgoFromTs(Number(x.t))}</td>
+          <td class="${x.side === "buy" ? "buy" : (x.side === "sell" ? "sell" : "")}">${x.side || "—"}</td>
+          <td>$${fmt(Number(x.usd), 4)}</td>
+          <td>${fmt(Number(x.price), 10)}</td>
+          <td class="muted">${short(x.maker)}</td>
+        </tr>
+      `).join("");
+      el("trades").innerHTML = rows;
+    }
+
+    function startAgoTicker() {
+      if (agoTimer) clearInterval(agoTimer);
+      agoTimer = setInterval(() => {
+        document.querySelectorAll(".ago").forEach(td => {
+          const ts = Number(td.getAttribute("data-ts"));
+          td.textContent = timeAgoFromTs(ts);
+        });
+      }, 500);
+    }
+    startAgoTicker();
+
+    async function fetchDexscreener(addr) {
+      const ds = await api(`/api/ds/tokenpairs?chain=${CHAIN}&token=${encodeURIComponent(addr)}`);
+      state.ds = ds;
+
       if (ds && ds.ok && Array.isArray(ds.pairs) && ds.pairs.length) {
-        // pick best pair: highest liquidity.usd
         const best = ds.pairs.slice().sort((a,b)=> (b?.liquidity?.usd||0) - (a?.liquidity?.usd||0))[0];
+        state.bestPair = best?.pairAddress || null;
 
         const name = best?.baseToken?.name || "—";
         const sym = best?.baseToken?.symbol || "—";
@@ -357,6 +312,7 @@ if (p && p.ok && p.price != null) {
 
         el("dsName").textContent = `${name} (${sym})`;
         el("dsSub").textContent = `${sym}/${quoteSym}`.trim();
+        el("dsMeta").textContent = `dex: ${dex} • pair: ${pair.slice(0,4)}…${pair.slice(-4)}`;
 
         const liq = best?.liquidity?.usd;
         const fdv = best?.fdv;
@@ -364,23 +320,14 @@ if (p && p.ok && p.price != null) {
         const vol24 = best?.volume?.h24;
         const ch24 = best?.priceChange?.h24;
 
-        el("dsMeta").textContent = `dex: ${dex} • pair: ${pair.slice(0,4)}…${pair.slice(-4)}`;
-
         el("dsStats").textContent =
           `Liquidity: $${Number(liq||0).toLocaleString()} • FDV: $${Number(fdv||0).toLocaleString()} • MCap: $${Number(mcap||0).toLocaleString()} • Vol 24h: $${Number(vol24||0).toLocaleString()} • 24h: ${ch24 ?? "—"}%`;
 
-        // logo (if present)
         const img = best?.info?.imageUrl || best?.imageUrl || null;
         const logoEl = el("dsLogo");
-        if (img) {
-          logoEl.src = img;
-          logoEl.style.display = "";
-        } else {
-          logoEl.style.display = "none";
-          logoEl.removeAttribute("src");
-        }
+        if (img) { logoEl.src = img; logoEl.style.display = ""; }
+        else { logoEl.style.display = "none"; logoEl.removeAttribute("src"); }
 
-        // links
         const links = [];
         const websites = best?.info?.websites || [];
         const socials = best?.info?.socials || [];
@@ -388,49 +335,166 @@ if (p && p.ok && p.price != null) {
         for (const s of socials) if (s?.url) links.push(`<a href="${s.url}" target="_blank" rel="noreferrer">${s.type || "Social"}</a>`);
         el("dsLinks").innerHTML = links.length ? ("Links: " + links.join(" • ")) : "Links: —";
 
-      } else {
-        el("dsName").textContent = "—";
-        el("dsSub").textContent = "—";
-        el("dsMeta").textContent = ds ? (`fail (${ds.http||"?"})`) : "fail";
-        el("dsStats").textContent = "—";
-        el("dsLinks").textContent = "Links: —";
-        el("dsLogo").style.display = "none";
-        console.warn("[dexscreener fail]", ds);
+        state.lastDsAt = Date.now();
+        return true;
       }
 
-      // Overall status (don't scream "error" if core live feed is ok)
-const bad = [];
-if (!(t && t.ok)) bad.push("trades");
-if (!(ds && ds.ok)) bad.push("dexscreener");
+      el("dsName").textContent = "—";
+      el("dsSub").textContent = "—";
+      el("dsMeta").textContent = ds ? (`fail (${ds.http||"?"})`) : "fail";
+      el("dsStats").textContent = "—";
+      el("dsLinks").textContent = "Links: —";
+      el("dsLogo").style.display = "none";
+      return false;
+    }
 
-const soft = [];
-if (!(p && p.ok) && !(dsPrice != null)) soft.push("price");
-if (!(c && c.ok)) soft.push("candles");
+    async function fetchCandles(addr) {
+      // fetch candles rarely; chart moves via trades
+      const now = Date.now();
+      if (now - state.lastCandlesFetchAt < 20000) return { ok: true, skipped: true };
+      state.lastCandlesFetchAt = now;
 
-if (bad.length === 0 && soft.length === 0) {
-  setStatus("", "live");
-  el("hintPill").textContent = "all ok";
-} else if (bad.length === 0 && soft.length > 0) {
-  setStatus("warn", "live");
-  el("hintPill").textContent = "degraded: " + soft.join(", ");
-} else {
-  setStatus("bad", "error");
-  el("hintPill").textContent = "failed: " + bad.concat(soft).join(", ");
-}
+      // Prefer pair (if known) - worker will internally fallback if pair unsupported
+      let c = null;
+      if (state.bestPair) {
+        c = await api(`/api/candles?chain=${CHAIN}&pair=${encodeURIComponent(state.bestPair)}&tf=${TF}&limit=200`);
+        if (c && c.ok && Array.isArray(c.items) && c.items.length) {
+          const candles = c.items.map(x => ({
+            time: Number(x.t),
+            open: Number(x.o),
+            high: Number(x.h),
+            low: Number(x.l),
+            close: Number(x.c),
+          })).filter(o => Number.isFinite(o.time) && Number.isFinite(o.open) && Number.isFinite(o.high) && Number.isFinite(o.low) && Number.isFinite(o.close));
+          if (applyCandles(candles, "ok")) return { ok:true };
+        }
+      }
 
-inFlight = false;
+      const c2 = await api(`/api/candles?chain=${CHAIN}&address=${encodeURIComponent(addr)}&tf=${TF}&limit=200`);
+      if (c2 && c2.ok && Array.isArray(c2.items) && c2.items.length) {
+        const candles = c2.items.map(x => ({
+          time: Number(x.t),
+          open: Number(x.o),
+          high: Number(x.h),
+          low: Number(x.l),
+          close: Number(x.c),
+        })).filter(o => Number.isFinite(o.time) && Number.isFinite(o.open) && Number.isFinite(o.high) && Number.isFinite(o.low) && Number.isFinite(o.close));
+        if (applyCandles(candles, "ok")) return { ok:true };
+      }
+
+      // If we already have candles, keep them stale (don't blank chart)
+      if (Array.isArray(state.candles) && state.candles.length) {
+        el("candlesMeta").textContent = "stale";
+        el("chartMeta").textContent = "stale";
+        return { ok:false, stale:true, http: (c2?.http || c?.http || "?") };
+      }
+
+      // no candles yet -> leave room for synthetic from trades
+      el("candlesCount").textContent = "—";
+      el("candlesMeta").textContent = `fail (${(c2?.http||c?.http||"?")})`;
+      el("chartMeta").textContent = `fail (${(c2?.http||c?.http||"?")})`;
+      return { ok:false, http: (c2?.http||c?.http||"?") };
+    }
+
+    async function tick(addr, force=false) {
+      if (!addr || addr.length < 20) return;
+      if (inFlight) return;
+      inFlight = true;
+
+      setStatus("warn", "loading…");
+      el("hintPill").textContent = "—";
+
+      const now = Date.now();
+      const needDs = force || (now - state.lastDsAt > 30000) || !state.bestPair;
+      if (needDs) await fetchDexscreener(addr);
+
+      const [p, t] = await Promise.all([
+        api(`/api/price?chain=${CHAIN}&address=${encodeURIComponent(addr)}`),
+        api(`/api/trades?chain=${CHAIN}&address=${encodeURIComponent(addr)}&limit=${tradesLimit}`)
+      ]);
+
+      // PRICE (fallback to dexscreener priceUsd)
+      if (p && p.ok && Number.isFinite(Number(p.price))) {
+        el("price").textContent = fmt(Number(p.price), 10);
+        el("priceMeta").textContent = "ok";
+      } else {
+        const dsPrice = state.ds?.pairs?.[0]?.priceUsd;
+        if (dsPrice != null && Number.isFinite(Number(dsPrice))) {
+          el("price").textContent = fmt(Number(dsPrice), 10);
+          el("priceMeta").textContent = "fallback: dexscreener";
+        } else {
+          el("price").textContent = "—";
+          el("priceMeta").textContent = p ? (`fail (${p.http||"?"})`) : "fail";
+        }
+      }
+
+      // TRADES
+      if (t && t.ok && Array.isArray(t.items)) {
+        el("tradesCount").textContent = String(t.count ?? t.items.length ?? 0);
+        el("tradesMeta").textContent = "ok";
+        renderTrades(t.items);
+
+        // newest trade for chart live update
+        const newest = t.items[0];
+        if (newest) {
+          const pr = Number(newest.price);
+          const ts = Number(newest.t);
+          if (Number.isFinite(pr) && Number.isFinite(ts)) {
+            state.lastTradePrice = pr;
+            state.lastTradeTs = ts;
+          }
+        }
+      } else {
+        el("tradesCount").textContent = "—";
+        el("tradesMeta").textContent = t ? (`fail (${t.http||"?"})`) : "fail";
+        el("trades").innerHTML = "";
+      }
+
+      // Candles less frequent
+      const cRes = await fetchCandles(addr);
+
+      // If candles missing, synth from trades (only if we have trades)
+      if ((!state.candles || !state.candles.length) && t && t.ok && Array.isArray(t.items) && t.items.length) {
+        const synth = synthCandlesFromTrades(t.items, TF_SEC, 200);
+        if (synth.length) {
+          applyCandles(synth, "synthetic");
+        }
+      }
+
+      // Live move (always try)
+      if (Number.isFinite(state.lastTradePrice) && Number.isFinite(state.lastTradeTs)) {
+        updateLastCandleFromTrade(state.lastTradePrice, state.lastTradeTs);
+      }
+
+      // Overall status (price is ok if fallback works)
+      const bad = [];
+      if (!(t && t.ok)) bad.push("trades");
+      const priceOk = (p && p.ok) || (state.ds?.pairs?.[0]?.priceUsd != null);
+      if (!priceOk) bad.push("price");
+
+      let degraded = false;
+      if (!state.candles || !state.candles.length) {
+        bad.push("candles");
+      } else if (cRes && cRes.ok === false) {
+        degraded = true;
+      }
+
+      if (bad.length === 0) {
+        setStatus("", "live");
+        el("hintPill").textContent = degraded ? "degraded: candles" : "all ok";
+      } else {
+        setStatus("bad", "error");
+        el("hintPill").textContent = "failed: " + bad.join(", ");
+      }
+
+      inFlight = false;
     }
 
     function start(addr) {
-      if (!addr || addr.length < 20) return;
       lastAddr = addr;
-      if (timer) clearInterval(timer);
-
-      ensureAgeTicker();
-      tick(addr);
-      timer = setInterval(() => tick(lastAddr), 2000);
-      // update time-ago labels smoothly
-      if (!window.__ageTimer) window.__ageTimer = setInterval(refreshAges, 1000);
+      if (pollTimer) clearInterval(pollTimer);
+      tick(addr, true);
+      pollTimer = setInterval(() => tick(lastAddr, false), 2000);
     }
 
     el("addr").addEventListener("change", (e) => start(e.target.value.trim()));
