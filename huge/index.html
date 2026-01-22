@@ -23,6 +23,7 @@
     a{color:#93c5fd;text-decoration:none}
     a:hover{text-decoration:underline}
     @media (max-width:720px){ .grid{grid-template-columns:1fr} }
+    #chart{min-height:260px}
   </style>
 </head>
 <body>
@@ -76,6 +77,12 @@
       <div class="muted" style="margin-top:8px" id="dsLinks">—</div>
     </div>
 
+
+    <div class="card">
+      <div class="muted" style="margin-bottom:8px">Chart</div>
+      <div id="chart" style="height:360px;width:100%"></div>
+      <div class="muted" id="chartMeta" style="margin-top:8px">—</div>
+    </div>
     <div class="card">
       <div class="muted" style="margin-bottom:8px">Live trades</div>
       <table>
@@ -87,6 +94,7 @@
     </div>
   </main>
 
+  <script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
   <script>
     const WORKER_BASE = "https://flat-grass-9c26solanaonsolana.simon-kaggwa-why.workers.dev";
     const CHAIN = "solana";
@@ -139,6 +147,83 @@ function refreshAges() {
     n.textContent = timeAgo(ts);
   }
 }
+
+
+    // --- Lightweight chart (candles) ---
+    let chart = null;
+    let candleSeries = null;
+    let ro = null;
+
+    function ensureChart() {
+      if (chart && candleSeries) return;
+      const container = el("chart");
+      if (!container || typeof LightweightCharts === "undefined") return;
+
+      container.innerHTML = "";
+      const w = Math.max(1, container.clientWidth || 1);
+      const h = Math.max(260, container.clientHeight || 360);
+
+      chart = LightweightCharts.createChart(container, {
+        width: w,
+        height: h,
+        layout: { background: { type: "solid", color: "#0f1520" }, textColor: "#e7eef7" },
+        grid: { vertLines: { color: "rgba(255,255,255,.06)" }, horzLines: { color: "rgba(255,255,255,.06)" } },
+        rightPriceScale: { borderColor: "rgba(255,255,255,.10)" },
+        timeScale: { borderColor: "rgba(255,255,255,.10)", timeVisible: true, secondsVisible: false },
+        crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+      });
+
+      candleSeries = chart.addCandlestickSeries({
+        upColor: "#22c55e",
+        downColor: "#ef4444",
+        borderUpColor: "#22c55e",
+        borderDownColor: "#ef4444",
+        wickUpColor: "#22c55e",
+        wickDownColor: "#ef4444",
+      });
+
+      if (ro) { try { ro.disconnect(); } catch (e) {} }
+      ro = new ResizeObserver(() => {
+        if (!chart) return;
+        const ww = container.clientWidth || 1;
+        const hh = container.clientHeight || 360;
+        if (ww > 0 && hh > 0) chart.applyOptions({ width: ww, height: hh });
+      });
+      ro.observe(container);
+    }
+
+    function normalizeSec(t) {
+      const n = Number(t);
+      if (!Number.isFinite(n)) return null;
+      if (n > 1e12) return Math.floor(n / 1000);
+      return Math.floor(n);
+    }
+
+    function renderCandles(items, tfLabel) {
+      try {
+        ensureChart();
+        if (!candleSeries) return;
+
+        const arr = Array.isArray(items) ? items : [];
+        const data = [];
+        for (const x of arr) {
+          const ts = normalizeSec(x.t);
+          const o = Number(x.o), h = Number(x.h), l = Number(x.l), c = Number(x.c);
+          if (!ts || !Number.isFinite(o) || !Number.isFinite(h) || !Number.isFinite(l) || !Number.isFinite(c)) continue;
+          data.push({ time: ts, open: o, high: h, low: l, close: c });
+        }
+        data.sort((a,b)=>a.time-b.time);
+        candleSeries.setData(data);
+        if (chart) chart.timeScale().fitContent();
+
+        const meta = document.getElementById("chartMeta");
+        if (meta) meta.textContent = data.length ? `ok • ${data.length} candles (${tfLabel || "15m"})` : "no candles";
+      } catch (e) {
+        console.warn("[chart render fail]", e);
+        const meta = document.getElementById("chartMeta");
+        if (meta) meta.textContent = "chart error";
+      }
+    }
 
 let timer = null;
     let lastAddr = "";
@@ -218,9 +303,6 @@ if (p && p.ok && p.price != null) {
   console.warn("[price fail]", p);
 }
 
-)`) : "fail";
-        console.warn("[price fail]", p);
-      }
 
       // TRADES
       if (t && t.ok) {
@@ -248,10 +330,12 @@ if (p && p.ok && p.price != null) {
       if (c && c.ok) {
         el("candlesCount").textContent = String(c.count ?? (c.items?.length ?? 0));
         el("candlesMeta").textContent = "ok";
+        renderCandles(c.items || [], c.tf || "15m");
       } else {
         el("candlesCount").textContent = "—";
         el("candlesMeta").textContent = c ? (`fail (${c.http||"?"})`) : "fail";
         console.warn("[candles fail]", c);
+        const cm = document.getElementById("chartMeta"); if (cm) cm.textContent = c ? (`fail (${c.http||"?"})`) : "fail";
       }
 
       // DEXSCREENER
