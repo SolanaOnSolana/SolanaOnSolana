@@ -1370,6 +1370,8 @@ DexGuard DexLike LiveChart v1
       ro: null,
       lastCandle: null,
       candles: [],
+      priceByPool: new Map(),
+      _prefetching: false,
     };
 
     
@@ -1527,6 +1529,23 @@ function setStatus(kind, txt){
       const list = filtered.length ? filtered : pairs.slice(0, 18);
       const max = Math.min(18, list.length);
 
+      // Warm caches for instant open (does not touch UI)
+      try{
+        const pre = [];
+        const preMax = Math.min(6, list.length);
+        for (let j=0;j<preMax;j++){
+          const pp = list[j];
+          const pool = pp?.pairAddress || pp?.pairId || pp?.pair || '';
+          const chain = (pp?.chainId || '').toLowerCase();
+          if (pool && chain) pre.push({ chain, pool });
+        }
+        if (pre.length){
+          const run = () => schedulePrefetch(pre, state.tf);
+          if ('requestIdleCallback' in window) requestIdleCallback(run, { timeout: 900 });
+          else setTimeout(run, 300);
+        }
+      }catch(e){}
+
       for (let i=0;i<max;i++){
         const p = list[i];
         const logo = p?.info?.imageUrl || p?.baseToken?.logoURI || p?.baseToken?.icon || '';
@@ -1626,6 +1645,22 @@ function setStatus(kind, txt){
         if (sid !== state.sessionId) return;
 
         renderTrending(enriched);
+        // Prefetch candles for top trending pools for instant open (idle + concurrency-limited)
+        try{
+          const pre = [];
+          const preMax = Math.min(10, enriched.length);
+          for (let i=0;i<preMax;i++){
+            const it = enriched[i];
+            const pool = it?.pairId || it?.pairAddress || it?.pool || it?.pair || '';
+            const chain = (state.chain || '').toLowerCase();
+            if (pool && chain) pre.push({ chain, pool });
+          }
+          if (pre.length){
+            const run = () => schedulePrefetch(pre, state.tf);
+            if ('requestIdleCallback' in window) requestIdleCallback(run, { timeout: 900 });
+            else setTimeout(run, 300);
+          }
+        }catch(e){}
         setStatus('live', 'Trending live');
       }catch(e){
         if (signal.aborted) return;
@@ -1883,6 +1918,10 @@ function setStatus(kind, txt){
 
       state.current = meta;
       setTokenUI(meta);
+      // Instant chart: use cached candles or a safe placeholder while network loads
+      showImmediateCandles(meta, state.tf, pair.priceUsd);
+      // Remember last known price for placeholders
+      try { state.priceByPool.set(meta.pool, toNum(pair.priceUsd)); state.lastPriceUsd = toNum(pair.priceUsd) || state.lastPriceUsd; } catch (e) {}
       showTokenView(true);
 
       await loadCandles(meta, state.tf, {sid, signal});
@@ -2083,7 +2122,152 @@ function setStatus(kind, txt){
       }
     }
 
-    // ========= Live trades + candle growth =========
+    
+  // ========= Fast-switch helpers (no blank chart) =============================
+  function tfSeconds(tf) {
+    const m = TF_MAP[tf];
+    return m ? m.sec : 900;
+  }
+
+  function makePlaceholderCandles(tf, priceUsd) {
+    const sec = tfSeconds(tf);
+    const now = Math.floor(Date.now() / 1000);
+    const count = 240; // enough to fill viewport (about 4h on 1m, ~10d on 1h, etc)
+    const start = now - (count * sec);
+    let p = toNum(priceUsd);
+    if (!p || !isFinite(p)) p = state.lastPriceUsd || 0;
+    if (!p || !isFinite(p)) p = 1e-9; // never render as "0" (avoids giant red wick to 0)
+    const out = [];
+    for (let i = 0; i < count; i++) {
+      const t = start + (i * sec);
+      out.push({ time: t, open: p, high: p, low: p, close: p });
+    }
+    return out;
+  }
+
+  function showImmediateCandles(meta, tf, priceUsd) {
+    try {
+      if (!meta || !meta.pool) return;
+      const key = candleCacheKey(meta, tf);
+      const cached = getCache(candleCache, key, 60 * 1000); // even if slightly stale, it's instant
+      if (cached && cached.length) {
+        state.candles = cached;
+        applyCandlesToChart(cached);
+        return;
+      }
+      // show a non-zero placeholder so UI doesn't look "crashed" while network loads
+      const ph = makePlaceholderCandles(tf, priceUsd);
+      state.candles = ph;
+      applyCandlesToChart(ph);
+    } catch (e) { /* silent */ }
+  }
+
+  // Prefetch candles for pools (keeps navigation instant). Concurrency = 2.
+  const prefetchQ = [];
+  let prefetchActive = 0;
+
+  function schedulePrefetch(metaList, tf) {
+    if (!Array.isArray(metaList) || !metaList.length) return;
+    const seen = new Set();
+    for (const m of metaList) {
+      if (!m || !m.pool || !m.chain) continue;
+      const k = `${m.chain}:${m.pool}:${tf}`;
+      if (seen.has(k)) continue;
+      seen.add(k);
+      prefetchQ.push({ meta: m, tf });
+    }
+    pumpPrefetch();
+  }
+
+  function pumpPrefetch() {
+    if (prefetchActive >= 2) return;
+    while (prefetchActive < 2 && prefetchQ.length) {
+      const job = prefetchQ.shift();
+      if (!job) break;
+      const key = candleCacheKey(job.meta, job.tf);
+      if (hasFresh(candleCache, key, CANDLE_TTL_MS)) continue;
+      prefetchActive++;
+      (async () => {
+        try {
+          await prefetchCandles(job.meta, job.tf);
+        } catch (e) { /* ignore */ }
+        finally {
+          prefetchActive--;
+          pumpPrefetch();
+        }
+      })();
+    }
+  }
+
+  async function prefetchCandles(metaLite, tf) {
+    // Writes into caches only (no UI updates). Uses same providers as loadCandles.
+    const meta = (() => {
+      const chain = (metaLite?.chain || '').toLowerCase();
+      const pool = metaLite?.pool || metaLite?.pairId || metaLite?.pairAddress || metaLite?.pair || '';
+      const ch = CHAINS[chain] || CHAINS[state.chain];
+      return { chain, pool, gtNet: ch?.gtNet || chain, token: metaLite?.token || null };
+    })();
+
+    if (!meta.chain || !meta.pool) return;
+
+    const key = candleCacheKey(meta, tf);
+    if (hasFresh(candleCache, key, CANDLE_TTL_MS)) return;
+
+    let candles = null;
+
+    // GeckoTerminal (primary)
+    try {
+      const u = gtOhlcvUrl(meta.gtNet, meta.pool, tf, "base");
+      const j = await withBackoff(() => fetchJSON(u, { timeoutMs: 9000 }), 2, 450);
+      candles = normalizeGTOhlcv(j);
+    } catch (e) { /* ignore */ }
+
+    // Alternate quote-ohlcv (some pools behave better)
+    if (!candles || candles.length < 5) {
+      try {
+        const u = gtOhlcvUrl(meta.gtNet, meta.pool, tf, "quote");
+        const j = await withBackoff(() => fetchJSON(u, { timeoutMs: 9000 }), 2, 450);
+        const c2 = normalizeGTOhlcv(j);
+        if (c2 && c2.length >= (candles?.length || 0)) candles = c2;
+      } catch (e) { /* ignore */ }
+    }
+
+    // Birdeye (SOL optional, only if user provided key)
+    if ((!candles || candles.length < 5) && meta.chain === "solana" && settings?.birdeyeKey) {
+      try {
+        // We may not have token mint here; if missing, skip
+        const mint = meta.token || metaLite?.token;
+        if (mint) {
+          const u = birdeyeOhlcvUrl(mint, tf);
+          const j = await withBackoff(() => fetchBirdeye(u), 2, 450);
+          const b = normalizeBirdeyeOhlcv(j);
+          if (b && b.length >= 5) candles = b;
+        }
+      } catch (e) { /* ignore */ }
+    }
+
+    if (candles && candles.length) {
+      setCache(candleCache, key, candles);
+      lsSet(key, { t: Date.now(), v: candles });
+    }
+  } catch (e) {
+      // ignore -> try gecko
+    }
+
+    if (!candles || !candles.length) {
+      try {
+        const g = await fetchGeckoCandles(meta, tf);
+        candles = g;
+      } catch (e) { /* ignore */ }
+    }
+
+    if (candles && candles.length) {
+      setCache(candleCache, key, candles);
+      lsSet(key, { t: Date.now(), v: candles });
+    }
+  }
+
+// ========= Live trades + candle growth =========
     function stopLive(){
       if (state.liveTimer){ clearInterval(state.liveTimer); state.liveTimer = null; }
       if (state.ageTimer){ clearInterval(state.ageTimer); state.ageTimer = null; }
