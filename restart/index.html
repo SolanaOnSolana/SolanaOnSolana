@@ -632,14 +632,15 @@ DexGuard DexLike LiveChart v1
       text-overflow:ellipsis;
       max-width: 100%;
     }
+    .chartPanel{ scroll-margin-top: 90px; }
     .chartWrap{
-      height: 420px;
-      min-height: 320px;
+      height: clamp(260px, 52vh, 520px);
+      min-height: 240px;
       position:relative;
       touch-action: pan-y pinch-zoom;
     }
-    @media (max-width: 980px){ .chartWrap{height: 380px} }
-    @media (max-width: 520px){ .chartWrap{height: 330px} }
+    @media (max-width: 980px){ .chartWrap{height: clamp(240px, 48vh, 420px);} }
+    @media (max-width: 520px){ .chartWrap{height: clamp(220px, 44vh, 360px);} }
     #chart{ position:absolute; inset:0; width:100%; height:100%; }
     .chartWrap.loading #chart{opacity:1}
     .chartWrap.loading::after{
@@ -1521,6 +1522,7 @@ function setStatus(kind, txt){
       initChart();
       try{ state.series && state.series.setData([]); }catch(e){}
       try{ state.chart && state.chart.timeScale && state.chart.timeScale().resetTimeScale(); }catch(e){}
+      state._pinToRight = true;
 
       // show a quick flat baseline as soon as we have a reference price (from DS meta or live trades)
       const sid = state.sessionId;
@@ -1607,6 +1609,12 @@ function setStatus(kind, txt){
       if (!state._rangeSub){
         state.chart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
           if (!range || !state.current) return;
+          const total = state.candles?.length || 0;
+          if (total > 0 && isFinite(range.to)){
+            state._pinToRight = range.to >= (total - 2);
+          } else {
+            state._pinToRight = true;
+          }
           if (range.from > 10) return;
           clearTimeout(state._backfillTimer);
           state._backfillTimer = setTimeout(() => {
@@ -1679,7 +1687,15 @@ function setStatus(kind, txt){
           </div>
         `;
 
-        const open = () => openPool({chain: state.chain, pairId: it.pairId, tokenAddress: it.tokenAddress, hint: 'trending'});
+        const open = () => openPool({
+          chain: state.chain,
+          pairId: it.pairId,
+          tokenAddress: it.tokenAddress,
+          baseSymbol: it.baseSymbol,
+          baseName: it.baseName,
+          logoUrl: it.logoUrl,
+          hint: 'trending'
+        });
         card.addEventListener('click', open);
         card.addEventListener('keydown', (e)=>{ if(e.key==='Enter' || e.key===' ') { e.preventDefault(); open(); }});
         el.trending.appendChild(card);
@@ -1736,7 +1752,16 @@ function setStatus(kind, txt){
           if (targetChain !== state.chain){
             setChain(targetChain, {silent:true});
           }
-          openPool({chain: targetChain, pairId: pair, tokenAddress: token, hint: 'search'});
+          openPool({
+            chain: targetChain,
+            pairId: pair,
+            tokenAddress: token,
+            baseSymbol: sym,
+            baseName: name,
+            quoteSymbol: p?.quoteToken?.symbol || null,
+            logoUrl: logo,
+            hint: 'search'
+          });
         };
 
         item.addEventListener('click', open);
@@ -1749,9 +1774,10 @@ function setStatus(kind, txt){
       const logoUrl = meta.logoUrl || '';
       el.tokenLogo.innerHTML = logoUrl ? `<img src="${escapeHtml(logoUrl)}" alt="">` : `<span class="muted mono">DG</span>`;
 
-      const sym = (meta.baseSymbol || '—');
+      const sym = (meta.baseSymbol || meta.baseName || '—');
       const quote = (meta.quoteSymbol || '—');
-      el.tokenTitle.textContent = `${meta.baseName || sym}  (${sym}/${quote})`;
+      const pairText = (quote && quote !== '—') ? `${sym}/${quote}` : sym;
+      el.tokenTitle.textContent = `${meta.baseName || sym}  (${pairText})`;
       el.tokenSub.textContent = `${CHAINS[meta.chain].label} • Contract: ${meta.token ? meta.token : '—'} • Pool: ${meta.pool || '—'}`;
 
       el.stPrice.textContent = meta.priceUsd!=null ? fmtUSD(meta.priceUsd) : '—';
@@ -1769,6 +1795,23 @@ function setStatus(kind, txt){
       el.lnkDex.href = dexLink(meta.chain, meta.pool);
       el.btnDS.href = dexLink(meta.chain, meta.pool);
       el.chartMeta.textContent = `${sym}/${quote} • ${CHAINS[meta.chain].label} • pool ${shortAddr(meta.pool)}`;
+    }
+
+    function scrollChartIntoView(){
+      const wrap = el.chartWrap;
+      if (!wrap) return;
+      requestAnimationFrame(() => {
+        try{
+          const header = document.querySelector('.header');
+          const headerH = header ? Math.ceil(header.getBoundingClientRect().height) : 0;
+          const rect = wrap.getBoundingClientRect();
+          const viewportH = window.innerHeight || 0;
+          const fullyVisible = rect.top >= headerH && rect.bottom <= viewportH;
+          if (fullyVisible) return;
+          const targetTop = window.scrollY + rect.top - headerH - 12;
+          window.scrollTo({top: Math.max(0, targetTop), behavior:'smooth'});
+        }catch(e){}
+      });
     }
 
     function showTokenView(show){
@@ -1947,7 +1990,7 @@ function setStatus(kind, txt){
     }
 
     // ========= Open pool / token =========
-    async function openPool({chain, pairId, tokenAddress, hint=''}){
+    async function openPool({chain, pairId, tokenAddress, baseSymbol, baseName, quoteSymbol, logoUrl, hint=''}){
       if (!pairId && tokenAddress){
         await openByToken(chain, tokenAddress);
         return;
@@ -1987,10 +2030,10 @@ function setStatus(kind, txt){
         chain, dsChain, gtNet,
         pool: pairId,
         token: tokenAddress || null,
-        baseSymbol: null,
-        quoteSymbol: null,
-        baseName: null,
-        logoUrl: null,
+        baseSymbol: baseSymbol || null,
+        quoteSymbol: quoteSymbol || null,
+        baseName: baseName || null,
+        logoUrl: logoUrl || null,
         dexId: null,
         priceUsd: null,
         change24h: null,
@@ -2005,10 +2048,13 @@ function setStatus(kind, txt){
       };
 
       el.btnDS.href = dexLink(chain, pairId);
-            state.current = meta;
+      state.current = meta;
+      state._pinToRight = true;
       resetChartForNewToken(meta);
       primeChart(meta);
       startLive(meta, {sid});
+      setTokenUI(meta);
+      scrollChartIntoView();
 
       // DexScreener meta
       try{
