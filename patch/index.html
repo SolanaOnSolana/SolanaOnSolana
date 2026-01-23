@@ -623,6 +623,44 @@ DexGuard DexLike LiveChart v1
     .tf:hover{background: rgba(255,255,255,.10); transform: translateY(-1px)}
     .tf.active{border:0; background: linear-gradient(90deg, rgba(20,241,149,.92), rgba(0,209,255,.86), rgba(153,69,255,.86)); color:#061012}
 
+    .yZoomRow{
+      display:flex;
+      gap:8px;
+      align-items:center;
+      flex-basis:100%;
+      margin-top:6px;
+    }
+    .yZoomBtn{
+      height:30px;
+      min-width:36px;
+      padding:0 12px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.05);
+      color: rgba(255,255,255,.90);
+      font-weight: 1000;
+      font-size: 15px;
+      line-height: 1;
+      cursor:pointer;
+      user-select:none;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      -webkit-tap-highlight-color: transparent;
+      transition: transform .12s ease, background .12s ease;
+    }
+    .yZoomBtn:hover{background: rgba(255,255,255,.10); transform: translateY(-1px)}
+    .yZoomBtn:active{transform: translateY(0px) scale(.99)}
+    .yZoomBtn:disabled{
+      opacity:.35;
+      cursor:not-allowed;
+      transform:none;
+    }
+    @media (max-width: 720px){
+      .yZoomBtn{ height:34px; min-width:42px; font-size:16px; }
+      .yZoomRow{ margin-top:8px; }
+    }
+
     .stTabs{display:flex; gap:6px; flex-wrap:wrap; margin-top:8px}
     .stPill{
       padding:5px 9px;
@@ -2143,6 +2181,10 @@ tbody tr.tradeSell:hover td:not(:nth-child(5)){
                       <button class="tf" data-tf="1d">1d</button>
                     </div>
                     <div id="chartMeta" class="chartMeta ellipsis">—</div>
+                    <div class="yZoomRow" aria-label="Y Scale Controls">
+                      <button id="yZoomIn" class="yZoomBtn" type="button" aria-label="Y Zoom In" title="Y Zoom In">+</button>
+                      <button id="yZoomOut" class="yZoomBtn" type="button" aria-label="Y Zoom Out" title="Y Zoom Out">−</button>
+                    </div>
                   </div>
 
                   <div class="chartWrap" id="chartWrap">
@@ -2585,6 +2627,8 @@ tbody tr.tradeSell:hover td:not(:nth-child(5)){
       tfs: $$('.tf'),
       chartWrap: $('#chartWrap'),
       chartMeta: $('#chartMeta'),
+      yZoomIn: $('#yZoomIn'),
+      yZoomOut: $('#yZoomOut'),
       status: $('#status'),
       statusTxt: $('#statusTxt'),
       tradesBody: $('#tradesBody'),
@@ -2662,6 +2706,8 @@ tbody tr.tradeSell:hover td:not(:nth-child(5)){
 
       chart: null,
       series: null,
+      yZoomOff: 0,
+      yZoomBase: { top: 0.10, bottom: 0.12 },
       ro: null,
       lastCandle: null,
       candles: [],
@@ -2817,6 +2863,43 @@ function setStatus(kind, txt){
 
 
     // ========= Chart init =========
+
+    // ========= Y-Scale controls (STEP12) =========
+    const DG_YZOOM = { step: 0.03, min: 0.02, max: 0.40 };
+
+    function dgApplyYZoom(){
+      if (!state.chart) return;
+      const base = state.yZoomBase || { top: 0.10, bottom: 0.12 };
+      const off0 = (state.yZoomOff!=null && isFinite(state.yZoomOff)) ? Number(state.yZoomOff) : 0;
+
+      // clamp offset so BOTH margins stay in bounds
+      const minOff = DG_YZOOM.min - Math.min(base.top, base.bottom);
+      const maxOff = DG_YZOOM.max - Math.max(base.top, base.bottom);
+      const off = clamp(off0, minOff, maxOff);
+      state.yZoomOff = off;
+
+      const top = clamp(base.top + off, DG_YZOOM.min, DG_YZOOM.max);
+      const bottom = clamp(base.bottom + off, DG_YZOOM.min, DG_YZOOM.max);
+
+      try{
+        state.chart.applyOptions({ rightPriceScale: { scaleMargins: { top, bottom } } });
+      }catch(e){}
+
+      try{
+        if (el.yZoomIn) el.yZoomIn.disabled = (top <= DG_YZOOM.min + 1e-6 || bottom <= DG_YZOOM.min + 1e-6);
+        if (el.yZoomOut) el.yZoomOut.disabled = (top >= DG_YZOOM.max - 1e-6 || bottom >= DG_YZOOM.max - 1e-6);
+      }catch(e){}
+    }
+
+    function dgYZoom(delta){
+      const base = state.yZoomBase || { top: 0.10, bottom: 0.12 };
+      const minOff = DG_YZOOM.min - Math.min(base.top, base.bottom);
+      const maxOff = DG_YZOOM.max - Math.max(base.top, base.bottom);
+      const next = clamp(((state.yZoomOff!=null && isFinite(state.yZoomOff)) ? Number(state.yZoomOff) : 0) + delta, minOff, maxOff);
+      state.yZoomOff = next;
+      dgApplyYZoom();
+    }
+
     function initChart(){
       if (state.chart) return;
       const wrap = el.chartWrap;
@@ -2864,6 +2947,9 @@ function setStatus(kind, txt){
         wickUpColor: 'rgba(20,241,149,0.70)',
         wickDownColor: 'rgba(255,104,121,0.70)',
       });
+
+      // Apply persisted Y-zoom margins (STEP12)
+      dgApplyYZoom();
 
       if (!state._rangeSub){
         state.chart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
@@ -5372,6 +5458,10 @@ if (last && isFinite(last.close)){
 
 
       el.tfs.forEach(b => bindOnce(b, 'click', ()=> setTimeframe(b.dataset.tf), {passive:true}, 'tf:click'));
+
+      // Y-Scale controls (STEP12)
+      if (el.yZoomIn) bindOnce(el.yZoomIn, 'click', ()=> dgYZoom(-DG_YZOOM.step), {passive:true}, 'yzoom:in');
+      if (el.yZoomOut) bindOnce(el.yZoomOut, 'click', ()=> dgYZoom(+DG_YZOOM.step), {passive:true}, 'yzoom:out');
 
       bindOnce(el.stChg, 'click', (e)=>{
         const b = e.target && e.target.closest ? e.target.closest('button[data-sttf]') : null;
