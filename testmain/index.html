@@ -114,7 +114,7 @@ DexGuard DexLike LiveChart v1
     }
 
     .brand{
-      display:flex; align-items:center; gap:12px;
+      display:none; align-items:center; gap:12px;
       min-width: 0;
     }
     .logo{
@@ -309,6 +309,21 @@ DexGuard DexLike LiveChart v1
       gap:12px;
       padding: 12px;
     }
+    /* Token view: stack chart + trades vertically (trades under chart) */
+    .tokenGrid{
+      grid-template-columns: 1fr;
+    }
+    .tokenGrid > .panel{
+      width: 100%;
+    }
+    /* keep trades list usable when stacked */
+    .tokenGrid .tableWrap{
+      max-height: 360px;
+    }
+    @media (max-width: 980px){
+      .tokenGrid .tableWrap{ max-height: 360px; }
+    }
+
     @media (max-width: 980px){ .grid{grid-template-columns: 1fr;} }
 
     .panel{
@@ -617,15 +632,29 @@ DexGuard DexLike LiveChart v1
       text-overflow:ellipsis;
       max-width: 100%;
     }
+    .chartPanel{ scroll-margin-top: 90px; }
     .chartWrap{
-      height: 420px;
-      min-height: 320px;
+      height: clamp(260px, 52vh, 520px);
+      min-height: 240px;
       position:relative;
       touch-action: pan-y pinch-zoom;
     }
-    @media (max-width: 980px){ .chartWrap{height: 380px} }
-    @media (max-width: 520px){ .chartWrap{height: 330px} }
+    @media (max-width: 980px){ .chartWrap{height: clamp(240px, 48vh, 420px);} }
+    @media (max-width: 520px){ .chartWrap{height: clamp(220px, 44vh, 360px);} }
     #chart{ position:absolute; inset:0; width:100%; height:100%; }
+    .chartWrap.loading #chart{opacity:1}
+    .chartWrap.loading::after{
+      content: '';
+      position:absolute;
+      inset:0;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-family: var(--mono);
+      color: rgba(255,255,255,.72);
+      letter-spacing:.06em;
+      font-size: 12px;
+    }
 
     .chartFooter{
       display:flex;
@@ -885,7 +914,7 @@ DexGuard DexLike LiveChart v1
             <div id="trending" class="trendingRow" aria-label="Trending row"></div>
             <div id="trendingEmpty" class="empty" style="display:none">
               <div>🛡️</div>
-              <div><b>No trending yet.</b> If an API is CORS-blocked in your environment, set a Proxy URL in Settings.</div>
+              <div><b>No trending yet.</b> We'll keep checking in the background.</div>
             </div>
           </section>
 
@@ -936,7 +965,7 @@ DexGuard DexLike LiveChart v1
                 <div class="stat"><div class="k">Pool</div><div id="stPool" class="v">—</div></div>
               </div>
 
-              <div class="grid" style="padding-top:0">
+              <div class="grid tokenGrid" style="padding-top:0">
                 <section class="panel chartPanel" aria-label="Live chart">
                   <div class="chartTop">
                     <div class="tfRow" aria-label="Timeframes">
@@ -983,7 +1012,7 @@ DexGuard DexLike LiveChart v1
                   </div>
                   <div id="tradesEmpty" class="empty" style="display:none">
                     <div>⏱️</div>
-                    <div><b>No trades yet.</b> We'll keep polling quietly. If blocked, set Proxy URL in Settings.</div>
+                    <div><b>No trades yet.</b> We'll keep polling quietly.</div>
                   </div>
                 </section>
               </div>
@@ -1115,6 +1144,10 @@ DexGuard DexLike LiveChart v1
       return days + 'd';
     };
     const escapeHtml = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    const cleanText = (val) => {
+      const s = (val ?? '').toString().trim();
+      return s && s !== '—' ? s : null;
+    };
     const toNum = (x) => {
       const n = typeof x === 'string' ? parseFloat(x) : (typeof x === 'number' ? x : NaN);
       return isFinite(n) ? n : null;
@@ -1287,6 +1320,36 @@ DexGuard DexLike LiveChart v1
       const from = to - secs * limit;
       return `https://public-api.birdeye.so/defi/ohlcv?address=${encodeURIComponent(token)}&type=token&time_from=${from}&time_to=${to}&interval=${encodeURIComponent(interval)}`;
     };
+    async function fetchBirdeyeOhlcv(meta, tf, {sid, signal}){
+      if (!settings.birdeyeKey) return null;
+      if (!meta || !meta.token) return null;
+      const url = birdeyeOhlcvUrl(meta.token, tf);
+      const be = await withBackoff(() => fetchJson(url, {
+        ttl: 10_000,
+        signal,
+        headers: {'X-API-KEY': settings.birdeyeKey},
+      }), {tries:2, signal});
+      if (sid !== state.sessionId) return null;
+
+      // Birdeye shapes vary; try common layouts
+      const data = be?.data?.data || be?.data || be;
+      const items = data?.items || data?.data?.items || data?.data || data?.items || [];
+      if (!Array.isArray(items) || !items.length) return null;
+
+      const candles = [];
+      for (const it of items){
+        const t = toNum(it?.unixTime ?? it?.time ?? it?.t);
+        const o = toNum(it?.o ?? it?.open);
+        const h = toNum(it?.h ?? it?.high);
+        const l = toNum(it?.l ?? it?.low);
+        const c = toNum(it?.c ?? it?.close);
+        const v = toNum(it?.v ?? it?.volume);
+        if (!isFinite(t) || !isFinite(c)) continue;
+        candles.push({time: t|0, open:o, high:h, low:l, close:c, volume:v});
+      }
+      return candles.length ? candles : null;
+    }
+
 
     function explorerLink(chain, address, kind='token'){
       const base = CHAINS[chain]?.explorer || '';
@@ -1371,6 +1434,14 @@ DexGuard DexLike LiveChart v1
       lastCandle: null,
       candles: [],
       lastPriceByPool: new Map(),
+      candleSideByKey: new Map(),
+      candleRetryAt: new Map(),
+      candleRefreshLock: false,
+      _backfilling: false,
+      _backfillTimer: 0,
+      _rangeSub: false,
+      metaByPool: new Map(),
+      metaByToken: new Map(),
     };
 
     
@@ -1410,12 +1481,63 @@ function setStatus(kind, txt){
       } else {
         el.tradesEmpty.innerHTML = `
           <div>⏱️</div>
-          <div><b>No trades yet.</b> We'll keep polling quietly. If blocked, set Proxy URL in Settings.</div>
+          <div><b>No trades yet.</b> We'll keep polling quietly.</div>
         `;
       }
       el.tradesEmpty.style.display = '';
     }
+    function setChartLoading(on){
+      el.chartWrap?.classList.toggle('loading', !!on);
+    }
+    function scoreCandles(list, refPrice){
+      if (!list || !list.length || !isFinite(refPrice) || refPrice <= 0) return null;
+      const last = list[list.length-1];
+      const close = last?.close;
+      if (!isFinite(close) || close <= 0) return null;
+      const ratio = Math.max(close, refPrice) / Math.max(1e-12, Math.min(close, refPrice));
+      return ratio;
+    }
+    function pickBestCandles(a, b, refPrice){
+      if (a && a.length && b && b.length){
+        if (!isFinite(refPrice) || refPrice <= 0) return a;
+        const sa = scoreCandles(a, refPrice);
+        const sb = scoreCandles(b, refPrice);
+        if (sa != null && sb != null) return (sa <= sb) ? a : b;
+        return a;
+      }
+      return (a && a.length) ? a : (b && b.length ? b : null);
+    }
     function poolKey(meta){ return `${meta.chain}|${meta.pool}`; }
+    function tokenKey(chain, token){ return `${chain}|${normAddr(chain, token)}`; }
+    function rememberMeta(meta){
+      if (!meta) return;
+      if (meta.pool) state.metaByPool.set(poolKey(meta), {...meta});
+      if (meta.token) state.metaByToken.set(tokenKey(meta.chain, meta.token), {...meta});
+      state.lastSelectedMeta = {...meta};
+    }
+    function mergeMeta(target, source){
+      if (!source) return;
+      const fieldsText = ['baseSymbol','baseName','quoteSymbol','logoUrl','token','dexId'];
+      for (const f of fieldsText){
+        if (!target[f]){
+          const v = cleanText(source[f]);
+          if (v) target[f] = v;
+        }
+      }
+      const fieldsNum = ['priceUsd','change24h','volume24hUsd','liquidityUsd','marketCapUsd'];
+      for (const f of fieldsNum){
+        if (target[f] == null && isFinite(source[f])) target[f] = source[f];
+      }
+    }
+    function hydrateMeta(meta){
+      if (!meta) return meta;
+      const poolCached = meta.pool ? state.metaByPool.get(poolKey(meta)) : null;
+      const tokenCached = meta.token ? state.metaByToken.get(tokenKey(meta.chain, meta.token)) : null;
+      mergeMeta(meta, poolCached);
+      mergeMeta(meta, tokenCached);
+      mergeMeta(meta, state.lastSelectedMeta);
+      return meta;
+    }
     function primeChart(meta){
       const ck = candleCacheKey(meta, state.tf);
       const cached = candleCache.get(ck);
@@ -1423,15 +1545,54 @@ function setStatus(kind, txt){
         applyCandlesToChart(cached.data);
         return true;
       }
-      const hintPrice = (meta && isFinite(meta.priceUsd) && meta.priceUsd > 0)
-        ? meta.priceUsd
-        : state.lastPriceByPool.get(poolKey(meta));
+      const hintPrice = chartPriceFor(meta);
       if (isFinite(hintPrice) && hintPrice > 0){
         applyCandlesToChart(generateFlatCandles(hintPrice, state.tf, 220));
         return true;
       }
       return false;
     }
+
+    function resetChartForNewToken(meta){
+      // Prevent old token candles staying visible while new token loads.
+      initChart();
+      try{ state.series && state.series.setData([]); }catch(e){}
+      try{ state.chart && state.chart.timeScale && state.chart.timeScale().resetTimeScale(); }catch(e){}
+      state._pinToRight = true;
+
+      // show a quick flat baseline as soon as we have a reference price (from DS meta or live trades)
+      const sid = state.sessionId;
+      (async () => {
+        try{
+          const px = await waitForRefPrice(meta, 1400);
+          if (sid !== state.sessionId) return;
+          if (state.candles && state.candles.length) return; // real candles already loaded
+          if (isFinite(px) && px > 0){
+            applyCandlesToChart(generateFlatCandles(px, state.tf, 220));
+          }
+        }catch(e){}
+      })();
+    }
+
+    const normAddr = (chain, addr) => {
+      if (!addr) return '';
+      const s = String(addr);
+      return (chain === 'solana') ? s : s.toLowerCase();
+    };
+    const addrEq = (chain, a, b) => !!a && !!b && normAddr(chain, a) === normAddr(chain, b);
+
+    const pickGtSide = (meta) => {
+      // GeckoTerminal defines its own base/quote tokens for the pool. We must match the user's token against THAT.
+      const chain = meta?.chain;
+      const want = meta?.token;
+      const gb = meta?.gtBaseAddr;
+      const gq = meta?.gtQuoteAddr;
+      if (addrEq(chain, want, gb)) return 'base';
+      if (addrEq(chain, want, gq)) return 'quote';
+      // fallback: if we at least know quote is the chain native (e.g. SOL/WETH/BNB) and the user token isn't it, prefer the other
+      return meta?.gtSideHint || 'base';
+    };
+
 
     // ========= Chart init =========
     function initChart(){
@@ -1464,6 +1625,7 @@ function setStatus(kind, txt){
           secondsVisible: false,
         },
         crosshair: {
+          mode: LightweightCharts?.CrosshairMode?.Normal ?? 0,
           vertLine: { color:'rgba(255,255,255,0.16)', width:1 },
           horzLine: { color:'rgba(255,255,255,0.16)', width:1 },
         },
@@ -1480,6 +1642,27 @@ function setStatus(kind, txt){
         wickUpColor: 'rgba(20,241,149,0.70)',
         wickDownColor: 'rgba(255,104,121,0.70)',
       });
+
+      if (!state._rangeSub){
+        state.chart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
+          if (!range || !state.current) return;
+          const total = state.candles?.length || 0;
+          if (total > 0 && isFinite(range.to)){
+            state._pinToRight = range.to >= (total - 2);
+          } else {
+            state._pinToRight = true;
+          }
+          if (range.from > 10) return;
+          clearTimeout(state._backfillTimer);
+          state._backfillTimer = setTimeout(() => {
+            if (!state.current) return;
+            const sid = state.sessionId;
+            const signal = state.abort?.signal;
+            void backfillCandles(state.current, {sid, signal});
+          }, 200);
+        });
+        state._rangeSub = true;
+      }
 
       // ResizeObserver with rAF throttle + suppress noisy RO errors
       let raf = 0;
@@ -1541,7 +1724,37 @@ function setStatus(kind, txt){
           </div>
         `;
 
-        const open = () => openPool({chain: state.chain, pairId: it.pairId, tokenAddress: it.tokenAddress, hint: 'trending'});
+        const open = () => {
+          rememberMeta({
+            chain: state.chain,
+            pool: it.pairId,
+            token: it.tokenAddress,
+            baseSymbol: it.baseSymbol,
+            baseName: it.baseName,
+            quoteSymbol: it.quoteSymbol,
+            logoUrl: it.logoUrl,
+            priceUsd: it.priceUsd,
+            change24h: it.change24h,
+            volume24hUsd: it.volume24hUsd,
+            liquidityUsd: it.liquidityUsd,
+            marketCapUsd: it.marketCapUsd,
+            dexId: it.dexId,
+          });
+          openPool({
+            chain: state.chain,
+            pairId: it.pairId,
+            tokenAddress: it.tokenAddress,
+            baseSymbol: it.baseSymbol,
+            baseName: it.baseName,
+            logoUrl: it.logoUrl,
+            priceUsd: it.priceUsd,
+            change24h: it.change24h,
+            volume24hUsd: it.volume24hUsd,
+            liquidityUsd: it.liquidityUsd,
+            marketCapUsd: it.marketCapUsd,
+            hint: 'trending'
+          });
+        };
         card.addEventListener('click', open);
         card.addEventListener('keydown', (e)=>{ if(e.key==='Enter' || e.key===' ') { e.preventDefault(); open(); }});
         el.trending.appendChild(card);
@@ -1574,6 +1787,9 @@ function setStatus(kind, txt){
         const dexId = p?.dexId || '';
         const priceUsd = toNum(p?.priceUsd);
         const chg24 = toNum(p?.priceChange?.h24);
+        const liquidityUsd = toNum(p?.liquidity?.usd ?? p?.liquidityUsd);
+        const volume24hUsd = toNum(p?.volume?.h24 ?? p?.volume24hUsd);
+        const marketCapUsd = toNum(p?.fdv ?? p?.marketCap ?? p?.marketCapUsd);
         const itemChain = (p?.chainId || '').toLowerCase();
 
         const item = document.createElement('div');
@@ -1595,10 +1811,39 @@ function setStatus(kind, txt){
         const open = () => {
           // If result is other chain, switch chain then open.
           const targetChain = Object.keys(CHAINS).find(k => CHAINS[k].ds === itemChain) || state.chain;
+          rememberMeta({
+            chain: targetChain,
+            pool: pair,
+            token,
+            baseSymbol: sym,
+            baseName: name,
+            quoteSymbol: p?.quoteToken?.symbol || null,
+            logoUrl: logo,
+            priceUsd,
+            change24h: chg24,
+            liquidityUsd,
+            volume24hUsd,
+            marketCapUsd,
+            dexId,
+          });
           if (targetChain !== state.chain){
             setChain(targetChain, {silent:true});
           }
-          openPool({chain: targetChain, pairId: pair, tokenAddress: token, hint: 'search'});
+          openPool({
+            chain: targetChain,
+            pairId: pair,
+            tokenAddress: token,
+            baseSymbol: sym,
+            baseName: name,
+            quoteSymbol: p?.quoteToken?.symbol || null,
+            logoUrl: logo,
+            priceUsd,
+            change24h: chg24,
+            liquidityUsd,
+            volume24hUsd,
+            marketCapUsd,
+            hint: 'search'
+          });
         };
 
         item.addEventListener('click', open);
@@ -1608,12 +1853,14 @@ function setStatus(kind, txt){
     }
 
     function setTokenUI(meta){
+      hydrateMeta(meta);
       const logoUrl = meta.logoUrl || '';
       el.tokenLogo.innerHTML = logoUrl ? `<img src="${escapeHtml(logoUrl)}" alt="">` : `<span class="muted mono">DG</span>`;
 
-      const sym = (meta.baseSymbol || '—');
+      const sym = (meta.baseSymbol || meta.baseName || (meta.token ? shortAddr(meta.token) : '—'));
       const quote = (meta.quoteSymbol || '—');
-      el.tokenTitle.textContent = `${meta.baseName || sym}  (${sym}/${quote})`;
+      const pairText = (quote && quote !== '—') ? `${sym}/${quote}` : sym;
+      el.tokenTitle.textContent = `${meta.baseName || sym}  (${pairText})`;
       el.tokenSub.textContent = `${CHAINS[meta.chain].label} • Contract: ${meta.token ? meta.token : '—'} • Pool: ${meta.pool || '—'}`;
 
       el.stPrice.textContent = meta.priceUsd!=null ? fmtUSD(meta.priceUsd) : '—';
@@ -1631,6 +1878,23 @@ function setStatus(kind, txt){
       el.lnkDex.href = dexLink(meta.chain, meta.pool);
       el.btnDS.href = dexLink(meta.chain, meta.pool);
       el.chartMeta.textContent = `${sym}/${quote} • ${CHAINS[meta.chain].label} • pool ${shortAddr(meta.pool)}`;
+    }
+
+    function scrollChartIntoView(){
+      const wrap = el.chartWrap;
+      if (!wrap) return;
+      requestAnimationFrame(() => {
+        try{
+          const header = document.querySelector('.header');
+          const headerH = header ? Math.ceil(header.getBoundingClientRect().height) : 0;
+          const rect = wrap.getBoundingClientRect();
+          const viewportH = window.innerHeight || 0;
+          const fullyVisible = rect.top >= headerH && rect.bottom <= viewportH;
+          if (fullyVisible) return;
+          const targetTop = window.scrollY + rect.top - headerH - 12;
+          window.scrollTo({top: Math.max(0, targetTop), behavior:'smooth'});
+        }catch(e){}
+      });
     }
 
     function showTokenView(show){
@@ -1668,7 +1932,7 @@ function setStatus(kind, txt){
         if (signal.aborted) return;
         console.warn('[DexGuard] trending error', e);
         renderTrending([]);
-        setStatus('warn', 'Trending unavailable (set Proxy)');
+        setStatus('warn', 'Trending unavailable');
       }
     }
 
@@ -1797,8 +2061,8 @@ function setStatus(kind, txt){
       }catch(e){
         if (signal.aborted) return;
         console.warn('[DexGuard] search error', e);
-        setStatus('warn', 'Search unavailable (set Proxy)');
-        if (userTriggered) toast('Search failed (try Proxy)');
+        setStatus('warn', 'Search unavailable');
+        if (userTriggered) toast('Search failed');
         renderResults([]);
       }
     }
@@ -1809,7 +2073,21 @@ function setStatus(kind, txt){
     }
 
     // ========= Open pool / token =========
-    async function openPool({chain, pairId, tokenAddress, hint=''}){
+    async function openPool({
+      chain,
+      pairId,
+      tokenAddress,
+      baseSymbol,
+      baseName,
+      quoteSymbol,
+      logoUrl,
+      priceUsd,
+      change24h,
+      volume24hUsd,
+      liquidityUsd,
+      marketCapUsd,
+      hint=''
+    }){
       if (!pairId && tokenAddress){
         await openByToken(chain, tokenAddress);
         return;
@@ -1825,6 +2103,8 @@ function setStatus(kind, txt){
       state.lastTradeId = null;
       state.candles = [];
       state.lastCandle = null;
+      state._forceFitNext = true;
+      setChartLoading(false);
       el.tradesBody.innerHTML = '';
       el.tradeCount.textContent = '0';
       state.tradesMap = new Map();
@@ -1843,24 +2123,41 @@ function setStatus(kind, txt){
       const dsChain = CHAINS[chain].ds;
       const gtNet = CHAINS[chain].gt;
 
+      const cachedPool = state.metaByPool.get(`${chain}|${pairId}`) || null;
+      const cachedToken = tokenAddress ? state.metaByToken.get(tokenKey(chain, tokenAddress)) : null;
+      const cached = cachedPool || cachedToken;
+
       const meta = {
         chain, dsChain, gtNet,
         pool: pairId,
         token: tokenAddress || null,
-        baseSymbol: null,
-        quoteSymbol: null,
-        baseName: null,
-        logoUrl: null,
+        baseSymbol: cleanText(baseSymbol) ?? cleanText(cached?.baseSymbol),
+        quoteSymbol: cleanText(quoteSymbol) ?? cleanText(cached?.quoteSymbol),
+        baseName: cleanText(baseName) ?? cleanText(cached?.baseName),
+        logoUrl: cleanText(logoUrl) ?? cleanText(cached?.logoUrl),
         dexId: null,
-        priceUsd: null,
-        change24h: null,
-        volume24hUsd: null,
-        liquidityUsd: null,
-        marketCapUsd: null,
+        priceUsd: isFinite(priceUsd) ? priceUsd : (isFinite(cached?.priceUsd) ? cached.priceUsd : null),
+        change24h: isFinite(change24h) ? change24h : (isFinite(cached?.change24h) ? cached.change24h : null),
+        volume24hUsd: isFinite(volume24hUsd) ? volume24hUsd : (isFinite(cached?.volume24hUsd) ? cached.volume24hUsd : null),
+        liquidityUsd: isFinite(liquidityUsd) ? liquidityUsd : (isFinite(cached?.liquidityUsd) ? cached.liquidityUsd : null),
+        marketCapUsd: isFinite(marketCapUsd) ? marketCapUsd : (isFinite(cached?.marketCapUsd) ? cached.marketCapUsd : null),
+        gtBaseAddr: null,
+        gtQuoteAddr: null,
+        gtSideHint: null,
+        priceQuote: null,
+        quoteUsd: null,
       };
+      hydrateMeta(meta);
 
       el.btnDS.href = dexLink(chain, pairId);
+      state.current = meta;
+      state._pinToRight = true;
+      resetChartForNewToken(meta);
       primeChart(meta);
+      startLive(meta, {sid});
+      setTokenUI(meta);
+      rememberMeta(meta);
+      scrollChartIntoView();
 
       // DexScreener meta
       try{
@@ -1869,21 +2166,81 @@ function setStatus(kind, txt){
         const p = ds?.pairs?.[0] || null;
         if (p){
           meta.token = meta.token || p?.baseToken?.address || null;
-          meta.baseSymbol = p?.baseToken?.symbol || null;
-          meta.baseName = p?.baseToken?.name || null;
-          meta.quoteSymbol = p?.quoteToken?.symbol || null;
-          meta.logoUrl = p?.info?.imageUrl || null;
-          meta.dexId = p?.dexId || null;
+          meta.baseSymbol = meta.baseSymbol ?? (p?.baseToken?.symbol || null);
+          meta.baseName = meta.baseName ?? (p?.baseToken?.name || null);
+          meta.quoteSymbol = meta.quoteSymbol ?? (p?.quoteToken?.symbol || null);
+
+          // Prefer DexScreener's native (quote-token) price when available.
+          // This is critical to keep the chart unit aligned with the pair (e.g. TICKER/SOL -> priceNative in SOL).
+          const dsPriceNative = toNum(p?.priceNative);
+          if (isFinite(dsPriceNative) && dsPriceNative > 0) meta.priceQuote = meta.priceQuote ?? dsPriceNative;
+
+          // Stable candle side selection:
+          // If user opened via a specific token contract and it matches quoteToken, use quote candles;
+          // otherwise default to base candles (DexScreener pairs are base/quote).
+          const baseAddr = p?.baseToken?.address || null;
+          const quoteAddr = p?.quoteToken?.address || null;
+          meta._baseAddr = baseAddr;
+          meta._quoteAddr = quoteAddr;
+          if (meta.token){
+            meta.sideHint = addrEq(chain, meta.token, quoteAddr) ? 'quote' : 'base';
+          } else {
+            meta.sideHint = 'base';
+          }
+          meta.logoUrl = meta.logoUrl ?? (p?.info?.imageUrl || null);
+          meta.dexId = meta.dexId ?? (p?.dexId || null);
 
           meta.priceUsd = toNum(p?.priceUsd);
+
+          // If we have both USD and quote-token price, infer quote token USD (e.g. SOL/USD) for stable conversions.
+          if (meta.quoteUsd == null){
+            const pu = meta.priceUsd;
+            const pq = meta.priceQuote;
+            if (isFinite(pu) && pu > 0 && isFinite(pq) && pq > 0){
+              const qUsd = pu / pq;
+              if (isFinite(qUsd) && qUsd > 0) meta.quoteUsd = qUsd;
+            }
+          }
           meta.change24h = toNum(p?.priceChange?.h24);
           meta.volume24hUsd = toNum(p?.volume?.h24);
           meta.liquidityUsd = toNum(p?.liquidity?.usd);
           meta.marketCapUsd = toNum(p?.fdv);
+          setTokenUI(meta);
+          rememberMeta(meta);
         }
       }catch(e){
         if (!signal.aborted) console.warn('[DexGuard] ds meta failed', e);
       }
+
+      // Fallback enrichment: token-pairs list often has icon/liquidity/fdv even when the pair endpoint is sparse.
+      if (meta.token && (!meta.logoUrl || meta.liquidityUsd == null || meta.marketCapUsd == null)){
+        try{
+          const tp = await withBackoff(() => fetchJson(dsTokenPairsUrl(dsChain, meta.token), {ttl: 12_000, signal}), {tries:2, signal});
+          if (sid !== state.sessionId) return;
+          const arr = Array.isArray(tp) ? tp : (tp?.pairs || tp?.data || []);
+          if (Array.isArray(arr) && arr.length){
+            const match = arr.find(x => {
+              const pid = x?.pairAddress || x?.pairId || x?.address || x?.id;
+              if (pid && String(pid) === String(meta.pool)) return true;
+              const url = x?.url;
+              return (url && String(url).includes(String(meta.pool)));
+            }) || null;
+
+            if (match){
+              meta.logoUrl = meta.logoUrl || match?.info?.imageUrl || match?.baseToken?.logoURI || match?.baseToken?.imageUrl || match?.baseToken?.icon || null;
+              meta.liquidityUsd = meta.liquidityUsd ?? toNum(match?.liquidity?.usd ?? match?.liquidityUsd);
+              meta.marketCapUsd = meta.marketCapUsd ?? toNum(match?.fdv ?? match?.marketCap ?? match?.marketCapUsd);
+              meta.volume24hUsd = meta.volume24hUsd ?? toNum(match?.volume?.h24 ?? match?.volume24hUsd);
+              meta.baseSymbol = meta.baseSymbol ?? (match?.baseToken?.symbol || null);
+              meta.baseName = meta.baseName ?? (match?.baseToken?.name || null);
+              meta.token = meta.token ?? (match?.baseToken?.address || null);
+              meta.quoteSymbol = meta.quoteSymbol ?? (match?.quoteToken?.symbol || null);
+            }
+          }
+        }catch(e){}
+      }
+      setTokenUI(meta);
+      rememberMeta(meta);
 
       if (!state.candles.length) primeChart(meta);
 
@@ -1892,7 +2249,33 @@ function setStatus(kind, txt){
         const gt = await withBackoff(() => fetchJson(gtPoolUrl(gtNet, pairId), {ttl: 8_000, signal}), {tries:2, signal});
         if (sid !== state.sessionId) return;
         const a = gt?.data?.attributes || {};
+        // Capture GeckoTerminal's pool token addresses (Gecko base/quote may differ from DexScreener base/quote!)
+        const gb = a?.base_token?.address || a?.base_token_address || null;
+        const gq = a?.quote_token?.address || a?.quote_token_address || null;
+        meta.gtBaseAddr = meta.gtBaseAddr || gb;
+        meta.gtQuoteAddr = meta.gtQuoteAddr || gq;
+
+        // Stable chart side: match the token the user opened against Gecko's base/quote.
+        // This prevents the classic "SOL chart (127$)" bug when Gecko labels SOL as base.
+        meta.gtSideHint = pickGtSide(meta);
+
+        // Price hint in quote-token units (e.g. TOKEN/SOL), used for priming + fallbacks.
+        // Gecko pool attributes often expose both USD and native/quote prices.
+        const baseQ = toNum(a?.base_token_price_native_currency ?? a?.base_token_price_quote_token);
+        const quoteQ = toNum(a?.quote_token_price_native_currency ?? a?.quote_token_price_base_token);
+        if (meta.gtSideHint === 'base') meta.priceQuote = meta.priceQuote ?? baseQ;
+        if (meta.gtSideHint === 'quote') meta.priceQuote = meta.priceQuote ?? quoteQ;
+
         meta.priceUsd = meta.priceUsd ?? toNum(a?.base_token_price_usd ?? a?.price_usd);
+
+        if (meta.quoteUsd == null){
+          const pu = meta.priceUsd;
+          const pq = meta.priceQuote;
+          if (isFinite(pu) && pu > 0 && isFinite(pq) && pq > 0){
+            const qUsd = pu / pq;
+            if (isFinite(qUsd) && qUsd > 0) meta.quoteUsd = qUsd;
+          }
+        }
         meta.volume24hUsd = meta.volume24hUsd ?? toNum(a?.volume_usd?.h24 ?? a?.volume_usd_24h);
         meta.liquidityUsd = meta.liquidityUsd ?? toNum(a?.reserve_in_usd ?? a?.liquidity_in_usd);
         meta.change24h = meta.change24h ?? toNum(a?.price_change_percentage?.h24 ?? a?.price_change_percentage_24h);
@@ -1902,6 +2285,8 @@ function setStatus(kind, txt){
         meta.quoteSymbol = meta.quoteSymbol ?? (a?.quote_token?.symbol || a?.quote_token_symbol);
         meta.token = meta.token ?? (a?.base_token?.address || a?.base_token_address);
         meta.marketCapUsd = meta.marketCapUsd ?? toNum(a?.market_cap_usd ?? a?.fdv_usd);
+        setTokenUI(meta);
+        rememberMeta(meta);
       }catch(e){
         if (!signal.aborted) console.warn('[DexGuard] gt meta failed', e);
       }
@@ -1921,19 +2306,26 @@ function setStatus(kind, txt){
           meta.baseName = meta.baseName ?? (d?.name);
           meta.baseSymbol = meta.baseSymbol ?? (d?.symbol);
           meta.priceUsd = meta.priceUsd ?? toNum(d?.price ?? d?.priceUsd);
+          setTokenUI(meta);
+          rememberMeta(meta);
         }catch(e){
           if (!signal.aborted) console.warn('[DexGuard] birdeye overview failed', e);
         }
       }
 
       state.current = meta;
+      state._forceFitNext = true;
       setTokenUI(meta);
       showTokenView(true);
 
-      startLive(meta, {sid});
-
       await loadCandles(meta, state.tf, {sid, signal});
       if (sid !== state.sessionId) return;
+      if (shouldRetryCandles(meta)){
+        setTimeout(() => {
+          if (sid !== state.sessionId) return;
+          void refreshCandles(meta, {sid, signal, reason:'post-load retry'});
+        }, 900);
+      }
       setStatus('live', 'Live');
     }
 
@@ -1962,14 +2354,24 @@ function setStatus(kind, txt){
         if (signal.aborted) return;
         console.warn('[DexGuard] openByToken failed', e);
         setStatus('warn', 'Token resolve failed');
-        toast('Resolve failed (try Proxy)');
+        toast('Resolve failed');
       }
     }
 
     // ========= Candles =========
     const candleCache = new Map(); // key -> {t, data}
     const candleCacheKey = (meta, tf) => `${meta.chain}|${meta.pool}|${tf}`;
-    const refPriceFor = (meta) => meta?.priceUsd ?? state.lastPriceByPool.get(poolKey(meta)) ?? null;
+    const chartPriceFor = (meta) => {
+      if (!meta) return null;
+      const pu = meta?.priceUsd;
+      if (isFinite(pu) && pu > 0) return pu;
+      const last = state.lastPriceByPool.get(poolKey(meta));
+      if (isFinite(last) && last > 0) return last;
+      const pq = meta?.priceQuote;
+      if (isFinite(pq) && pq > 0) return pq;
+      return null;
+    };
+    const refPriceFor = chartPriceFor;
     async function waitForRefPrice(meta, timeoutMs=1400){
       const start = Date.now();
       let px = refPriceFor(meta);
@@ -1981,20 +2383,20 @@ function setStatus(kind, txt){
     }
     function maxCandlesForTf(tf){
       switch(tf){
-        case '1m': return 8000;
-        case '5m': return 12000;
-        case '15m': return 20000;
-        case '1h': return 4000;
-        case '4h': return 3000;
-        case '1d': return 2000;
+        case '1m': return 50000;   // ~34 days
+        case '5m': return 60000;   // ~208 days
+        case '15m': return 30000;  // ~312 days
+        case '1h': return 8000;    // ~333 days
+        case '4h': return 6000;    // ~1000 days
+        case '1d': return 3000;
         default: return 8000;
       }
     }
-    async function fetchGTOhlcvPaged(meta, tf, token, {sid, signal}){
+    async function fetchGTOhlcvPaged(meta, tf, token, {sid, signal, beforeStart}){
       const map = tfToGT(tf);
       const limit = map.timeframe === 'day' ? 260 : map.timeframe === 'hour' ? 520 : 700;
       const max = maxCandlesForTf(tf);
-      let before = nowSec();
+      let before = isFinite(beforeStart) ? beforeStart : nowSec();
       let out = [];
       let pages = 0;
 
@@ -2017,87 +2419,59 @@ function setStatus(kind, txt){
         before = oldest - 1;
         if (chunk.length < limit) break;
       }
+      // Convert USD candles into quote-token units (pair units) when we can infer quoteUsd.
+      const qUsd = meta?.quoteUsd;
+      if (isFinite(qUsd) && qUsd > 0){
+        out = out.map(c => ({ time: c.time, open: c.open / qUsd, high: c.high / qUsd, low: c.low / qUsd, close: c.close / qUsd }));
+      }
       return out;
     }
 
     async function loadCandles(meta, tf, {sid, signal}){
-      setStatus('', 'Loading candles…');
+      // Chart is always primed immediately; avoid flashing a loading label/overlay.
+      setStatus('', '');
+      setChartLoading(false);
 
       const ck = candleCacheKey(meta, tf);
+      const sideKey = ck;
       const cached = candleCache.get(ck);
       if (cached && (Date.now()-cached.t) < 25_000){
         state.candles = cached.data.slice();
-        applyCandlesToChart(state.candles);
+        if (state.candles.length >= 20){
+          applyCandlesToChart(state.candles);
+          setChartLoading(false);
+        }
         setStatus('live', 'Live (cached)');
         return;
       }
 
       let candles = null;
       let refPrice = refPriceFor(meta);
-      const needBothSides = !(isFinite(refPrice) && refPrice > 0);
+      const needBothSides = false;
+      const lockedSide = pickGtSide(meta);
 
-      function scoreCandles(list){
-        const rp = refPrice;
-        if (!list || !list.length || !isFinite(rp) || rp <= 0) return null;
-        const last = list[list.length-1];
-        const close = last?.close;
-        if (!isFinite(close) || close <= 0) return null;
-        const ratio = Math.max(close, rp) / Math.max(1e-12, Math.min(close, rp));
-        return ratio;
-      }
-      function pickBestCandles(a, b){
-        if (a && a.length && b && b.length){
-          const sa = scoreCandles(a);
-          const sb = scoreCandles(b);
-          if (sa != null && sb != null) return (sa <= sb) ? a : b;
-          return a.length >= b.length ? a : b;
-        }
-        return (a && a.length) ? a : (b && b.length ? b : null);
-      }
+      const pickWithRef = (a, b) => pickBestCandles(a, b, refPrice);
 
-      // 1) GeckoTerminal OHLCV (try base, then quote if base looks empty/zero)
+      // 0) Birdeye OHLCV (token-based, USD) — most reliable and avoids base/quote confusion
       try{
-        let baseCandles = null;
-        let quoteCandles = null;
-        baseCandles = await fetchGTOhlcvPaged(meta, tf, 'base', {sid, signal});
-        if (baseCandles && baseCandles.length){
-          const bad = baseCandles.every(c => !c || !isFinite(c.close) || c.close === 0);
-          if (bad) baseCandles = null;
-        }
+        const beCandles = await fetchBirdeyeOhlcv(meta, tf, {sid, signal});
+        if (beCandles && beCandles.length) candles = beCandles;
+      }catch(e){
+        if (!signal.aborted) console.warn('[DexGuard] birdeye ohlcv failed', e);
+      }
 
-        if (needBothSides || (!baseCandles || baseCandles.length < 20) || (refPrice && baseCandles && scoreCandles(baseCandles) > 50)){
-          quoteCandles = await fetchGTOhlcvPaged(meta, tf, 'quote', {sid, signal});
-          if (quoteCandles && quoteCandles.length){
-            const bad2 = quoteCandles.every(c => !c || !isFinite(c.close) || c.close === 0);
-            if (bad2) quoteCandles = null;
-          }
+      // 1) GeckoTerminal OHLCV (stable side: match user's token against Gecko pool base/quote)
+      try{
+        const side = lockedSide || 'base';
+        candles = await fetchGTOhlcvPaged(meta, tf, side, {sid, signal});
+        if (candles && candles.length){
+          const bad = candles.every(c => !c || !isFinite(c.close) || c.close === 0);
+          if (bad) candles = null;
         }
-
-        if (needBothSides){
-          refPrice = await waitForRefPrice(meta, 1400);
-        }
-
-        candles = pickBestCandles(baseCandles, quoteCandles);
       }catch(e){
         if (!signal.aborted) console.warn('[DexGuard] gt ohlcv failed', e);
       }
-
-      // 2) Birdeye fallback (Solana only)
-      if ((!candles || candles.length < 30) && meta.chain === 'solana' && settings.birdeyeKey && meta.token){
-        try{
-          const data = await withBackoff(() => fetchJson(birdeyeOhlcvUrl(meta.token, tf), {
-            ttl: 8_000,
-            signal,
-            headers: {'X-API-KEY': settings.birdeyeKey},
-          }), {tries:2, signal});
-          if (sid !== state.sessionId) return;
-          candles = normalizeBirdeyeOhlcv(data);
-        }catch(e){
-          if (!signal.aborted) console.warn('[DexGuard] birdeye ohlcv failed', e);
-        }
-      }
-
-      // 3) Safe fallback: generate flat candles from last known price so chart never crashes
+// 2) Safe fallback: generate flat candles from last known price so chart never crashes
       if (!candles || !candles.length){
         const px = meta.priceUsd ?? state.candles?.[state.candles.length-1]?.close ?? 0;
         candles = generateFlatCandles(px || 0.0000001, tf, 220);
@@ -2116,19 +2490,74 @@ function setStatus(kind, txt){
 
       state.candles = dedup;
       candleCache.set(ck, {t:Date.now(), data: dedup.slice()});
-      applyCandlesToChart(dedup);
-
-      // If header price is missing, seed it from the most recent candle close.
-      const last = dedup && dedup.length ? dedup[dedup.length-1] : null;
-      if (last && isFinite(last.close)){
-        if (state.current && state.current.pool === meta.pool){
-          if (state.current.priceUsd == null) state.current.priceUsd = last.close;
+      if (dedup.length >= 20){
+        const ref = refPriceFor(meta);
+        const lastC = dedup[dedup.length-1];
+        const ratio = (ref && lastC && isFinite(lastC.close))
+          ? Math.max(lastC.close, ref) / Math.max(1e-12, Math.min(lastC.close, ref))
+          : null;
+        if (ratio != null && ratio > 50 && shouldRetryCandles(meta)){
+          setChartLoading(false);
+          void refreshCandles(meta, {sid, signal, reason:'scale retry'});
+        } else {
+          applyCandlesToChart(dedup);
+          setChartLoading(false);
         }
-        state.lastPriceByPool.set(poolKey(meta), last.close);
-        if (el.stPrice.textContent === '—') el.stPrice.textContent = fmtUSD(last.close);
+      } else {
+        setChartLoading(false);
       }
 
+      // Seed chart reference price from the most recent candle close (chart units = quote token for the pair).
+const last = dedup && dedup.length ? dedup[dedup.length-1] : null;
+if (last && isFinite(last.close)){
+  state.lastPriceByPool.set(poolKey(meta), last.close);
+
+  if (state.current && state.current.pool === meta.pool){
+    if (state.current.priceQuote == null) state.current.priceQuote = last.close;
+    if (state.current.priceUsd == null && isFinite(state.current.quoteUsd) && state.current.quoteUsd > 0){
+      state.current.priceUsd = last.close * state.current.quoteUsd;
+    }
+  }
+
+  // Only fill the USD header if we can infer it safely.
+  if (el.stPrice.textContent === '—'){
+    const qUsd = meta?.quoteUsd;
+    if (isFinite(qUsd) && qUsd > 0) el.stPrice.textContent = fmtUSD(last.close * qUsd);
+  }
+}
+
       setStatus('live', 'Live');
+    }
+
+    async function backfillCandles(meta, {sid, signal}){
+      if (!state.candles || state.candles.length < 20) return;
+      if (state._backfilling) return;
+      state._backfilling = true;
+      try{
+        const oldest = state.candles[0];
+        const before = oldest?.time ? (oldest.time - 1) : null;
+        if (!before) return;
+        const sideKey = candleCacheKey(meta, state.tf);
+        const side = state.candleSideByKey.get(sideKey) || 'base';
+        const older = await fetchGTOhlcvPaged(meta, state.tf, side, {sid, signal, beforeStart: before});
+        if (sid !== state.sessionId) return;
+        if (!older.length) return;
+        const merged = older.concat(state.candles);
+        merged.sort((a,b)=> a.time - b.time);
+        const dedup = [];
+        let lastT = 0;
+        for (const c of merged){
+          if (!c || !isFinite(c.time)) continue;
+          if (c.time === lastT) { dedup[dedup.length-1] = c; continue; }
+          lastT = c.time;
+          dedup.push(c);
+        }
+        state.candles = dedup;
+        candleCache.set(candleCacheKey(meta, state.tf), {t:Date.now(), data: dedup.slice()});
+        applyCandlesToChart(dedup);
+      } finally {
+        state._backfilling = false;
+      }
     }
 
     function normalizeGTOhlcv(data){
@@ -2183,17 +2612,41 @@ function setStatus(kind, txt){
         setTimeout(() => { initChart(); if (state.series) applyCandlesToChart(candles); }, 60);
         return;
       }
+      let prevTimeRange = null;
+      try{
+        const ts = state.chart?.timeScale?.();
+        // Preserve the user's current time window when they are not pinned to the right edge.
+        if (ts && !state._forceFitNext && !state._pinToRight){
+          prevTimeRange = ts.getVisibleRange?.() || null;
+        }
+      }catch(e){}
+
       try{
         state.series.setData(candles || []);
-        const fit = () => {
+        const settle = () => {
           if (!state.chart || !state.series) return;
           const w = el.chartWrap.clientWidth|0;
           const h = el.chartWrap.clientHeight|0;
           if (w < 40 || h < 160) return;
-          state.chart.timeScale().fitContent();
+
+          const ts = state.chart.timeScale();
+          try{
+            if (state._forceFitNext){
+              ts.resetTimeScale();
+              ts.fitContent();
+              try{ ts.scrollToRealTime(); }catch(e){}
+              state._forceFitNext = false;
+            } else if (prevTimeRange){
+              // Keep the exact same time window after setData/backfill (prepending shifts indices).
+              ts.setVisibleRange(prevTimeRange);
+            } else if (state._pinToRight){
+              try{ ts.scrollToRealTime(); }catch(e){}
+            }
+          }catch(e){}
         };
-        requestAnimationFrame(fit);
-        setTimeout(fit, 180);
+        requestAnimationFrame(settle);
+        setTimeout(settle, 180);
+
         if (candles && candles.length){
           const last = candles[candles.length-1];
           if (last && isFinite(last.close)) applySeriesPrecision(last.close);
@@ -2205,6 +2658,46 @@ function setStatus(kind, txt){
         state.lastCandle = candles[candles.length-1];
       } else {
         state.lastCandle = null;
+      }
+    }
+
+    function isFlatCandles(list){
+      if (!Array.isArray(list) || list.length < 12) return true;
+      let min = Infinity;
+      let max = -Infinity;
+      for (const c of list){
+        if (!c || !isFinite(c.close)) continue;
+        if (c.close < min) min = c.close;
+        if (c.close > max) max = c.close;
+      }
+      if (!isFinite(min) || !isFinite(max) || min <= 0 || max <= 0) return true;
+      const ratio = max / min;
+      return ratio < 1.001;
+    }
+    function shouldRetryCandles(meta){
+      const key = poolKey(meta);
+      const last = state.candleRetryAt.get(key) || 0;
+      if ((Date.now() - last) < 20_000) return false;
+      const refPrice = refPriceFor(meta);
+      const lastCandle = state.candles?.[state.candles.length-1];
+      const ratio = (refPrice && lastCandle && isFinite(lastCandle.close))
+        ? Math.max(lastCandle.close, refPrice) / Math.max(1e-12, Math.min(lastCandle.close, refPrice))
+        : null;
+      const flat = isFlatCandles(state.candles);
+      const mismatched = ratio != null && ratio > 50;
+      if (!flat && !mismatched) return false;
+      state.candleRetryAt.set(key, Date.now());
+      return true;
+    }
+    async function refreshCandles(meta, {sid, signal, reason=''}){
+      if (state.candleRefreshLock) return;
+      state.candleRefreshLock = true;
+      try{
+        await loadCandles(meta, state.tf, {sid, signal});
+        if (sid !== state.sessionId) return;
+        if (reason) console.debug('[DexGuard] candle refresh', reason);
+      } finally {
+        state.candleRefreshLock = false;
       }
     }
 
@@ -2343,14 +2836,25 @@ function setStatus(kind, txt){
           el.tradeCount.textContent = String(list.length);
           state.lastTradeId = list[0]?.id || state.lastTradeId;
 
-          // Update header price + grow candle from newest trade
+          // Update header price from newest trade.
+          // IMPORTANT: we do NOT grow candles from trade USD here, because the chart is rendered in quote-token units
+          // (currency=token) and Gecko's base/quote may differ from DexScreener.
           const top = list[0];
-          if (top && isFinite(top.priceUsd)){
+          if (top && isFinite(top.priceUsd) && top.priceUsd > 0){
             el.stPrice.textContent = fmtUSD(top.priceUsd);
-            growLastCandle(top.priceUsd, top.tsSec || nowSec());
             if (state.current && state.current.pool === meta.pool){
-              state.lastPriceByPool.set(poolKey(meta), top.priceUsd);
+              // Keep our internal last-price reference in CHART units (quote-token units for the pair).
+              const qUsd = meta?.quoteUsd;
+              const pChart = (isFinite(qUsd) && qUsd > 0) ? (top.priceUsd / qUsd) : top.priceUsd;
+              if (isFinite(pChart) && pChart > 0){
+                state.lastPriceByPool.set(poolKey(meta), pChart);
+                if (state.current.priceQuote == null) state.current.priceQuote = pChart;
+                growLastCandle(pChart, top.tsSec);
+              }
             }
+          }
+          if (shouldRetryCandles(meta)){
+            void refreshCandles(meta, {sid, signal: state.abort?.signal, reason:'live retry'});
           }
 
           // reflect data source
@@ -2591,6 +3095,7 @@ function setStatus(kind, txt){
       stopLive();
       state.lastCandle = null;
       state.candles = [];
+      state._forceFitNext = true;
       setStatus('', 'Switching timeframe…');
 
       await loadCandles(state.current, tf, {sid, signal});
