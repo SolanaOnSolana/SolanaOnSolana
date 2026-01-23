@@ -310,6 +310,12 @@ DexGuard DexLike LiveChart v1
       padding: 12px;
     }
     @media (max-width: 980px){ .grid{grid-template-columns: 1fr;} }
+    .tokenGrid{
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+      padding: 12px;
+    }
 
     .panel{
       background: rgba(255,255,255,.04);
@@ -618,13 +624,13 @@ DexGuard DexLike LiveChart v1
       max-width: 100%;
     }
     .chartWrap{
-      height: 420px;
+      height: 520px;
       min-height: 320px;
       position:relative;
       touch-action: pan-y pinch-zoom;
     }
-    @media (max-width: 980px){ .chartWrap{height: 380px} }
-    @media (max-width: 520px){ .chartWrap{height: 330px} }
+    @media (max-width: 980px){ .chartWrap{height: 440px} }
+    @media (max-width: 520px){ .chartWrap{height: 360px} }
     #chart{ position:absolute; inset:0; width:100%; height:100%; }
 
     .chartFooter{
@@ -936,7 +942,7 @@ DexGuard DexLike LiveChart v1
                 <div class="stat"><div class="k">Pool</div><div id="stPool" class="v">—</div></div>
               </div>
 
-              <div class="grid" style="padding-top:0">
+              <div class="tokenGrid" style="padding-top:0">
                 <section class="panel chartPanel" aria-label="Live chart">
                   <div class="chartTop">
                     <div class="tfRow" aria-label="Timeframes">
@@ -960,33 +966,34 @@ DexGuard DexLike LiveChart v1
                   </div>
                 </section>
 
-                <section class="panel" aria-label="Live trades">
-                  <div class="panelHead">
-                    <div class="title">Live Trades</div>
-                    <div class="hint"><span id="tradeCount" class="kbd">0</span> latest</div>
-                  </div>
-                  <div class="tableWrap">
-                    <table class="table">
-                      <thead>
-                        <tr>
-                          <th class="center">Side</th>
-                          <th>Amount</th>
-                          <th class="right">Price</th>
-                          <th class="right">USD</th>
-                          <th class="right">Age</th>
-                          <th>Wallet</th>
-                          <th class="center">Tx</th>
-                        </tr>
-                      </thead>
-                      <tbody id="tradesBody"></tbody>
-                    </table>
-                  </div>
-                  <div id="tradesEmpty" class="empty" style="display:none">
-                    <div>⏱️</div>
-                    <div><b>No trades yet.</b> We'll keep polling quietly. If blocked, set Proxy URL in Settings.</div>
-                  </div>
-                </section>
               </div>
+
+              <section class="panel" aria-label="Live trades">
+                <div class="panelHead">
+                  <div class="title">Live Trades</div>
+                  <div class="hint"><span id="tradeCount" class="kbd">0</span> latest</div>
+                </div>
+                <div class="tableWrap">
+                  <table class="table">
+                    <thead>
+                      <tr>
+                        <th class="center">Side</th>
+                        <th>Amount</th>
+                        <th class="right">Price</th>
+                        <th class="right">USD</th>
+                        <th class="right">Age</th>
+                        <th>Wallet</th>
+                        <th class="center">Tx</th>
+                      </tr>
+                    </thead>
+                    <tbody id="tradesBody"></tbody>
+                  </table>
+                </div>
+                <div id="tradesEmpty" class="empty" style="display:none">
+                  <div>⏱️</div>
+                  <div><b>No trades yet.</b> We'll keep polling quietly. If blocked, set Proxy URL in Settings.</div>
+                </div>
+              </section>
             </div>
           </div>
         </section>
@@ -2198,6 +2205,7 @@ function setStatus(kind, txt){
           const w = el.chartWrap.clientWidth|0;
           const h = el.chartWrap.clientHeight|0;
           if (w < 40 || h < 160) return;
+          state.chart.timeScale().resetTimeScale();
           state.chart.timeScale().fitContent();
         };
         requestAnimationFrame(fit);
