@@ -798,6 +798,19 @@ DexGuard DexLike LiveChart v1
       box-shadow: 0 0 0 6px rgba(255,205,98,.08);
       flex:0 0 auto;
     }
+  
+    /* Trades: subtle "new row" animation (no overlays) */
+    @keyframes dgTradeIn{
+      from{ opacity:0; transform: translateY(-6px); background-color: rgba(20,241,149,.10); }
+      to  { opacity:1; transform: translateY(0px); background-color: transparent; }
+    }
+    tr.tradeNew{
+      animation: dgTradeIn .55s ease both;
+    }
+    tr.tradeNew td{
+      transition: background-color .6s ease;
+    }
+
   </style>
 </head>
 
@@ -1303,8 +1316,15 @@ DexGuard DexLike LiveChart v1
       tf: '15m',
       sessionId: 0,
       current: null, // meta
+
+      // Trades state
       lastTradeId: null,
+      tradesMap: new Map(),   // id -> trade
+      tradesList: [],         // sorted desc (max 60)
+      ageTimer: null,         // 1s age updater
+
       liveTimer: null,
+      _onVis: null,
       abort: null,
 
       chart: null,
@@ -1708,6 +1728,9 @@ DexGuard DexLike LiveChart v1
       state.lastCandle = null;
       el.tradesBody.innerHTML = '';
       el.tradeCount.textContent = '0';
+      state.tradesMap = new Map();
+      state.tradesList = [];
+
       el.tradesEmpty.style.display = 'none';
 
       showTokenView(true);
@@ -1997,6 +2020,11 @@ DexGuard DexLike LiveChart v1
     // ========= Live trades + candle growth =========
     function stopLive(){
       if (state.liveTimer){ clearInterval(state.liveTimer); state.liveTimer = null; }
+      if (state.ageTimer){ clearInterval(state.ageTimer); state.ageTimer = null; }
+      if (state._onVis){
+        document.removeEventListener('visibilitychange', state._onVis);
+        state._onVis = null;
+      }
     }
 
     function startLive(meta, {sid}){
@@ -2047,7 +2075,7 @@ DexGuard DexLike LiveChart v1
     }
 
     async function tickLive(meta, {sid}){
-      // Use GeckoTerminal trades where available; Proxy option handles CORS
+      // GeckoTerminal trades (via optional Proxy if needed). UI stays quiet; only console logs on issues.
       const url = gtTradesUrl(meta.gtNet, meta.pool);
 
       const ctrl = new AbortController();
@@ -2061,44 +2089,113 @@ DexGuard DexLike LiveChart v1
         const data = await withBackoff(() => fetchJson(url, {ttl: 0, signal}), {tries:2, signal});
         if (sid !== state.sessionId) return;
 
-        const trades = normalizeGTTrades(data);
-        if (!trades.length){
-          if (el.tradesBody.children.length === 0) el.tradesEmpty.style.display = '';
-          return;
-        }
-        el.tradesEmpty.style.display = 'none';
+        let trades = normalizeGTTrades(data);
+        if (Array.isArray(trades) && trades.length){
+          // Sort by timestamp desc (fallback: id)
+          trades = trades
+            .filter(t => t && t.id)
+            .sort((a,b)=> ((b.tsSec||0)-(a.tsSec||0)) || String(b.id).localeCompare(String(a.id)));
 
-        const newOnes = [];
-        for (const t of trades){
-          if (!t.id) continue;
-          if (!state.lastTradeId){
-            newOnes.push(t);
+          // Ensure state containers exist
+          if (!state.tradesMap) state.tradesMap = new Map();
+
+          const newIds = new Set();
+          for (const t of trades){
+            if (!state.tradesMap.has(t.id)){
+              state.tradesMap.set(t.id, t);
+              newIds.add(t.id);
+            } else {
+              // refresh values (in case API adds fields later)
+              state.tradesMap.set(t.id, {...state.tradesMap.get(t.id), ...t});
+            }
+          }
+
+          // Build list (max 60), prune map
+          const list = Array.from(state.tradesMap.values())
+            .sort((a,b)=> ((b.tsSec||0)-(a.tsSec||0)) || String(b.id).localeCompare(String(a.id)))
+            .slice(0, 60);
+
+          state.tradesList = list;
+          const keep = new Set(list.map(t=>t.id));
+          for (const id of Array.from(state.tradesMap.keys())){
+            if (!keep.has(id)) state.tradesMap.delete(id);
+          }
+
+          if (list.length === 0){
+            if (el.tradesBody.children.length === 0) el.tradesEmpty.style.display = '';
           } else {
-            if (t.id === state.lastTradeId) break;
-            newOnes.push(t);
+            el.tradesEmpty.style.display = 'none';
           }
-        }
-        if (!state.lastTradeId && trades[0]?.id) state.lastTradeId = trades[0].id;
-        else if (newOnes.length && newOnes[0]?.id) state.lastTradeId = newOnes[0].id;
 
-        if (newOnes.length){
-          for (let i=0;i<newOnes.length;i++){
-            addTradeRow(newOnes[i], meta.chain);
+          renderTradesTable(list, meta.chain, newIds);
+          el.tradeCount.textContent = String(list.length);
+          state.lastTradeId = list[0]?.id || state.lastTradeId;
+
+          // Update header price + grow candle from newest trade
+          const top = list[0];
+          if (top && isFinite(top.priceUsd)){
+            el.stPrice.textContent = fmtUSD(top.priceUsd);
+            growLastCandle(top.priceUsd, top.tsSec || nowSec());
           }
-          trimTrades(60);
-        }
 
-        const top = trades[0];
-        if (top && isFinite(top.priceUsd)){
-          // update token header price + grow candle
-          el.stPrice.textContent = fmtUSD(top.priceUsd);
-          growLastCandle(top.priceUsd, top.tsSec || nowSec());
+          // Start age ticker once (updates "Age" every second)
+          startAgeTicker();
+        } else {
+          if (el.tradesBody.children.length === 0) el.tradesEmpty.style.display = '';
         }
-
-        el.tradeCount.textContent = String(Math.min(60, el.tradesBody.children.length));
       } finally {
         clearInterval(guard);
       }
+    }
+
+    function startAgeTicker(){
+      if (state.ageTimer) return;
+      state.ageTimer = setInterval(updateAgeCells, 1000);
+      updateAgeCells();
+    }
+
+    function updateAgeCells(){
+      const rows = el.tradesBody.querySelectorAll('tr[data-ts]');
+      const now = nowSec();
+      for (const r of rows){
+        const ts = parseInt(r.dataset.ts || '0', 10);
+        const cell = r.querySelector('.ageCell');
+        if (!cell) continue;
+        if (!ts || !isFinite(ts)) { cell.textContent = '—'; continue; }
+        const d = Math.max(0, now - ts);
+        cell.textContent = d < 60 ? (d + 's') : (d < 3600 ? (Math.floor(d/60) + 'm') : (d < 172800 ? (Math.floor(d/3600) + 'h') : (Math.floor(d/86400) + 'd')));
+      }
+    }
+
+    function renderTradesTable(list, chain, newIds){
+      // Re-render to enforce strict ordering (newest on top). Fast enough for max 60 rows.
+      const frag = document.createDocumentFragment();
+
+      for (const t of list){
+        const tr = document.createElement('tr');
+        tr.dataset.id = t.id;
+        if (t.tsSec) tr.dataset.ts = String(t.tsSec);
+
+        if (newIds && newIds.has(t.id)) tr.classList.add('tradeNew');
+
+        const sideCls = t.side === 'BUY' ? 'buy' : 'sell';
+        const txUrl = t.tx ? explorerLink(chain, t.tx, 'tx') : '#';
+
+        tr.innerHTML = `
+          <td class="center"><span class="side ${sideCls}">${t.side}</span></td>
+          <td class="mono">${t.amount !== null ? fmtNum(t.amount, 6) : '—'}</td>
+          <td class="right mono">${t.priceUsd !== null ? fmtUSD(t.priceUsd) : '—'}</td>
+          <td class="right mono">${t.usd !== null ? fmtUSD(t.usd) : '—'}</td>
+          <td class="right mono muted ageCell">${t.tsSec ? timeAgo(t.tsSec) : '—'}</td>
+          <td class="mono muted ellipsis" style="max-width:140px">${t.wallet ? escapeHtml(shortAddr(t.wallet)) : '—'}</td>
+          <td class="center">${t.tx ? `<a class="linkPill" style="padding:6px 10px; display:inline-flex" href="${escapeHtml(txUrl)}" target="_blank" rel="noreferrer noopener">↗</a>` : '—'}</td>
+        `;
+        frag.appendChild(tr);
+      }
+
+      // Swap body content in one go (no jank)
+      el.tradesBody.innerHTML = '';
+      el.tradesBody.appendChild(frag);
     }
 
     function normalizeGTTrades(data){
