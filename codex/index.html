@@ -2016,41 +2016,59 @@ function setStatus(kind, txt){
       }
 
       let candles = null;
+      const refPrice = meta.priceUsd ?? state.lastPriceByPool.get(poolKey(meta)) ?? null;
+
+      function scoreCandles(list){
+        if (!list || !list.length || !isFinite(refPrice) || refPrice <= 0) return null;
+        const last = list[list.length-1];
+        const close = last?.close;
+        if (!isFinite(close) || close <= 0) return null;
+        const ratio = Math.max(close, refPrice) / Math.max(1e-12, Math.min(close, refPrice));
+        return ratio;
+      }
+      function pickBestCandles(a, b){
+        if (a && a.length && b && b.length){
+          const sa = scoreCandles(a);
+          const sb = scoreCandles(b);
+          if (sa != null && sb != null) return (sa <= sb) ? a : b;
+          return a.length >= b.length ? a : b;
+        }
+        return (a && a.length) ? a : (b && b.length ? b : null);
+      }
 
       // 1) GeckoTerminal OHLCV (try base, then quote if base looks empty/zero)
       try{
+        let baseCandles = null;
+        let quoteCandles = null;
         if (tf === '15m'){
-          candles = await fetchGTOhlcvPaged(meta, tf, 'base', {sid, signal});
+          baseCandles = await fetchGTOhlcvPaged(meta, tf, 'base', {sid, signal});
         } else {
           const data = await withBackoff(() => fetchJson(gtOhlcvUrl(meta.gtNet, meta.pool, tf, 'base'), {ttl: 8_000, signal}), {tries:2, signal});
           if (sid !== state.sessionId) return;
-          candles = normalizeGTOhlcv(data);
+          baseCandles = normalizeGTOhlcv(data);
         }
-        if (candles && candles.length){
-          const bad = candles.every(c => !c || !isFinite(c.close) || c.close === 0);
-          if (bad) candles = null;
+        if (baseCandles && baseCandles.length){
+          const bad = baseCandles.every(c => !c || !isFinite(c.close) || c.close === 0);
+          if (bad) baseCandles = null;
         }
-      }catch(e){
-        if (!signal.aborted) console.warn('[DexGuard] gt ohlcv (base) failed', e);
-      }
 
-      if ((!candles || candles.length < 20)){
-        try{
-          let c2 = null;
+        if ((!baseCandles || baseCandles.length < 20) || (refPrice && baseCandles && scoreCandles(baseCandles) > 50)){
           if (tf === '15m'){
-            c2 = await fetchGTOhlcvPaged(meta, tf, 'quote', {sid, signal});
+            quoteCandles = await fetchGTOhlcvPaged(meta, tf, 'quote', {sid, signal});
           } else {
             const data2 = await withBackoff(() => fetchJson(gtOhlcvUrl(meta.gtNet, meta.pool, tf, 'quote'), {ttl: 8_000, signal}), {tries:2, signal});
             if (sid !== state.sessionId) return;
-            c2 = normalizeGTOhlcv(data2);
+            quoteCandles = normalizeGTOhlcv(data2);
           }
-          if (c2 && c2.length){
-            const bad2 = c2.every(c => !c || !isFinite(c.close) || c.close === 0);
-            if (!bad2) candles = c2;
+          if (quoteCandles && quoteCandles.length){
+            const bad2 = quoteCandles.every(c => !c || !isFinite(c.close) || c.close === 0);
+            if (bad2) quoteCandles = null;
           }
-        }catch(e){
-          if (!signal.aborted) console.warn('[DexGuard] gt ohlcv (quote) failed', e);
         }
+
+        candles = pickBestCandles(baseCandles, quoteCandles);
+      }catch(e){
+        if (!signal.aborted) console.warn('[DexGuard] gt ohlcv failed', e);
       }
 
       // 2) Birdeye fallback (Solana only)
