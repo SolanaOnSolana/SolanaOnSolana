@@ -1144,6 +1144,10 @@ DexGuard DexLike LiveChart v1
       return days + 'd';
     };
     const escapeHtml = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    const cleanText = (val) => {
+      const s = (val ?? '').toString().trim();
+      return s && s !== '—' ? s : null;
+    };
     const toNum = (x) => {
       const n = typeof x === 'string' ? parseFloat(x) : (typeof x === 'number' ? x : NaN);
       return isFinite(n) ? n : null;
@@ -1436,6 +1440,8 @@ DexGuard DexLike LiveChart v1
       _backfilling: false,
       _backfillTimer: 0,
       _rangeSub: false,
+      metaByPool: new Map(),
+      metaByToken: new Map(),
     };
 
     
@@ -1502,6 +1508,26 @@ function setStatus(kind, txt){
       return (a && a.length) ? a : (b && b.length ? b : null);
     }
     function poolKey(meta){ return `${meta.chain}|${meta.pool}`; }
+    function tokenKey(chain, token){ return `${chain}|${normAddr(chain, token)}`; }
+    function rememberMeta(meta){
+      if (!meta) return;
+      if (meta.pool) state.metaByPool.set(poolKey(meta), {...meta});
+      if (meta.token) state.metaByToken.set(tokenKey(meta.chain, meta.token), {...meta});
+    }
+    function mergeMeta(target, source){
+      if (!source) return;
+      const fieldsText = ['baseSymbol','baseName','quoteSymbol','logoUrl','token','dexId'];
+      for (const f of fieldsText){
+        if (!target[f]){
+          const v = cleanText(source[f]);
+          if (v) target[f] = v;
+        }
+      }
+      const fieldsNum = ['priceUsd','change24h','volume24hUsd','liquidityUsd','marketCapUsd'];
+      for (const f of fieldsNum){
+        if (target[f] == null && isFinite(source[f])) target[f] = source[f];
+      }
+    }
     function primeChart(meta){
       const ck = candleCacheKey(meta, state.tf);
       const cached = candleCache.get(ck);
@@ -1688,20 +1714,37 @@ function setStatus(kind, txt){
           </div>
         `;
 
-        const open = () => openPool({
-          chain: state.chain,
-          pairId: it.pairId,
-          tokenAddress: it.tokenAddress,
-          baseSymbol: it.baseSymbol,
-          baseName: it.baseName,
-          logoUrl: it.logoUrl,
-          priceUsd: it.priceUsd,
-          change24h: it.change24h,
-          volume24hUsd: it.volume24hUsd,
-          liquidityUsd: it.liquidityUsd,
-          marketCapUsd: it.marketCapUsd,
-          hint: 'trending'
-        });
+        const open = () => {
+          rememberMeta({
+            chain: state.chain,
+            pool: it.pairId,
+            token: it.tokenAddress,
+            baseSymbol: it.baseSymbol,
+            baseName: it.baseName,
+            quoteSymbol: it.quoteSymbol,
+            logoUrl: it.logoUrl,
+            priceUsd: it.priceUsd,
+            change24h: it.change24h,
+            volume24hUsd: it.volume24hUsd,
+            liquidityUsd: it.liquidityUsd,
+            marketCapUsd: it.marketCapUsd,
+            dexId: it.dexId,
+          });
+          openPool({
+            chain: state.chain,
+            pairId: it.pairId,
+            tokenAddress: it.tokenAddress,
+            baseSymbol: it.baseSymbol,
+            baseName: it.baseName,
+            logoUrl: it.logoUrl,
+            priceUsd: it.priceUsd,
+            change24h: it.change24h,
+            volume24hUsd: it.volume24hUsd,
+            liquidityUsd: it.liquidityUsd,
+            marketCapUsd: it.marketCapUsd,
+            hint: 'trending'
+          });
+        };
         card.addEventListener('click', open);
         card.addEventListener('keydown', (e)=>{ if(e.key==='Enter' || e.key===' ') { e.preventDefault(); open(); }});
         el.trending.appendChild(card);
@@ -1758,6 +1801,21 @@ function setStatus(kind, txt){
         const open = () => {
           // If result is other chain, switch chain then open.
           const targetChain = Object.keys(CHAINS).find(k => CHAINS[k].ds === itemChain) || state.chain;
+          rememberMeta({
+            chain: targetChain,
+            pool: pair,
+            token,
+            baseSymbol: sym,
+            baseName: name,
+            quoteSymbol: p?.quoteToken?.symbol || null,
+            logoUrl: logo,
+            priceUsd,
+            change24h: chg24,
+            liquidityUsd,
+            volume24hUsd,
+            marketCapUsd,
+            dexId,
+          });
           if (targetChain !== state.chain){
             setChain(targetChain, {silent:true});
           }
@@ -2054,25 +2112,24 @@ function setStatus(kind, txt){
       const dsChain = CHAINS[chain].ds;
       const gtNet = CHAINS[chain].gt;
 
-      const cleanText = (val) => {
-        const s = (val ?? '').toString().trim();
-        return s && s !== '—' ? s : null;
-      };
+      const cachedPool = state.metaByPool.get(`${chain}|${pairId}`) || null;
+      const cachedToken = tokenAddress ? state.metaByToken.get(tokenKey(chain, tokenAddress)) : null;
+      const cached = cachedPool || cachedToken;
 
       const meta = {
         chain, dsChain, gtNet,
         pool: pairId,
         token: tokenAddress || null,
-        baseSymbol: cleanText(baseSymbol),
-        quoteSymbol: cleanText(quoteSymbol),
-        baseName: cleanText(baseName),
-        logoUrl: cleanText(logoUrl),
+        baseSymbol: cleanText(baseSymbol) ?? cleanText(cached?.baseSymbol),
+        quoteSymbol: cleanText(quoteSymbol) ?? cleanText(cached?.quoteSymbol),
+        baseName: cleanText(baseName) ?? cleanText(cached?.baseName),
+        logoUrl: cleanText(logoUrl) ?? cleanText(cached?.logoUrl),
         dexId: null,
-        priceUsd: isFinite(priceUsd) ? priceUsd : null,
-        change24h: isFinite(change24h) ? change24h : null,
-        volume24hUsd: isFinite(volume24hUsd) ? volume24hUsd : null,
-        liquidityUsd: isFinite(liquidityUsd) ? liquidityUsd : null,
-        marketCapUsd: isFinite(marketCapUsd) ? marketCapUsd : null,
+        priceUsd: isFinite(priceUsd) ? priceUsd : (isFinite(cached?.priceUsd) ? cached.priceUsd : null),
+        change24h: isFinite(change24h) ? change24h : (isFinite(cached?.change24h) ? cached.change24h : null),
+        volume24hUsd: isFinite(volume24hUsd) ? volume24hUsd : (isFinite(cached?.volume24hUsd) ? cached.volume24hUsd : null),
+        liquidityUsd: isFinite(liquidityUsd) ? liquidityUsd : (isFinite(cached?.liquidityUsd) ? cached.liquidityUsd : null),
+        marketCapUsd: isFinite(marketCapUsd) ? marketCapUsd : (isFinite(cached?.marketCapUsd) ? cached.marketCapUsd : null),
         gtBaseAddr: null,
         gtQuoteAddr: null,
         gtSideHint: null,
@@ -2087,6 +2144,7 @@ function setStatus(kind, txt){
       primeChart(meta);
       startLive(meta, {sid});
       setTokenUI(meta);
+      rememberMeta(meta);
       scrollChartIntoView();
 
       // DexScreener meta
@@ -2136,6 +2194,7 @@ function setStatus(kind, txt){
           meta.liquidityUsd = toNum(p?.liquidity?.usd);
           meta.marketCapUsd = toNum(p?.fdv);
           setTokenUI(meta);
+          rememberMeta(meta);
         }
       }catch(e){
         if (!signal.aborted) console.warn('[DexGuard] ds meta failed', e);
@@ -2162,11 +2221,14 @@ function setStatus(kind, txt){
               meta.volume24hUsd = meta.volume24hUsd ?? toNum(match?.volume?.h24 ?? match?.volume24hUsd);
               meta.baseSymbol = meta.baseSymbol ?? (match?.baseToken?.symbol || null);
               meta.baseName = meta.baseName ?? (match?.baseToken?.name || null);
+              meta.token = meta.token ?? (match?.baseToken?.address || null);
+              meta.quoteSymbol = meta.quoteSymbol ?? (match?.quoteToken?.symbol || null);
             }
           }
         }catch(e){}
       }
       setTokenUI(meta);
+      rememberMeta(meta);
 
       if (!state.candles.length) primeChart(meta);
 
@@ -2212,6 +2274,7 @@ function setStatus(kind, txt){
         meta.token = meta.token ?? (a?.base_token?.address || a?.base_token_address);
         meta.marketCapUsd = meta.marketCapUsd ?? toNum(a?.market_cap_usd ?? a?.fdv_usd);
         setTokenUI(meta);
+        rememberMeta(meta);
       }catch(e){
         if (!signal.aborted) console.warn('[DexGuard] gt meta failed', e);
       }
@@ -2232,6 +2295,7 @@ function setStatus(kind, txt){
           meta.baseSymbol = meta.baseSymbol ?? (d?.symbol);
           meta.priceUsd = meta.priceUsd ?? toNum(d?.price ?? d?.priceUsd);
           setTokenUI(meta);
+          rememberMeta(meta);
         }catch(e){
           if (!signal.aborted) console.warn('[DexGuard] birdeye overview failed', e);
         }
