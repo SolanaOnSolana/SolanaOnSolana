@@ -2078,6 +2078,22 @@ function setStatus(kind, txt){
       hint=''
     }){
       if (!pairId && tokenAddress){
+        const key = tokenKey(chain, tokenAddress);
+        const prev = state.metaByToken.get(key) || null;
+        const seed = {
+          chain,
+          token: tokenAddress,
+          baseSymbol: cleanText(baseSymbol) ?? cleanText(prev?.baseSymbol),
+          quoteSymbol: cleanText(quoteSymbol) ?? cleanText(prev?.quoteSymbol),
+          baseName: cleanText(baseName) ?? cleanText(prev?.baseName),
+          logoUrl: cleanText(logoUrl) ?? cleanText(prev?.logoUrl),
+          priceUsd: isFinite(priceUsd) ? priceUsd : (isFinite(prev?.priceUsd) ? prev.priceUsd : null),
+          change24h: isFinite(change24h) ? change24h : (isFinite(prev?.change24h) ? prev.change24h : null),
+          volume24hUsd: isFinite(volume24hUsd) ? volume24hUsd : (isFinite(prev?.volume24hUsd) ? prev.volume24hUsd : null),
+          liquidityUsd: isFinite(liquidityUsd) ? liquidityUsd : (isFinite(prev?.liquidityUsd) ? prev.liquidityUsd : null),
+          marketCapUsd: isFinite(marketCapUsd) ? marketCapUsd : (isFinite(prev?.marketCapUsd) ? prev.marketCapUsd : null),
+        };
+        state.metaByToken.set(key, Object.assign(prev || {}, seed));
         await openByToken(chain, tokenAddress);
         return;
       }
