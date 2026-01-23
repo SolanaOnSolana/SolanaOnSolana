@@ -1,8 +1,6 @@
 <!doctype html>
 <html lang="en">
 <head>
-<script id="dg-loader-boot">document.documentElement.classList.add('dg-boot');</script>
-
  <meta charset="utf-8" />
  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
  <meta name="theme-color" content="#070711" />
@@ -2235,472 +2233,256 @@ body.net-base .chainBtn.active{ background: linear-gradient(90deg, rgba(0,82,255
   /* Tool CTAs full width */
   .toolCTA{ flex-direction: column; align-items: stretch; }
 }
+
+
+/* =========================
+   DG CINEMATIC INTRO + NAV TRANSITIONS
+   (single-file, no libs)
+   ========================= */
+:root{
+  --dg-hole: 0px; /* animated via JS */
+  --dgIntroZ: 2147483000;
+}
+
+html.dg-intro-on, body.dg-intro-on{ overflow:hidden !important; }
+
+#dgIntroOverlay{
+  position:fixed;
+  inset:0;
+  z-index: var(--dgIntroZ);
+  display:block;
+  background: radial-gradient(1100px 700px at 50% 45%, rgba(255,255,255,.06), rgba(7,7,17,.92) 62%, rgba(7,7,17,.98) 100%),
+              linear-gradient(120deg, rgba(20,241,149,.10), rgba(0,209,255,.06) 45%, rgba(153,69,255,.10));
+  overflow:hidden;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+
+  /* "hole" reveal (mask makes center transparent) */
+  --dg-hole: 0px;
+  -webkit-mask-image: radial-gradient(circle at 50% 50%,
+    rgba(0,0,0,0) 0px,
+    rgba(0,0,0,0) var(--dg-hole),
+    rgba(0,0,0,1) calc(var(--dg-hole) + 1px)
+  );
+  mask-image: radial-gradient(circle at 50% 50%,
+    rgba(0,0,0,0) 0px,
+    rgba(0,0,0,0) var(--dg-hole),
+    rgba(0,0,0,1) calc(var(--dg-hole) + 1px)
+  );
+}
+
+#dgIntroCanvas{
+  position:absolute; inset:0;
+  width:100%; height:100%;
+  display:block;
+  filter: saturate(1.05) contrast(1.04);
+  transform: translateZ(0);
+}
+
+.dgIntroHUD{
+  position:absolute;
+  inset:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding: calc(env(safe-area-inset-top) + 18px) 18px calc(env(safe-area-inset-bottom) + 18px);
+  pointer-events:none;
+}
+
+.dgIntroCard{
+  width:min(720px, calc(100vw - 36px));
+  text-align:center;
+  padding: 22px 18px 18px;
+  border-radius: 26px;
+  background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.03));
+  border: 1px solid rgba(255,255,255,.12);
+  box-shadow: 0 22px 80px rgba(0,0,0,.55);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.dgIntroTag{
+  display:inline-flex;
+  align-items:center;
+  gap:10px;
+  font-weight: 900;
+  letter-spacing: .28em;
+  text-transform: uppercase;
+  font-size: 11px;
+  color: rgba(255,255,255,.80);
+  opacity: .95;
+}
+.dgIntroPip{
+  width:10px; height:10px;
+  border-radius: 999px;
+  background: radial-gradient(circle at 30% 30%, rgba(255,255,255,.95), rgba(20,241,149,.55) 55%, rgba(20,241,149,.10) 100%);
+  box-shadow: 0 0 22px rgba(20,241,149,.22);
+}
+
+.dgIntroTitle{
+  margin: 10px 0 4px;
+  font-size: clamp(42px, 7vw, 68px);
+  line-height: 1.05;
+  letter-spacing: -0.04em;
+  font-weight: 1000;
+  background: linear-gradient(90deg, rgba(20,241,149,1), rgba(0,209,255,1), rgba(153,69,255,1));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: 0 8px 44px rgba(0,0,0,.44);
+}
+.dgIntroSub{
+  margin: 0 0 12px;
+  color: rgba(255,255,255,.82);
+  font-weight: 800;
+  letter-spacing: -.01em;
+}
+
+.dgIntroSteps{
+  display:flex;
+  justify-content:center;
+  gap: 10px;
+  flex-wrap:wrap;
+  margin: 14px 0 12px;
+}
+.dgIntroStep{
+  display:inline-flex;
+  align-items:center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 999px;
+  background: rgba(0,0,0,.18);
+  border: 1px solid rgba(255,255,255,.12);
+  color: rgba(255,255,255,.86);
+  font-weight: 850;
+  font-size: 13px;
+}
+.dgIntroStep i{
+  width: 10px; height: 10px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.22);
+  box-shadow: 0 0 0 5px rgba(255,255,255,.04);
+}
+.dgIntroStep.on{
+  background: rgba(20,241,149,.12);
+  border-color: rgba(20,241,149,.22);
+}
+.dgIntroStep.on i{
+  background: rgba(20,241,149,.92);
+  box-shadow: 0 0 0 6px rgba(20,241,149,.10), 0 0 24px rgba(20,241,149,.25);
+}
+
+.dgIntroHint{
+  margin-top: 10px;
+  font-size: 12px;
+  font-weight: 800;
+  color: rgba(255,255,255,.62);
+  letter-spacing: .02em;
+}
+
+.dgIntroGrain{
+  position:absolute; inset:-20%;
+  pointer-events:none;
+  opacity: .12;
+  background-image:
+    radial-gradient(circle at 20% 30%, rgba(255,255,255,.38), transparent 38%),
+    radial-gradient(circle at 80% 60%, rgba(255,255,255,.22), transparent 36%),
+    repeating-linear-gradient(0deg, rgba(255,255,255,.03) 0px, rgba(255,255,255,.03) 1px, transparent 2px, transparent 6px);
+  mix-blend-mode: overlay;
+  filter: blur(.2px);
+  transform: translateZ(0);
+}
+
+#dgIntroFlash{
+  position:absolute; inset:0;
+  pointer-events:none;
+  opacity: 0;
+  background: radial-gradient(900px 540px at 50% 48%, rgba(255,255,255,.55), rgba(255,255,255,0) 62%),
+              linear-gradient(90deg, rgba(20,241,149,.30), rgba(0,209,255,.18), rgba(153,69,255,.28));
+  mix-blend-mode: screen;
+}
+
+#dgIntroOverlay.dg-flash #dgIntroFlash{
+  animation: dgFlash .42s ease-out 1 both;
+}
+@keyframes dgFlash{
+  0%{opacity:0}
+  15%{opacity:.95}
+  100%{opacity:0}
+}
+
+/* NAV transition overlay (used on link clicks) */
+#dgNavOverlay{
+  position:fixed; inset:0;
+  z-index: calc(var(--dgIntroZ) - 1);
+  background: radial-gradient(900px 540px at 50% 48%, rgba(255,255,255,.06), rgba(7,7,17,.92) 68%, rgba(7,7,17,.98) 100%),
+              linear-gradient(120deg, rgba(20,241,149,.10), rgba(0,209,255,.06) 45%, rgba(153,69,255,.10));
+  overflow:hidden;
+  transform: translateZ(0);
+  --dg-hole: 200vmax;
+  -webkit-mask-image: radial-gradient(circle at 50% 50%,
+    rgba(0,0,0,0) 0px,
+    rgba(0,0,0,0) var(--dg-hole),
+    rgba(0,0,0,1) calc(var(--dg-hole) + 1px)
+  );
+  mask-image: radial-gradient(circle at 50% 50%,
+    rgba(0,0,0,0) 0px,
+    rgba(0,0,0,0) var(--dg-hole),
+    rgba(0,0,0,1) calc(var(--dg-hole) + 1px)
+  );
+}
+#dgNavOverlay::before{
+  content:"";
+  position:absolute; inset:-20%;
+  background:
+    linear-gradient(90deg, transparent, rgba(255,255,255,.10), transparent),
+    radial-gradient(900px 520px at 50% 48%, rgba(20,241,149,.10), transparent 62%),
+    radial-gradient(800px 460px at 70% 58%, rgba(153,69,255,.10), transparent 62%),
+    radial-gradient(800px 460px at 30% 38%, rgba(0,209,255,.10), transparent 62%);
+  opacity:.75;
+  filter: blur(2px);
+  animation: dgSheen .68s ease-in-out infinite alternate;
+}
+@keyframes dgSheen{
+  0%{ transform: translateX(-2%) rotate(-1deg); opacity:.55; }
+  100%{ transform: translateX(2%) rotate(1deg); opacity:.85; }
+}
+
+@media (max-width: 520px){
+  .dgIntroCard{ padding: 20px 14px 16px; border-radius: 24px; }
+  .dgIntroTag{ font-size: 10px; }
+  .dgIntroStep{ padding: 9px 10px; font-size: 12px; }
+  .dgIntroHint{ font-size: 11px; }
+}
+@media (prefers-reduced-motion: reduce){
+  #dgIntroCanvas{ display:none !important; }
+  #dgIntroOverlay{ transition: opacity .18s ease; }
+}
+
 </style>
-
-<!-- DexGuard Guardian Loader (ULTRA v4) -->
-<style id="dg-loader-style">
-  :root{
-    --dg-gold:#ffcf4a;
-    --dg-gold2:#ffe6a1;
-    --dg-cyan:#64ddff;
-    --dg-ink:#f6f0d9;
-    --dg-muted:rgba(246,240,217,.72);
-    --dg-bg0:#04040a;
-    --dg-bg1:#0a0a14;
-  }
-
-  /* Smooth page handoff */
-  html.dg-boot body{ overflow:hidden !important; }
-  html.dg-boot body > *:not(#dgLoader){
-    opacity:0;
-    transform: translateY(18px) scale(1.02);
-    filter: blur(10px);
-    transition: opacity .7s ease, transform .9s cubic-bezier(.18,.9,.2,1), filter .7s ease;
-  }
-  html.dg-ready body > *:not(#dgLoader){
-    opacity:1; transform:none; filter:none;
-  }
-
-  /* Ultra overlay */
-  #dgLoader{
-    position:fixed; inset:0;
-    z-index:2147483000;
-    display:grid; place-items:center;
-    padding: calc(18px + env(safe-area-inset-top)) 18px calc(22px + env(safe-area-inset-bottom));
-    background:
-      radial-gradient(1200px 850px at 50% 35%, rgba(255,207,74,.12), transparent 60%),
-      radial-gradient(1000px 800px at 70% 70%, rgba(100,221,255,.12), transparent 62%),
-      radial-gradient(900px 650px at 30% 75%, rgba(255,255,255,.06), transparent 62%),
-      linear-gradient(180deg, rgba(4,4,10,.985), rgba(10,10,20,.99));
-    overflow:hidden;
-    transform: translateZ(0);
-    -webkit-font-smoothing: antialiased;
-  }
-
-  /* Animated energy field + grain */
-  #dgLoader::before{
-    content:"";
-    position:absolute; inset:-30%;
-    background:
-      conic-gradient(from 210deg at 50% 50%,
-        rgba(255,207,74,.00),
-        rgba(255,207,74,.12),
-        rgba(100,221,255,.10),
-        rgba(255,255,255,.06),
-        rgba(255,207,74,.00));
-    filter: blur(38px);
-    opacity:.85;
-    animation: dgField 7.2s ease-in-out infinite alternate;
-    pointer-events:none;
-  }
-  #dgLoader::after{
-    content:"";
-    position:absolute; inset:0;
-    background-image:
-      radial-gradient(circle at 20% 30%, rgba(255,255,255,.045), transparent 35%),
-      radial-gradient(circle at 70% 60%, rgba(255,255,255,.03), transparent 40%),
-      repeating-linear-gradient(0deg, rgba(255,255,255,.018) 0, rgba(255,255,255,.018) 1px, transparent 2px, transparent 6px);
-    mix-blend-mode: overlay;
-    opacity:.28;
-    pointer-events:none;
-    transform: translateZ(0);
-  }
-  @keyframes dgField{
-    from{ transform: translate3d(-2%, -1%, 0) scale(1.02) rotate(-6deg); }
-    to  { transform: translate3d( 2%,  1%, 0) scale(1.08) rotate( 6deg); }
-  }
-
-  /* Layout */
-  #dgLoader .dgWrap{
-    position:relative;
-    width:min(860px, 96vw);
-    display:grid;
-    grid-template-columns: 1fr;
-    gap: 14px;
-    align-items:center;
-  }
-
-  #dgLoader .dgTop{
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    gap:12px;
-  }
-
-  #dgLoader .dgBrand{
-    display:flex; align-items:center; gap:12px;
-    color: rgba(246,240,217,.88);
-    font-weight: 900;
-    letter-spacing: .35px;
-    text-transform: uppercase;
-    font-size: 12.5px;
-  }
-  #dgLoader .dgDot{
-    width:10px; height:10px; border-radius:999px;
-    background: radial-gradient(circle at 30% 30%, #fff, var(--dg-gold));
-    box-shadow: 0 0 26px rgba(255,207,74,.58), 0 0 44px rgba(255,207,74,.18);
-  }
-  #dgLoader .dgPill{
-    display:flex; align-items:center; gap:8px;
-    padding: 8px 12px;
-    border-radius: 999px;
-    border: 1px solid rgba(255,207,74,.22);
-    background: rgba(255,207,74,.07);
-    color: rgba(255,207,74,.95);
-    font-weight: 900;
-    letter-spacing: .2px;
-    font-size: 12px;
-    white-space:nowrap;
-    box-shadow: 0 0 0 1px rgba(255,255,255,.03) inset;
-  }
-  #dgLoader .dgPill i{
-    width:8px; height:8px; border-radius:999px;
-    background: radial-gradient(circle at 30% 30%, #fff, rgba(100,221,255,.95));
-    box-shadow: 0 0 18px rgba(100,221,255,.35);
-    display:inline-block;
-  }
-
-  /* Scene frame (no "ad-card") */
-  #dgLoader .dgFrame{
-    position:relative;
-    width:100%;
-    height: clamp(310px, 46vh, 460px);
-    border-radius: 28px;
-    border: 1px solid rgba(255,255,255,.07);
-    background:
-      radial-gradient(340px 260px at 50% 34%, rgba(255,207,74,.14), transparent 70%),
-      radial-gradient(380px 300px at 50% 72%, rgba(100,221,255,.12), transparent 72%),
-      linear-gradient(180deg, rgba(255,255,255,.02), rgba(0,0,0,0));
-    box-shadow:
-      0 40px 160px rgba(0,0,0,.70),
-      0 0 0 1px rgba(255,207,74,.05) inset;
-    overflow:hidden;
-    transform: translateZ(0);
-  }
-
-  /* Scan beam */
-  #dgLoader .dgScan{
-    position:absolute; left:-20%; right:-20%;
-    height: 2px;
-    top: 10%;
-    opacity:0;
-    background: linear-gradient(90deg, transparent, rgba(255,207,74,.70), rgba(100,221,255,.55), transparent);
-    filter: drop-shadow(0 0 14px rgba(255,207,74,.18));
-    animation: dgScan 1.35s ease-in-out infinite;
-    pointer-events:none;
-  }
-  @keyframes dgScan{
-    0%   { transform: translateY(0);   opacity:0; }
-    18%  { opacity:.95; }
-    60%  { opacity:.45; }
-    100% { transform: translateY(280px); opacity:0; }
-  }
-
-  #dgLoader svg{ width:100%; height:100%; display:block; }
-
-  /* SVG styling */
-  .dgStroke{ fill:none; stroke-linecap:round; stroke-linejoin:round; }
-  .dgGold{ stroke: rgba(255,207,74,.96); filter: drop-shadow(0 0 18px rgba(255,207,74,.20)); }
-  .dgCyan{ stroke: rgba(100,221,255,.82); filter: drop-shadow(0 0 16px rgba(100,221,255,.18)); }
-  .dgDim { stroke: rgba(255,255,255,.10); filter:none; }
-  .dgThin{ stroke-width: 3.5; }
-  .dgMid { stroke-width: 8.5; }
-  .dgThick{ stroke-width: 11; }
-
-  /* Chain draw */
-  .dgChain{
-    stroke-dasharray: 720;
-    stroke-dashoffset: 720;
-    animation: dgDraw 1.05s cubic-bezier(.2,.92,.2,1) forwards;
-  }
-  .dgChain.b{ animation-delay: .10s; }
-  .dgChain.c{ animation-delay: .20s; }
-  @keyframes dgDraw{ to{ stroke-dashoffset: 0; } }
-
-  /* Tighten */
-  #dgLoader.dg-stage2 .dgChains{
-    animation: dgTighten .85s cubic-bezier(.2,.9,.2,1) forwards;
-  }
-  @keyframes dgTighten{
-    to{ transform: scale(1.10) translateY(-10px); opacity:.95; }
-  }
-
-  /* Snap flash */
-  #dgLoader .dgFlash{
-    opacity:0;
-    transition: opacity .18s ease;
-  }
-  #dgLoader.dg-snap .dgFlash{ opacity:1; }
-
-  /* Reveal shield/core */
-  .dgShield, .dgRing, .dgCore, .dgSig{
-    opacity:0;
-    transform: scale(.78);
-    transform-origin: 50% 55%;
-    transition: opacity .55s ease, transform .9s cubic-bezier(.18,.92,.2,1);
-  }
-  #dgLoader.dg-stage3 .dgChains{
-    opacity:.10;
-    transform: scale(.92);
-    transition: opacity .55s ease, transform .9s cubic-bezier(.18,.92,.2,1);
-  }
-  #dgLoader.dg-stage3 .dgShield,
-  #dgLoader.dg-stage3 .dgRing,
-  #dgLoader.dg-stage3 .dgCore,
-  #dgLoader.dg-stage3 .dgSig{
-    opacity:1;
-    transform: scale(1.04);
-  }
-
-  /* Core pulse */
-  .dgPulse{
-    transform-origin:50% 50%;
-    animation: dgPulse 1.35s ease-in-out infinite;
-  }
-  @keyframes dgPulse{
-    0%,100%{ transform: scale(1); opacity:.72; }
-    50%{ transform: scale(1.10); opacity:1; }
-  }
-
-  /* Sparks */
-  .dgSpark{
-    opacity:0;
-    animation: dgSpark 1.7s ease-in-out infinite;
-  }
-  .dgSpark:nth-child(1){ animation-delay:.05s }
-  .dgSpark:nth-child(2){ animation-delay:.22s }
-  .dgSpark:nth-child(3){ animation-delay:.40s }
-  .dgSpark:nth-child(4){ animation-delay:.58s }
-  .dgSpark:nth-child(5){ animation-delay:.74s }
-  @keyframes dgSpark{
-    0%{ transform: translateY(16px) scale(.55); opacity:0; }
-    25%{ opacity:.95; }
-    70%{ opacity:.85; }
-    100%{ transform: translateY(-24px) scale(1.12); opacity:0; }
-  }
-
-  /* Bottom status */
-  #dgLoader .dgBottom{
-    display:flex; align-items:center; justify-content:space-between;
-    gap: 14px;
-    color: rgba(246,240,217,.70);
-  }
-  #dgLoader .dgText{
-    display:flex; flex-direction:column; gap:6px;
-  }
-  #dgLoader .dgLine{
-    font-weight: 950;
-    font-size: 14px;
-    letter-spacing:.15px;
-    color: rgba(246,240,217,.92);
-  }
-  #dgLoader .dgLine b{ color: var(--dg-gold); }
-  #dgLoader .dgSub{
-    font-weight: 750;
-    font-size: 12.5px;
-    color: rgba(246,240,217,.62);
-  }
-
-  /* Progress ring */
-  #dgLoader .dgRingWrap{
-    width: 62px; height: 62px;
-    position:relative;
-    display:grid; place-items:center;
-    flex:0 0 auto;
-  }
-  #dgLoader .dgRingWrap svg{ width:62px; height:62px; }
-  #dgLoader .dgPct{
-    position:absolute;
-    font-weight: 950;
-    font-size: 12px;
-    color: rgba(255,207,74,.95);
-    letter-spacing:.2px;
-    text-shadow: 0 0 18px rgba(255,207,74,.18);
-  }
-  #dgLoader .dgRingTrack{ stroke: rgba(255,255,255,.10); }
-  #dgLoader .dgRingProg{
-    stroke: rgba(255,207,74,.96);
-    filter: drop-shadow(0 0 12px rgba(255,207,74,.22));
-    transform: rotate(-90deg);
-    transform-origin: 50% 50%;
-    stroke-linecap: round;
-  }
-
-  /* Exit with cinematic radial wipe */
-  #dgLoader.dg-exit{
-    animation: dgFade .65s cubic-bezier(.18,.92,.2,1) forwards;
-  }
-  @keyframes dgFade{
-    to{ opacity:0; transform: translateY(-10px) scale(1.02); }
-  }
-  #dgLoader .dgWipe{
-    position:absolute; inset:0;
-    background: radial-gradient(circle at 50% 55%, rgba(255,207,74,.20), rgba(4,4,10,0) 58%);
-    opacity:0;
-    pointer-events:none;
-    mix-blend-mode: screen;
-  }
-  #dgLoader.dg-wipe .dgWipe{
-    opacity:1;
-    animation: dgWipe 0.85s cubic-bezier(.18,.92,.2,1) forwards;
-  }
-  @keyframes dgWipe{
-    from{ clip-path: circle(0% at 50% 55%); }
-    to  { clip-path: circle(150% at 50% 55%); }
-  }
-
-  /* Parallax (subtle) */
-  #dgLoader .dgPar{ will-change: transform; transition: transform .12s ease; }
-
-  @media (prefers-reduced-motion: reduce){
-    #dgLoader::before, #dgLoader .dgScan, .dgChain, .dgPulse, .dgSpark{ animation:none !important; }
-    html.dg-boot body > *:not(#dgLoader){ transition:none !important; opacity:1; transform:none; filter:none; }
-    #dgLoader{ transition:none !important; }
-  }
-  @media (max-width: 520px){
-    #dgLoader .dgFrame{ border-radius: 18px; }
-    #dgLoader .dgLine{ font-size: 13.5px; }
-    #dgLoader .dgSub{ font-size: 12px; }
-  }
-</style>
-
 </head>
 
 <body>
 
-<div id="dgLoader" aria-hidden="false">
-  <div class="dgWipe"></div>
-  <div class="dgWrap" role="status" aria-live="polite" aria-label="DexGuard loading">
-    <div class="dgTop dgPar">
-      <div class="dgBrand">
-        <span class="dgDot" aria-hidden="true"></span>
-        <span>DexGuard Protocol</span>
-      </div>
-      <div class="dgPill"><i aria-hidden="true"></i><span>Protector • Guardian</span></div>
-    </div>
-
-    <div class="dgFrame dgPar" aria-hidden="true">
-      <div class="dgScan"></div>
-      <svg viewBox="0 0 980 460" preserveAspectRatio="xMidYMid meet">
-        <defs>
-          <radialGradient id="dgAuraGold" cx="50%" cy="42%" r="62%">
-            <stop offset="0%" stop-color="#fff2bf" stop-opacity="1"/>
-            <stop offset="42%" stop-color="#ffcf4a" stop-opacity="0.92"/>
-            <stop offset="100%" stop-color="#ffcf4a" stop-opacity="0"/>
-          </radialGradient>
-          <radialGradient id="dgAuraCyan" cx="50%" cy="65%" r="62%">
-            <stop offset="0%" stop-color="#d8f8ff" stop-opacity="0.85"/>
-            <stop offset="55%" stop-color="#64ddff" stop-opacity="0.32"/>
-            <stop offset="100%" stop-color="#64ddff" stop-opacity="0"/>
-          </radialGradient>
-          <linearGradient id="dgShieldGrad" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stop-color="#ffe9ad" stop-opacity="1"/>
-            <stop offset="55%" stop-color="#ffcf4a" stop-opacity="0.97"/>
-            <stop offset="100%" stop-color="#64ddff" stop-opacity="0.60"/>
-          </linearGradient>
-          <filter id="dgBlur" x="-35%" y="-35%" width="170%" height="170%">
-            <feGaussianBlur stdDeviation="12"/>
-          </filter>
-          <filter id="dgSoft" x="-30%" y="-30%" width="160%" height="160%">
-            <feGaussianBlur stdDeviation="5"/>
-          </filter>
-        </defs>
-
-        <!-- aura -->
-        <circle cx="490" cy="228" r="175" fill="url(#dgAuraGold)" opacity="0.55" filter="url(#dgBlur)"/>
-        <circle cx="490" cy="278" r="205" fill="url(#dgAuraCyan)" opacity="0.40" filter="url(#dgBlur)"/>
-
-        <!-- snap flash -->
-        <g class="dgFlash" filter="url(#dgSoft)">
-          <circle cx="490" cy="240" r="135" fill="rgba(255,207,74,.22)"/>
-          <circle cx="490" cy="240" r="190" fill="rgba(100,221,255,.10)"/>
-        </g>
-
-        <!-- sparks -->
-        <g opacity="0.95">
-          <circle class="dgSpark" cx="365" cy="330" r="5.2" fill="#ffcf4a"/>
-          <circle class="dgSpark" cx="635" cy="336" r="4.2" fill="#ffcf4a"/>
-          <circle class="dgSpark" cx="490" cy="350" r="3.8" fill="#64ddff"/>
-          <circle class="dgSpark" cx="575" cy="342" r="3.2" fill="#ffcf4a"/>
-          <circle class="dgSpark" cx="410" cy="342" r="3.2" fill="#ffcf4a"/>
-        </g>
-
-        <!-- ring -->
-        <circle cx="490" cy="230" r="138" class="dgStroke dgDim dgMid" opacity="0.85"/>
-
-        <!-- chains -->
-        <g class="dgChains" opacity="0.92">
-          <!-- left chain set -->
-          <path class="dgStroke dgGold dgThick dgChain" d="M120 310 C 240 120, 370 90, 470 160" />
-          <path class="dgStroke dgCyan dgMid dgChain b" d="M150 332 C 255 160, 388 132, 480 182" />
-          <path class="dgStroke dgGold dgThin dgChain c" d="M175 350 C 275 190, 405 170, 490 205" />
-          <!-- right chain set -->
-          <path class="dgStroke dgGold dgThick dgChain c" d="M860 310 C 740 120, 610 90, 510 160" />
-          <path class="dgStroke dgCyan dgMid dgChain b" d="M830 332 C 725 160, 592 132, 500 182" />
-          <path class="dgStroke dgGold dgThin dgChain" d="M805 350 C 705 190, 575 170, 490 205" />
-          <!-- link nodes -->
-          <g opacity="0.72">
-            <circle cx="270" cy="205" r="9.5" fill="none" stroke="rgba(255,207,74,.78)" stroke-width="4"/>
-            <circle cx="710" cy="205" r="9.5" fill="none" stroke="rgba(255,207,74,.78)" stroke-width="4"/>
-            <circle cx="338" cy="168" r="7.8" fill="none" stroke="rgba(100,221,255,.58)" stroke-width="3.6"/>
-            <circle cx="642" cy="168" r="7.8" fill="none" stroke="rgba(100,221,255,.58)" stroke-width="3.6"/>
-          </g>
-        </g>
-
-        <!-- merge ring + signature -->
-        <g class="dgRing">
-          <circle cx="490" cy="230" r="150" fill="none" stroke="rgba(255,207,74,.40)" stroke-width="10"/>
-          <circle cx="490" cy="230" r="150" fill="none" stroke="rgba(100,221,255,.28)" stroke-width="6" stroke-dasharray="18 20" opacity="0.95"/>
-        </g>
-
-        <g class="dgCore">
-          <circle class="dgPulse" cx="490" cy="238" r="40" fill="rgba(255,207,74,.16)"/>
-          <circle class="dgPulse" cx="490" cy="238" r="22" fill="rgba(100,221,255,.14)"/>
-          <circle cx="490" cy="238" r="10" fill="rgba(255,255,255,.20)"/>
-        </g>
-
-        <!-- shield -->
-        <g class="dgShield">
-          <path d="M490 78
-              C 570 116, 650 122, 715 138
-              C 715 278, 635 360, 490 408
-              C 345 360, 265 278, 265 138
-              C 330 122, 410 116, 490 78 Z"
-            fill="url(#dgShieldGrad)" opacity="0.97"
-            style="filter: drop-shadow(0 0 28px rgba(255,207,74,.28)) drop-shadow(0 0 40px rgba(100,221,255,.18));" />
-          <path d="M490 112
-              C 552 142, 615 148, 666 158
-              C 666 268, 603 332, 490 368
-              C 377 332, 314 268, 314 158
-              C 365 148, 428 142, 490 112 Z"
-            fill="rgba(0,0,0,0.14)" stroke="rgba(255,255,255,.11)" stroke-width="2"/>
-          <!-- inner sig -->
-          <g class="dgSig" opacity="0.95">
-            <path d="M490 150 L 490 342" stroke="rgba(255,255,255,.18)" stroke-width="3" stroke-linecap="round"/>
-            <path d="M420 220 L 490 275 L 566 206" fill="none" stroke="rgba(255,255,255,.24)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
-          </g>
-        </g>
-      </svg>
-    </div>
-
-    <div class="dgBottom dgPar">
-      <div class="dgText">
-        <div class="dgLine" id="dgLoaderStage">Binding <b>Guardian</b>…</div>
-        <div class="dgSub" id="dgLoaderHint">Fortifying entry layer…</div>
-      </div>
-
-      <div class="dgRingWrap" aria-hidden="true">
-        <svg viewBox="0 0 44 44">
-          <circle class="dgRingTrack" cx="22" cy="22" r="18" fill="none" stroke-width="4"></circle>
-          <circle id="dgRingProg" class="dgRingProg" cx="22" cy="22" r="18" fill="none" stroke-width="4"
-            stroke-dasharray="113.097" stroke-dashoffset="113.097"></circle>
-        </svg>
-        <div class="dgPct" id="dgLoaderPct">0%</div>
-      </div>
-    </div>
-  </div>
-</div>
-
+ <!-- DG CINEMATIC INTRO (auto-removes after reveal) -->
+ <div id="dgIntroOverlay" aria-hidden="true">
+   <canvas id="dgIntroCanvas"></canvas>
+   <div id="dgIntroFlash" aria-hidden="true"></div>
+   <div class="dgIntroHUD">
+     <div class="dgIntroCard" role="presentation">
+       <div class="dgIntroTag"><span class="dgIntroPip" aria-hidden="true"></span>GUARDIAN PROTOCOL ONLINE</div>
+       <div class="dgIntroTitle">$SOS</div>
+       <div class="dgIntroSub">Protection through clarity</div>
+       <div class="dgIntroSteps" aria-hidden="true">
+         <span class="dgIntroStep on"><i></i>Scan</span>
+         <span class="dgIntroStep"><i></i>Verify</span>
+         <span class="dgIntroStep"><i></i>Protect</span>
+       </div>
+       <div class="dgIntroHint">Tap / Click to enter • Space to skip</div>
+     </div>
+   </div>
+   <div class="dgIntroGrain" aria-hidden="true"></div>
+ </div>
 
 
  <!-- ICON SPRITE (no emojis) -->
@@ -2770,7 +2552,7 @@ body.net-base .chainBtn.active{ background: linear-gradient(90deg, rgba(0,82,255
    <div class="topBarInner">
      <div class="topRow">
        <div class="hotBlock" aria-label="Hot trending live">
-         <a class="dexguardLogo" id="dexguardLogo" href="https://www.solanax1.com/dexguard" aria-label="Open DexGuard">
+         <a class="dexguardLogo" id="dexguardLogo" href="https://www.solanax1.com/dexguard" aria-label="Open DexGuard" data-dg-transition="1">
            <img src="dexguard.png" alt="DexGuard" />
          </a>
 
@@ -2822,7 +2604,7 @@ body.net-base .chainBtn.active{ background: linear-gradient(90deg, rgba(0,82,255
 
  <div class="menuLabel">Navigate</div>
 
- <a class="menuItem dexItem" role="menuitem" href="https://www.solanax1.com/dexguard" target="_blank" rel="noopener">
+ <a class="menuItem dexItem" role="menuitem" href="https://www.solanax1.com/dexguard" target="_blank" rel="noopener" data-dg-transition="1">
    <span class="menuText"><span class="menuMain">DexGuard DEX</span><span class="menuSub">Official $SOS DEX</span></span>
    <span class="menuBadge badgeDex">DEX</span>
  </a>
@@ -2836,8 +2618,8 @@ body.net-base .chainBtn.active{ background: linear-gradient(90deg, rgba(0,82,255
 
  <div class="menuSep"></div>
  <div class="menuLabel">Tools</div>
- <a class="menuItem" role="menuitem" href="https://solanax1.com/wallet" target="_blank" rel="noreferrer"><span class="menuText">Guardian Wallet Scanner</span><span class="menuBadge badgeTool">Tool</span></a>
- <a class="menuItem" role="menuitem" href="https://solanax1.com/contract" target="_blank" rel="noreferrer"><span class="menuText">Guardian Contract Scanner</span><span class="menuBadge badgeTool">Tool</span></a>
+ <a class="menuItem" role="menuitem" href="https://solanax1.com/wallet" target="_blank" rel="noreferrer" data-dg-transition="1"><span class="menuText">Guardian Wallet Scanner</span><span class="menuBadge badgeTool">Tool</span></a>
+ <a class="menuItem" role="menuitem" href="https://solanax1.com/contract" target="_blank" rel="noreferrer" data-dg-transition="1"><span class="menuText">Guardian Contract Scanner</span><span class="menuBadge badgeTool">Tool</span></a>
 
  <div class="menuSep"></div>
  <div class="menuLabel">Social</div>
@@ -2938,13 +2720,13 @@ body.net-base .chainBtn.active{ background: linear-gradient(90deg, rgba(0,82,255
  These are not blog sections they’re live tools. Open a scanner below to analyze a wallet or a token contract in seconds.
  </p>
  <div class="toolsQuick">
- <a class="btn primary" href="https://solanax1.com/wallet" target="_blank" rel="noreferrer">Open Wallet Scanner</a>
- <a class="btn grad" href="https://solanax1.com/contract" target="_blank" rel="noreferrer">Open Contract Scanner</a>
+ <a class="btn primary" href="https://solanax1.com/wallet" target="_blank" rel="noreferrer" data-dg-transition="1">Open Wallet Scanner</a>
+ <a class="btn grad" href="https://solanax1.com/contract" target="_blank" rel="noreferrer" data-dg-transition="1">Open Contract Scanner</a>
  </div>
  </div>
 
  <div class="toolBigTiles" aria-label="Quick tool tiles">
- <a class="tile" href="https://solanax1.com/wallet" target="_blank" rel="noreferrer" aria-label="Open Wallet Scanner">
+ <a class="tile" href="https://solanax1.com/wallet" target="_blank" rel="noreferrer" aria-label="Open Wallet Scanner" data-dg-transition="1">
  <div class="tileTop">
  <div class="tileIcon">W</div>
  <div class="menuBadge">LIVE TOOL</div>
@@ -2954,7 +2736,7 @@ body.net-base .chainBtn.active{ background: linear-gradient(90deg, rgba(0,82,255
  <div class="tileCta">Tap to scan <span aria-hidden="true">→</span></div>
  </a>
 
- <a class="tile" href="https://solanax1.com/contract" target="_blank" rel="noreferrer" aria-label="Open Contract Scanner">
+ <a class="tile" href="https://solanax1.com/contract" target="_blank" rel="noreferrer" aria-label="Open Contract Scanner" data-dg-transition="1">
  <div class="tileTop">
  <div class="tileIcon">C</div>
  <div class="menuBadge">LIVE TOOL</div>
@@ -3015,7 +2797,7 @@ body.net-base .chainBtn.active{ background: linear-gradient(90deg, rgba(0,82,255
  </div>
 
  <div class="toolCTA">
- <a class="btn grad" href="https://solanax1.com/wallet" target="_blank" rel="noreferrer">Open Guardian Wallet Scanner</a>
+ <a class="btn grad" href="https://solanax1.com/wallet" target="_blank" rel="noreferrer" data-dg-transition="1">Open Guardian Wallet Scanner</a>
  <span class="toolMini">Instant readout • Verifiable signals</span>
  </div>
  </div>
@@ -3097,7 +2879,7 @@ body.net-base .chainBtn.active{ background: linear-gradient(90deg, rgba(0,82,255
  </div>
 
  <div class="toolCTA">
- <a class="btn grad" href="https://solanax1.com/contract" target="_blank" rel="noreferrer">Open Guardian Contract Scanner</a>
+ <a class="btn grad" href="https://solanax1.com/contract" target="_blank" rel="noreferrer" data-dg-transition="1">Open Guardian Contract Scanner</a>
  <span class="toolMini">Multichain verdict • Bubble map + report</span>
  </div>
  </div>
@@ -3138,8 +2920,8 @@ body.net-base .chainBtn.active{ background: linear-gradient(90deg, rgba(0,82,255
 
  <!-- Mobile tool dock (always visible on phones) -->
  <div class="toolsDock" aria-label="Quick tool access">
- <a class="dockBtn" href="https://solanax1.com/wallet" target="_blank" rel="noreferrer"><span class="mini">W</span> Wallet Scan</a>
- <a class="dockBtn" href="https://solanax1.com/contract" target="_blank" rel="noreferrer"><span class="mini">C</span> Contract Scan</a>
+ <a class="dockBtn" href="https://solanax1.com/wallet" target="_blank" rel="noreferrer" data-dg-transition="1"><span class="mini">W</span> Wallet Scan</a>
+ <a class="dockBtn" href="https://solanax1.com/contract" target="_blank" rel="noreferrer" data-dg-transition="1"><span class="mini">C</span> Contract Scan</a>
  </div>
 
  <!-- TOKENOMICS -->
@@ -4132,182 +3914,441 @@ function toggleMenu(){
 
 </script>
 
-<script id="dg-loader-script">
+<script>
+/* =========================
+   DG Cinematic Intro + Link Transitions
+   ========================= */
 (function(){
+  const overlay = document.getElementById('dgIntroOverlay');
+  if(!overlay) return;
+
+  const prefersReduce = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  const forceIntro = /(?:\?|&)intro=1(?:&|$)/.test(location.search);
   try{
-    var htmlEl = document.documentElement;
-    if(!htmlEl.classList.contains('dg-boot')) htmlEl.classList.add('dg-boot');
-
-    var loader = document.getElementById('dgLoader');
-    if(!loader){ htmlEl.classList.remove('dg-boot'); htmlEl.classList.add('dg-ready'); return; }
-
-    var pct   = document.getElementById('dgLoaderPct');
-    var stage = document.getElementById('dgLoaderStage');
-    var hint  = document.getElementById('dgLoaderHint');
-    var ring  = document.getElementById('dgRingProg');
-
-    var start = (window.performance && performance.now) ? performance.now() : Date.now();
-    var done = false;
-    var doneAt = 0;
-
-    // Cinematic (no blink)
-    var MIN_TOTAL = 4200;       // always show at least this long
-    var MIN_DONE_SHOW = 1400;   // once loaded, linger so it feels premium
-    var SAFETY_DONE_MS = 16000;
-
-    var prog = 0;
-    var target = 0;
-
-    function clamp(n,a,b){ return Math.max(a, Math.min(b,n)); }
-
-    function setStage(idx){
-      loader.classList.remove('dg-stage1','dg-stage2','dg-stage3');
-      loader.classList.add('dg-stage'+idx);
-      if(idx===1){
-        stage.innerHTML = 'Dragging <b>chains</b>…';
-        hint.textContent = 'Locking the perimeter…';
-      }else if(idx===2){
-        stage.innerHTML = 'Compressing <b>Guardian core</b>…';
-        hint.textContent = 'Merging protection layers…';
-      }else{
-        stage.innerHTML = 'Igniting <b>Shield Protocol</b>…';
-        hint.textContent = 'Finalizing safeguard…';
-      }
+    if(!forceIntro && sessionStorage.getItem('dgIntroSeen') === '1'){
+      overlay.remove();
+      return;
     }
+    sessionStorage.setItem('dgIntroSeen','1');
+  }catch(e){ /* ignore */ }
 
-    // Timeline (high-level narrative)
-    setStage(1);
-    setTimeout(function(){ setStage(2); }, 1200);
-    setTimeout(function(){
-      loader.classList.add('dg-snap');   // flash
-      setTimeout(function(){ loader.classList.remove('dg-snap'); }, 220);
-    }, 2150);
-    setTimeout(function(){ setStage(3); }, 2350);
+  const htmlEl = document.documentElement;
+  const bodyEl = document.body;
 
-    function paint(){
-      var p = clamp(prog,0,100);
-      if(pct) pct.textContent = p.toFixed(0) + '%';
-      if(ring){
-        var C = 113.097;
-        ring.style.strokeDashoffset = (C * (1 - (p/100))).toFixed(3);
-      }
+  htmlEl.classList.add('dg-intro-on');
+  bodyEl.classList.add('dg-intro-on');
+
+  const canvas = document.getElementById('dgIntroCanvas');
+  const ctx = canvas && canvas.getContext ? canvas.getContext('2d', { alpha:true, desynchronized:true }) : null;
+
+  let W=0,H=0,DPR=1, running=true, finishing=false, raf=0;
+  let particles=[], links=[], t0=performance.now();
+
+  function clamp(v,a,b){ return v<a?a:(v>b?b:v); }
+  function rand(a,b){ return a + Math.random()*(b-a); }
+
+  function resize(){
+    W = Math.max(1, window.innerWidth||1);
+    H = Math.max(1, window.innerHeight||1);
+    DPR = Math.min(2, window.devicePixelRatio||1);
+    if(!ctx) return;
+    canvas.width = Math.floor(W*DPR);
+    canvas.height = Math.floor(H*DPR);
+    canvas.style.width = W+'px';
+    canvas.style.height = H+'px';
+    ctx.setTransform(DPR,0,0,DPR,0,0);
+  }
+
+  function initSim(){
+    particles = [];
+    links = [];
+    const area = W*H;
+    const pCount = prefersReduce ? 0 : Math.max(70, Math.min(180, Math.floor(area/14000)));
+    for(let i=0;i<pCount;i++){
+      particles.push({
+        x: rand(0,W),
+        y: rand(0,H),
+        vx: rand(-0.12,0.12),
+        vy: rand(-0.22,0.22),
+        r: rand(0.8, 2.8),
+        k: Math.random(),
+        a: rand(0.08, 0.22)
+      });
     }
-
-    function tick(){
-      var now = (window.performance && performance.now) ? performance.now() : Date.now();
-      var elapsed = now - start;
-
-      if(document.readyState === 'interactive') target = Math.max(target, 60);
-      if(document.readyState === 'complete') target = 100;
-
-      var cap = (document.readyState === 'complete') ? 100 : 92;
-      target = clamp(target, 14, cap);
-
-      if(!done){
-        // Smooth accelerating motion
-        prog += (target - prog) * 0.08;
-        prog += 0.10;
-        prog = clamp(prog, 0, cap);
-      }else{
-        prog += (100 - prog) * 0.16;
-        prog = clamp(prog, 0, 100);
-      }
-
-      paint();
-
-      if((document.readyState === 'complete') && !done){
-        done = true;
-        doneAt = now;
-        prog = Math.max(prog, 96);
-      }
-
-      if(!done && elapsed > SAFETY_DONE_MS){
-        done = true;
-        doneAt = now;
-      }
-
-      if(done && prog >= 99.7){
-        var wait = Math.max(0, MIN_TOTAL - elapsed);
-        if(doneAt) wait = Math.max(wait, MIN_DONE_SHOW - (now - doneAt));
-        if(wait <= 0) return exit();
-      }
-
-      requestAnimationFrame(tick);
+    const chainCount = prefersReduce ? 0 : (W < 520 ? 2 : 3);
+    for(let i=0;i<chainCount;i++){
+      const side = i%2===0 ? -1 : 1;
+      links.push({ side, lane: i, wob: rand(0,Math.PI*2) });
     }
+  }
 
-    function exit(){
-      try{
-        // Reveal page first, then cinematic wipe + fade
-        htmlEl.classList.remove('dg-boot');
-        htmlEl.classList.add('dg-ready');
+  function drawEmblem(cx,cy,prog,energy){
+    if(!ctx) return;
+    const baseR = Math.min(W,H)*0.095;
+    const r = baseR * (0.72 + 0.28*prog);
 
-        loader.classList.add('dg-wipe');
-        setTimeout(function(){
-          loader.setAttribute('aria-hidden','true');
-          loader.classList.add('dg-exit');
-          setTimeout(function(){
-            if(loader && loader.parentNode) loader.parentNode.removeChild(loader);
-          }, 760);
-        }, 180);
-      }catch(e){
-        if(loader && loader.parentNode) loader.parentNode.removeChild(loader);
-        htmlEl.classList.remove('dg-boot');
-        htmlEl.classList.add('dg-ready');
-      }
+    // outer glow
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = 'rgba(255,255,255,'+(0.06+0.10*prog)+')';
+    ctx.shadowColor = 'rgba(20,241,149,'+(0.10+0.18*energy)+')';
+    ctx.shadowBlur = 24 + 26*energy;
+    ctx.beginPath(); ctx.arc(cx,cy,r*1.25,0,Math.PI*2); ctx.stroke();
+    ctx.restore();
+
+    // segmented ring (brand-ish)
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.lineWidth = 5;
+    ctx.lineCap = 'round';
+
+    const segs = 9;
+    for(let s=0;s<segs;s++){
+      const a0 = (s/segs)*Math.PI*2 + (0.6*prog);
+      const a1 = a0 + Math.PI*(0.13 + 0.03*Math.sin(s+prog*3));
+      const hueMix = s/segs;
+      // approximate brand gradient via RGB mixes (no HSL dependency)
+      const col = hueMix < 0.33 ? 'rgba(20,241,149,'+(0.10+0.55*prog)+')'
+               : (hueMix < 0.66 ? 'rgba(0,209,255,'+(0.10+0.52*prog)+')'
+               : 'rgba(153,69,255,'+(0.10+0.52*prog)+')');
+      ctx.strokeStyle = col;
+      ctx.shadowColor = col;
+      ctx.shadowBlur = 18 + 22*energy;
+      ctx.beginPath(); ctx.arc(cx,cy,r,a0,a1); ctx.stroke();
     }
+    ctx.restore();
 
-    // Real load signal
-    window.addEventListener('load', function(){
-      var now = (window.performance && performance.now) ? performance.now() : Date.now();
-      done = true;
-      doneAt = now;
-      target = 100;
-    }, { once:true });
+    // inner "shield" glyph (simple, bold)
+    ctx.save();
+    ctx.globalAlpha = 0.85*prog;
+    ctx.fillStyle = 'rgba(255,255,255,'+(0.06+0.14*prog)+')';
+    ctx.strokeStyle = 'rgba(255,255,255,'+(0.22+0.22*prog)+')';
+    ctx.lineWidth = 2.5;
+    const w = r*0.72, h = r*0.84;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy-h*0.62);
+    ctx.quadraticCurveTo(cx+w*0.60, cy-h*0.36, cx+w*0.46, cy+h*0.22);
+    ctx.quadraticCurveTo(cx, cy+h*0.72, cx-w*0.46, cy+h*0.22);
+    ctx.quadraticCurveTo(cx-w*0.60, cy-h*0.36, cx, cy-h*0.62);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
 
-    // Premium parallax on desktop (disabled on touch)
-    (function(){
-      var isTouch = false;
-      try{ isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0); }catch(_){}
-      if(isTouch) return;
+    // center line
+    ctx.globalAlpha = 0.35*prog;
+    ctx.beginPath(); ctx.moveTo(cx, cy-h*0.48); ctx.lineTo(cx, cy+h*0.54); ctx.stroke();
+    ctx.restore();
+  }
 
-      var wrap = loader.querySelector('.dgWrap');
-      if(!wrap) return;
+  function drawChains(cx,cy,pull){
+    if(!ctx) return;
+    const thickness = (W < 520 ? 2.6 : 3.2);
+    const linkSize = (W < 520 ? 10 : 12);
+    const linkGap  = (W < 520 ? 14 : 16);
 
-      var pars = loader.querySelectorAll('.dgPar');
-      if(!pars || !pars.length) return;
+    for(const ch of links){
+      const side = ch.side;
+      const y0 = H*(0.34 + 0.10*Math.sin(ch.wob + pull*2.1 + ch.lane));
+      const x0 = side < 0 ? -90 : (W+90);
+      const x1 = cx + side*(Math.max(0,1-pull)*120);
+      const y1 = cy + (Math.sin(ch.wob + pull*1.7)*18);
 
-      var cx = 0, cy = 0;
-      var raf = 0;
+      const c1x = x0 + side*(W*0.22);
+      const c1y = y0 + (side*22);
+      const c2x = x1 + side*(W*0.10);
+      const c2y = y1 - (side*10);
 
-      function onMove(ev){
-        var x = ev.clientX / window.innerWidth;
-        var y = ev.clientY / window.innerHeight;
-        cx = (x - 0.5);
-        cy = (y - 0.5);
-        if(!raf){
-          raf = requestAnimationFrame(function(){
-            raf = 0;
-            var tx = cx * 10;
-            var ty = cy * 8;
-            for(var i=0;i<pars.length;i++){
-              var z = (i===1 ? 1.0 : (i===0 ? 0.6 : 0.8));
-              pars[i].style.transform = 'translate3d(' + (-tx*z) + 'px,' + (-ty*z) + 'px,0)';
-            }
-          });
+      // curve sample
+      function bez(t){
+        const u=1-t;
+        const x = u*u*u*x0 + 3*u*u*t*c1x + 3*u*t*t*c2x + t*t*t*x1;
+        const y = u*u*u*y0 + 3*u*u*t*c1y + 3*u*t*t*c2y + t*t*t*y1;
+        return [x,y];
+      }
+
+      // main cable
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.lineWidth = thickness;
+      ctx.strokeStyle = 'rgba(255,255,255,'+(0.08 + 0.18*pull)+')';
+      ctx.shadowColor = 'rgba(20,241,149,'+(0.06 + 0.14*pull)+')';
+      ctx.shadowBlur = 18 + 18*pull;
+      ctx.beginPath();
+      for(let i=0;i<=40;i++){
+        const t=i/40;
+        const [x,y]=bez(t);
+        if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+      }
+      ctx.stroke();
+      ctx.restore();
+
+      // chain links (ellipses)
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      for(let i=0;i<22;i++){
+        const t = clamp((i*0.045 + (1-pull)*0.10), 0.02, 0.98);
+        const [x,y]=bez(t);
+        const [x2,y2]=bez(clamp(t+0.02,0,1));
+        const ang = Math.atan2(y2-y, x2-x);
+        const fade = clamp((pull-0.10)*1.2, 0, 1);
+        ctx.translate(x,y);
+        ctx.rotate(ang);
+        ctx.translate(-x,-y);
+        ctx.lineWidth = 2;
+        const col = ch.lane%3===0 ? 'rgba(20,241,149,'+(0.12+0.28*fade)+')' :
+                    ch.lane%3===1 ? 'rgba(0,209,255,'+(0.10+0.26*fade)+')' :
+                                   'rgba(153,69,255,'+(0.10+0.26*fade)+')';
+        ctx.strokeStyle = col;
+        ctx.shadowColor = col;
+        ctx.shadowBlur = 14 + 10*fade;
+        ctx.beginPath();
+        ctx.ellipse(x,y, linkSize, linkSize*0.62, 0, 0, Math.PI*2);
+        ctx.stroke();
+        ctx.setTransform(DPR,0,0,DPR,0,0); // reset
+      }
+      ctx.restore();
+    }
+  }
+
+  function drawScan(t){
+    if(!ctx) return;
+    // subtle grid
+    const grid = W < 520 ? 84 : 96;
+    ctx.save();
+    ctx.globalAlpha = 0.06;
+    ctx.strokeStyle = 'rgba(255,255,255,.22)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for(let x=0; x<=W; x+=grid){
+      ctx.moveTo(x,0); ctx.lineTo(x,H);
+    }
+    for(let y=0; y<=H; y+=grid){
+      ctx.moveTo(0,y); ctx.lineTo(W,y);
+    }
+    ctx.stroke();
+    ctx.restore();
+
+    // scanline
+    const y = (t*0.14) % (H*1.2) - (H*0.1);
+    const g = ctx.createLinearGradient(0,y-80,0,y+80);
+    g.addColorStop(0,'rgba(0,0,0,0)');
+    g.addColorStop(0.45,'rgba(20,241,149,.00)');
+    g.addColorStop(0.50,'rgba(20,241,149,.18)');
+    g.addColorStop(0.55,'rgba(0,209,255,.10)');
+    g.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.fillStyle = g;
+    ctx.fillRect(0,y-120,W,240);
+    ctx.restore();
+  }
+
+  function tick(now){
+    if(!running) return;
+    const t = now - t0;
+
+    if(!ctx){
+      // reduced motion path
+      if(!finishing){
+        if(t > 320){
+          finishIntro(false);
+          return;
         }
       }
-      window.addEventListener('mousemove', onMove, { passive:true });
-    })();
+      raf = requestAnimationFrame(tick);
+      return;
+    }
 
-    requestAnimationFrame(tick);
-  }catch(_e){
-    try{
-      document.documentElement.classList.remove('dg-boot');
-      document.documentElement.classList.add('dg-ready');
-      var l = document.getElementById('dgLoader');
-      if(l && l.parentNode) l.parentNode.removeChild(l);
-    }catch(__){}
+    // trails
+    ctx.save();
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.fillStyle = 'rgba(7,7,17,0.22)';
+    ctx.fillRect(0,0,W,H);
+    ctx.restore();
+
+    if(!prefersReduce){
+      drawScan(t);
+    }
+
+    // particles
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    for(const p of particles){
+      p.x += p.vx; p.y += p.vy;
+      if(p.x < -30) p.x = W+30;
+      if(p.x > W+30) p.x = -30;
+      if(p.y < -30) p.y = H+30;
+      if(p.y > H+30) p.y = -30;
+      const wob = 0.5 + 0.5*Math.sin(t*0.001 + p.k*6);
+      const a = p.a*(0.6+0.9*wob);
+      const col = p.k < 0.33 ? 'rgba(20,241,149,'+a+')'
+               : (p.k < 0.66 ? 'rgba(0,209,255,'+a+')' : 'rgba(153,69,255,'+a+')');
+      ctx.fillStyle = col;
+      ctx.shadowColor = col;
+      ctx.shadowBlur = 16*wob;
+      ctx.beginPath(); ctx.arc(p.x,p.y,p.r*(0.8+0.6*wob),0,Math.PI*2); ctx.fill();
+    }
+    ctx.restore();
+
+    const cx = W*0.5, cy = H*0.50;
+
+    // timeline
+    const pull = clamp((t-820)/1280, 0, 1);
+    const sig  = clamp((t-1220)/980, 0, 1);
+    const pulse= clamp((t-2300)/780, 0, 1);
+
+    if(!prefersReduce){
+      drawChains(cx,cy,pull);
+    }
+    drawEmblem(cx,cy,sig, pulse);
+
+    // pulse wave
+    if(pulse > 0){
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      const R = (Math.min(W,H)*0.10) + pulse*(Math.hypot(W,H)*0.55);
+      const g = ctx.createRadialGradient(cx,cy, Math.max(0,R*0.12), cx,cy, R);
+      g.addColorStop(0,'rgba(255,255,255,'+(0.12*(1-pulse))+')');
+      g.addColorStop(0.35,'rgba(20,241,149,'+(0.10*(1-pulse))+')');
+      g.addColorStop(0.55,'rgba(0,209,255,'+(0.08*(1-pulse))+')');
+      g.addColorStop(0.78,'rgba(153,69,255,'+(0.06*(1-pulse))+')');
+      g.addColorStop(1,'rgba(0,0,0,0)');
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(cx,cy,R,0,Math.PI*2); ctx.fill();
+      ctx.restore();
+    }
+
+    // step UI sync
+    if(t > 1050) setStep(1);
+    if(t > 1650) setStep(2);
+    if(t > 2350) setStep(3);
+
+    if(!finishing && t > 2980){
+      finishIntro(false);
+      return;
+    }
+    raf = requestAnimationFrame(tick);
   }
+
+  function setStep(n){
+    const steps = overlay.querySelectorAll('.dgIntroStep');
+    if(!steps || !steps.length) return;
+    for(let i=0;i<steps.length;i++){
+      if(i < n) steps[i].classList.add('on'); else steps[i].classList.remove('on');
+    }
+  }
+
+  function finishIntro(skipped){
+    if(finishing) return;
+    finishing = true;
+
+    try{ overlay.classList.add('dg-flash'); }catch(e){}
+
+    const start = performance.now();
+    const dur = prefersReduce ? 180 : (skipped ? 320 : 640);
+    const maxR = Math.hypot(W,H) * 1.05;
+
+    function revealFrame(now){
+      const p = clamp((now-start)/dur, 0, 1);
+      // easeOutCubic
+      const e = 1 - Math.pow(1-p, 3);
+      overlay.style.setProperty('--dg-hole', (e*maxR).toFixed(2)+'px');
+      // fade HUD near end
+      const hud = overlay.querySelector('.dgIntroHUD');
+      if(hud) hud.style.opacity = (p < 0.55 ? '1' : String(clamp(1 - (p-0.55)/0.45, 0, 1)));
+      if(p >= 1){
+        cleanup();
+        return;
+      }
+      requestAnimationFrame(revealFrame);
+    }
+    requestAnimationFrame(revealFrame);
+  }
+
+  function cleanup(){
+    running = false;
+    cancelAnimationFrame(raf);
+    try{
+      overlay.remove();
+    }catch(e){
+      overlay.style.display='none';
+    }
+    htmlEl.classList.remove('dg-intro-on');
+    bodyEl.classList.remove('dg-intro-on');
+  }
+
+  function skipNow(){ finishIntro(true); }
+  overlay.addEventListener('pointerdown', skipNow, { passive:true });
+  window.addEventListener('keydown', function(e){
+    if(e.key === ' ' || e.key === 'Enter' || e.key === 'Escape'){
+      e.preventDefault();
+      skipNow();
+    }
+  }, { passive:false });
+
+  // init
+  resize();
+  initSim();
+  // slight delay to ensure first paint is clean
+  requestAnimationFrame(()=> requestAnimationFrame(()=> { raf = requestAnimationFrame(tick); }));
+
+  window.addEventListener('resize', function(){
+    resize();
+    initSim();
+  }, { passive:true });
+
+  // -------------------------
+  // Link transitions (DexGuard + marked links)
+  // -------------------------
+  function navTransitionTo(href){
+    if(!href) return;
+    // create overlay
+    const nav = document.createElement('div');
+    nav.id = 'dgNavOverlay';
+    document.body.appendChild(nav);
+
+    // animate hole shrinking to 0 (covering the page)
+    const start = performance.now();
+    const dur = 420;
+    const maxR = Math.hypot(window.innerWidth||1, window.innerHeight||1) * 1.10;
+    function frame(now){
+      const p = clamp((now-start)/dur, 0, 1);
+      // easeInCubic
+      const e = Math.pow(p, 3);
+      nav.style.setProperty('--dg-hole', (maxR*(1-e)).toFixed(2)+'px');
+      if(p >= 1){
+        location.href = href;
+        return;
+      }
+      requestAnimationFrame(frame);
+    }
+    // start from fully open
+    nav.style.setProperty('--dg-hole', maxR.toFixed(2)+'px');
+    requestAnimationFrame(frame);
+    // fallback if navigation blocked
+    setTimeout(()=>{ try{ location.href = href; }catch(e){} }, 900);
+  }
+
+  document.addEventListener('click', function(e){
+    const a = e.target && e.target.closest ? e.target.closest('a') : null;
+    if(!a) return;
+
+    // allow new tab etc.
+    if(e.defaultPrevented) return;
+    if(e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    if(a.target === '_blank') return;
+
+    const href = a.getAttribute('href') || '';
+    if(!href || href.startsWith('#') || href.startsWith('mailto:') || href.startsWith('tel:')) return;
+
+    const wants = (a.getAttribute('data-dg-transition') === '1') || (a.id === 'dexguardLogo');
+    if(!wants) return;
+
+    e.preventDefault();
+    navTransitionTo(href);
+  }, { capture:true });
+
 })();
 </script>
 
