@@ -1040,7 +1040,7 @@ DexGuard DexLike LiveChart v1
     const fmtUSD = (n) => {
       if (n === null || n === undefined || !isFinite(n)) return '—';
       const abs = Math.abs(n);
-      const digits = abs >= 1000 ? 0 : abs >= 1 ? 2 : 6;
+      const digits = abs >= 1000 ? 0 : abs >= 1 ? 2 : abs >= 0.01 ? 4 : abs >= 0.0001 ? 6 : 10;
       return '$' + n.toLocaleString(undefined, {maximumFractionDigits:digits});
     };
     const fmtPrice = (n) => {
@@ -1206,7 +1206,7 @@ DexGuard DexLike LiveChart v1
     const dsBoostLatestUrl = () => `https://api.dexscreener.com/token-boosts/latest/v1`;
 
     const gtPoolUrl = (network, pool) => `https://api.geckoterminal.com/api/v2/networks/${encodeURIComponent(network)}/pools/${encodeURIComponent(pool)}`;
-    const gtTradesUrl = (network, pool) => `https://api.geckoterminal.com/api/v2/networks/${encodeURIComponent(network)}/pools/${encodeURIComponent(pool)}/trades?page=1`;
+    const gtTradesUrl = (network, pool) => `https://api.geckoterminal.com/api/v2/networks/${encodeURIComponent(network)}/pools/${encodeURIComponent(pool)}/trades?page=1&ts=${Date.now()}`;
     function tfToGT(tf){
       switch(tf){
         case '1m': return {timeframe:'minute', aggregate:1, sec:60};
@@ -1218,13 +1218,13 @@ DexGuard DexLike LiveChart v1
         default: return {timeframe:'minute', aggregate:15, sec:900};
       }
     }
-    function gtOhlcvUrl(network, pool, tf){
+    function gtOhlcvUrl(network, pool, tf, token='base'){
       const map = tfToGT(tf);
       const limit = map.timeframe === 'day' ? 260 : map.timeframe === 'hour' ? 520 : 700;
       const before = nowSec();
-      const token = 'base';
       const currency = 'usd';
-      return `https://api.geckoterminal.com/api/v2/networks/${encodeURIComponent(network)}/pools/${encodeURIComponent(pool)}/ohlcv/${encodeURIComponent(map.timeframe)}?aggregate=${map.aggregate}&before_timestamp=${before}&limit=${limit}&currency=${currency}&token=${token}`;
+      // Gecko supports token=base|quote; some pools only have one side priced reliably in USD.
+      return `https://api.geckoterminal.com/api/v2/networks/${encodeURIComponent(network)}/pools/${encodeURIComponent(pool)}/ohlcv/${encodeURIComponent(map.timeframe)}?aggregate=${map.aggregate}&before_timestamp=${before}&limit=${limit}&currency=${currency}&token=${encodeURIComponent(token)}`;
     }
 
     const birdeyeTokenOverviewUrl = (token) => `https://public-api.birdeye.so/defi/token_overview?address=${encodeURIComponent(token)}`;
@@ -1854,13 +1854,31 @@ DexGuard DexLike LiveChart v1
 
       let candles = null;
 
-      // 1) GeckoTerminal OHLCV
+      // 1) GeckoTerminal OHLCV (try base, then quote if base looks empty/zero)
       try{
-        const data = await withBackoff(() => fetchJson(gtOhlcvUrl(meta.gtNet, meta.pool, tf), {ttl: 8_000, signal}), {tries:2, signal});
+        const data = await withBackoff(() => fetchJson(gtOhlcvUrl(meta.gtNet, meta.pool, tf, 'base'), {ttl: 8_000, signal}), {tries:2, signal});
         if (sid !== state.sessionId) return;
         candles = normalizeGTOhlcv(data);
+        if (candles && candles.length){
+          const bad = candles.every(c => !c || !isFinite(c.close) || c.close === 0);
+          if (bad) candles = null;
+        }
       }catch(e){
-        if (!signal.aborted) console.warn('[DexGuard] gt ohlcv failed', e);
+        if (!signal.aborted) console.warn('[DexGuard] gt ohlcv (base) failed', e);
+      }
+
+      if ((!candles || candles.length < 20)){
+        try{
+          const data2 = await withBackoff(() => fetchJson(gtOhlcvUrl(meta.gtNet, meta.pool, tf, 'quote'), {ttl: 8_000, signal}), {tries:2, signal});
+          if (sid !== state.sessionId) return;
+          const c2 = normalizeGTOhlcv(data2);
+          if (c2 && c2.length){
+            const bad2 = c2.every(c => !c || !isFinite(c.close) || c.close === 0);
+            if (!bad2) candles = c2;
+          }
+        }catch(e){
+          if (!signal.aborted) console.warn('[DexGuard] gt ohlcv (quote) failed', e);
+        }
       }
 
       // 2) Birdeye fallback (Solana only)
@@ -1898,6 +1916,16 @@ DexGuard DexLike LiveChart v1
       state.candles = dedup;
       candleCache.set(ck, {t:Date.now(), data: dedup.slice()});
       applyCandlesToChart(dedup);
+
+      // If header price is missing, seed it from the most recent candle close.
+      const last = dedup && dedup.length ? dedup[dedup.length-1] : null;
+      if (last && isFinite(last.close)){
+        if (state.current && state.current.pool === meta.pool){
+          if (state.current.priceUsd == null) state.current.priceUsd = last.close;
+        }
+        if (el.stPrice.textContent === '—') el.stPrice.textContent = fmtUSD(last.close);
+      }
+
       setStatus('live', 'Live');
     }
 
@@ -1906,9 +1934,18 @@ DexGuard DexLike LiveChart v1
       const out = [];
       for (const row of list){
         if (!Array.isArray(row) || row.length < 5) continue;
-        const t = Math.floor(row[0]);
-        const o = +row[1], h = +row[2], l = +row[3], c = +row[4];
+        let t = row[0];
+        // normalize timestamp: seconds preferred; handle ms or string
+        t = (typeof t === 'string') ? parseFloat(t) : t;
+        if (!isFinite(t)) continue;
+        t = t > 1e12 ? Math.floor(t/1000) : Math.floor(t);
+        const o = (typeof row[1] === 'string') ? parseFloat(row[1]) : +row[1];
+        const h = (typeof row[2] === 'string') ? parseFloat(row[2]) : +row[2];
+        const l = (typeof row[3] === 'string') ? parseFloat(row[3]) : +row[3];
+        const c = (typeof row[4] === 'string') ? parseFloat(row[4]) : +row[4];
         if (![t,o,h,l,c].every(isFinite)) continue;
+        // guard against negative/zero-only garbage
+        if (o < 0 || h < 0 || l < 0 || c < 0) continue;
         out.push({time:t, open:o, high:h, low:l, close:c});
       }
       return out;
@@ -2069,18 +2106,60 @@ DexGuard DexLike LiveChart v1
       const out = [];
       for (const row of arr){
         const a = row?.attributes || {};
-        const side = (a?.kind || a?.side || '').toLowerCase();
-        const isBuy = side.includes('buy');
-        const priceUsd = toNum(a?.price_in_usd ?? a?.price_usd);
-        const amount = toNum(a?.base_token_amount ?? a?.amount ?? a?.volume_in_base_token);
-        const usd = toNum(a?.volume_in_usd ?? a?.value_in_usd ?? (priceUsd && amount ? priceUsd*amount : null));
-        let ts = a?.block_timestamp ?? a?.timestamp ?? a?.time ?? 0;
-        // Some APIs return ms; normalize to seconds
-        ts = isFinite(ts) ? (ts > 1e12 ? Math.floor(ts/1000) : Math.floor(ts)) : null;
-        const tx = a?.tx_hash || a?.txHash || a?.transaction_hash || a?.hash || '';
-        const maker = a?.tx_from_address || a?.from_address || a?.maker || a?.trader || '';
-        const id = row?.id || tx || `${ts}_${priceUsd}_${amount}_${side}`;
-        out.push({ id, side: isBuy ? 'BUY' : 'SELL', amount, priceUsd, usd, tsSec: ts, wallet: maker || null, tx: tx || null });
+
+        const kindRaw = (a?.kind || a?.side || a?.trade_type || a?.tradeType || '').toString().toLowerCase();
+        const isBuy = kindRaw.includes('buy');
+
+        // Amount: Gecko can expose different keys depending on chain/pool.
+        const amountCandidates = [
+          a?.base_token_amount, a?.baseTokenAmount,
+          a?.volume_in_base_token, a?.volumeInBaseToken,
+          a?.from_token_amount, a?.fromTokenAmount,
+          a?.to_token_amount, a?.toTokenAmount,
+          a?.token_amount, a?.tokenAmount,
+          a?.amount,
+        ].map(toNum).filter(v => v !== null);
+
+        // Use the first sensible amount; if the first is tiny/zero and there is a larger alternative, prefer it.
+        let amount = amountCandidates.length ? amountCandidates[0] : null;
+        if (amountCandidates.length > 1){
+          const best = amountCandidates.reduce((p,c)=> (p===null || (c>p && c>0)) ? c : p, amount);
+          if (best !== null) amount = best;
+        }
+
+        // USD value / price
+        const usd = toNum(a?.volume_in_usd ?? a?.value_in_usd ?? a?.volumeUsd ?? a?.valueUsd ?? a?.amount_usd ?? a?.usd_value ?? a?.usdValue);
+        let priceUsd = toNum(a?.price_in_usd ?? a?.price_usd ?? a?.priceUsd ?? a?.execution_price_usd ?? a?.executionPriceUsd);
+
+        if (priceUsd === null && usd !== null && amount !== null && amount > 0){
+          priceUsd = usd / amount;
+        }
+
+        // Timestamp can be unix, ms, or ISO8601 string
+        let ts = a?.block_timestamp ?? a?.timestamp ?? a?.time ?? a?.created_at ?? a?.createdAt ?? null;
+        let tsSec = null;
+        if (typeof ts === 'string'){
+          const parsed = Date.parse(ts);
+          if (isFinite(parsed)) tsSec = Math.floor(parsed/1000);
+        } else if (isFinite(ts)){
+          tsSec = ts > 1e12 ? Math.floor(ts/1000) : Math.floor(ts);
+        }
+
+        const tx = (a?.tx_hash || a?.txHash || a?.transaction_hash || a?.transactionHash || a?.hash || a?.signature || '').toString();
+        const wallet = (a?.tx_from_address || a?.from_address || a?.maker || a?.maker_address || a?.trader || a?.trader_address || a?.owner || '').toString();
+
+        const id = row?.id || tx || `${tsSec||0}_${priceUsd||0}_${usd||0}_${amount||0}_${kindRaw||''}`;
+
+        out.push({
+          id,
+          side: isBuy ? 'BUY' : 'SELL',
+          amount,
+          priceUsd,
+          usd,
+          tsSec,
+          wallet: wallet || null,
+          tx: tx || null
+        });
       }
       return out;
     }
