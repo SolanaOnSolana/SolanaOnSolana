@@ -1396,6 +1396,25 @@ function setStatus(kind, txt){
       el.status.className = 'status ' + (kind || '');
       el.statusTxt.textContent = txt || '';
     }
+    function setTradesEmpty(mode){
+      if (!el.tradesEmpty) return;
+      if (mode === 'hide'){
+        el.tradesEmpty.style.display = 'none';
+        return;
+      }
+      if (mode === 'loading'){
+        el.tradesEmpty.innerHTML = `
+          <div>⏳</div>
+          <div><b>Loading trades…</b> Fetching the latest activity now.</div>
+        `;
+      } else {
+        el.tradesEmpty.innerHTML = `
+          <div>⏱️</div>
+          <div><b>No trades yet.</b> We'll keep polling quietly. If blocked, set Proxy URL in Settings.</div>
+        `;
+      }
+      el.tradesEmpty.style.display = '';
+    }
     function poolKey(meta){ return `${meta.chain}|${meta.pool}`; }
     function primeChart(meta){
       const ck = candleCacheKey(meta, state.tf);
@@ -1811,7 +1830,7 @@ function setStatus(kind, txt){
       state.tradesMap = new Map();
       state.tradesList = [];
 
-      el.tradesEmpty.style.display = 'none';
+      setTradesEmpty('loading');
 
       showTokenView(true);
       setStatus('', 'Loading token…');
@@ -1906,10 +1925,10 @@ function setStatus(kind, txt){
       setTokenUI(meta);
       showTokenView(true);
 
+      startLive(meta, {sid});
+
       await loadCandles(meta, state.tf, {sid, signal});
       if (sid !== state.sessionId) return;
-
-      startLive(meta, {sid});
       setStatus('live', 'Live');
     }
 
@@ -2243,7 +2262,7 @@ function setStatus(kind, txt){
             if (!keep.has(id)) state.tradesMap.delete(id);
           }
 
-          el.tradesEmpty.style.display = list.length ? 'none' : '';
+          setTradesEmpty(list.length ? 'hide' : 'empty');
           renderTradesTable(list, meta.chain, newIds);
           el.tradeCount.textContent = String(list.length);
           state.lastTradeId = list[0]?.id || state.lastTradeId;
@@ -2263,7 +2282,7 @@ function setStatus(kind, txt){
 
           startAgeTicker();
         } else {
-          if (el.tradesBody.children.length === 0) el.tradesEmpty.style.display = '';
+          if (el.tradesBody.children.length === 0) setTradesEmpty('empty');
         }
       } finally {
         clearInterval(guard);
