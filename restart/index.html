@@ -1315,6 +1315,36 @@ DexGuard DexLike LiveChart v1
       const from = to - secs * limit;
       return `https://public-api.birdeye.so/defi/ohlcv?address=${encodeURIComponent(token)}&type=token&time_from=${from}&time_to=${to}&interval=${encodeURIComponent(interval)}`;
     };
+    async function fetchBirdeyeOhlcv(meta, tf, {sid, signal}){
+      if (!settings.birdeyeKey) return null;
+      if (!meta || !meta.token) return null;
+      const url = birdeyeOhlcvUrl(meta.token, tf);
+      const be = await withBackoff(() => fetchJson(url, {
+        ttl: 10_000,
+        signal,
+        headers: {'X-API-KEY': settings.birdeyeKey},
+      }), {tries:2, signal});
+      if (sid !== state.sessionId) return null;
+
+      // Birdeye shapes vary; try common layouts
+      const data = be?.data?.data || be?.data || be;
+      const items = data?.items || data?.data?.items || data?.data || data?.items || [];
+      if (!Array.isArray(items) || !items.length) return null;
+
+      const candles = [];
+      for (const it of items){
+        const t = toNum(it?.unixTime ?? it?.time ?? it?.t);
+        const o = toNum(it?.o ?? it?.open);
+        const h = toNum(it?.h ?? it?.high);
+        const l = toNum(it?.l ?? it?.low);
+        const c = toNum(it?.c ?? it?.close);
+        const v = toNum(it?.v ?? it?.volume);
+        if (!isFinite(t) || !isFinite(c)) continue;
+        candles.push({time: t|0, open:o, high:h, low:l, close:c, volume:v});
+      }
+      return candles.length ? candles : null;
+    }
+
 
     function explorerLink(chain, address, kind='token'){
       const base = CHAINS[chain]?.explorer || '';
@@ -2172,14 +2202,12 @@ function setStatus(kind, txt){
     const candleCacheKey = (meta, tf) => `${meta.chain}|${meta.pool}|${tf}`;
     const chartPriceFor = (meta) => {
       if (!meta) return null;
-      const pq = meta?.priceQuote;
-      if (isFinite(pq) && pq > 0) return pq;
       const pu = meta?.priceUsd;
-      const qUsd = meta?.quoteUsd;
-      if (isFinite(pu) && pu > 0 && isFinite(qUsd) && qUsd > 0) return pu / qUsd;
+      if (isFinite(pu) && pu > 0) return pu;
       const last = state.lastPriceByPool.get(poolKey(meta));
       if (isFinite(last) && last > 0) return last;
-      if (isFinite(pu) && pu > 0) return pu;
+      const pq = meta?.priceQuote;
+      if (isFinite(pq) && pq > 0) return pq;
       return null;
     };
     const refPriceFor = chartPriceFor;
@@ -2263,6 +2291,14 @@ function setStatus(kind, txt){
 
       const pickWithRef = (a, b) => pickBestCandles(a, b, refPrice);
 
+      // 0) Birdeye OHLCV (token-based, USD) — most reliable and avoids base/quote confusion
+      try{
+        const beCandles = await fetchBirdeyeOhlcv(meta, tf, {sid, signal});
+        if (beCandles && beCandles.length) candles = beCandles;
+      }catch(e){
+        if (!signal.aborted) console.warn('[DexGuard] birdeye ohlcv failed', e);
+      }
+
       // 1) GeckoTerminal OHLCV (stable side: match user's token against Gecko pool base/quote)
       try{
         const side = lockedSide || 'base';
@@ -2276,7 +2312,7 @@ function setStatus(kind, txt){
       }
 // 2) Safe fallback: generate flat candles from last known price so chart never crashes
       if (!candles || !candles.length){
-        const px = meta.priceQuote ?? meta.priceUsd ?? state.candles?.[state.candles.length-1]?.close ?? 0;
+        const px = meta.priceUsd ?? state.candles?.[state.candles.length-1]?.close ?? 0;
         candles = generateFlatCandles(px || 0.0000001, tf, 220);
       }
 
