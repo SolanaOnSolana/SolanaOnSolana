@@ -1788,7 +1788,7 @@ function setStatus(kind, txt){
       const logoUrl = meta.logoUrl || '';
       el.tokenLogo.innerHTML = logoUrl ? `<img src="${escapeHtml(logoUrl)}" alt="">` : `<span class="muted mono">DG</span>`;
 
-      const sym = (meta.baseSymbol || meta.baseName || '—');
+      const sym = (meta.baseSymbol || meta.baseName || (meta.token ? shortAddr(meta.token) : '—'));
       const quote = (meta.quoteSymbol || '—');
       const pairText = (quote && quote !== '—') ? `${sym}/${quote}` : sym;
       el.tokenTitle.textContent = `${meta.baseName || sym}  (${pairText})`;
@@ -2054,20 +2054,25 @@ function setStatus(kind, txt){
       const dsChain = CHAINS[chain].ds;
       const gtNet = CHAINS[chain].gt;
 
+      const cleanText = (val) => {
+        const s = (val ?? '').toString().trim();
+        return s && s !== '—' ? s : null;
+      };
+
       const meta = {
         chain, dsChain, gtNet,
         pool: pairId,
         token: tokenAddress || null,
-        baseSymbol: baseSymbol || null,
-        quoteSymbol: quoteSymbol || null,
-        baseName: baseName || null,
-        logoUrl: logoUrl || null,
+        baseSymbol: cleanText(baseSymbol),
+        quoteSymbol: cleanText(quoteSymbol),
+        baseName: cleanText(baseName),
+        logoUrl: cleanText(logoUrl),
         dexId: null,
-        priceUsd: priceUsd ?? null,
-        change24h: change24h ?? null,
-        volume24hUsd: volume24hUsd ?? null,
-        liquidityUsd: liquidityUsd ?? null,
-        marketCapUsd: marketCapUsd ?? null,
+        priceUsd: isFinite(priceUsd) ? priceUsd : null,
+        change24h: isFinite(change24h) ? change24h : null,
+        volume24hUsd: isFinite(volume24hUsd) ? volume24hUsd : null,
+        liquidityUsd: isFinite(liquidityUsd) ? liquidityUsd : null,
+        marketCapUsd: isFinite(marketCapUsd) ? marketCapUsd : null,
         gtBaseAddr: null,
         gtQuoteAddr: null,
         gtSideHint: null,
