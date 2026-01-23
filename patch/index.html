@@ -1406,7 +1406,7 @@ body::after{
   border-radius: 8px;
   border: 1px solid rgba(255,255,255,.12);
   background: rgba(0,0,0,.18);
-
+}
 #cmdDropdown .cmdHead{
   display:flex;
   align-items:center;
@@ -1439,7 +1439,6 @@ body::after{
 #cmdDropdown .cmdClearRecents:hover{
   border-color: rgba(255,255,255,.20);
   background: rgba(255,255,255,.06);
-}
 }
 #cmdDropdown .skel .bar{
   height: 10px;
@@ -1795,6 +1794,82 @@ tbody tr.tradeSell:hover td:not(:nth-child(5)){
   clip:rect(0,0,0,0) !important;
   white-space:nowrap !important;
   border:0 !important;
+}
+/* ===== /PATCH ===== */
+
+
+
+/* ===== PATCH: Search overlay / dropdown viewport-safe (STEP10) =====
+   Goals:
+   - No transparency bleed-through inside search panel
+   - Dropdown always opens downward & stays within viewport
+   - iOS Safari keyboard-safe via visualViewport-driven CSS vars
+   - No persistent scrims/overlays when closed
+*/
+:root{
+  --dgVvh: 100vh;          /* set by JS on iOS via visualViewport */
+  --dgCmdLeft: 16px;
+  --dgCmdTop: 72px;
+  --dgCmdWidth: 520px;
+  --dgCmdListMax: 356px;
+}
+
+/* Make dropdown panel visually solid (no "see-through") */
+#cmdDropdown .cmdPanel{
+  background: rgba(6,8,14,.96) !important;
+  border: 1px solid rgba(255,255,255,.16) !important;
+  box-shadow: 0 26px 80px rgba(0,0,0,.62) !important;
+}
+@supports (backdrop-filter: blur(1px)){
+  #cmdDropdown .cmdPanel{
+    background: rgba(10,12,18,.88) !important;
+    backdrop-filter: blur(14px);
+  }
+}
+
+/* Ensure the list is the scroller and never overflows off-screen */
+#cmdDropdown .cmdList{
+  max-height: var(--dgCmdListMax, 356px) !important;
+  overflow: auto !important;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Desktop/tablet: when open we pin dropdown to visual viewport under the input */
+#cmdDropdown.dgFixed{
+  position: fixed !important;
+  left: var(--dgCmdLeft) !important;
+  top: var(--dgCmdTop) !important;
+  right: auto !important;
+  width: var(--dgCmdWidth) !important;
+  max-width: calc(100vw - 20px) !important;
+  z-index: 1400 !important;
+}
+
+/* Slightly stronger row backgrounds for clarity */
+#cmdDropdown .cmdRow{
+  background: transparent;
+}
+#cmdDropdown .cmdRow:hover{
+  background: rgba(255,255,255,.06);
+}
+#cmdDropdown .cmdRow.active{
+  background: rgba(104,195,255,.12);
+}
+
+/* Mobile: bottom-sheet stays within the *visual* viewport (keyboard-safe) */
+@media (max-width: 720px){
+  #cmdDropdown{
+    /* already fixed in STEP8, but we enforce viewport-safe max height */
+    max-height: calc(var(--dgVvh) - 12px) !important;
+  }
+  #cmdDropdown .cmdPanel{
+    max-height: calc(var(--dgVvh) - 12px - env(safe-area-inset-bottom)) !important;
+  }
+  #cmdDropdown .cmdList{
+    /* Leave room for header + handle; list scrolls inside */
+    max-height: calc(var(--dgVvh) - 220px - env(safe-area-inset-bottom)) !important;
+  }
 }
 /* ===== /PATCH ===== */
 
@@ -3002,6 +3077,7 @@ function cmdShow(){
   cmd.wrap.classList.add('show');
   cmd.open = true;
   try{ dgSheetSync(true); }catch(e){}
+  try{ dgCmdOpenSync(true); }catch(e){}
 }
 function cmdHide(){
   cmdEnsure();
@@ -3011,6 +3087,7 @@ function cmdHide(){
   cmd.active = -1;
   cmd.loading = false;
   try{ dgSheetSync(false); }catch(e){}
+  try{ dgCmdOpenSync(false); }catch(e){}
 }
 
 /* ========= STEP8: Mobile App Feel helpers (PATCH ONLY) ========= */
@@ -3094,6 +3171,86 @@ function cmdSetLoading(on){
     cmd.list.appendChild(row);
   }
 }
+
+
+/* ===== PATCH: iOS Safari keyboard-safe viewport + cmd dropdown positioning (STEP10) ===== */
+function dgUpdateVvh(){
+  try{
+    const vv = window.visualViewport;
+    const h = vv && vv.height ? vv.height : window.innerHeight;
+    document.documentElement.style.setProperty('--dgVvh', Math.round(h) + 'px');
+  }catch(e){}
+}
+
+function dgCmdReposition(){
+  try{
+    if (!cmd || !cmd.open || !cmd.wrap) return;
+    const input = document.getElementById('q');
+    if (!input) return;
+
+    dgUpdateVvh();
+
+    const vv = window.visualViewport;
+    const vTop = (vv && typeof vv.offsetTop === 'number') ? vv.offsetTop : 0;
+    const vH   = (vv && vv.height) ? vv.height : window.innerHeight;
+
+    const r = input.getBoundingClientRect();
+    const gap = 10;
+
+    // Always open DOWNWARD: pin the dropdown's top to input bottom + gap.
+    const top = Math.max(8, Math.round(r.bottom + gap + vTop));
+
+    // Width matches the input on desktop; on mobile the sheet CSS takes over.
+    const left = Math.max(10, Math.round(r.left));
+    const width = Math.max(240, Math.round(Math.min(r.width, window.innerWidth - left - 10)));
+
+    // Available space below input; list scrolls inside panel if short.
+    const availBelow = Math.max(140, Math.round((vTop + vH) - (r.bottom + gap) - 18));
+    // Panel chrome rough allowance (header/handle/footer). Keep list max in a sane range.
+    const listMax = Math.max(180, Math.min(560, availBelow - 86));
+
+    document.documentElement.style.setProperty('--dgCmdLeft', left + 'px');
+    document.documentElement.style.setProperty('--dgCmdTop', top + 'px');
+    document.documentElement.style.setProperty('--dgCmdWidth', width + 'px');
+    document.documentElement.style.setProperty('--dgCmdListMax', listMax + 'px');
+
+    // Only fix-position on non-mobile; mobile uses bottom sheet CSS.
+    try{
+      if (typeof dgIsMobile === 'function' && dgIsMobile()){
+        cmd.wrap.classList.remove('dgFixed');
+      }else{
+        cmd.wrap.classList.add('dgFixed');
+      }
+    }catch(e){}
+  }catch(e){}
+}
+
+function dgCmdOpenSync(isOpen){
+  try{
+    dgUpdateVvh();
+    if (!cmd || !cmd.wrap) return;
+    if (!isOpen){
+      cmd.wrap.classList.remove('dgFixed');
+      return;
+    }
+    // On open: position immediately and again on next frame (Safari reflow/keyboard)
+    dgCmdReposition();
+    requestAnimationFrame(dgCmdReposition);
+    setTimeout(dgCmdReposition, 80);
+  }catch(e){}
+}
+
+// Keep vars fresh for iOS keyboard + orientation changes
+try{
+  dgUpdateVvh();
+  window.addEventListener('resize', function(){ dgUpdateVvh(); dgCmdReposition(); }, {passive:true});
+  window.addEventListener('scroll', function(){ dgCmdReposition(); }, {passive:true});
+  if (window.visualViewport){
+    window.visualViewport.addEventListener('resize', function(){ dgUpdateVvh(); dgCmdReposition(); }, {passive:true});
+    window.visualViewport.addEventListener('scroll', function(){ dgCmdReposition(); }, {passive:true});
+  }
+}catch(e){}
+/* ===== /PATCH ===== */
 
 function cmdSetItems(items){
   cmdEnsure();
