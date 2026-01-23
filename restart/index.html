@@ -622,6 +622,60 @@ DexGuard DexLike LiveChart v1
     }
     .tf:hover{background: rgba(255,255,255,.10); transform: translateY(-1px)}
     .tf.active{border:0; background: linear-gradient(90deg, rgba(20,241,149,.92), rgba(0,209,255,.86), rgba(153,69,255,.86)); color:#061012}
+
+    .stTabs{display:flex; gap:6px; flex-wrap:wrap; margin-top:8px}
+    .stPill{
+      padding:5px 9px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.05);
+      font-weight: 900;
+      font-size: 11px;
+      letter-spacing:.04em;
+      color: rgba(255,255,255,.86);
+      cursor:pointer;
+      user-select:none;
+      -webkit-tap-highlight-color: transparent;
+      transition: transform .12s ease, background .12s ease;
+    }
+    .stPill:hover{background: rgba(255,255,255,.10); transform: translateY(-1px)}
+    .stPill.on{border:0; background: rgba(255,255,255,.18); color: rgba(255,255,255,.95)}
+    .stMain{display:flex; align-items:baseline; justify-content:space-between; gap:10px; line-height:1.1}
+    .stMain .delta{font-size:16px}
+    .stTabsTight{margin-top:10px}
+    .stMiniGrid{
+      margin-top:10px;
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:8px 10px;
+    }
+    .stMiniItem{
+      padding:8px 10px;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.04);
+      min-width:0;
+    }
+    .stMiniK{
+      font-size:10px;
+      letter-spacing:.12em;
+      text-transform:uppercase;
+      color: rgba(255,255,255,.56);
+      font-weight: 1000;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .stMiniV{
+      margin-top:4px;
+      font-size:13px;
+      font-weight: 1000;
+      color: rgba(255,255,255,.92);
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      font-family: var(--mono);
+    }
     .chartMeta{
       display:flex; align-items:center; gap:10px;
       color: var(--muted);
@@ -958,8 +1012,8 @@ DexGuard DexLike LiveChart v1
 
               <div class="statsGrid">
                 <div class="stat"><div class="k">Price</div><div id="stPrice" class="v">—</div></div>
-                <div class="stat"><div class="k">24h Change</div><div id="stChg" class="v">—</div></div>
-                <div class="stat"><div class="k">24h Volume</div><div id="stVol" class="v">—</div></div>
+                <div class="stat"><div class="k">Change</div><div id="stChg" class="v">—</div></div>
+                <div class="stat"><div class="k">Volume</div><div id="stVol" class="v">—</div></div>
                 <div class="stat"><div class="k">Liquidity</div><div id="stLiq" class="v">—</div></div>
                 <div class="stat"><div class="k">Market Cap</div><div id="stMcap" class="v">—</div></div>
                 <div class="stat"><div class="k">Pool</div><div id="stPool" class="v">—</div></div>
@@ -1523,7 +1577,7 @@ function setStatus(kind, txt){
           if (v) target[f] = v;
         }
       }
-      const fieldsNum = ['priceUsd','change24h','volume24hUsd','liquidityUsd','marketCapUsd'];
+      const fieldsNum = ['priceUsd','change5m','change1h','change6h','change24h','volume5mUsd','volume1hUsd','volume6hUsd','volume24hUsd','liquidityUsd','marketCapUsd'];
       for (const f of fieldsNum){
         if (target[f] == null && isFinite(source[f])) target[f] = source[f];
       }
@@ -1777,8 +1831,14 @@ function setStatus(kind, txt){
         const dexId = p?.dexId || '';
         const priceUsd = toNum(p?.priceUsd);
         const chg24 = toNum(p?.priceChange?.h24);
+        const chg5m = toNum(p?.priceChange?.m5);
+        const chg1h = toNum(p?.priceChange?.h1);
+        const chg6h = toNum(p?.priceChange?.h6);
         const liquidityUsd = toNum(p?.liquidity?.usd ?? p?.liquidityUsd);
         const volume24hUsd = toNum(p?.volume?.h24 ?? p?.volume24hUsd);
+        const volume5mUsd = toNum(p?.volume?.m5);
+        const volume1hUsd = toNum(p?.volume?.h1);
+        const volume6hUsd = toNum(p?.volume?.h6);
         const marketCapUsd = toNum(p?.fdv ?? p?.marketCap ?? p?.marketCapUsd);
         const itemChain = (p?.chainId || '').toLowerCase();
 
@@ -1810,8 +1870,14 @@ function setStatus(kind, txt){
             quoteSymbol: p?.quoteToken?.symbol || null,
             logoUrl: logo,
             priceUsd,
+            change5m: chg5m,
+            change1h: chg1h,
+            change6h: chg6h,
             change24h: chg24,
             liquidityUsd,
+            volume5mUsd,
+            volume1hUsd,
+            volume6hUsd,
             volume24hUsd,
             marketCapUsd,
             dexId,
@@ -1828,8 +1894,14 @@ function setStatus(kind, txt){
             quoteSymbol: p?.quoteToken?.symbol || null,
             logoUrl: logo,
             priceUsd,
+            change5m: chg5m,
+            change1h: chg1h,
+            change6h: chg6h,
             change24h: chg24,
             liquidityUsd,
+            volume5mUsd,
+            volume1hUsd,
+            volume6hUsd,
             volume24hUsd,
             marketCapUsd,
             hint: 'search'
@@ -1841,6 +1913,167 @@ function setStatus(kind, txt){
         el.results.appendChild(item);
       }
     }
+
+    function calcWindowStats(trades){
+      const now = nowSec();
+      const wins = {m5:300,h1:3600,h6:21600,h24:86400};
+      const out = {
+        m5:{buy:0,sell:0,total:0,buyN:0,sellN:0,txns:0,buyers:0,sellers:0,makers:0},
+        h1:{buy:0,sell:0,total:0,buyN:0,sellN:0,txns:0,buyers:0,sellers:0,makers:0},
+        h6:{buy:0,sell:0,total:0,buyN:0,sellN:0,txns:0,buyers:0,sellers:0,makers:0},
+        h24:{buy:0,sell:0,total:0,buyN:0,sellN:0,txns:0,buyers:0,sellers:0,makers:0},
+      };
+      const sets = {
+        m5:{buyers:new Set(), sellers:new Set(), makers:new Set()},
+        h1:{buyers:new Set(), sellers:new Set(), makers:new Set()},
+        h6:{buyers:new Set(), sellers:new Set(), makers:new Set()},
+        h24:{buyers:new Set(), sellers:new Set(), makers:new Set()},
+      };
+      if (!Array.isArray(trades) || !trades.length) return out;
+      for (const t of trades){
+        const ts = t?.tsSec;
+        if (!isFinite(ts)) continue;
+        const age = now - ts;
+        if (age < 0) continue;
+        const usd = toNum(t?.usd);
+        if (!isFinite(usd) || usd <= 0) continue;
+        const isBuy = (t?.side === 'BUY');
+        const w = (t?.wallet || '').toString();
+
+        if (age <= wins.m5){
+          out.m5.txns++;
+          if (isBuy){ out.m5.buy += usd; out.m5.buyN++; if(w) sets.m5.buyers.add(w); }
+          else { out.m5.sell += usd; out.m5.sellN++; if(w) sets.m5.sellers.add(w); }
+          if(w) sets.m5.makers.add(w);
+        }
+        if (age <= wins.h1){
+          out.h1.txns++;
+          if (isBuy){ out.h1.buy += usd; out.h1.buyN++; if(w) sets.h1.buyers.add(w); }
+          else { out.h1.sell += usd; out.h1.sellN++; if(w) sets.h1.sellers.add(w); }
+          if(w) sets.h1.makers.add(w);
+        }
+        if (age <= wins.h6){
+          out.h6.txns++;
+          if (isBuy){ out.h6.buy += usd; out.h6.buyN++; if(w) sets.h6.buyers.add(w); }
+          else { out.h6.sell += usd; out.h6.sellN++; if(w) sets.h6.sellers.add(w); }
+          if(w) sets.h6.makers.add(w);
+        }
+        if (age <= wins.h24){
+          out.h24.txns++;
+          if (isBuy){ out.h24.buy += usd; out.h24.buyN++; if(w) sets.h24.buyers.add(w); }
+          else { out.h24.sell += usd; out.h24.sellN++; if(w) sets.h24.sellers.add(w); }
+          if(w) sets.h24.makers.add(w);
+        }
+      }
+      out.m5.total = out.m5.buy + out.m5.sell;
+      out.h1.total = out.h1.buy + out.h1.sell;
+      out.h6.total = out.h6.buy + out.h6.sell;
+      out.h24.total = out.h24.buy + out.h24.sell;
+
+      out.m5.buyers = sets.m5.buyers.size; out.m5.sellers = sets.m5.sellers.size; out.m5.makers = sets.m5.makers.size;
+      out.h1.buyers = sets.h1.buyers.size; out.h1.sellers = sets.h1.sellers.size; out.h1.makers = sets.h1.makers.size;
+      out.h6.buyers = sets.h6.buyers.size; out.h6.sellers = sets.h6.sellers.size; out.h6.makers = sets.h6.makers.size;
+      out.h24.buyers = sets.h24.buyers.size; out.h24.sellers = sets.h24.sellers.size; out.h24.makers = sets.h24.makers.size;
+
+      return out;
+    }
+
+    function fmtDeltaSpan(v){
+      if (!isFinite(v)) return '—';
+      const cls = v >= 0 ? 'good' : 'bad';
+      const s = (v>=0?'+':'') + fmtNum(v,2) + '%';
+      return `<span class="delta ${cls}">${s}</span>`;
+    }
+
+    function fmtBuySell(bs){
+      if (!bs) return '';
+      const b = isFinite(bs.buy) && bs.buy > 0 ? fmtUSD(bs.buy) : '—';
+      const s = isFinite(bs.sell) && bs.sell > 0 ? fmtUSD(bs.sell) : '—';
+      return `B ${b} • S ${s}`;
+    }
+
+    function setChgVolUI(meta){
+      if (!meta) return;
+
+      const ui = state.statsUI || (state.statsUI = {tf:'h24'});
+
+      const d5 = toNum(meta.change5m);
+      const d1 = toNum(meta.change1h);
+      const d6 = toNum(meta.change6h);
+      const d24 = toNum(meta.change24h);
+
+      const v5 = toNum(meta.volume5mUsd);
+      const v1 = toNum(meta.volume1hUsd);
+      const v6 = toNum(meta.volume6hUsd);
+      const v24 = toNum(meta.volume24hUsd);
+
+      const wsAll = state.winStats || null;
+
+      const tf = ui.tf || 'h24';
+      const chgMap = {m5:d5, h1:d1, h6:d6, h24:d24};
+      const chgVal = chgMap[tf];
+      const chgTop = fmtDeltaSpan(chgVal);
+
+      const tabs =
+        `<div class="stTabs stTabsTight">` +
+          `<button type="button" class="stPill${tf==='m5'?' on':''}" data-sttf="m5">5m</button>` +
+          `<button type="button" class="stPill${tf==='h1'?' on':''}" data-sttf="h1">1h</button>` +
+          `<button type="button" class="stPill${tf==='h6'?' on':''}" data-sttf="h6">6h</button>` +
+          `<button type="button" class="stPill${tf==='h24'?' on':''}" data-sttf="h24">24h</button>` +
+        `</div>`;
+
+      el.stChg.innerHTML = `<div class="stMain">${chgTop}</div>${tabs}`;
+
+      const volFromMeta = (t)=>{
+        if (t==='m5') return v5;
+        if (t==='h1') return v1;
+        if (t==='h6') return v6;
+        if (t==='h24') return v24;
+        return null;
+      };
+
+      const w = wsAll ? (wsAll[tf] || null) : null;
+      const mt = (meta && meta._txns && meta._txns[tf]) ? meta._txns[tf] : null;
+
+      const volMeta = volFromMeta(tf);
+      const volVal = (volMeta!=null && isFinite(volMeta)) ? volMeta : (w?.total ?? null);
+
+      const txns = (mt && isFinite(mt.txns)) ? mt.txns : w?.txns;
+      const buys = (mt && isFinite(mt.buys)) ? mt.buys : w?.buyN;
+      const sells = (mt && isFinite(mt.sells)) ? mt.sells : w?.sellN;
+      const makers = w?.makers;
+      const buyers = w?.buyers;
+      const sellers = w?.sellers;
+
+      const buyVol = w?.buy;
+      const sellVol = w?.sell;
+
+      const g = (k,v)=>`<div class="stMiniItem"><div class="stMiniK">${k}</div><div class="stMiniV">${v}</div></div>`;
+
+      const vv = (volVal!=null && isFinite(volVal)) ? fmtUSD(volVal) : '—';
+      const tv = (txns!=null && isFinite(txns)) ? fmtNum(txns,0) : '—';
+      const bv = (buys!=null && isFinite(buys)) ? fmtNum(buys,0) : '—';
+      const sv = (sells!=null && isFinite(sells)) ? fmtNum(sells,0) : '—';
+      const mv = (makers!=null && isFinite(makers)) ? fmtNum(makers,0) : '—';
+      const byv = (buyers!=null && isFinite(buyers)) ? fmtNum(buyers,0) : '—';
+      const slv = (sellers!=null && isFinite(sellers)) ? fmtNum(sellers,0) : '—';
+      const bvv = (buyVol!=null && isFinite(buyVol)) ? fmtUSD(buyVol) : '—';
+      const svv = (sellVol!=null && isFinite(sellVol)) ? fmtUSD(sellVol) : '—';
+
+      el.stVol.innerHTML =
+        `<div class="stMain">${vv}</div>` +
+        `<div class="stMiniGrid">` +
+          g('Txns', tv) +
+          g('Makers', mv) +
+          g('Buys', bv) +
+          g('Sells', sv) +
+          g('Buy Vol', bvv) +
+          g('Sell Vol', svv) +
+          g('Buyers', byv) +
+          g('Sellers', slv) +
+        `</div>`;
+    }
+
 
     function setTokenUI(meta){
       try{
@@ -1880,11 +2113,7 @@ function setStatus(kind, txt){
       el.tokenSub.textContent = `${CHAINS[meta.chain].label} • Contract: ${meta.token ? meta.token : '—'} • Pool: ${meta.pool || '—'}`;
 
       el.stPrice.textContent = meta.priceUsd!=null ? fmtUSD(meta.priceUsd) : '—';
-      const chg = meta.change24h;
-      el.stChg.innerHTML = isFinite(chg)
-        ? `<span class="delta ${chg>=0?'good':'bad'}">${(chg>=0?'+':'') + fmtNum(chg,2)}%</span>`
-        : '—';
-      el.stVol.textContent = meta.volume24hUsd!=null ? fmtUSD(meta.volume24hUsd) : '—';
+      setChgVolUI(meta);
       el.stLiq.textContent = meta.liquidityUsd!=null ? fmtUSD(meta.liquidityUsd) : '—';
       el.stMcap.textContent = meta.marketCapUsd!=null ? fmtUSD(meta.marketCapUsd) : '—';
       el.stPool.textContent = shortAddr(meta.pool);
@@ -2004,7 +2233,13 @@ function setStatus(kind, txt){
                   pairId,
                   dexId: p?.dexId || null,
                   priceUsd: toNum(p?.priceUsd),
+                  change5m: toNum(p?.priceChange?.m5),
+                  change1h: toNum(p?.priceChange?.h1),
+                  change6h: toNum(p?.priceChange?.h6),
                   change24h: toNum(p?.priceChange?.h24),
+                  volume5mUsd: toNum(p?.volume?.m5),
+                  volume1hUsd: toNum(p?.volume?.h1),
+                  volume6hUsd: toNum(p?.volume?.h6),
                   volume24hUsd: toNum(p?.volume?.h24),
                   liquidityUsd: toNum(p?.liquidity?.usd),
                   logoUrl: it.logoUrl || p?.info?.imageUrl || null,
@@ -2141,6 +2376,7 @@ function setStatus(kind, txt){
       el.tradeCount.textContent = '0';
       state.tradesMap = new Map();
       state.tradesList = [];
+      state.winStats = null;
 
       if (state.tf !== '15m'){
         state.tf = '15m';
@@ -2236,8 +2472,24 @@ function setStatus(kind, txt){
               if (isFinite(qUsd) && qUsd > 0) meta.quoteUsd = qUsd;
             }
           }
+          meta.change5m = toNum(p?.priceChange?.m5);
+          meta.change1h = toNum(p?.priceChange?.h1);
+          meta.change6h = toNum(p?.priceChange?.h6);
           meta.change24h = toNum(p?.priceChange?.h24);
+          meta.volume5mUsd = toNum(p?.volume?.m5);
+          meta.volume1hUsd = toNum(p?.volume?.h1);
+          meta.volume6hUsd = toNum(p?.volume?.h6);
           meta.volume24hUsd = toNum(p?.volume?.h24);
+          meta._txns = meta._txns || {};
+          const t5b = toNum(p?.txns?.m5?.buys); const t5s = toNum(p?.txns?.m5?.sells);
+          const t1b = toNum(p?.txns?.h1?.buys); const t1s = toNum(p?.txns?.h1?.sells);
+          const t6b = toNum(p?.txns?.h6?.buys); const t6s = toNum(p?.txns?.h6?.sells);
+          const t24b = toNum(p?.txns?.h24?.buys); const t24s = toNum(p?.txns?.h24?.sells);
+          meta._txns.m5 = {buys:t5b, sells:t5s, txns: (isFinite(t5b)&&isFinite(t5s)) ? (t5b+t5s) : null};
+          meta._txns.h1 = {buys:t1b, sells:t1s, txns: (isFinite(t1b)&&isFinite(t1s)) ? (t1b+t1s) : null};
+          meta._txns.h6 = {buys:t6b, sells:t6s, txns: (isFinite(t6b)&&isFinite(t6s)) ? (t6b+t6s) : null};
+          meta._txns.h24 = {buys:t24b, sells:t24s, txns: (isFinite(t24b)&&isFinite(t24s)) ? (t24b+t24s) : null};
+
           meta.liquidityUsd = toNum(p?.liquidity?.usd);
           meta.marketCapUsd = toNum(p?.fdv);
           setTokenUI(meta);
@@ -2753,6 +3005,7 @@ if (last && isFinite(last.close)){
       // fresh trade cache per pool
       state.tradesMap = new Map();
       state.tradesList = [];
+      state.winStats = null;
 
       const run = async () => {
         if (sid !== state.sessionId) return;
@@ -2801,7 +3054,7 @@ if (last && isFinite(last.close)){
       // Preferred: DexScreener live trades (matches what you see on DexScreener UI).
       // Fallback: GeckoTerminal trades.
       const urls = [
-        dsTradesUrl(meta.dsChain, meta.pool, 60),
+        dsTradesUrl(meta.dsChain, meta.pool, 200),
         gtTradesUrl(meta.gtNet, meta.pool),
       ];
 
@@ -2858,9 +3111,11 @@ if (last && isFinite(last.close)){
 
           const list = Array.from(state.tradesMap.values())
             .sort((a,b)=> ((b.tsSec||0)-(a.tsSec||0)) || String(b.id).localeCompare(String(a.id)))
-            .slice(0, 60);
+            .slice(0, 200);
 
           state.tradesList = list;
+          state.winStats = calcWindowStats(list);
+          if (state.current && state.current.pool === meta.pool){ try{ setChgVolUI(state.current); }catch(e){} }
           const keep = new Set(list.map(t=>t.id));
           for (const id of Array.from(state.tradesMap.keys())){
             if (!keep.has(id)) state.tradesMap.delete(id);
@@ -3194,6 +3449,14 @@ if (last && isFinite(last.close)){
     el.q.addEventListener('input', debounceSearch);
     el.q.addEventListener('keydown', (e)=>{ if (e.key === 'Enter'){ e.preventDefault(); doSearch(true); }});
     el.tfs.forEach(b => b.addEventListener('click', ()=> setTimeframe(b.dataset.tf), {passive:true}));
+    el.stChg.addEventListener('click', (e)=>{
+      const b = e.target && e.target.closest ? e.target.closest('button[data-sttf]') : null;
+      if (!b) return;
+      state.statsUI = state.statsUI || {tf:'h24'};
+      state.statsUI.tf = b.dataset.sttf || 'h24';
+      setChgVolUI(state.current);
+    });
+
     el.btnClear.addEventListener('click', ()=> { clearResults(); clearAll(); });
     el.btnSettings.addEventListener('click', openModal);
     el.btnCloseModal.addEventListener('click', closeModal);
