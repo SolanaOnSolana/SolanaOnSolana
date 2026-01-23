@@ -2000,7 +2000,14 @@ function setStatus(kind, txt){
 
       while (out.length < max && pages < 50){
         pages++;
-        const data = await withBackoff(() => fetchJson(gtOhlcvUrl(meta.gtNet, meta.pool, tf, token, before, limit), {ttl: 8_000, signal}), {tries:2, signal});
+        let data = null;
+        try{
+          data = await withBackoff(() => fetchJson(gtOhlcvUrl(meta.gtNet, meta.pool, tf, token, before, limit), {ttl: 8_000, signal}), {tries:2, signal});
+        }catch(e){
+          const msg = String(e && (e.message || e));
+          if (!msg.includes('AbortError')) console.warn('[DexGuard] gt ohlcv page failed', msg);
+          break;
+        }
         if (sid !== state.sessionId) return null;
         const chunk = normalizeGTOhlcv(data);
         if (!chunk.length) break;
