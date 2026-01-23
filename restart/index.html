@@ -310,6 +310,12 @@ DexGuard DexLike LiveChart v1
       padding: 12px;
     }
     @media (max-width: 980px){ .grid{grid-template-columns: 1fr;} }
+    .tokenGrid{
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+      padding: 12px;
+    }
 
     .panel{
       background: rgba(255,255,255,.04);
@@ -618,13 +624,13 @@ DexGuard DexLike LiveChart v1
       max-width: 100%;
     }
     .chartWrap{
-      height: 420px;
+      height: 520px;
       min-height: 320px;
       position:relative;
       touch-action: pan-y pinch-zoom;
     }
-    @media (max-width: 980px){ .chartWrap{height: 380px} }
-    @media (max-width: 520px){ .chartWrap{height: 330px} }
+    @media (max-width: 980px){ .chartWrap{height: 440px} }
+    @media (max-width: 520px){ .chartWrap{height: 360px} }
     #chart{ position:absolute; inset:0; width:100%; height:100%; }
 
     .chartFooter{
@@ -885,7 +891,7 @@ DexGuard DexLike LiveChart v1
             <div id="trending" class="trendingRow" aria-label="Trending row"></div>
             <div id="trendingEmpty" class="empty" style="display:none">
               <div>🛡️</div>
-              <div><b>No trending yet.</b> If an API is CORS-blocked in your environment, set a Proxy URL in Settings.</div>
+              <div><b>No trending yet.</b> We'll keep checking in the background.</div>
             </div>
           </section>
 
@@ -936,17 +942,9 @@ DexGuard DexLike LiveChart v1
                 <div class="stat"><div class="k">Pool</div><div id="stPool" class="v">—</div></div>
               </div>
 
-              <div class="grid" style="padding-top:0">
+              <div class="tokenGrid" style="padding-top:0">
                 <section class="panel chartPanel" aria-label="Live chart">
                   <div class="chartTop">
-                    <div class="tfRow" aria-label="Timeframes">
-                      <button class="tf" data-tf="1m">1m</button>
-                      <button class="tf" data-tf="5m">5m</button>
-                      <button class="tf active" data-tf="15m">15m</button>
-                      <button class="tf" data-tf="1h">1h</button>
-                      <button class="tf" data-tf="4h">4h</button>
-                      <button class="tf" data-tf="1d">1d</button>
-                    </div>
                     <div id="chartMeta" class="chartMeta ellipsis">—</div>
                   </div>
 
@@ -960,33 +958,34 @@ DexGuard DexLike LiveChart v1
                   </div>
                 </section>
 
-                <section class="panel" aria-label="Live trades">
-                  <div class="panelHead">
-                    <div class="title">Live Trades</div>
-                    <div class="hint"><span id="tradeCount" class="kbd">0</span> latest</div>
-                  </div>
-                  <div class="tableWrap">
-                    <table class="table">
-                      <thead>
-                        <tr>
-                          <th class="center">Side</th>
-                          <th>Amount</th>
-                          <th class="right">Price</th>
-                          <th class="right">USD</th>
-                          <th class="right">Age</th>
-                          <th>Wallet</th>
-                          <th class="center">Tx</th>
-                        </tr>
-                      </thead>
-                      <tbody id="tradesBody"></tbody>
-                    </table>
-                  </div>
-                  <div id="tradesEmpty" class="empty" style="display:none">
-                    <div>⏱️</div>
-                    <div><b>No trades yet.</b> We'll keep polling quietly. If blocked, set Proxy URL in Settings.</div>
-                  </div>
-                </section>
               </div>
+
+              <section class="panel" aria-label="Live trades">
+                <div class="panelHead">
+                  <div class="title">Live Trades</div>
+                  <div class="hint"><span id="tradeCount" class="kbd">0</span> latest</div>
+                </div>
+                <div class="tableWrap">
+                  <table class="table">
+                    <thead>
+                      <tr>
+                        <th class="center">Side</th>
+                        <th>Amount</th>
+                        <th class="right">Price</th>
+                        <th class="right">USD</th>
+                        <th class="right">Age</th>
+                        <th>Wallet</th>
+                        <th class="center">Tx</th>
+                      </tr>
+                    </thead>
+                    <tbody id="tradesBody"></tbody>
+                  </table>
+                </div>
+                <div id="tradesEmpty" class="empty" style="display:none">
+                  <div>⏱️</div>
+                  <div><b>No trades yet.</b> We'll keep polling quietly.</div>
+                </div>
+              </section>
             </div>
           </div>
         </section>
@@ -1371,6 +1370,8 @@ DexGuard DexLike LiveChart v1
       lastCandle: null,
       candles: [],
       lastPriceByPool: new Map(),
+      candleRetryAt: new Map(),
+      candleRefreshLock: false,
     };
 
     
@@ -1410,7 +1411,7 @@ function setStatus(kind, txt){
       } else {
         el.tradesEmpty.innerHTML = `
           <div>⏱️</div>
-          <div><b>No trades yet.</b> We'll keep polling quietly. If blocked, set Proxy URL in Settings.</div>
+          <div><b>No trades yet.</b> We'll keep polling quietly.</div>
         `;
       }
       el.tradesEmpty.style.display = '';
@@ -1668,7 +1669,7 @@ function setStatus(kind, txt){
         if (signal.aborted) return;
         console.warn('[DexGuard] trending error', e);
         renderTrending([]);
-        setStatus('warn', 'Trending unavailable (set Proxy)');
+        setStatus('warn', 'Trending unavailable');
       }
     }
 
@@ -1797,8 +1798,8 @@ function setStatus(kind, txt){
       }catch(e){
         if (signal.aborted) return;
         console.warn('[DexGuard] search error', e);
-        setStatus('warn', 'Search unavailable (set Proxy)');
-        if (userTriggered) toast('Search failed (try Proxy)');
+        setStatus('warn', 'Search unavailable');
+        if (userTriggered) toast('Search failed');
         renderResults([]);
       }
     }
@@ -1934,6 +1935,12 @@ function setStatus(kind, txt){
 
       await loadCandles(meta, state.tf, {sid, signal});
       if (sid !== state.sessionId) return;
+      if (shouldRetryCandles(meta)){
+        setTimeout(() => {
+          if (sid !== state.sessionId) return;
+          void refreshCandles(meta, {sid, signal, reason:'post-load retry'});
+        }, 900);
+      }
       setStatus('live', 'Live');
     }
 
@@ -1962,7 +1969,7 @@ function setStatus(kind, txt){
         if (signal.aborted) return;
         console.warn('[DexGuard] openByToken failed', e);
         setStatus('warn', 'Token resolve failed');
-        toast('Resolve failed (try Proxy)');
+        toast('Resolve failed');
       }
     }
 
@@ -2190,6 +2197,7 @@ function setStatus(kind, txt){
           const w = el.chartWrap.clientWidth|0;
           const h = el.chartWrap.clientHeight|0;
           if (w < 40 || h < 160) return;
+          state.chart.timeScale().resetTimeScale();
           state.chart.timeScale().fitContent();
         };
         requestAnimationFrame(fit);
@@ -2205,6 +2213,40 @@ function setStatus(kind, txt){
         state.lastCandle = candles[candles.length-1];
       } else {
         state.lastCandle = null;
+      }
+    }
+
+    function isFlatCandles(list){
+      if (!Array.isArray(list) || list.length < 12) return true;
+      let min = Infinity;
+      let max = -Infinity;
+      for (const c of list){
+        if (!c || !isFinite(c.close)) continue;
+        if (c.close < min) min = c.close;
+        if (c.close > max) max = c.close;
+      }
+      if (!isFinite(min) || !isFinite(max) || min <= 0 || max <= 0) return true;
+      const ratio = max / min;
+      return ratio < 1.001;
+    }
+    function shouldRetryCandles(meta){
+      const key = poolKey(meta);
+      const last = state.candleRetryAt.get(key) || 0;
+      if ((Date.now() - last) < 20_000) return false;
+      const flat = isFlatCandles(state.candles);
+      if (!flat) return false;
+      state.candleRetryAt.set(key, Date.now());
+      return true;
+    }
+    async function refreshCandles(meta, {sid, signal, reason=''}){
+      if (state.candleRefreshLock) return;
+      state.candleRefreshLock = true;
+      try{
+        await loadCandles(meta, state.tf, {sid, signal});
+        if (sid !== state.sessionId) return;
+        if (reason) console.debug('[DexGuard] candle refresh', reason);
+      } finally {
+        state.candleRefreshLock = false;
       }
     }
 
@@ -2351,6 +2393,10 @@ function setStatus(kind, txt){
             if (state.current && state.current.pool === meta.pool){
               state.lastPriceByPool.set(poolKey(meta), top.priceUsd);
             }
+          }
+
+          if (shouldRetryCandles(meta)){
+            void refreshCandles(meta, {sid, signal: state.abort?.signal, reason:'live retry'});
           }
 
           // reflect data source
