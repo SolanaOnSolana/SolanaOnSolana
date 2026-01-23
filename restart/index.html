@@ -1286,7 +1286,7 @@ DexGuard DexLike LiveChart v1
       const map = tfToGT(tf);
       const limit = limitOverride || (map.timeframe === 'day' ? 260 : map.timeframe === 'hour' ? 520 : 700);
       const cutoff = before || nowSec();
-      const currency = 'usd';
+      const currency = 'token';
       // Gecko supports token=base|quote; some pools only have one side priced reliably in USD.
       return `https://api.geckoterminal.com/api/v2/networks/${encodeURIComponent(network)}/pools/${encodeURIComponent(pool)}/ohlcv/${encodeURIComponent(map.timeframe)}?aggregate=${map.aggregate}&before_timestamp=${cutoff}&limit=${limit}&currency=${currency}&token=${encodeURIComponent(token)}`;
     }
@@ -1478,6 +1478,18 @@ function setStatus(kind, txt){
       return (chain === 'solana') ? s : s.toLowerCase();
     };
     const addrEq = (chain, a, b) => !!a && !!b && normAddr(chain, a) === normAddr(chain, b);
+
+    const pickGtSide = (meta) => {
+      // GeckoTerminal defines its own base/quote tokens for the pool. We must match the user's token against THAT.
+      const chain = meta?.chain;
+      const want = meta?.token;
+      const gb = meta?.gtBaseAddr;
+      const gq = meta?.gtQuoteAddr;
+      if (addrEq(chain, want, gb)) return 'base';
+      if (addrEq(chain, want, gq)) return 'quote';
+      // fallback: if we at least know quote is the chain native (e.g. SOL/WETH/BNB) and the user token isn't it, prefer the other
+      return meta?.gtSideHint || 'base';
+    };
 
 
     // ========= Chart init =========
@@ -1921,6 +1933,10 @@ function setStatus(kind, txt){
         volume24hUsd: null,
         liquidityUsd: null,
         marketCapUsd: null,
+        gtBaseAddr: null,
+        gtQuoteAddr: null,
+        gtSideHint: null,
+        priceQuote: null,
       };
 
       el.btnDS.href = dexLink(chain, pairId);
@@ -1971,6 +1987,23 @@ function setStatus(kind, txt){
         const gt = await withBackoff(() => fetchJson(gtPoolUrl(gtNet, pairId), {ttl: 8_000, signal}), {tries:2, signal});
         if (sid !== state.sessionId) return;
         const a = gt?.data?.attributes || {};
+        // Capture GeckoTerminal's pool token addresses (Gecko base/quote may differ from DexScreener base/quote!)
+        const gb = a?.base_token?.address || a?.base_token_address || null;
+        const gq = a?.quote_token?.address || a?.quote_token_address || null;
+        meta.gtBaseAddr = meta.gtBaseAddr || gb;
+        meta.gtQuoteAddr = meta.gtQuoteAddr || gq;
+
+        // Stable chart side: match the token the user opened against Gecko's base/quote.
+        // This prevents the classic "SOL chart (127$)" bug when Gecko labels SOL as base.
+        meta.gtSideHint = pickGtSide(meta);
+
+        // Price hint in quote-token units (e.g. TOKEN/SOL), used for priming + fallbacks.
+        // Gecko pool attributes often expose both USD and native/quote prices.
+        const baseQ = toNum(a?.base_token_price_native_currency ?? a?.base_token_price_quote_token);
+        const quoteQ = toNum(a?.quote_token_price_native_currency ?? a?.quote_token_price_base_token);
+        if (meta.gtSideHint === 'base') meta.priceQuote = meta.priceQuote ?? baseQ;
+        if (meta.gtSideHint === 'quote') meta.priceQuote = meta.priceQuote ?? quoteQ;
+
         meta.priceUsd = meta.priceUsd ?? toNum(a?.base_token_price_usd ?? a?.price_usd);
         meta.volume24hUsd = meta.volume24hUsd ?? toNum(a?.volume_usd?.h24 ?? a?.volume_usd_24h);
         meta.liquidityUsd = meta.liquidityUsd ?? toNum(a?.reserve_in_usd ?? a?.liquidity_in_usd);
@@ -2006,6 +2039,7 @@ function setStatus(kind, txt){
       }
 
       state.current = meta;
+      state._forceFitNext = true;
       setTokenUI(meta);
       showTokenView(true);
 
@@ -2052,7 +2086,7 @@ function setStatus(kind, txt){
     // ========= Candles =========
     const candleCache = new Map(); // key -> {t, data}
     const candleCacheKey = (meta, tf) => `${meta.chain}|${meta.pool}|${tf}`;
-    const refPriceFor = (meta) => meta?.priceUsd ?? state.lastPriceByPool.get(poolKey(meta)) ?? null;
+    const refPriceFor = (meta) => meta?.priceQuote ?? meta?.priceUsd ?? state.lastPriceByPool.get(poolKey(meta)) ?? null;
     async function waitForRefPrice(meta, timeoutMs=1400){
       const start = Date.now();
       let px = refPriceFor(meta);
@@ -2122,57 +2156,25 @@ function setStatus(kind, txt){
 
       let candles = null;
       let refPrice = refPriceFor(meta);
-      const needBothSides = (!((meta && meta.sideHint) ? true : (isFinite(refPrice) && refPrice > 0)));
-      const lockedSide = (meta && meta.sideHint) ? meta.sideHint : (state.candleSideByKey.get(sideKey) || null);
+      const needBothSides = false;
+      const lockedSide = pickGtSide(meta);
 
       const pickWithRef = (a, b) => pickBestCandles(a, b, refPrice);
 
-      // 1) GeckoTerminal OHLCV (try base, then quote if base looks empty/zero)
+      // 1) GeckoTerminal OHLCV (stable side: match user's token against Gecko pool base/quote)
       try{
-        let baseCandles = null;
-        let quoteCandles = null;
-        if (lockedSide === 'quote'){
-          quoteCandles = await fetchGTOhlcvPaged(meta, tf, 'quote', {sid, signal});
-          if (quoteCandles && quoteCandles.length){
-            const bad2 = quoteCandles.every(c => !c || !isFinite(c.close) || c.close === 0);
-            if (bad2) quoteCandles = null;
-          }
-        } else {
-          baseCandles = await fetchGTOhlcvPaged(meta, tf, 'base', {sid, signal});
-          if (baseCandles && baseCandles.length){
-            const bad = baseCandles.every(c => !c || !isFinite(c.close) || c.close === 0);
-            if (bad) baseCandles = null;
-          }
-        }
-
-        if (!lockedSide && (needBothSides || (!baseCandles || baseCandles.length < 20) || (refPrice && baseCandles && scoreCandles(baseCandles, refPrice) > 50))){
-          quoteCandles = await fetchGTOhlcvPaged(meta, tf, 'quote', {sid, signal});
-          if (quoteCandles && quoteCandles.length){
-            const bad2 = quoteCandles.every(c => !c || !isFinite(c.close) || c.close === 0);
-            if (bad2) quoteCandles = null;
-          }
-        }
-
-        if (needBothSides){
-          refPrice = await waitForRefPrice(meta, 1400);
-        }
-
-        if (lockedSide === 'quote'){
-          candles = quoteCandles;
-        } else if (lockedSide === 'base'){
-          candles = baseCandles;
-        } else {
-          candles = pickWithRef(baseCandles, quoteCandles);
-          if (candles === quoteCandles) state.candleSideByKey.set(sideKey, 'quote');
-          if (candles === baseCandles) state.candleSideByKey.set(sideKey, 'base');
+        const side = lockedSide || 'base';
+        candles = await fetchGTOhlcvPaged(meta, tf, side, {sid, signal});
+        if (candles && candles.length){
+          const bad = candles.every(c => !c || !isFinite(c.close) || c.close === 0);
+          if (bad) candles = null;
         }
       }catch(e){
         if (!signal.aborted) console.warn('[DexGuard] gt ohlcv failed', e);
       }
-
-      // 2) Safe fallback: generate flat candles from last known price so chart never crashes
+// 2) Safe fallback: generate flat candles from last known price so chart never crashes
       if (!candles || !candles.length){
-        const px = meta.priceUsd ?? state.candles?.[state.candles.length-1]?.close ?? 0;
+        const px = meta.priceQuote ?? meta.priceUsd ?? state.candles?.[state.candles.length-1]?.close ?? 0;
         candles = generateFlatCandles(px || 0.0000001, tf, 220);
       }
 
@@ -2526,25 +2528,17 @@ function setStatus(kind, txt){
           el.tradeCount.textContent = String(list.length);
           state.lastTradeId = list[0]?.id || state.lastTradeId;
 
-          // Update header price + grow candle from newest trade (guard against 0 / wrong-scale spikes)
+          // Update header price from newest trade.
+          // IMPORTANT: we do NOT grow candles from trade USD here, because the chart is rendered in quote-token units
+          // (currency=token) and Gecko's base/quote may differ from DexScreener.
           const top = list[0];
           if (top && isFinite(top.priceUsd) && top.priceUsd > 0){
-            const px = top.priceUsd;
-            const ref = refPriceFor(meta);
-            let ok = true;
-            if (isFinite(ref) && ref > 0){
-              const ratio = Math.max(px, ref) / Math.max(1e-12, Math.min(px, ref));
-              // If a source returns the wrong side (e.g. SOL price instead of token price), ignore that tick.
-              if (ratio > 200) ok = false;
-            }
-            if (ok){
-              el.stPrice.textContent = fmtUSD(px);
-              growLastCandle(px, top.tsSec || nowSec());
-              if (state.current && state.current.pool === meta.pool){
-                state.lastPriceByPool.set(poolKey(meta), px);
-              }
+            el.stPrice.textContent = fmtUSD(top.priceUsd);
+            if (state.current && state.current.pool === meta.pool){
+              state.lastPriceByPool.set(poolKey(meta), top.priceUsd);
             }
           }
+}
 if (shouldRetryCandles(meta)){
             void refreshCandles(meta, {sid, signal: state.abort?.signal, reason:'live retry'});
           }
