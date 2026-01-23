@@ -309,6 +309,21 @@ DexGuard DexLike LiveChart v1
       gap:12px;
       padding: 12px;
     }
+    /* Token view: stack chart + trades vertically (trades under chart) */
+    .tokenGrid{
+      grid-template-columns: 1fr;
+    }
+    .tokenGrid > .panel{
+      width: 100%;
+    }
+    /* keep trades list usable when stacked */
+    .tokenGrid .tableWrap{
+      max-height: 360px;
+    }
+    @media (max-width: 980px){
+      .tokenGrid .tableWrap{ max-height: 360px; }
+    }
+
     @media (max-width: 980px){ .grid{grid-template-columns: 1fr;} }
 
     .panel{
@@ -949,7 +964,7 @@ DexGuard DexLike LiveChart v1
                 <div class="stat"><div class="k">Pool</div><div id="stPool" class="v">—</div></div>
               </div>
 
-              <div class="grid" style="padding-top:0">
+              <div class="grid tokenGrid" style="padding-top:0">
                 <section class="panel chartPanel" aria-label="Live chart">
                   <div class="chartTop">
                     <div class="tfRow" aria-label="Timeframes">
@@ -1469,7 +1484,24 @@ function setStatus(kind, txt){
         return true;
       }
       return false;
+    
+    function resetChartForNewToken(meta){
+      // Prevent old token candles staying visible while new token loads.
+      initChart();
+      try{ state.series && state.series.setData([]); }catch(e){}
+      try{ state.chart && state.chart.timeScale && state.chart.timeScale().resetTimeScale(); }catch(e){}
+      // show a quick flat baseline as soon as we have a reference price (from DS meta or live trades)
+      const sid = state.sessionId;
+      (async () => {
+        const px = await waitForRefPrice(meta, 1400);
+        if (sid !== state.sessionId) return;
+        if (state.candles && state.candles.length) return; // real candles already loaded
+        if (isFinite(px) && px > 0){
+          applyCandlesToChart(generateFlatCandles(px, state.tf, 220));
+        }
+      })();
     }
+}
     const normAddr = (chain, addr) => {
       if (!addr) return '';
       const s = String(addr);
@@ -1939,7 +1971,8 @@ function setStatus(kind, txt){
       };
 
       el.btnDS.href = dexLink(chain, pairId);
-      state.current = meta;
+            state.current = meta;
+      resetChartForNewToken(meta);
       primeChart(meta);
       startLive(meta, {sid});
 
