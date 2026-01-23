@@ -1484,24 +1484,28 @@ function setStatus(kind, txt){
         return true;
       }
       return false;
-    
+    }
+
     function resetChartForNewToken(meta){
       // Prevent old token candles staying visible while new token loads.
       initChart();
       try{ state.series && state.series.setData([]); }catch(e){}
       try{ state.chart && state.chart.timeScale && state.chart.timeScale().resetTimeScale(); }catch(e){}
+
       // show a quick flat baseline as soon as we have a reference price (from DS meta or live trades)
       const sid = state.sessionId;
       (async () => {
-        const px = await waitForRefPrice(meta, 1400);
-        if (sid !== state.sessionId) return;
-        if (state.candles && state.candles.length) return; // real candles already loaded
-        if (isFinite(px) && px > 0){
-          applyCandlesToChart(generateFlatCandles(px, state.tf, 220));
-        }
+        try{
+          const px = await waitForRefPrice(meta, 1400);
+          if (sid !== state.sessionId) return;
+          if (state.candles && state.candles.length) return; // real candles already loaded
+          if (isFinite(px) && px > 0){
+            applyCandlesToChart(generateFlatCandles(px, state.tf, 220));
+          }
+        }catch(e){}
       })();
     }
-}
+
     const normAddr = (chain, addr) => {
       if (!addr) return '';
       const s = String(addr);
