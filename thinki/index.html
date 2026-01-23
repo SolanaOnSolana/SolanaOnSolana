@@ -640,6 +640,42 @@ DexGuard DexLike LiveChart v1
     }
     .stPill:hover{background: rgba(255,255,255,.10); transform: translateY(-1px)}
     .stPill.on{border:0; background: rgba(255,255,255,.18); color: rgba(255,255,255,.95)}
+    .stMain{display:flex; align-items:baseline; justify-content:space-between; gap:10px; line-height:1.1}
+    .stMain .delta{font-size:16px}
+    .stTabsTight{margin-top:10px}
+    .stMiniGrid{
+      margin-top:10px;
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:8px 10px;
+    }
+    .stMiniItem{
+      padding:8px 10px;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.04);
+      min-width:0;
+    }
+    .stMiniK{
+      font-size:10px;
+      letter-spacing:.12em;
+      text-transform:uppercase;
+      color: rgba(255,255,255,.56);
+      font-weight: 1000;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .stMiniV{
+      margin-top:4px;
+      font-size:13px;
+      font-weight: 1000;
+      color: rgba(255,255,255,.92);
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      font-family: var(--mono);
+    }
     .chartMeta{
       display:flex; align-items:center; gap:10px;
       color: var(--muted);
@@ -1959,7 +1995,7 @@ function setStatus(kind, txt){
     function setChgVolUI(meta){
       if (!meta) return;
 
-      const ui = state.statsUI || (state.statsUI = {chgTF:'h24', volTF:'h24', volMode:'total'});
+      const ui = state.statsUI || (state.statsUI = {tf:'h24'});
 
       const d5 = meta.change5m;
       const d1 = meta.change1h;
@@ -1971,87 +2007,70 @@ function setStatus(kind, txt){
       const v6 = meta.volume6hUsd;
       const v24 = meta.volume24hUsd;
 
-      const ws = state.winStats || null;
+      const wsAll = state.winStats || null;
 
-      const tfLbl = {m5:'5m', h1:'1h', h6:'6h', h24:'24h'};
+      const tf = ui.tf || 'h24';
       const chgMap = {m5:d5, h1:d1, h6:d6, h24:d24};
-
-      const chgTF = ui.chgTF || 'h24';
-      const chgVal = chgMap[chgTF];
+      const chgVal = chgMap[tf];
       const chgTop = fmtDeltaSpan(chgVal);
 
-      const chgTabs =
-        `<div class="stTabs">` +
-          `<button type="button" class="stPill${chgTF==='m5'?' on':''}" data-chgtf="m5">5m</button>` +
-          `<button type="button" class="stPill${chgTF==='h1'?' on':''}" data-chgtf="h1">1h</button>` +
-          `<button type="button" class="stPill${chgTF==='h6'?' on':''}" data-chgtf="h6">6h</button>` +
-          `<button type="button" class="stPill${chgTF==='h24'?' on':''}" data-chgtf="h24">24h</button>` +
+      const tabs =
+        `<div class="stTabs stTabsTight">` +
+          `<button type="button" class="stPill${tf==='m5'?' on':''}" data-sttf="m5">5m</button>` +
+          `<button type="button" class="stPill${tf==='h1'?' on':''}" data-sttf="h1">1h</button>` +
+          `<button type="button" class="stPill${tf==='h6'?' on':''}" data-sttf="h6">6h</button>` +
+          `<button type="button" class="stPill${tf==='h24'?' on':''}" data-sttf="h24">24h</button>` +
         `</div>`;
 
-      el.stChg.innerHTML = `${chgTop}${chgTabs}`;
+      el.stChg.innerHTML = `<div class="stMain">${chgTop}</div>${tabs}`;
 
-      const volTF = ui.volTF || 'h24';
-      const volMode = ui.volMode || 'total';
-
-      const volFromMeta = (tf)=>{
-        if (tf==='m5') return v5;
-        if (tf==='h1') return v1;
-        if (tf==='h6') return v6;
-        if (tf==='h24') return v24;
+      const volFromMeta = (t)=>{
+        if (t==='m5') return v5;
+        if (t==='h1') return v1;
+        if (t==='h6') return v6;
+        if (t==='h24') return v24;
         return null;
       };
 
-      const w = ws ? (ws[volTF] || null) : null;
+      const w = wsAll ? (wsAll[tf] || null) : null;
 
-      let main = '—';
-      let sub = '';
+      const volMeta = volFromMeta(tf);
+      const volVal = (volMeta!=null && isFinite(volMeta)) ? volMeta : (w?.total ?? null);
 
-      if (volMode === 'total'){
-        const mv = volFromMeta(volTF);
-        const vv = (mv!=null ? mv : (w?.total || null));
-        main = (vv!=null && isFinite(vv) ? fmtUSD(vv) : '—');
-      } else if (volMode === 'buy'){
-        const vv = w?.buy;
-        main = (vv!=null && isFinite(vv) ? fmtUSD(vv) : '—');
-      } else if (volMode === 'sell'){
-        const vv = w?.sell;
-        main = (vv!=null && isFinite(vv) ? fmtUSD(vv) : '—');
-      } else if (volMode === 'txns'){
-        const t = w?.txns;
-        const b = w?.buyN;
-        const s = w?.sellN;
-        main = (t!=null && isFinite(t) ? fmtInt(t) : '—');
-        const bb = (b!=null && isFinite(b) ? fmtInt(b) : '—');
-        const ss = (s!=null && isFinite(s) ? fmtInt(s) : '—');
-        sub = `Buys ${bb} • Sells ${ss}`;
-      } else if (volMode === 'makers'){
-        const m = w?.makers;
-        const b = w?.buyers;
-        const s = w?.sellers;
-        main = (m!=null && isFinite(m) ? fmtInt(m) : '—');
-        const bb = (b!=null && isFinite(b) ? fmtInt(b) : '—');
-        const ss = (s!=null && isFinite(s) ? fmtInt(s) : '—');
-        sub = `Buyers ${bb} • Sellers ${ss}`;
-      }
+      const txns = w?.txns;
+      const buys = w?.buyN;
+      const sells = w?.sellN;
+      const makers = w?.makers;
+      const buyers = w?.buyers;
+      const sellers = w?.sellers;
 
-      const modeTabs =
-        `<div class="stTabs">` +
-          `<button type="button" class="stPill${volMode==='total'?' on':''}" data-volmode="total">Vol</button>` +
-          `<button type="button" class="stPill${volMode==='buy'?' on':''}" data-volmode="buy">Buys</button>` +
-          `<button type="button" class="stPill${volMode==='sell'?' on':''}" data-volmode="sell">Sells</button>` +
-          `<button type="button" class="stPill${volMode==='txns'?' on':''}" data-volmode="txns">Txns</button>` +
-          `<button type="button" class="stPill${volMode==='makers'?' on':''}" data-volmode="makers">Makers</button>` +
+      const buyVol = w?.buy;
+      const sellVol = w?.sell;
+
+      const g = (k,v)=>`<div class="stMiniItem"><div class="stMiniK">${k}</div><div class="stMiniV">${v}</div></div>`;
+
+      const vv = (volVal!=null && isFinite(volVal)) ? fmtUSD(volVal) : '—';
+      const tv = (txns!=null && isFinite(txns)) ? fmtInt(txns) : '—';
+      const bv = (buys!=null && isFinite(buys)) ? fmtInt(buys) : '—';
+      const sv = (sells!=null && isFinite(sells)) ? fmtInt(sells) : '—';
+      const mv = (makers!=null && isFinite(makers)) ? fmtInt(makers) : '—';
+      const byv = (buyers!=null && isFinite(buyers)) ? fmtInt(buyers) : '—';
+      const slv = (sellers!=null && isFinite(sellers)) ? fmtInt(sellers) : '—';
+      const bvv = (buyVol!=null && isFinite(buyVol)) ? fmtUSD(buyVol) : '—';
+      const svv = (sellVol!=null && isFinite(sellVol)) ? fmtUSD(sellVol) : '—';
+
+      el.stVol.innerHTML =
+        `<div class="stMain">${vv}</div>` +
+        `<div class="stMiniGrid">` +
+          g('Txns', tv) +
+          g('Makers', mv) +
+          g('Buys', bv) +
+          g('Sells', sv) +
+          g('Buy Vol', bvv) +
+          g('Sell Vol', svv) +
+          g('Buyers', byv) +
+          g('Sellers', slv) +
         `</div>`;
-
-      const tfTabs =
-        `<div class="stTabs" style="margin-top:6px">` +
-          `<button type="button" class="stPill${volTF==='m5'?' on':''}" data-voltf="m5">5m</button>` +
-          `<button type="button" class="stPill${volTF==='h1'?' on':''}" data-voltf="h1">1h</button>` +
-          `<button type="button" class="stPill${volTF==='h6'?' on':''}" data-voltf="h6">6h</button>` +
-          `<button type="button" class="stPill${volTF==='h24'?' on':''}" data-voltf="h24">24h</button>` +
-        `</div>`;
-
-      el.stVol.innerHTML = `${main}` + (sub ? `<div class="muted2" style="margin-top:6px;font-size:12px;line-height:1.25">${sub}</div>` : '') + modeTabs + tfTabs;
     }
 
 
@@ -3420,21 +3439,13 @@ if (last && isFinite(last.close)){
     el.q.addEventListener('keydown', (e)=>{ if (e.key === 'Enter'){ e.preventDefault(); doSearch(true); }});
     el.tfs.forEach(b => b.addEventListener('click', ()=> setTimeframe(b.dataset.tf), {passive:true}));
     el.stChg.addEventListener('click', (e)=>{
-      const b = e.target && e.target.closest ? e.target.closest('button[data-chgtf]') : null;
+      const b = e.target && e.target.closest ? e.target.closest('button[data-sttf]') : null;
       if (!b) return;
-      state.statsUI = state.statsUI || {chgTF:'h24', volTF:'h24', volMode:'total'};
-      state.statsUI.chgTF = b.dataset.chgtf || 'h24';
+      state.statsUI = state.statsUI || {tf:'h24'};
+      state.statsUI.tf = b.dataset.sttf || 'h24';
       setChgVolUI(state.current);
     });
 
-    el.stVol.addEventListener('click', (e)=>{
-      const bm = e.target && e.target.closest ? e.target.closest('button[data-volmode]') : null;
-      const bt = e.target && e.target.closest ? e.target.closest('button[data-voltf]') : null;
-      if (!bm && !bt) return;
-      state.statsUI = state.statsUI || {chgTF:'h24', volTF:'h24', volMode:'total'};
-      if (bm) state.statsUI.volMode = bm.dataset.volmode || 'total';
-      if (bt) state.statsUI.volTF = bt.dataset.voltf || 'h24';
-      setChgVolUI(state.current);
     });
 
     el.btnClear.addEventListener('click', ()=> { clearResults(); clearAll(); });
