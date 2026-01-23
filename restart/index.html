@@ -2270,7 +2270,7 @@ html.dg-intro-on, body.dg-intro-on{ overflow:hidden !important; }
     rgba(0,0,0,1) calc(var(--dg-hole) + 1px)
   );
   opacity: 1;
-  transition: opacity .55s ease;
+  transition: opacity .85s ease;
 }
 
 #dgIntroCanvas{
@@ -3976,7 +3976,7 @@ function toggleMenu(){
   }catch(e){}
 
   let W=0,H=0,DPR=1, running=true, finishing=false, raf=0;
-  const TIME_SCALE = 1.22; // slower + more cinematic
+    const TIME_SCALE = 1.34; // slower + more cinematic
   let particles=[], links=[], sparks=[], pulseFired=false, t0=performance.now();
 
   function clamp(v,a,b){ return v<a?a:(v>b?b:v); }
@@ -4157,12 +4157,42 @@ function toggleMenu(){
   }
 
 
-  function drawLogos(cx,cy,pull,sig,pulse,t){
+    function drawLogos(cx,cy,pull,sig,pulse,vortex,t){
     if(!ctx) return;
-    const keys = ['sol','eth','base','bnb'];
-    const orbitR = Math.min(W,H) * (W < 520 ? 0.34 : 0.38);
-    const size = Math.min(W,H) * (W < 520 ? 0.12 : 0.095);
-    const spin = t * 0.00055;
+        const keys = ['sol','eth','base','bnb'];
+    const orbitR = Math.min(W,H) * (W < 520 ? 0.40 : 0.44);
+    const baseSize = Math.min(W,H) * (W < 520 ? 0.145 : 0.112);
+    const spin = t * 0.00062;
+    const suck = clamp(vortex, 0, 1);
+
+    // portal / shield intake (becomes visible as suck rises)
+    if(suck > 0.02){
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      const pr = Math.min(W,H) * (0.10 + 0.02*Math.sin(t*0.002));
+      const pg = ctx.createRadialGradient(cx,cy, pr*0.15, cx,cy, pr*2.6);
+      pg.addColorStop(0,   'rgba(153,69,255,'+(0.00)+')');
+      pg.addColorStop(0.28,'rgba(153,69,255,'+(0.14*suck)+')');
+      pg.addColorStop(0.58,'rgba(0,209,255,'+(0.08*suck)+')');
+      pg.addColorStop(1,   'rgba(0,0,0,0)');
+      ctx.strokeStyle = pg;
+      ctx.lineWidth = (W < 520 ? 3.2 : 3.8);
+      ctx.shadowColor = 'rgba(153,69,255,'+(0.28*suck)+')';
+      ctx.shadowBlur = 38 + 42*suck;
+      ctx.beginPath();
+      ctx.arc(cx,cy, pr*(1.35 + 0.35*suck), 0, Math.PI*2);
+      ctx.stroke();
+      // inner swirl hints
+      ctx.globalAlpha = 0.30*suck;
+      ctx.lineWidth = 2;
+      for(let r=0;r<3;r++){
+        const rr = pr*(0.55 + r*0.22);
+        ctx.beginPath();
+        ctx.arc(cx,cy, rr, t*0.0014 + r, t*0.0014 + r + Math.PI*1.35);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
 
     // soft orbit + pull-in + connect beams
     ctx.save();
@@ -4173,25 +4203,35 @@ function toggleMenu(){
       const im = logoImgs[k];
       if(!im || !im.complete) continue;
 
-      const a = (i/keys.length)*Math.PI*2 + spin;
-      const o = orbitR * (1 - pull*0.62);
+            const a0 = (i/keys.length)*Math.PI*2 + spin;
+      const a = a0 + suck*(1.8 + i*0.22);
+      const o = orbitR * (1 - pull*0.62) * (1 - suck*0.92);
       let x = cx + Math.cos(a) * o;
       let y = cy + Math.sin(a) * o * 0.70;
 
       // pull toward "orbit lock" near center during chain grab
       x = x + (cx - x) * (pull*0.55);
       y = y + (cy - y) * (pull*0.55);
+      // portal intake: extra pull + swirl toward center
+      x = x + (cx - x) * (0.10 + 0.65*suck);
+      y = y + (cy - y) * (0.10 + 0.65*suck);
 
       // micro-float
       x += Math.sin(t*0.002 + i*2.1) * 3;
       y += Math.cos(t*0.0023 + i*1.7) * 3;
 
+      // size scaling (shrinks as logos get pulled into the portal/shield)
+      const sc = 1 - 0.55*suck;
+      const w = baseSize * sc;
+      const h = (baseSize * (im.height/im.width)) * sc;
+
       // draw connecting energy beams late in the sequence
       if(pull > 0.35){
         const g = ctx.createLinearGradient(x,y,cx,cy);
-        g.addColorStop(0, 'rgba(153,69,255,'+(0.10 + 0.22*pull)+')');
-        g.addColorStop(0.55,'rgba(0,209,255,'+(0.06 + 0.18*pull)+')');
-        g.addColorStop(1, 'rgba(20,241,149,'+(0.04 + 0.14*pull)+')');
+                g.addColorStop(0,   'rgba(153,69,255,'+(0.18 + 0.36*pull)+')');
+        g.addColorStop(0.35,'rgba(153,69,255,'+(0.10 + 0.28*pull)+')');
+        g.addColorStop(0.72,'rgba(0,209,255,'+(0.06 + 0.18*pull)+')');
+        g.addColorStop(1,   'rgba(20,241,149,'+(0.04 + 0.14*pull)+')');
         ctx.lineWidth = (W < 520 ? 2.0 : 2.4);
         ctx.strokeStyle = g;
         ctx.shadowColor = 'rgba(153,69,255,'+(0.10 + 0.22*pull)+')';
@@ -4203,18 +4243,36 @@ function toggleMenu(){
         ctx.stroke();
       }
 
-      // logo glow
-      const glow = 18 + 26*sig + 12*pulse;
-      ctx.shadowBlur = glow;
-      ctx.shadowColor = (k==='bnb') ? 'rgba(255,196,54,0.55)' :
-                        (k==='base')? 'rgba(0,80,255,0.55)' :
-                        (k==='eth') ? 'rgba(180,160,255,0.55)' :
-                                     'rgba(153,69,255,0.55)';
+      // logo glow + visibility plate (keeps logos crisp above particles)
+      const glow = 22 + 32*sig + 18*pulse + 10*(1-suck);
+      const glowCol = (k==='bnb') ? 'rgba(255,196,54,0.70)' :
+                       (k==='base')? 'rgba(0,80,255,0.70)' :
+                       (k==='eth') ? 'rgba(200,190,255,0.70)' :
+                                    'rgba(153,69,255,0.78)';
 
-      const w = size;
-      const h = size * (im.height/im.width);
-      ctx.globalAlpha = 0.92;
+      // backplate (helps against bright backgrounds)
+      ctx.save();
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = 0.26 + 0.18*(1-suck);
+      ctx.fillStyle = 'rgba(0,0,0,0.55)';
+      ctx.beginPath();
+      ctx.arc(x,y, Math.max(w,h)*0.62, 0, Math.PI*2);
+      ctx.fill();
+      ctx.restore();
+
+      // draw logo solid (not additive)
+      ctx.save();
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.shadowBlur = glow;
+      ctx.shadowColor = glowCol;
+      ctx.globalAlpha = 0.98 - 0.22*suck;
       ctx.drawImage(im, x - w/2, y - h/2, w, h);
+      // crisp outline
+      ctx.globalAlpha = 0.22 + 0.10*(1-suck);
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = 'rgba(255,255,255,0.26)';
+      ctx.beginPath(); ctx.arc(x,y, Math.max(w,h)*0.53, 0, Math.PI*2); ctx.stroke();
+      ctx.restore();
 
       // tiny ring accent
       ctx.globalAlpha = 0.18 + 0.22*pull;
@@ -4311,11 +4369,12 @@ function toggleMenu(){
     // timeline
     const pull = clamp((t-(820*TIME_SCALE))/(1280*TIME_SCALE), 0, 1);
     const sig  = clamp((t-(1220*TIME_SCALE))/(980*TIME_SCALE), 0, 1);
-    const pulse= clamp((t-(2300*TIME_SCALE))/(780*TIME_SCALE), 0, 1);
+        const pulse= clamp((t-(2300*TIME_SCALE))/(780*TIME_SCALE), 0, 1);
+    const vortex = clamp((t-(2520*TIME_SCALE))/(980*TIME_SCALE), 0, 1);
 
     if(!prefersReduce){
       drawChains(cx,cy,pull);
-      drawLogos(cx,cy,pull,sig,pulse,t);
+      drawLogos(cx,cy,pull,sig,pulse,vortex,t);
     }else{
       // reduced motion: keep just emblem
     }
@@ -4385,11 +4444,13 @@ function toggleMenu(){
     }
 
     // step UI sync
-    if(t > 1050*TIME_SCALE) setStep(1);
-    if(t > 1650*TIME_SCALE) setStep(2);
-    if(t > 2350*TIME_SCALE) setStep(3);
+    if(t > 820*TIME_SCALE)  setStep(1);
+    if(t > 1220*TIME_SCALE) setStep(2);
+    if(t > 1680*TIME_SCALE) setStep(3);
+    if(t > 2120*TIME_SCALE) setStep(4);
+    if(t > 2520*TIME_SCALE) setStep(5);
 
-    if(!finishing && t > 2980*TIME_SCALE){
+        if(!finishing && t > 3520*TIME_SCALE){
       finishIntro(false);
       return;
     }
@@ -4441,7 +4502,7 @@ function toggleMenu(){
         htmlEl.classList.remove('dg-intro-on');
         bodyEl.classList.remove('dg-intro-on');
         // allow overlay to fade before removing
-        setTimeout(()=>{ cleanup(); }, 820);
+        setTimeout(()=>{ cleanup(); }, 1100);
         return;
       }
       requestAnimationFrame(revealFrame);
