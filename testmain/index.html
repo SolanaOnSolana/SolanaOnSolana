@@ -1969,6 +1969,16 @@ function setStatus(kind, txt){
     // ========= Candles =========
     const candleCache = new Map(); // key -> {t, data}
     const candleCacheKey = (meta, tf) => `${meta.chain}|${meta.pool}|${tf}`;
+    const refPriceFor = (meta) => meta?.priceUsd ?? state.lastPriceByPool.get(poolKey(meta)) ?? null;
+    async function waitForRefPrice(meta, timeoutMs=1400){
+      const start = Date.now();
+      let px = refPriceFor(meta);
+      while ((!isFinite(px) || px <= 0) && (Date.now() - start) < timeoutMs){
+        await sleep(120);
+        px = refPriceFor(meta);
+      }
+      return px;
+    }
     function maxCandlesForTf(tf){
       switch(tf){
         case '1m': return 8000;
@@ -2016,14 +2026,16 @@ function setStatus(kind, txt){
       }
 
       let candles = null;
-      const refPrice = meta.priceUsd ?? state.lastPriceByPool.get(poolKey(meta)) ?? null;
+      let refPrice = refPriceFor(meta);
+      const needBothSides = !(isFinite(refPrice) && refPrice > 0);
 
       function scoreCandles(list){
-        if (!list || !list.length || !isFinite(refPrice) || refPrice <= 0) return null;
+        const rp = refPrice;
+        if (!list || !list.length || !isFinite(rp) || rp <= 0) return null;
         const last = list[list.length-1];
         const close = last?.close;
         if (!isFinite(close) || close <= 0) return null;
-        const ratio = Math.max(close, refPrice) / Math.max(1e-12, Math.min(close, refPrice));
+        const ratio = Math.max(close, rp) / Math.max(1e-12, Math.min(close, rp));
         return ratio;
       }
       function pickBestCandles(a, b){
@@ -2052,7 +2064,7 @@ function setStatus(kind, txt){
           if (bad) baseCandles = null;
         }
 
-        if ((!baseCandles || baseCandles.length < 20) || (refPrice && baseCandles && scoreCandles(baseCandles) > 50)){
+        if (needBothSides || (!baseCandles || baseCandles.length < 20) || (refPrice && baseCandles && scoreCandles(baseCandles) > 50)){
           if (tf === '15m'){
             quoteCandles = await fetchGTOhlcvPaged(meta, tf, 'quote', {sid, signal});
           } else {
@@ -2064,6 +2076,10 @@ function setStatus(kind, txt){
             const bad2 = quoteCandles.every(c => !c || !isFinite(c.close) || c.close === 0);
             if (bad2) quoteCandles = null;
           }
+        }
+
+        if (needBothSides){
+          refPrice = await waitForRefPrice(meta, 1400);
         }
 
         candles = pickBestCandles(baseCandles, quoteCandles);
