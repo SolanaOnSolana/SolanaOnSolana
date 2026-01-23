@@ -946,6 +946,14 @@ DexGuard DexLike LiveChart v1
                 <section class="panel chartPanel" aria-label="Live chart">
                   <div class="chartTop">
                     <div id="chartMeta" class="chartMeta ellipsis">—</div>
+                    <div class="tfRow" id="tfRow" aria-label="Timeframes">
+                      <button class="tf" type="button" data-tf="1m">1m</button>
+                      <button class="tf" type="button" data-tf="5m">5m</button>
+                      <button class="tf active" type="button" data-tf="15m">15m</button>
+                      <button class="tf" type="button" data-tf="1h">1h</button>
+                      <button class="tf" type="button" data-tf="4h">4h</button>
+                      <button class="tf" type="button" data-tf="1d">1d</button>
+                    </div>
                   </div>
 
                   <div class="chartWrap" id="chartWrap">
@@ -1369,6 +1377,11 @@ DexGuard DexLike LiveChart v1
       ro: null,
       lastCandle: null,
       candles: [],
+      candlesReady: false,
+      candleReqId: 0,
+      activeCandleReqId: 0,
+      backfillLock: false,
+      backfillLastAt: 0,
       lastPriceByPool: new Map(),
       candleRetryAt: new Map(),
       candleRefreshLock: false,
@@ -1421,16 +1434,16 @@ function setStatus(kind, txt){
       const ck = candleCacheKey(meta, state.tf);
       const cached = candleCache.get(ck);
       if (cached && cached.data && cached.data.length){
-        applyCandlesToChart(cached.data);
-        return true;
+        const clean = sanitizeCandles(cached.data);
+        if (clean.length){
+          applyCandlesToChart(clean);
+          state.candles = clean.slice();
+          state.candlesReady = true;
+          return true;
+        }
       }
-      const hintPrice = (meta && isFinite(meta.priceUsd) && meta.priceUsd > 0)
-        ? meta.priceUsd
-        : state.lastPriceByPool.get(poolKey(meta));
-      if (isFinite(hintPrice) && hintPrice > 0){
-        applyCandlesToChart(generateFlatCandles(hintPrice, state.tf, 220));
-        return true;
-      }
+      // No fake/flat chart priming. Keep chart empty until real candles arrive.
+      clearChartForLoading();
       return false;
     }
 
@@ -1438,9 +1451,17 @@ function setStatus(kind, txt){
     function initChart(){
       if (state.chart) return;
       const wrap = el.chartWrap;
+      if (!wrap) return;
       const w = wrap.clientWidth|0;
       const h = wrap.clientHeight|0;
-      if (w < 40 || h < 160) return;
+      if (w < 40 || h < 160){
+        // Retry once shortly (fixes race when switching tokens / layout not measured yet)
+        if (!state._chartInitRetry){
+          state._chartInitRetry = true;
+          requestAnimationFrame(() => setTimeout(() => { state._chartInitRetry = false; initChart(); }, 50));
+        }
+        return;
+      }
 
       state.chart = LightweightCharts.createChart($('#chart'), {
         width: w,
@@ -1499,6 +1520,56 @@ function setStatus(kind, txt){
         });
       });
       state.ro.observe(wrap);
+
+      // Lazy backfill: load older candles when user scrolls near the left edge (DexScreener-style)
+      if (!state._backfillHooked){
+        state._backfillHooked = true;
+        try{
+          state.chart.timeScale().subscribeVisibleLogicalRangeChange(async (range) => {
+            try{
+              if (!range || !isFinite(range.from)) return;
+              if (!state.current || !Array.isArray(state.candles) || state.candles.length < 10) return;
+              // Only when user approaches left edge
+              if (range.from > 25) return;
+
+              const now = Date.now();
+              if (state.backfillLock) return;
+              if ((now - (state.backfillLastAt||0)) < 1800) return;
+
+              const meta = state.current;
+              const oldest = state.candles[0]?.time || 0;
+              if (!oldest || !isFinite(oldest) || oldest < 10) return;
+
+              state.backfillLock = true;
+              state.backfillLastAt = now;
+
+              const sid = state.sessionId;
+              const signal = state.abort ? state.abort.signal : undefined;
+
+              // Try base then quote; prepend whatever is valid
+              let chunk = await fetchGTOhlcvBefore(meta, state.tf, 'base', oldest - 1, {sid, signal});
+              if (!chunk || !chunk.length){
+                chunk = await fetchGTOhlcvBefore(meta, state.tf, 'quote', oldest - 1, {sid, signal});
+              }
+              if (sid !== state.sessionId) return;
+
+              if (chunk && chunk.length){
+                const merged = sanitizeCandles(chunk.concat(state.candles));
+                if (merged.length > state.candles.length){
+                  state.candles = merged;
+                  candleCache.set(candleCacheKey(meta, state.tf), {t:Date.now(), data: merged.slice()});
+                  // Do not fitContent during backfill (prevents snapping while user scrolls)
+                  applyCandlesToChart(merged, {fit:false});
+                }
+              }
+            } finally {
+              state.backfillLock = false;
+            }
+          });
+        }catch(e){
+          console.warn('[DexGuard] backfill hook failed', e);
+        }
+      }
     }
 
     // ========= UI builders =========
@@ -1825,6 +1896,7 @@ function setStatus(kind, txt){
       stopLive();
       state.lastTradeId = null;
       state.candles = [];
+      state.candlesReady = false;
       state.lastCandle = null;
       el.tradesBody.innerHTML = '';
       el.tradeCount.textContent = '0';
@@ -1862,6 +1934,7 @@ function setStatus(kind, txt){
 
       el.btnDS.href = dexLink(chain, pairId);
       primeChart(meta);
+      clearChartForLoading();
 
       // DexScreener meta
       try{
@@ -1997,7 +2070,69 @@ function setStatus(kind, txt){
         default: return 8000;
       }
     }
-    async function fetchGTOhlcvPaged(meta, tf, token, {sid, signal}){
+    
+    // ========= Candle validity guards (strict) =========
+    const MIN_VALID_PRICE = 1e-18;
+    function isValidPx(v){ return isFinite(v) && v > MIN_VALID_PRICE; }
+    function isValidCandle(c){
+      if (!c) return false;
+      const t = c.time;
+      const o = c.open, h = c.high, l = c.low, cl = c.close;
+      if (!isFinite(t) || t <= 0) return false;
+      if (!isValidPx(o) || !isValidPx(h) || !isValidPx(l) || !isValidPx(cl)) return false;
+      if (h < l) return false;
+      // Allow tiny rounding, but enforce containment
+      const maxOC = Math.max(o, cl);
+      const minOC = Math.min(o, cl);
+      if (h + (h*1e-12) < maxOC) return false;
+      if (l - (l*1e-12) > minOC) return false;
+      return true;
+    }
+    function sanitizeCandles(list){
+      if (!Array.isArray(list)) return [];
+      const out = [];
+      for (const c of list){
+        if (!isValidCandle(c)) continue;
+        out.push({
+          time: Math.floor(c.time),
+          open: +c.open, high: +c.high, low: +c.low, close: +c.close
+        });
+      }
+      out.sort((a,b)=> a.time - b.time);
+      // dedupe by time (keep latest occurrence)
+      const dedup = [];
+      let lastT = -1;
+      for (const c of out){
+        if (c.time === lastT){
+          dedup[dedup.length-1] = c;
+        } else {
+          lastT = c.time;
+          dedup.push(c);
+        }
+      }
+      return dedup;
+    }
+    function clearChartForLoading(){
+      initChart();
+      state.candlesReady = false;
+      if (!state.series) return;
+      try{ state.series.setData([]); }catch(e){}
+      state.lastCandle = null;
+    }
+
+    // One-shot older-candle fetch (lazy backfill)
+    async function fetchGTOhlcvBefore(meta, tf, token, beforeTs, {sid, signal}){
+      try{
+        const data = await withBackoff(() => fetchJson(gtOhlcvUrl(meta.gtNet, meta.pool, tf, token, beforeTs), {ttl: 0, signal}), {tries:2, signal});
+        if (sid !== state.sessionId) return null;
+        return sanitizeCandles(normalizeGTOhlcv(data));
+      }catch(e){
+        const msg = String(e && (e.message || e));
+        if (!msg.includes('AbortError')) console.warn('[DexGuard] backfill ohlcv failed', msg);
+        return null;
+      }
+    }
+async function fetchGTOhlcvPaged(meta, tf, token, {sid, signal}){
       const map = tfToGT(tf);
       const limit = map.timeframe === 'day' ? 260 : map.timeframe === 'hour' ? 520 : 700;
       const max = maxCandlesForTf(tf);
@@ -2016,7 +2151,7 @@ function setStatus(kind, txt){
           break;
         }
         if (sid !== state.sessionId) return null;
-        const chunk = normalizeGTOhlcv(data);
+        const chunk = sanitizeCandles(normalizeGTOhlcv(data));
         if (!chunk.length) break;
         out = out.concat(chunk);
         const oldest = chunk.reduce((min, c) => (min === null || c.time < min ? c.time : min), null);
@@ -2024,19 +2159,29 @@ function setStatus(kind, txt){
         before = oldest - 1;
         if (chunk.length < limit) break;
       }
-      return out;
+      return sanitizeCandles(out);
     }
 
     async function loadCandles(meta, tf, {sid, signal}){
       setStatus('', 'Loading candles…');
 
+      // Only the latest candle request may touch chart/state (race-condition guard)
+      const reqId = ++state.candleReqId;
+      state.activeCandleReqId = reqId;
+
       const ck = candleCacheKey(meta, tf);
       const cached = candleCache.get(ck);
       if (cached && (Date.now()-cached.t) < 25_000){
-        state.candles = cached.data.slice();
-        applyCandlesToChart(state.candles);
-        setStatus('live', 'Live (cached)');
-        return;
+        if (sid !== state.sessionId || reqId !== state.activeCandleReqId) return;
+        const clean = sanitizeCandles(cached.data);
+        if (clean.length >= 10){
+          state.candles = clean.slice();
+          applyCandlesToChart(state.candles);
+          setStatus('live', 'Live (cached)');
+          return;
+        } else {
+          candleCache.delete(ck);
+        }
       }
 
       let candles = null;
@@ -2104,29 +2249,27 @@ function setStatus(kind, txt){
         }
       }
 
-      // 3) Safe fallback: generate flat candles from last known price so chart never crashes
-      if (!candles || !candles.length){
-        const px = meta.priceUsd ?? state.candles?.[state.candles.length-1]?.close ?? 0;
-        candles = generateFlatCandles(px || 0.0000001, tf, 220);
+      // 3) No fake/flat candles: only show real validated data
+      if (sid !== state.sessionId || reqId !== state.activeCandleReqId) return;
+
+      const clean = sanitizeCandles(candles || []);
+      if (!clean.length){
+        // Keep chart empty while loading failed; never inject zero/flat data
+        state.candles = [];
+        state.candlesReady = false;
+        applyCandlesToChart([]);
+        setStatus('warn', 'No candle data');
+        return;
       }
 
-      // sort + dedup
-      candles.sort((a,b)=> a.time - b.time);
-      const dedup = [];
-      let lastT = 0;
-      for (const c of candles){
-        if (!c || !isFinite(c.time)) continue;
-        if (c.time === lastT) { dedup[dedup.length-1] = c; continue; }
-        lastT = c.time;
-        dedup.push(c);
-      }
-
-      state.candles = dedup;
-      candleCache.set(ck, {t:Date.now(), data: dedup.slice()});
-      applyCandlesToChart(dedup);
+      if (sid !== state.sessionId || reqId !== state.activeCandleReqId) return;
+      state.candles = clean;
+      state.candlesReady = true;
+      candleCache.set(ck, {t:Date.now(), data: clean.slice()});
+      applyCandlesToChart(clean);
 
       // If header price is missing, seed it from the most recent candle close.
-      const last = dedup && dedup.length ? dedup[dedup.length-1] : null;
+      const last = clean && clean.length ? clean[clean.length-1] : null;
       if (last && isFinite(last.close)){
         if (state.current && state.current.pool === meta.pool){
           if (state.current.priceUsd == null) state.current.priceUsd = last.close;
@@ -2182,7 +2325,7 @@ function setStatus(kind, txt){
       return out;
     }
 
-    function applyCandlesToChart(candles){
+    function applyCandlesToChart(candles, opts){
       // guard: chart container may be zero-sized right after view switches
       initChart();
       if (!state.series) {
@@ -2190,27 +2333,34 @@ function setStatus(kind, txt){
         setTimeout(() => { initChart(); if (state.series) applyCandlesToChart(candles); }, 60);
         return;
       }
+      const data = Array.isArray(candles) ? candles : [];
       try{
-        state.series.setData(candles || []);
-        const fit = () => {
-          if (!state.chart || !state.series) return;
-          const w = el.chartWrap.clientWidth|0;
-          const h = el.chartWrap.clientHeight|0;
-          if (w < 40 || h < 160) return;
-          state.chart.timeScale().resetTimeScale();
-          state.chart.timeScale().fitContent();
-        };
-        requestAnimationFrame(fit);
-        setTimeout(fit, 180);
-        if (candles && candles.length){
-          const last = candles[candles.length-1];
+        state.series.setData(data);
+
+        const doFit = !(opts && opts.fit === false);
+        // Only fitContent when we have enough real candles (prevents "flat/empty" look during load)
+        if (doFit && data.length >= 10){
+          const fit = () => {
+            if (!state.chart || !state.series) return;
+            const w = el.chartWrap.clientWidth|0;
+            const h = el.chartWrap.clientHeight|0;
+            if (w < 40 || h < 160) return;
+            try{ state.chart.timeScale().resetTimeScale(); }catch(e){}
+            try{ state.chart.timeScale().fitContent(); }catch(e){}
+          };
+          requestAnimationFrame(fit);
+          setTimeout(fit, 180);
+        }
+
+        if (data.length){
+          const last = data[data.length-1];
           if (last && isFinite(last.close)) applySeriesPrecision(last.close);
         }
       }catch(e){
         console.warn('[DexGuard] setData failed', e);
       }
-      if (candles && candles.length){
-        state.lastCandle = candles[candles.length-1];
+      if (data && data.length){
+        state.lastCandle = data[data.length-1];
       } else {
         state.lastCandle = null;
       }
@@ -2385,13 +2535,14 @@ function setStatus(kind, txt){
           el.tradeCount.textContent = String(list.length);
           state.lastTradeId = list[0]?.id || state.lastTradeId;
 
-          // Update header price + grow candle from newest trade
+          // Update header price + grow candle from newest trade (STRICT: never allow 0/NaN/Infinity to touch autoscale)
           const top = list[0];
-          if (top && isFinite(top.priceUsd)){
-            el.stPrice.textContent = fmtUSD(top.priceUsd);
-            growLastCandle(top.priceUsd, top.tsSec || nowSec());
+          const px = top ? top.priceUsd : null;
+          if (isValidPx(px)){
+            el.stPrice.textContent = fmtUSD(px);
+            growLastCandle(px, top.tsSec || nowSec());
             if (state.current && state.current.pool === meta.pool){
-              state.lastPriceByPool.set(poolKey(meta), top.priceUsd);
+              state.lastPriceByPool.set(poolKey(meta), px);
             }
           }
 
@@ -2594,7 +2745,9 @@ function setStatus(kind, txt){
 
     function growLastCandle(price, tradeTsSec){
       if (!state.series) return;
-      if (isFinite(price)) applySeriesPrecision(price);
+      if (!state.candlesReady) return;
+      if (!isValidPx(price)) return;
+      applySeriesPrecision(price);
       const {sec} = tfToGT(state.tf);
       const t = isFinite(tradeTsSec) ? Math.floor(tradeTsSec) : nowSec();
       const bucket = Math.floor(t / sec) * sec;
@@ -2637,7 +2790,10 @@ function setStatus(kind, txt){
       stopLive();
       state.lastCandle = null;
       state.candles = [];
+      state.candlesReady = false;
       setStatus('', 'Switching timeframe…');
+
+      clearChartForLoading();
 
       await loadCandles(state.current, tf, {sid, signal});
       if (sid !== state.sessionId) return;
