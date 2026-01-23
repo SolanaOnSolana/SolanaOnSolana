@@ -1994,6 +1994,79 @@ tbody tr.tradeSell:hover td:not(:nth-child(5)){
 }
 /* ===== /PATCH ===== */
 
+
+
+/* ===== PATCH: Token header metrics alignment + remove Explorer/Pair/DexScreener buttons (STEP14) ===== */
+
+/* A) Remove the 3 link pills completely from view (no gaps) */
+#lnkExplorer, #lnkPair, #lnkDex{ display:none !important; }
+
+/* B) Metrics grid/strip: make every stat tile same height + same internal baseline */
+.statsGrid{
+  align-items: stretch !important;      /* when STEP7 turns it into flex strip */
+}
+.statsGrid .stat{
+  height: 78px !important;             /* enough room for Change card tabs */
+  display:flex !important;
+  flex-direction:column !important;
+  justify-content:center !important;
+  gap: 6px !important;
+  padding-top: 10px !important;
+  padding-bottom: 10px !important;
+}
+.statsGrid .stat .k{
+  line-height: 1.05 !important;
+  margin: 0 !important;
+}
+.statsGrid .stat .v{
+  line-height: 1.12 !important;
+  display:flex;
+  align-items:center;
+  gap: 8px;
+  min-height: 18px;                    /* consistent baseline */
+}
+
+/* Change card inner layout: keep % perfectly aligned and tabs inside the same tile */
+.statsGrid .stat .stMain{
+  display:flex;
+  align-items:center !important;        /* fixes "percent higher" feel */
+  justify-content:space-between;
+  gap: 10px;
+  line-height: 1.1 !important;
+}
+.statsGrid .stat .stMain .delta{
+  line-height: 1.1 !important;
+  margin: 0 !important;
+}
+.statsGrid .stat .stTabs{
+  margin-top: 6px !important;
+  gap: 6px !important;
+  flex-wrap: nowrap !important;         /* avoid wrapping that breaks tile height */
+  overflow:hidden;                      /* keep clean */
+}
+.statsGrid .stat .stPill{
+  height: 22px !important;
+  padding: 0 8px !important;
+  font-size: 10px !important;
+  border-radius: 10px !important;
+  line-height: 22px !important;
+}
+
+/* Mobile: slightly taller for touch + keep consistent alignment */
+@media (max-width: 720px){
+  .statsGrid .stat{
+    height: 82px !important;
+  }
+  .statsGrid .stat .stPill{
+    height: 26px !important;
+    line-height: 26px !important;
+    padding: 0 10px !important;
+    font-size: 10px !important;
+  }
+}
+
+/* ===== /PATCH ===== */
+
 </style>
 </head>
 
@@ -2174,8 +2247,8 @@ tbody tr.tradeSell:hover td:not(:nth-child(5)){
                   <div class="chartTop">
                     <div class="tfRow" aria-label="Timeframes">
                       <button class="tf" data-tf="1m">1m</button>
-                      <button class="tf" data-tf="5m">5m</button>
-                      <button class="tf active" data-tf="15m">15m</button>
+                      <button class="tf active" data-tf="5m">5m</button>
+                      <button class="tf" data-tf="15m">15m</button>
                       <button class="tf" data-tf="1h">1h</button>
                       <button class="tf" data-tf="4h">4h</button>
                       <button class="tf" data-tf="1d">1d</button>
@@ -2690,7 +2763,7 @@ tbody tr.tradeSell:hover td:not(:nth-child(5)){
     // ========= App State =========
     const state = {
       chain: 'solana',
-      tf: '15m',
+      tf: '5m',
       sessionId: 0,
       current: null, // meta
 
@@ -3092,7 +3165,7 @@ function dgPersistLastStateFromMeta(meta){
       chain,
       pairId: pairId || null,
       tokenAddress: token || null,
-      tf: (state && state.tf) ? String(state.tf) : '15m',
+      tf: (state && state.tf) ? String(state.tf) : '5m',
       baseSymbol,
       baseName,
       quoteSymbol,
@@ -3139,8 +3212,8 @@ async function dgRestoreLastState(){
   // If no identifier, nothing to restore
   if (!pairId && !tokenAddress) return;
 
-  // Apply TF immediately so initial candle load uses it
-  if (tf) dgApplyTfUi(tf);
+  // Default TF on open: always 5m (ignore saved tf)
+  dgApplyTfUi('5m');
 
   // Suppress any user-visible errors/toasts during restore attempt
   __DG_SUPPRESS_TOAST = true;
@@ -4331,8 +4404,8 @@ function cmdGlobalOutsideClose(){
       state.tradesList = [];
       state.winStats = null;
 
-      if (state.tf !== '15m'){
-        state.tf = '15m';
+      if (state.tf !== '5m'){
+        state.tf = '5m';
         el.tfs.forEach(b => b.classList.toggle('active', b.dataset.tf === state.tf));
       }
 
@@ -4625,7 +4698,7 @@ function cmdGlobalOutsideClose(){
     }
     function maxCandlesForTf(tf){
       switch(tf){
-        case '1m': return 50000;   // ~34 days
+        case '1m': return 8000;    // ~5.5 days (stability; avoids 1m fetch overload)
         case '5m': return 60000;   // ~208 days
         case '15m': return 30000;  // ~312 days
         case '1h': return 8000;    // ~333 days
