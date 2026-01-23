@@ -1384,6 +1384,7 @@ DexGuard DexLike LiveChart v1
       lastCandle: null,
       candles: [],
       lastPriceByPool: new Map(),
+      candleSideByKey: new Map(),
       candleRetryAt: new Map(),
       candleRefreshLock: false,
       _backfilling: false,
@@ -2086,6 +2087,7 @@ function setStatus(kind, txt){
       setChartLoading(true);
 
       const ck = candleCacheKey(meta, tf);
+      const sideKey = ck;
       const cached = candleCache.get(ck);
       if (cached && (Date.now()-cached.t) < 25_000){
         state.candles = cached.data.slice();
@@ -2100,6 +2102,7 @@ function setStatus(kind, txt){
       let candles = null;
       let refPrice = refPriceFor(meta);
       const needBothSides = !(isFinite(refPrice) && refPrice > 0);
+      const lockedSide = state.candleSideByKey.get(sideKey) || null;
 
       const pickWithRef = (a, b) => pickBestCandles(a, b, refPrice);
 
@@ -2107,13 +2110,21 @@ function setStatus(kind, txt){
       try{
         let baseCandles = null;
         let quoteCandles = null;
-        baseCandles = await fetchGTOhlcvPaged(meta, tf, 'base', {sid, signal});
-        if (baseCandles && baseCandles.length){
-          const bad = baseCandles.every(c => !c || !isFinite(c.close) || c.close === 0);
-          if (bad) baseCandles = null;
+        if (lockedSide === 'quote'){
+          quoteCandles = await fetchGTOhlcvPaged(meta, tf, 'quote', {sid, signal});
+          if (quoteCandles && quoteCandles.length){
+            const bad2 = quoteCandles.every(c => !c || !isFinite(c.close) || c.close === 0);
+            if (bad2) quoteCandles = null;
+          }
+        } else {
+          baseCandles = await fetchGTOhlcvPaged(meta, tf, 'base', {sid, signal});
+          if (baseCandles && baseCandles.length){
+            const bad = baseCandles.every(c => !c || !isFinite(c.close) || c.close === 0);
+            if (bad) baseCandles = null;
+          }
         }
 
-        if (needBothSides || (!baseCandles || baseCandles.length < 20) || (refPrice && baseCandles && scoreCandles(baseCandles, refPrice) > 50)){
+        if (!lockedSide && (needBothSides || (!baseCandles || baseCandles.length < 20) || (refPrice && baseCandles && scoreCandles(baseCandles, refPrice) > 50))){
           quoteCandles = await fetchGTOhlcvPaged(meta, tf, 'quote', {sid, signal});
           if (quoteCandles && quoteCandles.length){
             const bad2 = quoteCandles.every(c => !c || !isFinite(c.close) || c.close === 0);
@@ -2125,27 +2136,20 @@ function setStatus(kind, txt){
           refPrice = await waitForRefPrice(meta, 1400);
         }
 
-        candles = pickWithRef(baseCandles, quoteCandles);
+        if (lockedSide === 'quote'){
+          candles = quoteCandles;
+        } else if (lockedSide === 'base'){
+          candles = baseCandles;
+        } else {
+          candles = pickWithRef(baseCandles, quoteCandles);
+          if (candles === quoteCandles) state.candleSideByKey.set(sideKey, 'quote');
+          if (candles === baseCandles) state.candleSideByKey.set(sideKey, 'base');
+        }
       }catch(e){
         if (!signal.aborted) console.warn('[DexGuard] gt ohlcv failed', e);
       }
 
-      // 2) Birdeye fallback (Solana only)
-      if ((!candles || candles.length < 30) && meta.chain === 'solana' && settings.birdeyeKey && meta.token){
-        try{
-          const data = await withBackoff(() => fetchJson(birdeyeOhlcvUrl(meta.token, tf), {
-            ttl: 8_000,
-            signal,
-            headers: {'X-API-KEY': settings.birdeyeKey},
-          }), {tries:2, signal});
-          if (sid !== state.sessionId) return;
-          candles = normalizeBirdeyeOhlcv(data);
-        }catch(e){
-          if (!signal.aborted) console.warn('[DexGuard] birdeye ohlcv failed', e);
-        }
-      }
-
-      // 3) Safe fallback: generate flat candles from last known price so chart never crashes
+      // 2) Safe fallback: generate flat candles from last known price so chart never crashes
       if (!candles || !candles.length){
         const px = meta.priceUsd ?? state.candles?.[state.candles.length-1]?.close ?? 0;
         candles = generateFlatCandles(px || 0.0000001, tf, 220);
@@ -2202,15 +2206,10 @@ function setStatus(kind, txt){
         const oldest = state.candles[0];
         const before = oldest?.time ? (oldest.time - 1) : null;
         if (!before) return;
-        const refPrice = refPriceFor(meta);
-        const base = await fetchGTOhlcvPaged(meta, state.tf, 'base', {sid, signal, beforeStart: before});
+        const sideKey = candleCacheKey(meta, state.tf);
+        const side = state.candleSideByKey.get(sideKey) || 'base';
+        const older = await fetchGTOhlcvPaged(meta, state.tf, side, {sid, signal, beforeStart: before});
         if (sid !== state.sessionId) return;
-        let quote = null;
-        if (!base || base.length < 20 || (refPrice && scoreCandles(base, refPrice) > 50)){
-          quote = await fetchGTOhlcvPaged(meta, state.tf, 'quote', {sid, signal, beforeStart: before});
-          if (sid !== state.sessionId) return;
-        }
-        const older = pickBestCandles(base, quote, refPrice) || [];
         if (!older.length) return;
         const merged = older.concat(state.candles);
         merged.sort((a,b)=> a.time - b.time);
