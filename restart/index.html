@@ -1589,6 +1589,7 @@ function setStatus(kind, txt){
           secondsVisible: false,
         },
         crosshair: {
+          mode: LightweightCharts?.CrosshairMode?.Normal ?? 0,
           vertLine: { color:'rgba(255,255,255,0.16)', width:1 },
           horzLine: { color:'rgba(255,255,255,0.16)', width:1 },
         },
@@ -1694,6 +1695,11 @@ function setStatus(kind, txt){
           baseSymbol: it.baseSymbol,
           baseName: it.baseName,
           logoUrl: it.logoUrl,
+          priceUsd: it.priceUsd,
+          change24h: it.change24h,
+          volume24hUsd: it.volume24hUsd,
+          liquidityUsd: it.liquidityUsd,
+          marketCapUsd: it.marketCapUsd,
           hint: 'trending'
         });
         card.addEventListener('click', open);
@@ -1728,6 +1734,9 @@ function setStatus(kind, txt){
         const dexId = p?.dexId || '';
         const priceUsd = toNum(p?.priceUsd);
         const chg24 = toNum(p?.priceChange?.h24);
+        const liquidityUsd = toNum(p?.liquidity?.usd ?? p?.liquidityUsd);
+        const volume24hUsd = toNum(p?.volume?.h24 ?? p?.volume24hUsd);
+        const marketCapUsd = toNum(p?.fdv ?? p?.marketCap ?? p?.marketCapUsd);
         const itemChain = (p?.chainId || '').toLowerCase();
 
         const item = document.createElement('div');
@@ -1760,6 +1769,11 @@ function setStatus(kind, txt){
             baseName: name,
             quoteSymbol: p?.quoteToken?.symbol || null,
             logoUrl: logo,
+            priceUsd,
+            change24h: chg24,
+            liquidityUsd,
+            volume24hUsd,
+            marketCapUsd,
             hint: 'search'
           });
         };
@@ -1990,7 +2004,21 @@ function setStatus(kind, txt){
     }
 
     // ========= Open pool / token =========
-    async function openPool({chain, pairId, tokenAddress, baseSymbol, baseName, quoteSymbol, logoUrl, hint=''}){
+    async function openPool({
+      chain,
+      pairId,
+      tokenAddress,
+      baseSymbol,
+      baseName,
+      quoteSymbol,
+      logoUrl,
+      priceUsd,
+      change24h,
+      volume24hUsd,
+      liquidityUsd,
+      marketCapUsd,
+      hint=''
+    }){
       if (!pairId && tokenAddress){
         await openByToken(chain, tokenAddress);
         return;
@@ -2035,11 +2063,11 @@ function setStatus(kind, txt){
         baseName: baseName || null,
         logoUrl: logoUrl || null,
         dexId: null,
-        priceUsd: null,
-        change24h: null,
-        volume24hUsd: null,
-        liquidityUsd: null,
-        marketCapUsd: null,
+        priceUsd: priceUsd ?? null,
+        change24h: change24h ?? null,
+        volume24hUsd: volume24hUsd ?? null,
+        liquidityUsd: liquidityUsd ?? null,
+        marketCapUsd: marketCapUsd ?? null,
         gtBaseAddr: null,
         gtQuoteAddr: null,
         gtSideHint: null,
