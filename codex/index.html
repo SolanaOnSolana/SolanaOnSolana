@@ -1269,13 +1269,13 @@ DexGuard DexLike LiveChart v1
         default: return {timeframe:'minute', aggregate:15, sec:900};
       }
     }
-    function gtOhlcvUrl(network, pool, tf, token='base'){
+    function gtOhlcvUrl(network, pool, tf, token='base', before, limitOverride){
       const map = tfToGT(tf);
-      const limit = map.timeframe === 'day' ? 260 : map.timeframe === 'hour' ? 520 : 700;
-      const before = nowSec();
+      const limit = limitOverride || (map.timeframe === 'day' ? 260 : map.timeframe === 'hour' ? 520 : 700);
+      const cutoff = before || nowSec();
       const currency = 'usd';
       // Gecko supports token=base|quote; some pools only have one side priced reliably in USD.
-      return `https://api.geckoterminal.com/api/v2/networks/${encodeURIComponent(network)}/pools/${encodeURIComponent(pool)}/ohlcv/${encodeURIComponent(map.timeframe)}?aggregate=${map.aggregate}&before_timestamp=${before}&limit=${limit}&currency=${currency}&token=${encodeURIComponent(token)}`;
+      return `https://api.geckoterminal.com/api/v2/networks/${encodeURIComponent(network)}/pools/${encodeURIComponent(pool)}/ohlcv/${encodeURIComponent(map.timeframe)}?aggregate=${map.aggregate}&before_timestamp=${cutoff}&limit=${limit}&currency=${currency}&token=${encodeURIComponent(token)}`;
     }
 
     const birdeyeTokenOverviewUrl = (token) => `https://public-api.birdeye.so/defi/token_overview?address=${encodeURIComponent(token)}`;
@@ -1830,6 +1830,11 @@ function setStatus(kind, txt){
       state.tradesMap = new Map();
       state.tradesList = [];
 
+      if (state.tf !== '15m'){
+        state.tf = '15m';
+        el.tfs.forEach(b => b.classList.toggle('active', b.dataset.tf === state.tf));
+      }
+
       setTradesEmpty('loading');
 
       showTokenView(true);
@@ -1964,6 +1969,39 @@ function setStatus(kind, txt){
     // ========= Candles =========
     const candleCache = new Map(); // key -> {t, data}
     const candleCacheKey = (meta, tf) => `${meta.chain}|${meta.pool}|${tf}`;
+    function maxCandlesForTf(tf){
+      switch(tf){
+        case '1m': return 8000;
+        case '5m': return 12000;
+        case '15m': return 20000;
+        case '1h': return 4000;
+        case '4h': return 3000;
+        case '1d': return 2000;
+        default: return 8000;
+      }
+    }
+    async function fetchGTOhlcvPaged(meta, tf, token, {sid, signal}){
+      const map = tfToGT(tf);
+      const limit = map.timeframe === 'day' ? 260 : map.timeframe === 'hour' ? 520 : 700;
+      const max = maxCandlesForTf(tf);
+      let before = nowSec();
+      let out = [];
+      let pages = 0;
+
+      while (out.length < max && pages < 50){
+        pages++;
+        const data = await withBackoff(() => fetchJson(gtOhlcvUrl(meta.gtNet, meta.pool, tf, token, before, limit), {ttl: 8_000, signal}), {tries:2, signal});
+        if (sid !== state.sessionId) return null;
+        const chunk = normalizeGTOhlcv(data);
+        if (!chunk.length) break;
+        out = out.concat(chunk);
+        const oldest = chunk.reduce((min, c) => (min === null || c.time < min ? c.time : min), null);
+        if (!oldest || oldest >= before) break;
+        before = oldest - 1;
+        if (chunk.length < limit) break;
+      }
+      return out;
+    }
 
     async function loadCandles(meta, tf, {sid, signal}){
       setStatus('', 'Loading candles…');
@@ -1981,9 +2019,13 @@ function setStatus(kind, txt){
 
       // 1) GeckoTerminal OHLCV (try base, then quote if base looks empty/zero)
       try{
-        const data = await withBackoff(() => fetchJson(gtOhlcvUrl(meta.gtNet, meta.pool, tf, 'base'), {ttl: 8_000, signal}), {tries:2, signal});
-        if (sid !== state.sessionId) return;
-        candles = normalizeGTOhlcv(data);
+        if (tf === '15m'){
+          candles = await fetchGTOhlcvPaged(meta, tf, 'base', {sid, signal});
+        } else {
+          const data = await withBackoff(() => fetchJson(gtOhlcvUrl(meta.gtNet, meta.pool, tf, 'base'), {ttl: 8_000, signal}), {tries:2, signal});
+          if (sid !== state.sessionId) return;
+          candles = normalizeGTOhlcv(data);
+        }
         if (candles && candles.length){
           const bad = candles.every(c => !c || !isFinite(c.close) || c.close === 0);
           if (bad) candles = null;
@@ -1994,9 +2036,14 @@ function setStatus(kind, txt){
 
       if ((!candles || candles.length < 20)){
         try{
-          const data2 = await withBackoff(() => fetchJson(gtOhlcvUrl(meta.gtNet, meta.pool, tf, 'quote'), {ttl: 8_000, signal}), {tries:2, signal});
-          if (sid !== state.sessionId) return;
-          const c2 = normalizeGTOhlcv(data2);
+          let c2 = null;
+          if (tf === '15m'){
+            c2 = await fetchGTOhlcvPaged(meta, tf, 'quote', {sid, signal});
+          } else {
+            const data2 = await withBackoff(() => fetchJson(gtOhlcvUrl(meta.gtNet, meta.pool, tf, 'quote'), {ttl: 8_000, signal}), {tries:2, signal});
+            if (sid !== state.sessionId) return;
+            c2 = normalizeGTOhlcv(data2);
+          }
           if (c2 && c2.length){
             const bad2 = c2.every(c => !c || !isFinite(c.close) || c.close === 0);
             if (!bad2) candles = c2;
