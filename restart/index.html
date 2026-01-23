@@ -1843,6 +1843,15 @@ function setStatus(kind, txt){
     }
 
     function setTokenUI(meta){
+      try{
+        if (meta){
+          const cachedPool = meta.pool ? state.metaByPool.get(poolKey(meta)) : null;
+          const cachedToken = meta.token ? state.metaByToken.get(tokenKey(meta.chain, meta.token)) : null;
+          mergeMeta(meta, cachedPool);
+          mergeMeta(meta, cachedToken);
+        }
+      }catch(e){}
+
       const logoUrl = meta.logoUrl || '';
       el.tokenLogo.innerHTML = logoUrl ? `<img src="${escapeHtml(logoUrl)}" alt="">` : `<span class="muted mono">DG</span>`;
 
