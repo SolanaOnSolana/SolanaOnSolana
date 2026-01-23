@@ -1386,6 +1386,9 @@ DexGuard DexLike LiveChart v1
       lastPriceByPool: new Map(),
       candleRetryAt: new Map(),
       candleRefreshLock: false,
+      _backfilling: false,
+      _backfillTimer: 0,
+      _rangeSub: false,
     };
 
     
@@ -1432,6 +1435,23 @@ function setStatus(kind, txt){
     }
     function setChartLoading(on){
       el.chartWrap?.classList.toggle('loading', !!on);
+    }
+    function scoreCandles(list, refPrice){
+      if (!list || !list.length || !isFinite(refPrice) || refPrice <= 0) return null;
+      const last = list[list.length-1];
+      const close = last?.close;
+      if (!isFinite(close) || close <= 0) return null;
+      const ratio = Math.max(close, refPrice) / Math.max(1e-12, Math.min(close, refPrice));
+      return ratio;
+    }
+    function pickBestCandles(a, b, refPrice){
+      if (a && a.length && b && b.length){
+        const sa = scoreCandles(a, refPrice);
+        const sb = scoreCandles(b, refPrice);
+        if (sa != null && sb != null) return (sa <= sb) ? a : b;
+        return a.length >= b.length ? a : b;
+      }
+      return (a && a.length) ? a : (b && b.length ? b : null);
     }
     function poolKey(meta){ return `${meta.chain}|${meta.pool}`; }
     function primeChart(meta){
@@ -1498,6 +1518,21 @@ function setStatus(kind, txt){
         wickUpColor: 'rgba(20,241,149,0.70)',
         wickDownColor: 'rgba(255,104,121,0.70)',
       });
+
+      if (!state._rangeSub){
+        state.chart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
+          if (!range || !state.current) return;
+          if (range.from > 10) return;
+          clearTimeout(state._backfillTimer);
+          state._backfillTimer = setTimeout(() => {
+            if (!state.current) return;
+            const sid = state.sessionId;
+            const signal = state.abort?.signal;
+            void backfillCandles(state.current, {sid, signal});
+          }, 200);
+        });
+        state._rangeSub = true;
+      }
 
       // ResizeObserver with rAF throttle + suppress noisy RO errors
       let raf = 0;
@@ -2015,11 +2050,11 @@ function setStatus(kind, txt){
         default: return 8000;
       }
     }
-    async function fetchGTOhlcvPaged(meta, tf, token, {sid, signal}){
+    async function fetchGTOhlcvPaged(meta, tf, token, {sid, signal, beforeStart}){
       const map = tfToGT(tf);
       const limit = map.timeframe === 'day' ? 260 : map.timeframe === 'hour' ? 520 : 700;
       const max = maxCandlesForTf(tf);
-      let before = nowSec();
+      let before = isFinite(beforeStart) ? beforeStart : nowSec();
       let out = [];
       let pages = 0;
 
@@ -2053,11 +2088,9 @@ function setStatus(kind, txt){
       const cached = candleCache.get(ck);
       if (cached && (Date.now()-cached.t) < 25_000){
         state.candles = cached.data.slice();
-        if (state.candles.length >= 20 && !isFlatCandles(state.candles)){
+        if (state.candles.length >= 20){
           applyCandlesToChart(state.candles);
           setChartLoading(false);
-        } else {
-          setChartLoading(true);
         }
         setStatus('live', 'Live (cached)');
         return;
@@ -2067,24 +2100,7 @@ function setStatus(kind, txt){
       let refPrice = refPriceFor(meta);
       const needBothSides = !(isFinite(refPrice) && refPrice > 0);
 
-      function scoreCandles(list){
-        const rp = refPrice;
-        if (!list || !list.length || !isFinite(rp) || rp <= 0) return null;
-        const last = list[list.length-1];
-        const close = last?.close;
-        if (!isFinite(close) || close <= 0) return null;
-        const ratio = Math.max(close, rp) / Math.max(1e-12, Math.min(close, rp));
-        return ratio;
-      }
-      function pickBestCandles(a, b){
-        if (a && a.length && b && b.length){
-          const sa = scoreCandles(a);
-          const sb = scoreCandles(b);
-          if (sa != null && sb != null) return (sa <= sb) ? a : b;
-          return a.length >= b.length ? a : b;
-        }
-        return (a && a.length) ? a : (b && b.length ? b : null);
-      }
+      const pickWithRef = (a, b) => pickBestCandles(a, b, refPrice);
 
       // 1) GeckoTerminal OHLCV (try base, then quote if base looks empty/zero)
       try{
@@ -2096,7 +2112,7 @@ function setStatus(kind, txt){
           if (bad) baseCandles = null;
         }
 
-        if (needBothSides || (!baseCandles || baseCandles.length < 20) || (refPrice && baseCandles && scoreCandles(baseCandles) > 50)){
+        if (needBothSides || (!baseCandles || baseCandles.length < 20) || (refPrice && baseCandles && scoreCandles(baseCandles, refPrice) > 50)){
           quoteCandles = await fetchGTOhlcvPaged(meta, tf, 'quote', {sid, signal});
           if (quoteCandles && quoteCandles.length){
             const bad2 = quoteCandles.every(c => !c || !isFinite(c.close) || c.close === 0);
@@ -2108,7 +2124,7 @@ function setStatus(kind, txt){
           refPrice = await waitForRefPrice(meta, 1400);
         }
 
-        candles = pickBestCandles(baseCandles, quoteCandles);
+        candles = pickWithRef(baseCandles, quoteCandles);
       }catch(e){
         if (!signal.aborted) console.warn('[DexGuard] gt ohlcv failed', e);
       }
@@ -2147,7 +2163,7 @@ function setStatus(kind, txt){
 
       state.candles = dedup;
       candleCache.set(ck, {t:Date.now(), data: dedup.slice()});
-      if (dedup.length >= 20 && !isFlatCandles(dedup)){
+      if (dedup.length >= 20){
         applyCandlesToChart(dedup);
         setChartLoading(false);
       } else {
@@ -2165,6 +2181,42 @@ function setStatus(kind, txt){
       }
 
       setStatus('live', 'Live');
+    }
+
+    async function backfillCandles(meta, {sid, signal}){
+      if (!state.candles || state.candles.length < 20) return;
+      if (state._backfilling) return;
+      state._backfilling = true;
+      try{
+        const oldest = state.candles[0];
+        const before = oldest?.time ? (oldest.time - 1) : null;
+        if (!before) return;
+        const refPrice = refPriceFor(meta);
+        const base = await fetchGTOhlcvPaged(meta, state.tf, 'base', {sid, signal, beforeStart: before});
+        if (sid !== state.sessionId) return;
+        let quote = null;
+        if (!base || base.length < 20 || (refPrice && scoreCandles(base, refPrice) > 50)){
+          quote = await fetchGTOhlcvPaged(meta, state.tf, 'quote', {sid, signal, beforeStart: before});
+          if (sid !== state.sessionId) return;
+        }
+        const older = pickBestCandles(base, quote, refPrice) || [];
+        if (!older.length) return;
+        const merged = older.concat(state.candles);
+        merged.sort((a,b)=> a.time - b.time);
+        const dedup = [];
+        let lastT = 0;
+        for (const c of merged){
+          if (!c || !isFinite(c.time)) continue;
+          if (c.time === lastT) { dedup[dedup.length-1] = c; continue; }
+          lastT = c.time;
+          dedup.push(c);
+        }
+        state.candles = dedup;
+        candleCache.set(candleCacheKey(meta, state.tf), {t:Date.now(), data: dedup.slice()});
+        applyCandlesToChart(dedup);
+      } finally {
+        state._backfilling = false;
+      }
     }
 
     function normalizeGTOhlcv(data){
