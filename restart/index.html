@@ -2183,12 +2183,16 @@ function setStatus(kind, txt){
       el.btnDS.href = dexLink(chain, pairId);
       state.current = meta;
       state._pinToRight = true;
-      resetChartForNewToken(meta);
-      primeChart(meta);
-      startLive(meta, {sid});
-      setTokenUI(meta);
-      rememberMeta(meta);
-      scrollChartIntoView();
+
+      try{
+        resetChartForNewToken(meta);
+        primeChart(meta);
+        startLive(meta, {sid});
+      }finally{
+        try{ setTokenUI(meta); }catch(e){}
+        try{ rememberMeta(meta); }catch(e){}
+        scrollChartIntoView();
+      }
 
       // DexScreener meta
       try{
