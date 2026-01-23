@@ -1370,6 +1370,7 @@ DexGuard DexLike LiveChart v1
       ro: null,
       lastCandle: null,
       candles: [],
+      lastPriceByPool: new Map(),
     };
 
     
@@ -1394,6 +1395,23 @@ DexGuard DexLike LiveChart v1
 function setStatus(kind, txt){
       el.status.className = 'status ' + (kind || '');
       el.statusTxt.textContent = txt || '';
+    }
+    function poolKey(meta){ return `${meta.chain}|${meta.pool}`; }
+    function primeChart(meta){
+      const ck = candleCacheKey(meta, state.tf);
+      const cached = candleCache.get(ck);
+      if (cached && cached.data && cached.data.length){
+        applyCandlesToChart(cached.data);
+        return true;
+      }
+      const hintPrice = (meta && isFinite(meta.priceUsd) && meta.priceUsd > 0)
+        ? meta.priceUsd
+        : state.lastPriceByPool.get(poolKey(meta));
+      if (isFinite(hintPrice) && hintPrice > 0){
+        applyCandlesToChart(generateFlatCandles(hintPrice, state.tf, 220));
+        return true;
+      }
+      return false;
     }
 
     // ========= Chart init =========
@@ -1818,6 +1836,7 @@ function setStatus(kind, txt){
       };
 
       el.btnDS.href = dexLink(chain, pairId);
+      primeChart(meta);
 
       // DexScreener meta
       try{
@@ -1841,6 +1860,8 @@ function setStatus(kind, txt){
       }catch(e){
         if (!signal.aborted) console.warn('[DexGuard] ds meta failed', e);
       }
+
+      if (!state.candles.length) primeChart(meta);
 
       // Gecko pool enrich (optional)
       try{
@@ -2008,6 +2029,7 @@ function setStatus(kind, txt){
         if (state.current && state.current.pool === meta.pool){
           if (state.current.priceUsd == null) state.current.priceUsd = last.close;
         }
+        state.lastPriceByPool.set(poolKey(meta), last.close);
         if (el.stPrice.textContent === '—') el.stPrice.textContent = fmtUSD(last.close);
       }
 
@@ -2068,7 +2090,15 @@ function setStatus(kind, txt){
       }
       try{
         state.series.setData(candles || []);
-        state.chart.timeScale().fitContent();
+        const fit = () => {
+          if (!state.chart || !state.series) return;
+          const w = el.chartWrap.clientWidth|0;
+          const h = el.chartWrap.clientHeight|0;
+          if (w < 40 || h < 160) return;
+          state.chart.timeScale().fitContent();
+        };
+        requestAnimationFrame(fit);
+        setTimeout(fit, 180);
         if (candles && candles.length){
           const last = candles[candles.length-1];
           if (last && isFinite(last.close)) applySeriesPrecision(last.close);
@@ -2223,6 +2253,9 @@ function setStatus(kind, txt){
           if (top && isFinite(top.priceUsd)){
             el.stPrice.textContent = fmtUSD(top.priceUsd);
             growLastCandle(top.priceUsd, top.tsSec || nowSec());
+            if (state.current && state.current.pool === meta.pool){
+              state.lastPriceByPool.set(poolKey(meta), top.priceUsd);
+            }
           }
 
           // reflect data source
