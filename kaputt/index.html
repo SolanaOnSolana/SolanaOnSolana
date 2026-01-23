@@ -1670,6 +1670,7 @@ function setStatus(kind, txt){
             out.push(Object.assign({pairId:null, dexId:null, priceUsd:null, change24h:null, volume24hUsd:null, liquidityUsd:null}, it));
             return;
           }
+
           const pairs = await withBackoff(() => fetchJson(dsTokenPairsUrl(chainId, it.tokenAddress), {ttl: 12_000, signal}), {tries:2, signal});
           if (sid !== state.sessionId) return;
 
@@ -1696,30 +1697,30 @@ function setStatus(kind, txt){
               } else {
                 metaLite = {pairId};
               }
-            }catch(e){ metaLite = {pairId}; }
+            }catch(e){
+              metaLite = {pairId};
+            }
           }
 
           out.push(Object.assign({pairId:null, dexId:null, priceUsd:null, change24h:null, volume24hUsd:null, liquidityUsd:null}, it, metaLite));
-        } finally {
+        }catch(e){
+          // keep trending responsive even if enrichment fails
+          out.push(Object.assign({pairId:null, dexId:null, priceUsd:null, change24h:null, volume24hUsd:null, liquidityUsd:null}, it));
+        }finally{
           active--;
-        }
-        } finally {
-          state._liveRunning = false;
         }
       };
 
-      /* pump function handled inline in idle callback to keep single-file simple */
-
-      // run in idle time
       const idle = window.requestIdleCallback || ((cb)=> setTimeout(()=>cb({timeRemaining:()=>0}), 40));
-      await new Promise(resolve => idle(async ()=> {
-        // pump inline (JS)
-        while (active < 2 && queue.length) runOne();
-        while (active > 0){
-          await sleep(40);
+      await new Promise(resolve => idle(() => {
+        (async ()=>{
           while (active < 2 && queue.length) runOne();
-        }
-        resolve();
+          while (active > 0){
+            await sleep(40);
+            while (active < 2 && queue.length) runOne();
+          }
+          resolve();
+        })();
       }));
 
       // keep order stable-ish
