@@ -2052,26 +2052,14 @@ function setStatus(kind, txt){
       try{
         let baseCandles = null;
         let quoteCandles = null;
-        if (tf === '15m'){
-          baseCandles = await fetchGTOhlcvPaged(meta, tf, 'base', {sid, signal});
-        } else {
-          const data = await withBackoff(() => fetchJson(gtOhlcvUrl(meta.gtNet, meta.pool, tf, 'base'), {ttl: 8_000, signal}), {tries:2, signal});
-          if (sid !== state.sessionId) return;
-          baseCandles = normalizeGTOhlcv(data);
-        }
+        baseCandles = await fetchGTOhlcvPaged(meta, tf, 'base', {sid, signal});
         if (baseCandles && baseCandles.length){
           const bad = baseCandles.every(c => !c || !isFinite(c.close) || c.close === 0);
           if (bad) baseCandles = null;
         }
 
         if (needBothSides || (!baseCandles || baseCandles.length < 20) || (refPrice && baseCandles && scoreCandles(baseCandles) > 50)){
-          if (tf === '15m'){
-            quoteCandles = await fetchGTOhlcvPaged(meta, tf, 'quote', {sid, signal});
-          } else {
-            const data2 = await withBackoff(() => fetchJson(gtOhlcvUrl(meta.gtNet, meta.pool, tf, 'quote'), {ttl: 8_000, signal}), {tries:2, signal});
-            if (sid !== state.sessionId) return;
-            quoteCandles = normalizeGTOhlcv(data2);
-          }
+          quoteCandles = await fetchGTOhlcvPaged(meta, tf, 'quote', {sid, signal});
           if (quoteCandles && quoteCandles.length){
             const bad2 = quoteCandles.every(c => !c || !isFinite(c.close) || c.close === 0);
             if (bad2) quoteCandles = null;
