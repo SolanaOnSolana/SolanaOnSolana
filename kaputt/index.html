@@ -811,6 +811,21 @@ DexGuard DexLike LiveChart v1
       transition: background-color .6s ease;
     }
 
+    /* Row tint like DexScreener (do not tint Age column) */
+    tbody tr.tradeBuy td:not(:nth-child(5)){
+      background: rgba(20,241,149,.055);
+    }
+    tbody tr.tradeSell td:not(:nth-child(5)){
+      background: rgba(255,104,121,.055);
+    }
+    /* Keep a clean hover without breaking tint */
+    tbody tr.tradeBuy:hover td:not(:nth-child(5)){
+      background: rgba(20,241,149,.085);
+    }
+    tbody tr.tradeSell:hover td:not(:nth-child(5)){
+      background: rgba(255,104,121,.085);
+    }
+
   </style>
 </head>
 
@@ -1062,6 +1077,27 @@ DexGuard DexLike LiveChart v1
       const digits = abs >= 1 ? 6 : abs >= 0.01 ? 8 : 10;
       return n.toLocaleString(undefined, {maximumFractionDigits:digits});
     };
+
+    // Trade formatting (DexScreener-like; fixed separators & decimals)
+    const fmtAmt = (n) => {
+      if (n === null || n === undefined || !isFinite(n)) return '—';
+      const abs = Math.abs(n);
+      let digits = 0;
+      if (abs >= 10000) digits = 0;
+      else if (abs >= 1000) digits = 2;
+      else if (abs >= 1) digits = 3;
+      else if (abs >= 0.01) digits = 6;
+      else digits = 8;
+      return n.toLocaleString('en-US', { maximumFractionDigits: digits });
+    };
+
+    const fmtUsd2 = (n) => {
+      if (n === null || n === undefined || !isFinite(n)) return '—';
+      const abs = Math.abs(n);
+      const digits = abs >= 0.01 ? 2 : 4;
+      return '$' + n.toLocaleString('en-US', { minimumFractionDigits: digits, maximumFractionDigits: digits });
+    };
+
     const shortAddr = (a) => {
       if (!a) return '—';
       if (a.length <= 12) return a;
@@ -2235,13 +2271,14 @@ function setStatus(kind, txt){
         if (newIds && newIds.has(t.id)) tr.classList.add('tradeNew');
 
         const sideCls = t.side === 'BUY' ? 'buy' : 'sell';
+        tr.classList.add(t.side === 'BUY' ? 'tradeBuy' : 'tradeSell');
         const txUrl = t.tx ? explorerLink(chain, t.tx, 'tx') : '#';
 
         tr.innerHTML = `
           <td class="center"><span class="side ${sideCls}">${t.side}</span></td>
-          <td class="mono">${t.amount !== null ? fmtNum(t.amount, 6) : '—'}</td>
+          <td class="mono">${t.amount !== null ? fmtAmt(t.amount) : '—'}</td>
           <td class="right mono">${t.priceUsd !== null ? fmtUSD(t.priceUsd) : '—'}</td>
-          <td class="right mono">${t.usd !== null ? fmtUSD(t.usd) : '—'}</td>
+          <td class="right mono">${t.usd !== null ? fmtUsd2(t.usd) : '—'}</td>
           <td class="right mono muted ageCell">${t.tsSec ? timeAgo(t.tsSec) : '—'}</td>
           <td class="mono muted ellipsis" style="max-width:140px">${t.wallet ? escapeHtml(shortAddr(t.wallet)) : '—'}</td>
           <td class="center">${t.tx ? `<a class="linkPill" style="padding:6px 10px; display:inline-flex" href="${escapeHtml(txUrl)}" target="_blank" rel="noreferrer noopener">↗</a>` : '—'}</td>
