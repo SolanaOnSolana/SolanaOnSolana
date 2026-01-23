@@ -114,7 +114,7 @@ DexGuard DexLike LiveChart v1
     }
 
     .brand{
-      display:flex; align-items:center; gap:12px;
+      display:none; align-items:center; gap:12px;
       min-width: 0;
     }
     .logo{
@@ -626,9 +626,9 @@ DexGuard DexLike LiveChart v1
     @media (max-width: 980px){ .chartWrap{height: 380px} }
     @media (max-width: 520px){ .chartWrap{height: 330px} }
     #chart{ position:absolute; inset:0; width:100%; height:100%; }
-    .chartWrap.loading #chart{opacity:0}
+    .chartWrap.loading #chart{opacity:1}
     .chartWrap.loading::after{
-      content: 'Loading chart…';
+      content: '';
       position:absolute;
       inset:0;
       display:flex;
@@ -1472,6 +1472,13 @@ function setStatus(kind, txt){
       }
       return false;
     }
+    const normAddr = (chain, addr) => {
+      if (!addr) return '';
+      const s = String(addr);
+      return (chain === 'solana') ? s : s.toLowerCase();
+    };
+    const addrEq = (chain, a, b) => !!a && !!b && normAddr(chain, a) === normAddr(chain, b);
+
 
     // ========= Chart init =========
     function initChart(){
@@ -1880,6 +1887,7 @@ function setStatus(kind, txt){
       state.lastTradeId = null;
       state.candles = [];
       state.lastCandle = null;
+      state._forceFitNext = true;
       setChartLoading(true);
       el.tradesBody.innerHTML = '';
       el.tradeCount.textContent = '0';
@@ -1930,6 +1938,19 @@ function setStatus(kind, txt){
           meta.baseSymbol = p?.baseToken?.symbol || null;
           meta.baseName = p?.baseToken?.name || null;
           meta.quoteSymbol = p?.quoteToken?.symbol || null;
+
+          // Stable candle side selection:
+          // If user opened via a specific token contract and it matches quoteToken, use quote candles;
+          // otherwise default to base candles (DexScreener pairs are base/quote).
+          const baseAddr = p?.baseToken?.address || null;
+          const quoteAddr = p?.quoteToken?.address || null;
+          meta._baseAddr = baseAddr;
+          meta._quoteAddr = quoteAddr;
+          if (meta.token){
+            meta.sideHint = addrEq(chain, meta.token, quoteAddr) ? 'quote' : 'base';
+          } else {
+            meta.sideHint = 'base';
+          }
           meta.logoUrl = p?.info?.imageUrl || null;
           meta.dexId = p?.dexId || null;
 
@@ -2043,12 +2064,12 @@ function setStatus(kind, txt){
     }
     function maxCandlesForTf(tf){
       switch(tf){
-        case '1m': return 8000;
-        case '5m': return 12000;
-        case '15m': return 20000;
-        case '1h': return 4000;
-        case '4h': return 3000;
-        case '1d': return 2000;
+        case '1m': return 50000;   // ~34 days
+        case '5m': return 60000;   // ~208 days
+        case '15m': return 30000;  // ~312 days
+        case '1h': return 8000;    // ~333 days
+        case '4h': return 6000;    // ~1000 days
+        case '1d': return 3000;
         default: return 8000;
       }
     }
@@ -2101,8 +2122,8 @@ function setStatus(kind, txt){
 
       let candles = null;
       let refPrice = refPriceFor(meta);
-      const needBothSides = !(isFinite(refPrice) && refPrice > 0);
-      const lockedSide = state.candleSideByKey.get(sideKey) || null;
+      const needBothSides = (!((meta && meta.sideHint) ? true : (isFinite(refPrice) && refPrice > 0)));
+      const lockedSide = (meta && meta.sideHint) ? meta.sideHint : (state.candleSideByKey.get(sideKey) || null);
 
       const pickWithRef = (a, b) => pickBestCandles(a, b, refPrice);
 
@@ -2281,18 +2302,41 @@ function setStatus(kind, txt){
         setTimeout(() => { initChart(); if (state.series) applyCandlesToChart(candles); }, 60);
         return;
       }
+      let prevTimeRange = null;
+      try{
+        const ts = state.chart?.timeScale?.();
+        // Preserve the user's current time window when they are not pinned to the right edge.
+        if (ts && !state._forceFitNext && !state._pinToRight){
+          prevTimeRange = ts.getVisibleRange?.() || null;
+        }
+      }catch(e){}
+
       try{
         state.series.setData(candles || []);
-        const fit = () => {
+        const settle = () => {
           if (!state.chart || !state.series) return;
           const w = el.chartWrap.clientWidth|0;
           const h = el.chartWrap.clientHeight|0;
           if (w < 40 || h < 160) return;
-          state.chart.timeScale().resetTimeScale();
-          state.chart.timeScale().fitContent();
+
+          const ts = state.chart.timeScale();
+          try{
+            if (state._forceFitNext){
+              ts.resetTimeScale();
+              ts.fitContent();
+              try{ ts.scrollToRealTime(); }catch(e){}
+              state._forceFitNext = false;
+            } else if (prevTimeRange){
+              // Keep the exact same time window after setData/backfill (prepending shifts indices).
+              ts.setVisibleRange(prevTimeRange);
+            } else if (state._pinToRight){
+              try{ ts.scrollToRealTime(); }catch(e){}
+            }
+          }catch(e){}
         };
-        requestAnimationFrame(fit);
-        setTimeout(fit, 180);
+        requestAnimationFrame(settle);
+        setTimeout(settle, 180);
+
         if (candles && candles.length){
           const last = candles[candles.length-1];
           if (last && isFinite(last.close)) applySeriesPrecision(last.close);
@@ -2482,17 +2526,26 @@ function setStatus(kind, txt){
           el.tradeCount.textContent = String(list.length);
           state.lastTradeId = list[0]?.id || state.lastTradeId;
 
-          // Update header price + grow candle from newest trade
+          // Update header price + grow candle from newest trade (guard against 0 / wrong-scale spikes)
           const top = list[0];
-          if (top && isFinite(top.priceUsd)){
-            el.stPrice.textContent = fmtUSD(top.priceUsd);
-            growLastCandle(top.priceUsd, top.tsSec || nowSec());
-            if (state.current && state.current.pool === meta.pool){
-              state.lastPriceByPool.set(poolKey(meta), top.priceUsd);
+          if (top && isFinite(top.priceUsd) && top.priceUsd > 0){
+            const px = top.priceUsd;
+            const ref = refPriceFor(meta);
+            let ok = true;
+            if (isFinite(ref) && ref > 0){
+              const ratio = Math.max(px, ref) / Math.max(1e-12, Math.min(px, ref));
+              // If a source returns the wrong side (e.g. SOL price instead of token price), ignore that tick.
+              if (ratio > 200) ok = false;
+            }
+            if (ok){
+              el.stPrice.textContent = fmtUSD(px);
+              growLastCandle(px, top.tsSec || nowSec());
+              if (state.current && state.current.pool === meta.pool){
+                state.lastPriceByPool.set(poolKey(meta), px);
+              }
             }
           }
-
-          if (shouldRetryCandles(meta)){
+if (shouldRetryCandles(meta)){
             void refreshCandles(meta, {sid, signal: state.abort?.signal, reason:'live retry'});
           }
 
@@ -2734,6 +2787,7 @@ function setStatus(kind, txt){
       stopLive();
       state.lastCandle = null;
       state.candles = [];
+      state._forceFitNext = true;
       setStatus('', 'Switching timeframe…');
 
       await loadCandles(state.current, tf, {sid, signal});
