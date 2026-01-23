@@ -801,8 +801,8 @@ DexGuard DexLike LiveChart v1
   
     /* Trades: subtle "new row" animation (no overlays) */
     @keyframes dgTradeIn{
-      from{ opacity:0; transform: translateY(-6px); background-color: rgba(20,241,149,.10); }
-      to  { opacity:1; transform: translateY(0px); background-color: transparent; }
+      from{ opacity:.55; background-color: rgba(20,241,149,.10); }
+      to  { opacity:1; background-color: transparent; }
     }
     tr.tradeNew{
       animation: dgTradeIn .55s ease both;
@@ -1215,6 +1215,8 @@ DexGuard DexLike LiveChart v1
     const dsSearchUrl = (q) => `https://api.dexscreener.com/latest/dex/search?q=${encodeURIComponent(q)}`;
     const dsPairsUrl = (chainId, pairId) => `https://api.dexscreener.com/latest/dex/pairs/${encodeURIComponent(chainId)}/${encodeURIComponent(pairId)}`;
     const dsTokenPairsUrl = (chainId, token) => `https://api.dexscreener.com/token-pairs/v1/${encodeURIComponent(chainId)}/${encodeURIComponent(token)}`;
+
+    const dsTradesUrl = (chainId, pairId, limit=60) => `https://io.dexscreener.com/dex/trades/v1/${encodeURIComponent(chainId)}/${encodeURIComponent(pairId)}?limit=${limit}&ts=${Date.now()}`;
     const dsBoostTopUrl = () => `https://api.dexscreener.com/token-boosts/top/v1`;
     const dsBoostLatestUrl = () => `https://api.dexscreener.com/token-boosts/latest/v1`;
 
@@ -1334,7 +1336,26 @@ DexGuard DexLike LiveChart v1
       candles: [],
     };
 
-    function setStatus(kind, txt){
+    
+
+    function inferPriceFormat(price){
+      if (!isFinite(price) || price <= 0) return {precision: 2, minMove: 0.01};
+      const abs = Math.abs(price);
+      // Target ~2 significant decimals for >=1, more for micro prices (up to 12)
+      const log10 = Math.floor(Math.log10(abs));
+      const precision = clamp((log10 >= 0) ? 6 : (-log10 + 4), 2, 12);
+      const minMove = Math.pow(10, -precision);
+      return {precision, minMove};
+    }
+
+    function applySeriesPrecision(price){
+      if (!state.series) return;
+      const pf = inferPriceFormat(price);
+      try{
+        state.series.applyOptions({ priceFormat: { type: 'price', precision: pf.precision, minMove: pf.minMove } });
+      }catch(e){}
+    }
+function setStatus(kind, txt){
       el.status.className = 'status ' + (kind || '');
       el.statusTxt.textContent = txt || '';
     }
@@ -1378,6 +1399,7 @@ DexGuard DexLike LiveChart v1
       });
 
       state.series = state.chart.addCandlestickSeries({
+        priceFormat: { type:'price', precision: 8, minMove: 0.00000001 },
         upColor: 'rgba(20,241,149,0.88)',
         downColor: 'rgba(255,104,121,0.82)',
         borderUpColor: 'rgba(20,241,149,0.88)',
@@ -1645,6 +1667,9 @@ DexGuard DexLike LiveChart v1
         } finally {
           active--;
         }
+        } finally {
+          state._liveRunning = false;
+        }
       };
 
       /* pump function handled inline in idle callback to keep single-file simple */
@@ -1753,6 +1778,9 @@ DexGuard DexLike LiveChart v1
         volume24hUsd: null,
         liquidityUsd: null,
         marketCapUsd: null,
+        } finally {
+          state._liveRunning = false;
+        }
       };
 
       el.btnDS.href = dexLink(chain, pairId);
@@ -2007,6 +2035,10 @@ DexGuard DexLike LiveChart v1
       try{
         state.series.setData(candles || []);
         state.chart.timeScale().fitContent();
+        if (candles && candles.length){
+          const last = candles[candles.length-1];
+          if (last && isFinite(last.close)) applySeriesPrecision(last.close);
+        }
       }catch(e){
         console.warn('[DexGuard] setData failed', e);
       }
@@ -2031,21 +2063,29 @@ DexGuard DexLike LiveChart v1
       stopLive();
       state.lastTradeId = null;
 
+      // fresh trade cache per pool
+      state.tradesMap = new Map();
+      state.tradesList = [];
+
       const run = async () => {
         if (sid !== state.sessionId) return;
         if (!state.current || state.current.pool !== meta.pool) return;
+
+        if (state._liveRunning) return;
+        state._liveRunning = true;
 
         const hidden = document.visibilityState === 'hidden';
         const interval = hidden ? settings.pollHiddenMs : settings.pollLiveMs;
 
         try{
           await tickLive(meta, {sid});
-          setStatus('live', 'Live');
+          setStatus(hidden ? 'warn' : 'live', hidden ? 'Live (paused)' : 'Live');
         }catch(e){
           const msg = String(e && e.message || e);
-          if (msg.includes('AbortError')) return;
-          console.warn('[DexGuard] live tick failed', e);
-          setStatus('warn', hidden ? 'Live (paused)' : 'Live (degraded)');
+          if (!msg.includes('AbortError')) console.warn('[DexGuard] live tick failed', e);
+          setStatus(hidden ? 'warn' : 'warn', hidden ? 'Live (paused)' : 'Live (degraded)');
+        }finally{
+          state._liveRunning = false;
         }
 
         // ensure timer uses correct interval (rebuild if changed)
@@ -2056,27 +2096,27 @@ DexGuard DexLike LiveChart v1
         }
       };
 
+      // start immediately, then poll
       run();
-      state.liveTimer = setInterval(run, settings.pollLiveMs);
-      state.liveTimer._ms = settings.pollLiveMs;
+      const initial = (document.visibilityState === 'hidden') ? settings.pollHiddenMs : settings.pollLiveMs;
+      state.liveTimer = setInterval(run, initial);
+      state.liveTimer._ms = initial;
 
-      document.removeEventListener('visibilitychange', state._onVis || (()=>{}));
-      state._onVis = () => {
-        if (sid !== state.sessionId) return;
-        if (state.liveTimer){
-          clearInterval(state.liveTimer);
-          state.liveTimer = null;
-        }
-        const ms = document.visibilityState === 'hidden' ? settings.pollHiddenMs : settings.pollLiveMs;
-        state.liveTimer = setInterval(run, ms);
-        state.liveTimer._ms = ms;
-      };
+      // Visibility change: trigger an immediate tick; interval adjusts inside run
+      state._onVis = () => { run(); };
       document.addEventListener('visibilitychange', state._onVis, {passive:true});
+
+      // Keep ages ticking even between polls
+      startAgeTicker();
     }
 
     async function tickLive(meta, {sid}){
-      // GeckoTerminal trades (via optional Proxy if needed). UI stays quiet; only console logs on issues.
-      const url = gtTradesUrl(meta.gtNet, meta.pool);
+      // Preferred: DexScreener live trades (matches what you see on DexScreener UI).
+      // Fallback: GeckoTerminal trades.
+      const urls = [
+        dsTradesUrl(meta.dsChain, meta.pool, 60),
+        gtTradesUrl(meta.gtNet, meta.pool),
+      ];
 
       const ctrl = new AbortController();
       const signal = ctrl.signal;
@@ -2086,17 +2126,37 @@ DexGuard DexLike LiveChart v1
       }, 250);
 
       try{
-        const data = await withBackoff(() => fetchJson(url, {ttl: 0, signal}), {tries:2, signal});
+        let trades = null;
+        let used = '';
+        for (const u of urls){
+          try{
+            const data = await withBackoff(() => fetchJson(u, {ttl: 0, signal}), {tries:2, signal});
+            if (sid !== state.sessionId) return;
+
+            if (u.includes('dex/trades/v1')){
+              trades = normalizeDSTrades(data);
+              used = 'ds';
+            } else {
+              trades = normalizeGTTrades(data);
+              used = 'gt';
+            }
+
+            if (Array.isArray(trades) && trades.length) break;
+          }catch(e){
+            const msg = String(e && e.message || e);
+            if (msg.includes('AbortError')) throw e;
+            // try next source quietly
+          }
+        }
+
         if (sid !== state.sessionId) return;
 
-        let trades = normalizeGTTrades(data);
         if (Array.isArray(trades) && trades.length){
-          // Sort by timestamp desc (fallback: id)
+          // Sort by timestamp desc (fallback: id). Newest always on top.
           trades = trades
             .filter(t => t && t.id)
             .sort((a,b)=> ((b.tsSec||0)-(a.tsSec||0)) || String(b.id).localeCompare(String(a.id)));
 
-          // Ensure state containers exist
           if (!state.tradesMap) state.tradesMap = new Map();
 
           const newIds = new Set();
@@ -2105,12 +2165,10 @@ DexGuard DexLike LiveChart v1
               state.tradesMap.set(t.id, t);
               newIds.add(t.id);
             } else {
-              // refresh values (in case API adds fields later)
               state.tradesMap.set(t.id, {...state.tradesMap.get(t.id), ...t});
             }
           }
 
-          // Build list (max 60), prune map
           const list = Array.from(state.tradesMap.values())
             .sort((a,b)=> ((b.tsSec||0)-(a.tsSec||0)) || String(b.id).localeCompare(String(a.id)))
             .slice(0, 60);
@@ -2121,12 +2179,7 @@ DexGuard DexLike LiveChart v1
             if (!keep.has(id)) state.tradesMap.delete(id);
           }
 
-          if (list.length === 0){
-            if (el.tradesBody.children.length === 0) el.tradesEmpty.style.display = '';
-          } else {
-            el.tradesEmpty.style.display = 'none';
-          }
-
+          el.tradesEmpty.style.display = list.length ? 'none' : '';
           renderTradesTable(list, meta.chain, newIds);
           el.tradeCount.textContent = String(list.length);
           state.lastTradeId = list[0]?.id || state.lastTradeId;
@@ -2138,7 +2191,9 @@ DexGuard DexLike LiveChart v1
             growLastCandle(top.priceUsd, top.tsSec || nowSec());
           }
 
-          // Start age ticker once (updates "Age" every second)
+          // reflect data source
+          if (used) el.statusTxt.textContent = (document.visibilityState === 'hidden') ? 'Live (paused)' : 'Live';
+
           startAgeTicker();
         } else {
           if (el.tradesBody.children.length === 0) el.tradesEmpty.style.display = '';
@@ -2173,6 +2228,7 @@ DexGuard DexLike LiveChart v1
 
       for (const t of list){
         const tr = document.createElement('tr');
+      if (t.tsSec) tr.dataset.ts = String(t.tsSec);
         tr.dataset.id = t.id;
         if (t.tsSec) tr.dataset.ts = String(t.tsSec);
 
@@ -2261,8 +2317,52 @@ DexGuard DexLike LiveChart v1
       return out;
     }
 
+    function normalizeDSTrades(data){
+      // DexScreener trades v1 (io.dexscreener.com) usually returns an array of trade objects.
+      const arr = Array.isArray(data) ? data : (data?.trades || data?.data || []);
+      const out = [];
+      for (const r of (arr || [])){
+        if (!r) continue;
+        const sideRaw = (r.type || r.side || r.kind || r.tradeType || '').toString().toLowerCase();
+        const isBuy = sideRaw.includes('buy');
+
+        const amount = toNum(r.amount ?? r.baseAmount ?? r.volume ?? r.baseVolume ?? r.tokenAmount ?? r.qty);
+        const priceUsd = toNum(r.priceUsd ?? r.price_usd ?? r.price ?? r.executionPriceUsd ?? r.execution_price_usd);
+        const usd = toNum(r.usd ?? r.volumeUsd ?? r.volume_usd ?? r.valueUsd ?? r.value_usd);
+
+        // timestamp could be ms or sec
+        let ts = r.timestamp ?? r.time ?? r.date ?? r.createdAt ?? r.created_at ?? null;
+        let tsSec = null;
+        if (typeof ts === 'string'){
+          const parsed = Date.parse(ts);
+          if (isFinite(parsed)) tsSec = Math.floor(parsed/1000);
+        } else if (isFinite(ts)){
+          tsSec = ts > 1e12 ? Math.floor(ts/1000) : Math.floor(ts);
+        }
+
+        const tx = (r.txHash || r.tx_hash || r.transactionHash || r.transaction_hash || r.hash || r.signature || '').toString();
+        const wallet = (r.maker || r.owner || r.trader || r.from || r.fromAddress || r.from_address || '').toString();
+
+        const id = (r.id || r.tradeId || r.trade_id || '') || tx || `${tsSec||0}_${priceUsd||0}_${usd||0}_${amount||0}_${sideRaw}`;
+
+        out.push({
+          id,
+          side: isBuy ? 'BUY' : 'SELL',
+          amount: amount !== null ? amount : null,
+          priceUsd: priceUsd !== null ? priceUsd : null,
+          usd: usd !== null ? usd : (priceUsd !== null && amount !== null ? priceUsd * amount : null),
+          tsSec,
+          wallet: wallet || null,
+          tx: tx || null
+        });
+      }
+      return out;
+    }
+
+
     function addTradeRow(t, chain){
       const tr = document.createElement('tr');
+      if (t.tsSec) tr.dataset.ts = String(t.tsSec);
       const sideCls = t.side === 'BUY' ? 'buy' : 'sell';
       const txUrl = t.tx ? explorerLink(chain, t.tx, 'tx') : '#';
       tr.innerHTML = `
@@ -2270,7 +2370,7 @@ DexGuard DexLike LiveChart v1
         <td class="mono">${t.amount !== null ? fmtNum(t.amount, 6) : '—'}</td>
         <td class="right mono">${t.priceUsd !== null ? fmtUSD(t.priceUsd) : '—'}</td>
         <td class="right mono">${t.usd !== null ? fmtUSD(t.usd) : '—'}</td>
-        <td class="right mono muted">${t.tsSec ? timeAgo(t.tsSec) : '—'}</td>
+        <td class="right mono muted ageCell">${t.tsSec ? timeAgo(t.tsSec) : '—'}</td>
         <td class="mono muted ellipsis" style="max-width:140px">${t.wallet ? escapeHtml(shortAddr(t.wallet)) : '—'}</td>
         <td class="center">${t.tx ? `<a class="linkPill" style="padding:6px 10px; display:inline-flex" href="${escapeHtml(txUrl)}" target="_blank" rel="noreferrer noopener">↗</a>` : '—'}</td>
       `;
@@ -2285,6 +2385,7 @@ DexGuard DexLike LiveChart v1
 
     function growLastCandle(price, tradeTsSec){
       if (!state.series) return;
+      if (isFinite(price)) applySeriesPrecision(price);
       const {sec} = tfToGT(state.tf);
       const t = isFinite(tradeTsSec) ? Math.floor(tradeTsSec) : nowSec();
       const bucket = Math.floor(t / sec) * sec;
