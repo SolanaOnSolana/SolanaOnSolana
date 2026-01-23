@@ -1446,10 +1446,11 @@ function setStatus(kind, txt){
     }
     function pickBestCandles(a, b, refPrice){
       if (a && a.length && b && b.length){
+        if (!isFinite(refPrice) || refPrice <= 0) return a;
         const sa = scoreCandles(a, refPrice);
         const sb = scoreCandles(b, refPrice);
         if (sa != null && sb != null) return (sa <= sb) ? a : b;
-        return a.length >= b.length ? a : b;
+        return a;
       }
       return (a && a.length) ? a : (b && b.length ? b : null);
     }
@@ -2164,8 +2165,18 @@ function setStatus(kind, txt){
       state.candles = dedup;
       candleCache.set(ck, {t:Date.now(), data: dedup.slice()});
       if (dedup.length >= 20){
-        applyCandlesToChart(dedup);
-        setChartLoading(false);
+        const ref = refPriceFor(meta);
+        const lastC = dedup[dedup.length-1];
+        const ratio = (ref && lastC && isFinite(lastC.close))
+          ? Math.max(lastC.close, ref) / Math.max(1e-12, Math.min(lastC.close, ref))
+          : null;
+        if (ratio != null && ratio > 50 && shouldRetryCandles(meta)){
+          setChartLoading(true);
+          void refreshCandles(meta, {sid, signal, reason:'scale retry'});
+        } else {
+          applyCandlesToChart(dedup);
+          setChartLoading(false);
+        }
       } else {
         setChartLoading(true);
       }
@@ -2314,8 +2325,14 @@ function setStatus(kind, txt){
       const key = poolKey(meta);
       const last = state.candleRetryAt.get(key) || 0;
       if ((Date.now() - last) < 20_000) return false;
+      const refPrice = refPriceFor(meta);
+      const lastCandle = state.candles?.[state.candles.length-1];
+      const ratio = (refPrice && lastCandle && isFinite(lastCandle.close))
+        ? Math.max(lastCandle.close, refPrice) / Math.max(1e-12, Math.min(lastCandle.close, refPrice))
+        : null;
       const flat = isFlatCandles(state.candles);
-      if (!flat) return false;
+      const mismatched = ratio != null && ratio > 50;
+      if (!flat && !mismatched) return false;
       state.candleRetryAt.set(key, Date.now());
       return true;
     }
