@@ -912,7 +912,893 @@ DexGuard DexLike LiveChart v1
       background: rgba(255,104,121,.085);
     }
 
-  </style>
+  
+
+/* =========================================================
+   Ultra Visual Overhaul (Desktop-first) — PATCH ONLY
+   Futuristic trading terminal design system (tokens + polish)
+   No DOM/ID changes. Minimal CSS overrides. Performance-safe.
+   ========================================================= */
+
+:root{
+  /* Design tokens */
+  --bg: #05060a;
+  --panel: rgba(255,255,255,.045);
+  --glass: rgba(12,14,20,.64);
+  --stroke: rgba(255,255,255,.10);
+  --text: rgba(255,255,255,.92);
+  --muted: rgba(255,255,255,.64);
+  --accent: #7c5cff;
+  --good: rgba(45, 212, 191, .95);
+  --bad: rgba(251, 113, 133, .92);
+  --shadow: 0 22px 70px rgba(0,0,0,.55);
+  --radius: 18px;
+
+  /* Back-compat mapping (keeps existing CSS stable) */
+  --panel2: rgba(255,255,255,.07);
+  --muted2: rgba(255,255,255,.52);
+  --warn: rgba(255,205,98,.86);
+  --radius2: var(--radius);
+  --shadowSoft: 0 14px 44px rgba(0,0,0,.40);
+  --ring: 0 0 0 6px rgba(124, 92, 255, .10);
+}
+
+/* Global typography + rendering */
+html, body{
+  background: var(--bg);
+  color: var(--text);
+}
+body{
+  letter-spacing: .01em;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: geometricPrecision;
+}
+
+/* Layered terminal backdrop (lightweight; no blur spam) */
+body::before{
+  background:
+    radial-gradient(1200px 760px at 10% 8%, rgba(124,92,255,.22), transparent 62%),
+    radial-gradient(1050px 720px at 92% 14%, rgba(45,212,191,.16), transparent 60%),
+    radial-gradient(920px 680px at 78% 92%, rgba(0,209,255,.10), transparent 60%),
+    radial-gradient(760px 520px at 18% 86%, rgba(251,113,133,.08), transparent 60%),
+    linear-gradient(180deg, rgba(255,255,255,.03), transparent 22%, rgba(0,0,0,.22));
+}
+/* Subtle grain (cheap + tasteful) */
+body::after{
+  content:"";
+  position:fixed;
+  inset:0;
+  pointer-events:none;
+  z-index:-1;
+  opacity:.10;
+  background-image:
+    repeating-linear-gradient(0deg, rgba(255,255,255,.08) 0px, rgba(255,255,255,.08) 1px, transparent 1px, transparent 3px),
+    repeating-linear-gradient(90deg, rgba(255,255,255,.05) 0px, rgba(255,255,255,.05) 1px, transparent 1px, transparent 4px);
+  mix-blend-mode: overlay;
+}
+
+/* Consistent radii + spacing rhythm */
+.card{ background: transparent; border: 0; box-shadow: none; }
+.wrap{ max-width: var(--max); }
+.panel,
+.modal,
+.stat,
+.trend,
+.result,
+.bigLogo,
+.chartWrap,
+.tableWrap{
+  border-radius: var(--radius);
+}
+
+/* Glass panels */
+.panel{
+  background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+  border: 1px solid var(--stroke);
+  box-shadow: 0 12px 40px rgba(0,0,0,.30);
+}
+@supports (backdrop-filter: blur(1px)){
+  .panel{
+    background: linear-gradient(180deg, rgba(12,14,20,.62), rgba(12,14,20,.46));
+    backdrop-filter: blur(10px);
+  }
+}
+.panelHead{
+  padding: 14px 14px 12px;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+}
+.title{
+  font-weight: 900;
+  letter-spacing: .02em;
+}
+.hint{
+  color: var(--muted);
+}
+.kbd{
+  border: 1px solid rgba(255,255,255,.14);
+  background: rgba(0,0,0,.22);
+  border-radius: 999px;
+}
+
+/* Header: terminal bar */
+.header{
+  border-bottom: 1px solid rgba(255,255,255,.10);
+  background: rgba(10,12,18,.55);
+  box-shadow: 0 10px 30px rgba(0,0,0,.35);
+}
+@supports (backdrop-filter: blur(1px)){
+  .header{ backdrop-filter: blur(10px); }
+}
+.logo{
+  border: 1px solid rgba(255,255,255,.14);
+  background: radial-gradient(120% 120% at 20% 20%, rgba(124,92,255,.35), rgba(45,212,191,.18) 55%, rgba(255,255,255,.06));
+  box-shadow: 0 14px 44px rgba(0,0,0,.45);
+}
+.pill{
+  border: 1px solid rgba(255,255,255,.14);
+  background: rgba(0,0,0,.25);
+}
+
+/* Inputs + buttons — aligned, consistent height */
+.btn, .input, .search{
+  height: 40px;
+  border-radius: var(--radius);
+}
+.search{
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(0,0,0,.22);
+}
+.search input,
+.input{
+  font-variant-numeric: tabular-nums;
+}
+.input{
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(0,0,0,.22);
+}
+.btn{
+  padding: 0 14px;
+  border: 1px solid rgba(255,255,255,.14);
+  background: rgba(255,255,255,.06);
+  box-shadow: 0 8px 20px rgba(0,0,0,.25);
+}
+.btn:hover{
+  border-color: rgba(255,255,255,.22);
+  background: rgba(255,255,255,.10);
+}
+.btn:active{ transform: translateY(0px) scale(.99); }
+.btn.grad{
+  background: linear-gradient(135deg, rgba(124,92,255,.95), rgba(45,212,191,.85));
+  border-color: rgba(255,255,255,.18);
+  box-shadow: 0 12px 28px rgba(124,92,255,.18), 0 10px 22px rgba(45,212,191,.12);
+}
+.btn.ghost{
+  background: rgba(0,0,0,.18);
+}
+
+/* Tabs / TF buttons: terminal toggles */
+.tab, .tf{
+  height: 34px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(0,0,0,.22);
+}
+.tab.active, .tf.active{
+  border-color: rgba(124,92,255,.45);
+  box-shadow: 0 0 0 4px rgba(124,92,255,.10);
+  background: linear-gradient(180deg, rgba(124,92,255,.22), rgba(0,0,0,.22));
+}
+
+/* Token header */
+.tokenHeader{
+  border-bottom: 1px solid rgba(255,255,255,.08);
+}
+.sym{
+  font-size: 18px;
+  font-weight: 1000;
+}
+.addr{
+  color: var(--muted);
+}
+.linkPill{
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(0,0,0,.22);
+}
+.linkPill:hover{
+  border-color: rgba(255,255,255,.20);
+}
+
+/* Stats: clearer hierarchy */
+.statsGrid{ gap: 10px; }
+.stat{
+  background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(0,0,0,.22));
+  border: 1px solid rgba(255,255,255,.10);
+}
+@supports (backdrop-filter: blur(1px)){
+  .stat{ background: rgba(12,14,20,.46); backdrop-filter: blur(8px); }
+}
+.stat .k{
+  color: rgba(255,255,255,.58);
+}
+.stat .v{
+  font-variant-numeric: tabular-nums;
+  letter-spacing: .005em;
+}
+
+/* Chart panel: premium frame */
+.chartWrap{
+  border: 1px solid rgba(255,255,255,.10);
+  background: radial-gradient(120% 120% at 50% 0%, rgba(124,92,255,.10), transparent 55%),
+              radial-gradient(120% 120% at 0% 100%, rgba(45,212,191,.08), transparent 55%),
+              rgba(0,0,0,.20);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.06);
+}
+
+/* Tables: tabular numbers + alignment */
+.table{
+  font-variant-numeric: tabular-nums;
+}
+.table th{
+  color: rgba(255,255,255,.70);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  font-size: 10px;
+}
+.table td{
+  border-bottom: 1px solid rgba(255,255,255,.06);
+}
+.table th.right, .table td.right{ text-align: right; }
+.table th.center, .table td.center{ text-align: center; }
+.table tbody td:nth-child(2),
+.table tbody td:nth-child(3),
+.table tbody td:nth-child(4),
+.table tbody td:nth-child(5){
+  text-align: right;
+}
+
+/* Side pills */
+.side.buy{ color: var(--good); }
+.side.sell{ color: var(--bad); }
+
+/* Status / microcopy */
+.status{ border: 1px solid rgba(255,255,255,.10); background: rgba(0,0,0,.22); }
+.muted2{ color: var(--muted2); }
+
+/* Modal: same system */
+.modalBack{ background: rgba(0,0,0,.65); }
+.modal{
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(12,14,20,.72);
+  box-shadow: var(--shadow);
+  border-radius: calc(var(--radius) + 6px);
+}
+@supports (backdrop-filter: blur(1px)){
+  .modal{ backdrop-filter: blur(12px); }
+}
+
+/* Toast: premium */
+.toast{
+  border: 1px solid rgba(255,255,255,.14);
+  background: rgba(12,14,20,.72);
+  box-shadow: var(--shadowSoft);
+}
+
+
+
+/* =========================================================
+   STEP2 — CEX(DEX Topbar) PATCH ONLY
+   - Hide: Settings/Clear/Open-on-DexScreener in UI
+   - Add: X icon (top-right) + optional status pill
+   - Build: Topbar layout (brand | command search | right actions)
+   - Settings remains functional via Shift+S; button shows only in ?debug=1
+   ========================================================= */
+
+#btnClear, #btnDS { display: none !important; }
+#btnSettings { display: none; } /* JS will reveal in ?debug=1 */
+
+.headerRow{
+  grid-template-columns: auto 1fr auto;
+  gap: 14px;
+  align-items: center;
+}
+.brand{
+  display:flex !important;
+  min-width: 240px;
+}
+.brandTop .pill,
+#subline{
+  display:none !important;
+}
+
+.topCenter{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  min-width:0;
+}
+.searchWrap.cmdSearch{
+  width: min(760px, 100%);
+  justify-content:center;
+}
+.searchWrap.cmdSearch .search{
+  flex:1;
+  min-width: 260px;
+}
+.searchWrap.cmdSearch .search input{
+  background: rgba(0,0,0,.26);
+  border: 1px solid rgba(255,255,255,.14);
+  box-shadow: 0 10px 26px rgba(0,0,0,.26);
+}
+.searchWrap.cmdSearch .search input::placeholder{
+  color: rgba(255,255,255,.46);
+}
+.searchWrap.cmdSearch .searchIcon{
+  opacity:.85;
+}
+.searchWrap.cmdSearch #btnSearch{
+  min-width: 104px;
+}
+
+.actions{
+  gap: 10px;
+  align-items: center;
+  flex-wrap: nowrap;
+}
+.xBtn{
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border-radius: 12px;
+  display:inline-flex;
+}
+.xBtn svg{
+  width: 18px;
+  height: 18px;
+  display:block;
+}
+.statusPill{
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(0,0,0,.18);
+  box-shadow: 0 10px 22px rgba(0,0,0,.22);
+}
+.statusPill b{
+  font-size: 10px;
+  letter-spacing: .10em;
+}
+
+/* Toolbar becomes a compact "secondary rail" (chains only) */
+.toolbar{
+  justify-content: flex-start;
+  gap: 12px;
+}
+.toolbar .chainTabs{
+  flex: 0 0 auto;
+}
+
+/* Responsive: keep topbar usable without layout break */
+@media (max-width: 980px){
+  .headerRow{
+    grid-template-columns: 1fr;
+    gap: 10px;
+    padding: 10px 0;
+  }
+  .brand{min-width:0}
+  .topCenter{justify-content:stretch}
+  .searchWrap.cmdSearch{width:100%}
+  .actions{justify-content: flex-start; flex-wrap: wrap}
+}
+
+/* ===== DexGuard PATCH: Command Search Dropdown (STEP3) ===== */
+.grid[data-cmd="1"]{ grid-template-columns: 1fr !important; }
+.grid[data-cmd="1"] section[aria-label="Search results"]{ display:none !important; }
+
+.searchWrap.cmdSearch{ position: relative; }
+#cmdDropdown{
+  position:absolute;
+  top: calc(100% + 10px);
+  left: 0;
+  right: 0;
+  z-index: 1200;
+  display:none;
+}
+#cmdDropdown.show{ display:block; }
+#cmdDropdown .cmdPanel{
+  border-radius: calc(var(--radius) + 4px);
+  border: 1px solid rgba(255,255,255,.14);
+  background: rgba(6,10,16,.72);
+  box-shadow: 0 24px 70px rgba(0,0,0,.55);
+  overflow: hidden;
+}
+#cmdDropdown .cmdList{
+  max-height: 356px; /* ~8 rows */
+  overflow:auto;
+  scrollbar-gutter: stable;
+}
+#cmdDropdown .cmdRow{
+  display:grid;
+  grid-template-columns: 36px 1fr auto;
+  gap: 12px;
+  align-items:center;
+  padding: 10px 12px;
+  cursor: pointer;
+  user-select: none;
+}
+#cmdDropdown .cmdRow + .cmdRow{ border-top: 1px solid rgba(255,255,255,.06); }
+#cmdDropdown .cmdRow:hover{ background: rgba(255,255,255,.06); }
+#cmdDropdown .cmdRow.active{ background: rgba(104,195,255,.10); }
+#cmdDropdown .cmdLogo{
+  width: 28px;
+  height: 28px;
+  border-radius: 10px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border: 1px solid rgba(255,255,255,.10);
+  background: rgba(0,0,0,.18);
+  overflow:hidden;
+}
+#cmdDropdown .cmdLogo img{ width: 100%; height: 100%; object-fit: cover; display:block; }
+#cmdDropdown .cmdMain{ min-width:0; }
+#cmdDropdown .cmdTop{
+  display:flex;
+  align-items:center;
+  gap: 10px;
+  min-width:0;
+}
+#cmdDropdown .cmdName{
+  font-weight: 650;
+  letter-spacing: .01em;
+  min-width:0;
+}
+#cmdDropdown .cmdSym{ opacity:.72; font-weight: 600; }
+#cmdDropdown .cmdSub{
+  margin-top: 2px;
+  font-size: 12px;
+  color: rgba(255,255,255,.56);
+  display:flex;
+  gap: 8px;
+  min-width:0;
+}
+#cmdDropdown .cmdSub .addr{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; }
+#cmdDropdown .cmdSub .sep{ opacity:.4; }
+#cmdDropdown .cmdMeta{
+  display:flex;
+  align-items:center;
+  gap: 10px;
+  justify-content:flex-end;
+  text-align:right;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+#cmdDropdown .cmdMeta .px{
+  font-weight: 650;
+}
+#cmdDropdown .cmdMeta .chg.good{ color: var(--good); }
+#cmdDropdown .cmdMeta .chg.bad{ color: var(--bad); }
+#cmdDropdown .cmdBadge{
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.10);
+  background: rgba(0,0,0,.18);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+#cmdDropdown .cmdFooter{
+  display:flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 12px;
+  border-top: 1px solid rgba(255,255,255,.08);
+  font-size: 12px;
+  color: rgba(255,255,255,.56);
+  background: rgba(0,0,0,.14);
+}
+#cmdDropdown .cmdFooter kbd{
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(0,0,0,.18);
+
+#cmdDropdown .cmdHead{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+  background: rgba(0,0,0,.14);
+}
+#cmdDropdown .cmdHeadTitle{
+  font-size: 11px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,.70);
+  font-weight: 1000;
+}
+#cmdDropdown .cmdClearRecents{
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(0,0,0,.18);
+  color: rgba(255,255,255,.82);
+  font-weight: 900;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  font-size: 10px;
+  cursor:pointer;
+}
+#cmdDropdown .cmdClearRecents:hover{
+  border-color: rgba(255,255,255,.20);
+  background: rgba(255,255,255,.06);
+}
+}
+#cmdDropdown .skel .bar{
+  height: 10px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(255,255,255,.06), rgba(255,255,255,.14), rgba(255,255,255,.06));
+  background-size: 220px 100%;
+  animation: dg_skel 1.15s ease-in-out infinite;
+}
+#cmdDropdown .skel .bar.sm{ width: 46%; }
+#cmdDropdown .skel .bar.md{ width: 72%; }
+#cmdDropdown .skel .bar.lg{ width: 88%; }
+@keyframes dg_skel{
+  0%{ background-position: 0 0; }
+  100%{ background-position: 220px 0; }
+}
+/* ===== /PATCH ===== */
+
+
+/* =========================================================
+   STEP7 — Terminal Layout Desktop (PATCH ONLY)
+   - True terminal grid: Chart hero + Trades panel (desktop)
+   - Stats become compact ticker strip
+   - Tables: aligned numbers, consistent rows, subtle zebra + hover
+   - Timeframes: premium segmented control
+   ========================================================= */
+
+/* Token stats => ticker strip (desktop-first) */
+.statsGrid{
+  display:flex !important;
+  flex-wrap: nowrap;
+  gap: 10px !important;
+  overflow-x:auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 10px 14px 12px !important;
+  grid-template-columns: none !important;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+}
+.statsGrid::-webkit-scrollbar{ height: 8px; }
+.statsGrid::-webkit-scrollbar-thumb{ background: rgba(255,255,255,.10); border-radius: 999px; }
+.stat{
+  flex: 0 0 auto;
+  min-width: 168px;
+  height: 56px;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  padding: 10px 12px !important;
+}
+.stat .k{ margin-bottom: 6px !important; }
+.stat .v{ font-size: 13px; }
+
+/* Terminal grid for token view */
+.grid.tokenGrid{
+  display:grid;
+  grid-template-columns: 1.65fr .95fr;
+  gap: 12px;
+  padding: 12px 0 0;
+}
+.grid.tokenGrid > .panel{ min-width:0; }
+
+/* Chart hero sizing */
+.chartWrap{
+  height: clamp(320px, 62vh, 640px) !important;
+  min-height: 300px !important;
+}
+
+/* Trades panel: match hero feel, keep scroll */
+.grid.tokenGrid section[aria-label="Live trades"] .tableWrap{
+  max-height: calc(clamp(320px, 62vh, 640px) + 64px) !important;
+}
+
+/* Responsive: stack panels */
+@media (max-width: 980px){
+  .grid.tokenGrid{ grid-template-columns: 1fr; }
+  .statsGrid{ padding: 10px 12px 12px !important; }
+  .stat{ min-width: 150px; }
+}
+
+/* Tables: terminal-grade rows */
+.tableWrap{ scrollbar-gutter: stable; }
+.table th, .table td{
+  height: 40px;
+  padding-top: 9px;
+  padding-bottom: 9px;
+}
+.table tbody tr:nth-child(odd) td{
+  background: rgba(255,255,255,.018);
+}
+.table tbody tr:hover td{
+  background: rgba(255,255,255,.045) !important;
+}
+.table td, .table th{
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+/* Keep the existing tint rows, but soften zebra under tint */
+tbody tr.tradeBuy td:not(:nth-child(5)){
+  background: color-mix(in srgb, rgba(45, 212, 191, .06) 70%, rgba(255,255,255,.015)) !important;
+}
+tbody tr.tradeSell td:not(:nth-child(5)){
+  background: color-mix(in srgb, rgba(251, 113, 133, .06) 70%, rgba(255,255,255,.015)) !important;
+}
+tbody tr.tradeBuy:hover td:not(:nth-child(5)){
+  background: rgba(45, 212, 191, .10) !important;
+}
+tbody tr.tradeSell:hover td:not(:nth-child(5)){
+  background: rgba(251, 113, 133, .10) !important;
+}
+
+/* Right-align numeric columns (safer: only cells marked .right) */
+.table td.right, .table th.right{ text-align:right !important; }
+.table td.center, .table th.center{ text-align:center !important; }
+
+/* Timeframes: segmented control */
+.chartTop{
+  gap: 12px;
+  padding: 12px 12px 10px !important;
+}
+.tfRow{
+  display:inline-flex;
+  gap: 0 !important;
+  padding: 4px;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(0,0,0,.20);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.05);
+}
+.tf{
+  border: 0 !important;
+  background: transparent !important;
+  border-radius: 12px !important;
+  height: 34px !important;
+  padding: 0 12px !important;
+  margin: 0 !important;
+  color: rgba(255,255,255,.78) !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+.tf + .tf{ margin-left: 2px !important; }
+.tf:hover{
+  background: rgba(255,255,255,.06) !important;
+}
+.tf.active{
+  background: linear-gradient(135deg, rgba(124,92,255,.28), rgba(45,212,191,.18)) !important;
+  color: rgba(255,255,255,.95) !important;
+  box-shadow: 0 10px 22px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.06) !important;
+}
+
+/* Token header -> compact ticker strip feel */
+.tokenHeader{
+  padding: 12px 14px 10px !important;
+}
+.tokenRight .linksRow .linkPill{
+  height: 34px;
+  padding: 0 10px;
+  display:inline-flex;
+}
+
+
+
+/* =========================================================
+   STEP8 — Mobile App Feel (PATCH ONLY)
+   - safe-area padding + sticky topbar
+   - bottom-sheet command search dropdown
+   - >=44px touch targets
+   - optional bottom nav (Chart / Trades / Info) as UI only
+   - no horizontal scroll, stacked cards/sheets
+   ========================================================= */
+
+@media (max-width: 720px){
+  /* Safe-area + avoid horizontal scroll */
+  body{ overflow-x:hidden; }
+  .wrap{
+    padding-left: max(14px, env(safe-area-inset-left));
+    padding-right: max(14px, env(safe-area-inset-right));
+  }
+  .header{
+    padding-top: env(safe-area-inset-top);
+  }
+  .main{
+    padding-bottom: calc(28px + 74px + env(safe-area-inset-bottom));
+  }
+
+  /* App-like topbar: tighter, sticky */
+  .headerRow{ gap: 10px; }
+  .brand{ min-width:0; }
+  .actions{ gap: 8px; }
+  .pill.statusPill{ display:none; } /* cleaner on mobile */
+
+  /* Bigger touch targets */
+  .btn{ height: 44px !important; }
+  .btn.icon{ width: 44px !important; }
+  .searchWrap.cmdSearch #btnSearch{ min-width: 92px; }
+  .tab, .tf, .linkPill{ min-height: 44px; }
+  .tab{ padding: 0 14px; display:inline-flex; align-items:center; justify-content:center; }
+  .tfRow{ padding: 6px; }
+  .tf{ height: 40px !important; padding: 0 14px !important; }
+  .linkPill{ padding: 0 12px; height: 40px; display:inline-flex; align-items:center; }
+
+  /* Stack panels as cards; remove any "wide" layouts */
+  .grid{ grid-template-columns: 1fr !important; padding: 10px; gap: 10px; }
+  .grid.tokenGrid{ grid-template-columns: 1fr !important; padding: 10px 0 0 !important; }
+  .panel{ border-radius: 18px; }
+  .panelHead{ padding: 12px 12px 10px; }
+
+  /* Stats strip becomes wrapped (no horizontal scroll) */
+  .statsGrid{
+    flex-wrap: wrap !important;
+    overflow-x: hidden !important;
+    gap: 10px !important;
+  }
+  .stat{
+    flex: 1 1 calc(50% - 10px) !important;
+    min-width: 0 !important;
+    height: 58px !important;
+  }
+
+  /* Command dropdown becomes a bottom sheet */
+  #cmdDropdown{
+    position: fixed !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    top: auto !important;
+    padding: 0 12px calc(env(safe-area-inset-bottom) + 12px) !important;
+    z-index: 1400 !important;
+  }
+  #cmdDropdown .cmdPanel{
+    border-radius: 18px 18px 0 0 !important;
+    border-left: 0 !important;
+    border-right: 0 !important;
+    border-bottom: 0 !important;
+    box-shadow: 0 -24px 70px rgba(0,0,0,.60) !important;
+  }
+  /* Handle */
+  #cmdDropdown .cmdPanel::before{
+    content:"";
+    display:block;
+    width: 56px;
+    height: 5px;
+    border-radius: 999px;
+    background: rgba(255,255,255,.18);
+    margin: 10px auto 6px;
+  }
+  #cmdDropdown .cmdList{
+    max-height: min(52vh, 420px) !important;
+  }
+  #cmdDropdown .cmdRow{
+    padding: 12px 12px !important;
+  }
+  #cmdDropdown .cmdFooter{
+    display:none !important; /* app feel, less noise */
+  }
+  #cmdDropdown .cmdHead{
+    position: sticky;
+    top: 0;
+    z-index: 2;
+  }
+  #cmdDropdown .cmdClearRecents{
+    height: 36px;
+  }
+
+  /* Trending row stays swipeable but avoids page horizontal scrolling */
+  .trendingRow{ padding: 10px; }
+
+  /* Tables: bigger rows */
+  .table th, .table td{ height: 44px; padding-top: 11px; padding-bottom: 11px; }
+}
+
+/* Bottom navigation (mobile only) */
+.mNav{
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1350;
+  display: none;
+  padding: 10px 12px calc(env(safe-area-inset-bottom) + 10px);
+  background: rgba(10,12,18,.68);
+  border-top: 1px solid rgba(255,255,255,.10);
+  backdrop-filter: blur(10px);
+}
+.mNav .mNavInner{
+  max-width: var(--max);
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 10px;
+}
+.mNav button{
+  height: 44px;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(0,0,0,.22);
+  color: rgba(255,255,255,.90);
+  font-weight: 1000;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  font-size: 11px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.mNav button:active{ transform: scale(.99); }
+.mNav button.on{
+  border-color: rgba(124,92,255,.40);
+  background: linear-gradient(180deg, rgba(124,92,255,.20), rgba(0,0,0,.22));
+  box-shadow: 0 10px 22px rgba(0,0,0,.25);
+}
+@media (max-width: 720px){
+  .mNav{ display:flex; }
+}
+
+
+
+/* ===== PATCH: Chain logo tabs (STEP9) — keep behavior, replace labels with logos ===== */
+.chainTabs .tab{
+  position: relative;
+  overflow: hidden;
+}
+.chainTabs .tab .chainTextHold{
+  opacity: 0;              /* keeps exact button sizing without visible text */
+  pointer-events: none;
+}
+.chainTabs .tab .chainIcon{
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;    /* never interferes with click handling */
+}
+.chainTabs .tab .chainIcon svg{
+  width: 22px;
+  height: 22px;
+  display: block;
+  filter: drop-shadow(0 2px 8px rgba(0,0,0,.35));
+}
+.chainTabs .tab:not(.active) .chainIcon svg{
+  filter: drop-shadow(0 2px 10px rgba(0,0,0,.45));
+}
+/* Make sure icons don't look "swallowed" on bright active gradients */
+.chainTabs .tab.active .chainIcon svg{
+  filter: drop-shadow(0 2px 12px rgba(0,0,0,.55));
+}
+/* Visually hidden text helper (a11y-safe; no visible text) */
+.srOnly{
+  position:absolute !important;
+  width:1px !important;
+  height:1px !important;
+  padding:0 !important;
+  margin:-1px !important;
+  overflow:hidden !important;
+  clip:rect(0,0,0,0) !important;
+  white-space:nowrap !important;
+  border:0 !important;
+}
+/* ===== /PATCH ===== */
+
+</style>
 </head>
 
 <body>
@@ -933,10 +1819,44 @@ DexGuard DexLike LiveChart v1
           </div>
         </div>
 
+        <div class="topCenter">
+          <div class="searchWrap cmdSearch">
+                      <div class="search" role="search">
+                        <span class="searchIcon">⌕</span>
+                        <input id="q" aria-label="Command Search" autocapitalize="off" autocomplete="off" spellcheck="false" placeholder="Command Search…  token / symbol / contract (⌘K)" />
+                      </div>
+                      <button id="btnSearch" class="btn" title="Search">Search</button>
+                    
+<div id="cmdDropdown" aria-label="Command results">
+  <div class="cmdPanel">
+    <div id="cmdHead" class="cmdHead" style="display:none">
+      <div id="cmdHeadTitle" class="cmdHeadTitle">Recent</div>
+      <button id="cmdClearRecents" class="cmdClearRecents" type="button" aria-label="Clear Recents">Clear Recents</button>
+    </div>
+    <div id="cmdList" class="cmdList" role="listbox" aria-label="Search results"></div>
+    <div class="cmdFooter" aria-hidden="true">
+      <span><kbd>↑</kbd><kbd>↓</kbd> navigate • <kbd>Enter</kbd> open • <kbd>Esc</kbd> close</span>
+      <span class="muted">Max 8</span>
+    </div>
+  </div>
+</div>
+</div>
+        </div>
+
         <div class="actions">
           <button id="btnSettings" class="btn ghost" title="Settings">Settings</button>
           <button id="btnClear" class="btn" title="Clear view">Clear</button>
           <a id="btnDS" class="btn grad" href="#" target="_blank" rel="noreferrer noopener" title="Open current pool on DexScreener">Open on DexScreener</a>
+
+          <a id="btnX" class="btn icon xBtn" href="https://www.x.com/solana_x1" target="_blank" rel="noreferrer noopener" title="X (Twitter)">
+            <svg viewBox="0 0 1200 1227" aria-hidden="true" focusable="false">
+              <path d="M714 519L1160 0H1053L667 450L360 0H0L468 681L0 1227H107L515 756L840 1227H1200L714 519ZM566 691L521 627L164 105H302L590 520L635 584L1010 1122H872L566 691Z" fill="currentColor"/>
+            </svg>
+          </a>
+          <div class="pill statusPill" title="UI status (visual)">
+            <span class="liveDot" aria-hidden="true"></span>
+            <b>Connected</b>
+          </div>
         </div>
       </div>
     </div>
@@ -947,19 +1867,50 @@ DexGuard DexLike LiveChart v1
       <div class="card">
         <div class="toolbar">
           <div class="chainTabs" role="tablist" aria-label="Chains">
-            <button class="tab active" data-chain="solana" role="tab" aria-selected="true">SOL</button>
-            <button class="tab" data-chain="ethereum" role="tab" aria-selected="false">ETH</button>
-            <button class="tab" data-chain="bsc" role="tab" aria-selected="false">BNB</button>
-            <button class="tab" data-chain="base" role="tab" aria-selected="false">BASE</button>
+            <button class="tab active" data-chain="solana" role="tab" aria-selected="true"><span class="chainTextHold" aria-hidden="true">SOL</span><span class="chainIcon" aria-hidden="true"><svg viewBox="0 0 256 256" aria-hidden="true" focusable="false">
+  <defs>
+    <linearGradient id="solg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#14F195"/>
+      <stop offset="0.5" stop-color="#00D1FF"/>
+      <stop offset="1" stop-color="#9945FF"/>
+    </linearGradient>
+  </defs>
+  <g transform="translate(34,52) skewX(-12)">
+    <rect x="0" y="0" width="188" height="34" rx="10" fill="url(#solg)"/>
+    <rect x="0" y="60" width="188" height="34" rx="10" fill="url(#solg)"/>
+    <rect x="0" y="120" width="188" height="34" rx="10" fill="url(#solg)"/>
+  </g>
+</svg></span><span class="srOnly">SOL</span></button>
+            <button class="tab" data-chain="ethereum" role="tab" aria-selected="false"><span class="chainTextHold" aria-hidden="true">ETH</span><span class="chainIcon" aria-hidden="true"><svg viewBox="0 0 256 256" aria-hidden="true" focusable="false">
+  <g fill="currentColor">
+    <path d="M128 16L54 128l74-34 74 34-74-112z"/>
+    <path d="M128 104l-74 34 74 44 74-44-74-34z" opacity=".92"/>
+    <path d="M54 144l74 96 74-96-74 44-74-44z" opacity=".88"/>
+  </g>
+</svg></span><span class="srOnly">ETH</span></button>
+            <button class="tab" data-chain="bsc" role="tab" aria-selected="false"><span class="chainTextHold" aria-hidden="true">BNB</span><span class="chainIcon" aria-hidden="true"><svg viewBox="0 0 256 256" aria-hidden="true" focusable="false">
+  <g fill="currentColor">
+    <path d="M128 24l36 36-36 36-36-36 36-36z"/>
+    <path d="M60 92l36 36-36 36-36-36 36-36z" opacity=".96"/>
+    <path d="M196 92l36 36-36 36-36-36 36-36z" opacity=".96"/>
+    <path d="M128 92l36 36-36 36-36-36 36-36z"/>
+    <path d="M128 160l36 36-36 36-36-36 36-36z"/>
+  </g>
+</svg></span><span class="srOnly">BNB</span></button>
+            <button class="tab" data-chain="base" role="tab" aria-selected="false"><span class="chainTextHold" aria-hidden="true">BASE</span><span class="chainIcon" aria-hidden="true"><svg viewBox="0 0 256 256" aria-hidden="true" focusable="false">
+  <defs>
+    <radialGradient id="baseg" cx="30%" cy="30%" r="80%">
+      <stop offset="0" stop-color="#3B82F6"/>
+      <stop offset="1" stop-color="#1D4ED8"/>
+    </radialGradient>
+  </defs>
+  <circle cx="128" cy="128" r="110" fill="url(#baseg)"/>
+  <circle cx="128" cy="128" r="70" fill="none" stroke="#FFFFFF" stroke-width="26" stroke-linecap="round"/>
+  <circle cx="188" cy="128" r="10" fill="#FFFFFF"/>
+</svg></span><span class="srOnly">BASE</span></button>
           </div>
 
-          <div class="searchWrap">
-            <div class="search" role="search">
-              <span class="searchIcon">⌕</span>
-              <input id="q" autocomplete="off" spellcheck="false" placeholder="Search token name / symbol / contract…" />
-            </div>
-            <button id="btnSearch" class="btn" title="Search">Search</button>
-          </div>
+          
         </div>
 
         <div class="grid">
@@ -1080,6 +2031,16 @@ DexGuard DexLike LiveChart v1
     </div>
   </main>
 
+  <!-- Mobile Bottom Navigation (UI only) -->
+  <nav id="mNav" class="mNav" aria-label="Mobile navigation">
+    <div class="mNavInner">
+      <button type="button" data-nav="chart" aria-label="Go to Chart">Chart</button>
+      <button type="button" data-nav="trades" aria-label="Go to Trades">Trades</button>
+      <button type="button" data-nav="info" aria-label="Go to Info">Info</button>
+    </div>
+  </nav>
+
+
   <!-- Settings Modal -->
   <div id="modalBack" class="modalBack" role="dialog" aria-modal="true" aria-label="Settings">
     <div class="modal">
@@ -1145,6 +2106,10 @@ DexGuard DexLike LiveChart v1
       return;
     }
     __DGW.__active = true;
+
+    // Debug UI flag (only reveals hidden controls; no user-visible debug text)
+    const __DG_DEBUG_UI = (new URLSearchParams(window.location.search)).get('debug') === '1';
+
 
     // ========= Utilities =========
     const $ = (sel, root=document) => root.querySelector(sel);
@@ -1219,8 +2184,10 @@ DexGuard DexLike LiveChart v1
     };
 
     // ========= Quiet toast (only user-triggered) =========
+    let __DG_SUPPRESS_TOAST = false;
     let toastTimer = null;
     function toast(msg){
+      if (__DG_SUPPRESS_TOAST) return;
       const el = $('#toast');
       $('#toastTxt').textContent = msg;
       el.classList.add('show');
@@ -1475,6 +2442,16 @@ DexGuard DexLike LiveChart v1
       pollLive: $('#pollLive'),
       pollHidden: $('#pollHidden'),
     };
+
+    // ========= Topbar UI controls (CEX-style) =========
+    (function applyTopbarUI(){
+      try{
+        if (el.btnClear) el.btnClear.style.display = 'none';
+        if (el.btnDS) el.btnDS.style.display = 'none';
+        if (el.btnSettings) el.btnSettings.style.display = __DG_DEBUG_UI ? 'inline-flex' : 'none';
+      }catch(e){ console.warn('[DexGuard] topbar UI apply failed', e); }
+    })();
+
 
     // ========= Runtime guards: tolerate missing DOM nodes (no crash; console only) =========
     const NULL_EL = new Proxy({
@@ -1775,7 +2752,610 @@ function setStatus(kind, txt){
       el.results.classList.remove('show');
       el.results.innerHTML = '';
       el.resultsEmpty.style.display = '';
+      try{
+        cmdHide(); cmdSetItems([]);
+        // If command search is focused & empty, show recents
+        const qv = (el.q && el.q.value ? String(el.q.value).trim() : '');
+        const focused = (document.activeElement === el.q);
+        if (focused && !qv){
+          cmdShowRecents();
+        }
+      }catch(e){}
     }
+
+// ========= Command Search Dropdown (STEP3) =========
+const cmd = { open:false, loading:false, items:[], active:-1, lastQuery:'' };
+cmd.mode = 'results';
+
+// ========= Recents (STEP4) =========
+const DG_RECENTS_KEY = 'dg_recents_v1';
+function dgReadRecents(){
+  try{
+    const raw = localStorage.getItem(DG_RECENTS_KEY);
+    const arr = raw ? JSON.parse(raw) : [];
+    return Array.isArray(arr) ? arr.filter(Boolean) : [];
+  }catch(e){ return []; }
+}
+function dgWriteRecents(arr){
+  try{ localStorage.setItem(DG_RECENTS_KEY, JSON.stringify(arr||[])); }catch(e){}
+}
+function dgClearRecents(){
+  try{ localStorage.removeItem(DG_RECENTS_KEY); }catch(e){}
+}
+function dgRecentsPush(meta){
+  try{
+    if (!meta || !meta.chain) return;
+    const chain = String(meta.chain || '');
+    const pool = meta.pool ? String(meta.pool) : '';
+    const token = meta.token ? String(meta.token) : '';
+    const key = chain + '|' + (pool || token || '');
+    if (!key.endsWith('|')){} else { return; }
+    const item = {
+      k: key,
+      chain,
+      pairId: pool || null,
+      tokenAddress: token || null,
+      baseName: meta.baseName ? String(meta.baseName) : '',
+      baseSymbol: meta.baseSymbol ? String(meta.baseSymbol) : '',
+      quoteSymbol: meta.quoteSymbol ? String(meta.quoteSymbol) : '',
+      logoUrl: meta.logoUrl ? String(meta.logoUrl) : '',
+      dexId: meta.dexId ? String(meta.dexId) : '',
+      priceUsd: (meta.priceUsd!=null && isFinite(meta.priceUsd)) ? Number(meta.priceUsd) : null,
+      change24h: (meta.change24h!=null && isFinite(meta.change24h)) ? Number(meta.change24h) : null,
+      ts: Date.now()
+    };
+    const list = dgReadRecents();
+    const next = [item, ...list.filter(x => (x && x.k) ? x.k !== key : true)];
+    dgWriteRecents(next.slice(0, 12));
+  }catch(e){ console.warn('[DexGuard] recents push failed', e); }
+}
+
+// ========= Last State Persistence (STEP5) =========
+const DG_LAST_STATE_KEY = 'dg_last_state_v1';
+
+function dgReadLastState(){
+  try{
+    const raw = localStorage.getItem(DG_LAST_STATE_KEY);
+    const obj = raw ? JSON.parse(raw) : null;
+    return (obj && typeof obj === 'object') ? obj : null;
+  }catch(e){ return null; }
+}
+
+function dgWriteLastState(partial){
+  try{
+    const prev = dgReadLastState() || {};
+    const next = Object.assign({}, prev, partial || {}, { ts: Date.now() });
+    // keep it small / safe
+    localStorage.setItem(DG_LAST_STATE_KEY, JSON.stringify(next));
+  }catch(e){}
+}
+
+function dgPersistLastStateFromMeta(meta){
+  try{
+    if (!meta || !meta.chain) return;
+    const chain = String(meta.chain || '').toLowerCase();
+    const pairId = meta.pool ? String(meta.pool) : (meta.pairId ? String(meta.pairId) : '');
+    const token = meta.token ? String(meta.token) : (meta.tokenAddress ? String(meta.tokenAddress) : '');
+    const baseSymbol = meta.baseSymbol ? String(meta.baseSymbol) : '';
+    const baseName = meta.baseName ? String(meta.baseName) : '';
+    const quoteSymbol = meta.quoteSymbol ? String(meta.quoteSymbol) : '';
+    const logoUrl = meta.logoUrl ? String(meta.logoUrl) : '';
+    const idKey = chain + '|' + (pairId || token || '');
+    if (!idKey.endsWith('|')){} else { return; }
+
+    dgWriteLastState({
+      view: 'token',
+      chain,
+      pairId: pairId || null,
+      tokenAddress: token || null,
+      tf: (state && state.tf) ? String(state.tf) : '15m',
+      baseSymbol,
+      baseName,
+      quoteSymbol,
+      logoUrl
+    });
+  }catch(e){}
+}
+
+function dgPersistLastStateTf(tf){
+  try{
+    if (!tf) return;
+    const tfs = String(tf);
+    if (state && state.current){
+      dgPersistLastStateFromMeta(state.current);
+    } else {
+      dgWriteLastState({ tf: tfs });
+    }
+  }catch(e){}
+}
+
+function dgApplyTfUi(tf){
+  try{
+    const t = String(tf || '');
+    if (!t) return;
+    state.tf = t;
+    if (el && el.tfs && Array.isArray(el.tfs)){
+      el.tfs.forEach(b => { try{ b.classList.toggle('active', b.dataset.tf === t); }catch(e){} });
+    }
+  }catch(e){}
+}
+
+async function dgRestoreLastState(){
+  const saved = dgReadLastState();
+  if (!saved || !saved.chain) return;
+
+  const chain = String(saved.chain || '').toLowerCase();
+  const pairId = saved.pairId ? String(saved.pairId) : '';
+  const tokenAddress = saved.tokenAddress ? String(saved.tokenAddress) : '';
+  const tf = saved.tf ? String(saved.tf) : '';
+
+  // Validate chain known
+  if (!CHAINS || !CHAINS[chain]) return;
+
+  // If no identifier, nothing to restore
+  if (!pairId && !tokenAddress) return;
+
+  // Apply TF immediately so initial candle load uses it
+  if (tf) dgApplyTfUi(tf);
+
+  // Suppress any user-visible errors/toasts during restore attempt
+  __DG_SUPPRESS_TOAST = true;
+  try{
+    // ensure chain tab matches
+    try{ setChain(chain); }catch(e){ state.chain = chain; }
+
+    if (pairId){
+      await openPool({ chain, pairId, hint:'restore' });
+    } else {
+      await openPool({ chain, tokenAddress, hint:'restore' });
+    }
+  }catch(e){
+    // silent fallback (no UI error); clear invalid state
+    try{ localStorage.removeItem(DG_LAST_STATE_KEY); }catch(_){}
+    try{ showTokenView(false); }catch(_){}
+    try{ clearResults(); }catch(_){}
+  }finally{
+    __DG_SUPPRESS_TOAST = false;
+  }
+}
+
+function dgRecentsToCmdItems(){
+  const list = dgReadRecents().slice(0, 12);
+  const out = [];
+  for (const r of list){
+    if (!r) continue;
+    const chain = String(r.chain || '').toLowerCase();
+    const pairId = r.pairId || '';
+    const tokenAddress = r.tokenAddress || '';
+    if (!chain || (!pairId && !tokenAddress)) continue;
+    out.push({
+      logoUrl: r.logoUrl || '',
+      baseName: r.baseName || '—',
+      baseSymbol: r.baseSymbol || '—',
+      tokenAddress: tokenAddress || '',
+      chainBadge: (CHAINS[chain]?.label || chain).toUpperCase(),
+      dexId: r.dexId || '',
+      priceUsd: (r.priceUsd!=null && isFinite(r.priceUsd)) ? r.priceUsd : null,
+      change24h: (r.change24h!=null && isFinite(r.change24h)) ? r.change24h : null,
+      _openPayload: {
+        chain,
+        pairId: pairId || null,
+        tokenAddress: tokenAddress || null,
+        baseSymbol: r.baseSymbol || '',
+        baseName: r.baseName || '',
+        quoteSymbol: r.quoteSymbol || '',
+        logoUrl: r.logoUrl || '',
+        priceUsd: (r.priceUsd!=null && isFinite(r.priceUsd)) ? r.priceUsd : null,
+        change24h: (r.change24h!=null && isFinite(r.change24h)) ? r.change24h : null,
+        hint: 'recent'
+      }
+    });
+  }
+  return out;
+}
+function cmdSetHeader(mode){
+  cmdEnsure();
+  const head = document.getElementById('cmdHead');
+  const title = document.getElementById('cmdHeadTitle');
+  const clearBtn = document.getElementById('cmdClearRecents');
+  if (!head) return;
+  if (mode === 'recents'){
+    head.style.display = 'flex';
+    if (title) title.textContent = 'Recent';
+    if (clearBtn) clearBtn.style.display = '';
+  }else{
+    head.style.display = 'none';
+    if (clearBtn) clearBtn.style.display = 'none';
+  }
+}
+function cmdShowRecents(){
+  cmdEnsure();
+  cmd.mode = 'recents';
+  cmdSetHeader('recents');
+  const items = dgRecentsToCmdItems();
+  if (!items.length){
+    cmdHide();
+    return;
+  }
+  cmdSetItems(items);
+  cmdSetHeader('recents');
+}
+
+    (function(){ try{ const grid = document.querySelector('.grid'); if (grid) grid.setAttribute('data-cmd','1'); }catch(e){} })();
+
+function cmdEnsure(){
+  if (cmd._inited) return;
+  cmd._inited = true;
+  try{
+    const grid = document.querySelector('.grid');
+    if (grid) grid.setAttribute('data-cmd','1');
+  }catch(e){}
+  try{
+    cmd.wrap = document.getElementById('cmdDropdown');
+    cmd.list = document.getElementById('cmdList');
+  }catch(e){}
+}
+
+function cmdShow(){
+  cmdEnsure();
+  if (!cmd.wrap) return;
+  cmd.wrap.classList.add('show');
+  cmd.open = true;
+  try{ dgSheetSync(true); }catch(e){}
+}
+function cmdHide(){
+  cmdEnsure();
+  if (!cmd.wrap) return;
+  cmd.wrap.classList.remove('show');
+  cmd.open = false;
+  cmd.active = -1;
+  cmd.loading = false;
+  try{ dgSheetSync(false); }catch(e){}
+}
+
+/* ========= STEP8: Mobile App Feel helpers (PATCH ONLY) ========= */
+function dgIsMobile(){
+  try{ return (window.matchMedia && window.matchMedia('(max-width: 720px)').matches) || (window.innerWidth <= 720); }catch(_){ return window.innerWidth <= 720; }
+}
+function dgSheetSync(isOpen){
+  try{
+    // No scrims/overlays; just a lightweight body flag for mobile bottom-sheet behaviors
+    if (!dgIsMobile()) return;
+    document.documentElement.classList.toggle('dgSheetOpen', !!isOpen);
+  }catch(e){}
+}
+function dgMobileScrollTo(which){
+  try{
+    const tb = document.getElementById('tokenBlock');
+    if (!tb || tb.style.display === 'none') return;
+    let target = null;
+    if (which === 'info'){
+      target = tb.querySelector('.tokenHeader') || tb;
+    } else if (which === 'chart'){
+      target = tb.querySelector('.chartPanel') || document.getElementById('chart');
+    } else if (which === 'trades'){
+      // Prefer explicit panel label; fall back to first tableWrap within tokenBlock
+      target = tb.querySelector('section[aria-label="Live trades"]') || tb.querySelector('.tableWrap') || tb;
+    }
+    if (target && target.scrollIntoView){
+      target.scrollIntoView({behavior:'smooth', block:'start'});
+    }
+  }catch(e){ console.warn('[DexGuard] mobile nav scroll', e); }
+}
+function dgSyncMobileUI(){
+  try{
+    const nav = document.getElementById('mNav');
+    if (!nav) return;
+    const tb = document.getElementById('tokenBlock');
+    const show = !!(tb && tb.style.display !== 'none' && dgIsMobile());
+    nav.style.display = show ? 'flex' : 'none';
+  }catch(e){}
+}
+function dgMobileInit(){
+  if (dgMobileInit._inited) return;
+  dgMobileInit._inited = true;
+  try{
+    const nav = document.getElementById('mNav');
+    if (nav){
+      const btns = nav.querySelectorAll('button[data-nav]');
+      btns.forEach((b)=>{
+        bindOnce(b, 'click', ()=> dgMobileScrollTo(String(b.dataset.nav||'')), {passive:true}, 'mnav:' + (b.dataset.nav||''));
+      });
+      // Update visibility on resize/orientation changes
+      bindOnce(window, 'resize', ()=> { try{ dgSyncMobileUI(); }catch(_e){} }, {passive:true}, 'mnav:resize');
+    }
+    // If command sheet is open and user scrolls, keep it non-intrusive
+    bindOnce(document, 'scroll', ()=>{ /* intentionally empty (no overlays) */ }, {passive:true}, 'mnav:scroll');
+    dgSyncMobileUI();
+  }catch(e){ console.warn('[DexGuard] mobile init', e); }
+}
+/* ========= /STEP8 ========= */
+
+function cmdSetLoading(on){
+  cmdEnsure();
+  cmd.loading = !!on;
+  if (!cmd.list) return;
+  if (!on){ return; }
+  cmdShow();
+  cmd.list.innerHTML = '';
+  for (let i=0;i<6;i++){
+    const row = document.createElement('div');
+    row.className = 'cmdRow skel';
+    row.innerHTML = `
+      <div class="cmdLogo"></div>
+      <div class="cmdMain">
+        <div class="bar lg"></div>
+        <div style="margin-top:6px" class="bar md"></div>
+      </div>
+      <div class="cmdMeta">
+        <div class="bar sm"></div>
+      </div>
+    `;
+    cmd.list.appendChild(row);
+  }
+}
+
+function cmdSetItems(items){
+  cmdEnsure();
+  try{ cmdSetHeader(cmd.mode === 'recents' ? 'recents' : 'results'); }catch(e){}
+  cmd.items = Array.isArray(items) ? items : [];
+  if (!cmd.list) return;
+  cmd.list.innerHTML = '';
+  if (!cmd.items.length){
+    cmdHide();
+    return;
+  }
+  cmdShow();
+  cmd.active = 0;
+
+  const frag = document.createDocumentFragment();
+  for (let i=0;i<cmd.items.length;i++){
+    const it = cmd.items[i];
+    const row = document.createElement('div');
+    row.className = 'cmdRow';
+    row.setAttribute('role','option');
+    row.setAttribute('aria-selected', i===0 ? 'true' : 'false');
+    row.dataset.idx = String(i);
+
+    const logoUrl = it.logoUrl || '';
+    const chg = it.change24h;
+    const chgCls = (isFinite(chg) && chg !== 0) ? (chg > 0 ? 'good' : 'bad') : '';
+    const chgTxt = isFinite(chg) ? ((chg>0?'+':'') + fmtNum(chg,2) + '%') : '—';
+    const priceTxt = (it.priceUsd!=null && isFinite(it.priceUsd)) ? fmtUSD(it.priceUsd) : '—';
+    const chainLbl = (it.chainBadge || '').toUpperCase().slice(0,8) || (CHAINS[state.chain]?.label || '—');
+
+    row.innerHTML = `
+      <div class="cmdLogo">${logoUrl ? `<img src="${escapeHtml(logoUrl)}" alt="">` : `<span class="muted mono">DG</span>`}</div>
+      <div class="cmdMain">
+        <div class="cmdTop">
+          <div class="cmdName ellipsis">${escapeHtml(it.baseName || it.baseSymbol || '—')}</div>
+          <div class="cmdSym">(${escapeHtml((it.baseSymbol||'').slice(0,16) || '—')})</div>
+        </div>
+        <div class="cmdSub">
+          <span class="addr ellipsis">${escapeHtml(shortAddr(it.tokenAddress || ''))}</span>
+          <span class="sep">•</span>
+          <span class="muted ellipsis">${escapeHtml(it.dexId || '')}</span>
+          <span class="sep">•</span>
+          <span class="muted">24h</span> <span class="chg ${chgCls}">${chgTxt}</span>
+        </div>
+      </div>
+      <div class="cmdMeta">
+        <span class="cmdBadge">${escapeHtml(chainLbl)}</span>
+        <div>
+          <div class="px">${priceTxt}</div>
+        </div>
+      </div>
+    `;
+
+    row.addEventListener('mouseenter', ()=> cmdSetActive(i));
+    row.addEventListener('mousedown', (e)=>{ e.preventDefault(); }); // keep focus
+    row.addEventListener('click', ()=> cmdOpen(i));
+    frag.appendChild(row);
+  }
+  cmd.list.appendChild(frag);
+  cmdSyncActive();
+}
+
+function cmdSetActive(i){
+  cmdEnsure();
+  const n = cmd.items.length;
+  if (!n) return;
+  const idx = ((i % n) + n) % n;
+  cmd.active = idx;
+  cmdSyncActive(true);
+}
+
+function cmdSyncActive(scrollIntoView=false){
+  if (!cmd.list) return;
+  const rows = cmd.list.querySelectorAll('.cmdRow[role="option"]');
+  rows.forEach((r, j)=>{
+    const on = j === cmd.active;
+    r.classList.toggle('active', on);
+    r.setAttribute('aria-selected', on ? 'true' : 'false');
+  });
+  if (scrollIntoView){
+    const activeRow = rows[cmd.active];
+    if (activeRow && activeRow.scrollIntoView){
+      try{ activeRow.scrollIntoView({block:'nearest'}); }catch(e){}
+    }
+  }
+}
+
+function cmdOpen(i){
+  cmdEnsure();
+  const it = cmd.items[i];
+  if (!it) return;
+  cmdHide();
+  try{ openPool(it._openPayload); }catch(e){ console.warn('[DexGuard] cmd open failed', e); }
+}
+
+function pairsToCmdItems(pairs){
+  const out = [];
+  if (!pairs || !pairs.length) return out;
+
+  const chainId = CHAINS[state.chain].ds;
+  const filtered = pairs.filter(p => (p?.chainId || '').toLowerCase() === chainId);
+  const list = filtered.length ? filtered : pairs.slice(0, 18);
+
+  const max = Math.min(8, list.length);
+  for (let i=0;i<max;i++){
+    const p = list[i];
+    const logo = p?.info?.imageUrl || p?.baseToken?.logoURI || p?.baseToken?.icon || '';
+    const name = p?.baseToken?.name || '—';
+    const sym = p?.baseToken?.symbol || '—';
+    const pair = p?.pairAddress || p?.pairId || p?.pair || '';
+    const token = p?.baseToken?.address || '';
+    const dexId = p?.dexId || '';
+    const priceUsd = toNum(p?.priceUsd);
+    const chg24 = toNum(p?.priceChange?.h24);
+    const chg5m = toNum(p?.priceChange?.m5);
+    const chg1h = toNum(p?.priceChange?.h1);
+    const chg6h = toNum(p?.priceChange?.h6);
+    const liquidityUsd = toNum(p?.liquidity?.usd ?? p?.liquidityUsd);
+    const volume5mUsd = toNum(p?.volume?.m5);
+    const volume1hUsd = toNum(p?.volume?.h1);
+    const volume6hUsd = toNum(p?.volume?.h6);
+    const volume24hUsd = toNum(p?.volume?.h24 ?? p?.volume24hUsd);
+    const marketCapUsd = toNum(p?.fdv ?? p?.marketCap ?? p?.marketCapUsd);
+    const itemChain = (p?.chainId || '').toLowerCase();
+
+    // If result is other chain, switch chain then open.
+    const targetChain = Object.keys(CHAINS).find(k => CHAINS[k].ds === itemChain) || state.chain;
+
+    const openPayload = {
+      chain: targetChain,
+      pairId: pair,
+      tokenAddress: token,
+      baseSymbol: sym,
+      baseName: name,
+      quoteSymbol: p?.quoteToken?.symbol || null,
+      logoUrl: logo,
+      priceUsd,
+      change5m: chg5m,
+      change1h: chg1h,
+      change6h: chg6h,
+      change24h: chg24,
+      liquidityUsd,
+      volume5mUsd,
+      volume1hUsd,
+      volume6hUsd,
+      volume24hUsd,
+      marketCapUsd,
+      hint: 'search'
+    };
+
+    // Keep existing open behavior: remember meta, switch chain if needed, then open.
+    const _openPayload = Object.assign({}, openPayload);
+    const openWrapper = async () => {
+      rememberMeta({
+        chain: targetChain,
+        pool: pair,
+        token,
+        baseSymbol: sym,
+        baseName: name,
+        quoteSymbol: p?.quoteToken?.symbol || null,
+        logoUrl: logo,
+        priceUsd,
+        change5m: chg5m,
+        change1h: chg1h,
+        change6h: chg6h,
+        change24h: chg24,
+        liquidityUsd,
+        volume5mUsd,
+        volume1hUsd,
+        volume6hUsd,
+        volume24hUsd,
+        marketCapUsd,
+        dexId,
+      });
+      if (targetChain !== state.chain){
+        setChain(targetChain, {silent:true});
+      }
+      openPool(_openPayload);
+    };
+
+    // openPool expects payload directly in this app; preserve by embedding in _openPayload and calling openPool.
+    out.push({
+      chainBadge: itemChain || CHAINS[targetChain]?.label || '',
+      tokenAddress: token,
+      baseSymbol: sym,
+      baseName: name,
+      logoUrl: logo,
+      dexId: dexId,
+      priceUsd: isFinite(priceUsd) ? priceUsd : null,
+      change24h: isFinite(chg24) ? chg24 : null,
+      _openPayload: _openPayload,
+    });
+
+    // Patch: pre-switch chain inside openPool call by wrapping openPool at call site.
+    // We cannot pass a function through; instead handle chain switch here during cmdOpen via a safe override:
+    out[out.length-1]._openPayload = Object.assign({}, _openPayload, { __targetChain: targetChain, __pair: pair, __token: token, __sym: sym, __name: name, __logo: logo, __dexId: dexId, __meta: {
+      chain: targetChain, pool: pair, token, baseSymbol: sym, baseName: name, quoteSymbol: p?.quoteToken?.symbol || null,
+      logoUrl: logo, priceUsd, change5m: chg5m, change1h: chg1h, change6h: chg6h, change24h: chg24,
+      liquidityUsd, volume5mUsd, volume1hUsd, volume6hUsd, volume24hUsd, marketCapUsd, dexId
+    }});
+  }
+  return out;
+}
+
+// Override cmdOpen to preserve chain switching + rememberMeta exactly like existing search results.
+const _cmdOpenOrig = cmdOpen;
+cmdOpen = function(i){
+  cmdEnsure();
+  const it = cmd.items[i];
+  if (!it) return;
+  cmdHide();
+  try{
+    const pay = it._openPayload || null;
+    const targetChain = pay?.__targetChain || state.chain;
+    if (pay?.__meta) rememberMeta(pay.__meta);
+    if (targetChain !== state.chain){
+      setChain(targetChain, {silent:true});
+    }
+    const payload = Object.assign({}, pay);
+    delete payload.__targetChain; delete payload.__pair; delete payload.__token; delete payload.__sym;
+    delete payload.__name; delete payload.__logo; delete payload.__dexId; delete payload.__meta;
+    openPool(payload);
+  }catch(e){
+    console.warn('[DexGuard] cmd open failed', e);
+  }
+};
+
+function cmdHandleKeys(e){
+  cmdEnsure();
+  const key = String(e.key || '');
+  if (key === 'Escape'){
+    if (cmd.open){ e.preventDefault(); cmdHide(); }
+    return;
+  }
+  if (key === 'ArrowDown' || key === 'ArrowUp'){
+    if (!cmd.open && cmd.items.length){ cmdShow(); }
+    if (!cmd.items.length) return;
+    e.preventDefault();
+    cmdSetActive(cmd.active + (key === 'ArrowDown' ? 1 : -1));
+    return;
+  }
+  if (key === 'Enter'){
+    if (cmd.open && cmd.items.length && cmd.active >= 0){
+      e.preventDefault();
+      cmdOpen(cmd.active);
+      return;
+    }
+  }
+}
+
+function cmdGlobalOutsideClose(){
+  cmdEnsure();
+  // close on outside click
+  bindOnce(document, 'pointerdown', (e)=>{
+    try{
+      if (!cmd.open) return;
+      const sw = document.querySelector('.searchWrap.cmdSearch');
+      if (sw && sw.contains(e.target)) return;
+      cmdHide();
+    }catch(err){}
+  }, {capture:true}, 'cmd:outside');
+}
 
     function renderTrending(items){
       el.trending.innerHTML = '';
@@ -1849,6 +3429,7 @@ function setStatus(kind, txt){
     }
 
     function renderResults(pairs){
+      try{ cmdEnsure(); cmdSetItems(pairsToCmdItems(pairs||[])); }catch(e){}
       el.results.innerHTML = '';
       el.results.classList.add('show');
       el.resultsEmpty.style.display = 'none';
@@ -2189,6 +3770,7 @@ function setStatus(kind, txt){
       el.tokenEmpty.style.display = show ? 'none' : '';
       el.tokenBlock.style.display = show ? '' : 'none';
       if (show) initChart();
+      try{ dgSyncMobileUI && dgSyncMobileUI(); }catch(e){}
     }
 
     // ========= Trending via DexScreener Boosts =========
@@ -2337,7 +3919,9 @@ function setStatus(kind, txt){
     let searchTimer = 0;
     async function doSearch(userTriggered=false){
       const q = (el.q.value || '').trim();
-      if (!q){ clearResults(); return; }
+      if (!q){ clearResults(); try{ if (document.activeElement === el.q) cmdShowRecents(); }catch(e){} return; }
+      try{ cmd.mode = 'results'; }catch(e){}
+      try{ cmdSetLoading(true); }catch(e){}
 
       const sid = ++state.sessionId;
       if (state.abort) state.abort.abort();
@@ -2646,6 +4230,8 @@ function setStatus(kind, txt){
       state.current = meta;
       state._forceFitNext = true;
       setTokenUI(meta);
+      try{ dgRecentsPush(meta); }catch(e){}
+      try{ dgPersistLastStateFromMeta(meta); }catch(e){}
       showTokenView(true);
 
       await loadCandles(meta, state.tf, {sid, signal});
@@ -3418,6 +5004,7 @@ if (last && isFinite(last.close)){
       state.tf = tf;
       el.tfs.forEach(b => b.classList.toggle('active', b.dataset.tf === tf));
 
+      try{ dgPersistLastStateTf(tf); }catch(e){}
       if (!state.current){ el.chartMeta.textContent = '—'; return; }
 
       const sid = ++state.sessionId;
@@ -3505,7 +5092,44 @@ if (last && isFinite(last.close)){
       el.tabs.forEach(btn => bindOnce(btn, 'click', () => setChain(btn.dataset.chain), {passive:true}, 'tab:click'));
       bindOnce(el.btnSearch, 'click', () => doSearch(true), null, 'btnSearch:click');
       bindOnce(el.q, 'input', debounceSearch, null, 'q:input');
-      bindOnce(el.q, 'keydown', (e)=>{ if (e.key === 'Enter'){ e.preventDefault(); doSearch(true); }}, null, 'q:enter');
+      bindOnce(el.q, 'focus', ()=>{ try{ const qv=(el.q.value||'').trim(); if(!qv) cmdShowRecents(); }catch(e){} }, null, 'q:focus');
+      bindOnce(el.q, 'click', ()=>{ try{ const qv=(el.q.value||'').trim(); if(!qv) cmdShowRecents(); }catch(e){} }, null, 'q:click');
+
+      bindOnce(el.q, 'keydown', (e)=>{ cmdHandleKeys(e); if (e.key === 'Enter'){ /* if dropdown handled, cmdHandleKeys prevented */ if (e.defaultPrevented) return; e.preventDefault(); doSearch(true); } }, null, 'q:enter');
+      cmdGlobalOutsideClose();
+      // Recents: clear button (inside dropdown)
+      try{
+        const btnCR = document.getElementById('cmdClearRecents');
+        if (btnCR){
+          bindOnce(btnCR, 'mousedown', (e)=>{ e.preventDefault(); }, null, 'cmdClearRecents:md');
+          bindOnce(btnCR, 'click', (e)=>{ e.preventDefault(); dgClearRecents(); cmdShowRecents(); }, null, 'cmdClearRecents:click');
+        }
+      }catch(e){}
+
+
+      // Global hotkeys (no UI buttons needed)
+      bindOnce(window, 'keydown', (e)=>{
+        try{
+          const ae = document.activeElement;
+          const tag = ae && ae.tagName ? ae.tagName.toUpperCase() : '';
+          const typing = (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (ae && ae.isContentEditable));
+          // Command Search focus: Ctrl+K / ⌘K
+          if ((e.ctrlKey || e.metaKey) && String(e.key).toLowerCase() === 'k'){
+            e.preventDefault();
+            if (el.q && el.q.focus){
+              el.q.focus({preventScroll:true});
+              try{ el.q.select && el.q.select(); }catch(_){}
+            }
+            return;
+          }
+          // Settings: Shift+S (always), button only in ?debug=1
+          if (e.shiftKey && String(e.key).toLowerCase() === 's' && !typing){
+            e.preventDefault();
+            openModal();
+          }
+        }catch(err){ console.warn('[DexGuard] hotkey error', err); }
+      }, null, 'global:hotkeys');
+
 
       el.tfs.forEach(b => bindOnce(b, 'click', ()=> setTimeframe(b.dataset.tf), {passive:true}, 'tf:click'));
 
@@ -3556,11 +5180,40 @@ if (last && isFinite(last.close)){
 
     // ========= Boot =========
     function boot(){
+      try{ dgMobileInit(); }catch(e){}
       setStatus('', 'Booting…');
       clearResults();
       showTokenView(false);
       loadTrending(); // auto-load trending
+      try{ void dgRestoreLastState(); }catch(e){}
       setStatus('live', 'Ready');
+    }
+
+    /* =========================================================
+       STEP6 — Live Indicator (UI forced live) — PATCH ONLY
+       - Chart status UI ALWAYS shows Live + green dot
+       - Runtime backoff/errors may still run internally (console only)
+       ========================================================= */
+    const __DG_FORCE_LIVE_UI = true;
+    function dgForceLiveIndicator(){
+      try{
+        const s = document.getElementById('status');
+        const t = document.getElementById('statusTxt');
+        if(!s || !t) return;
+        s.classList.remove('warn','bad');
+        if(!s.classList.contains('live')) s.classList.add('live');
+        if(t.textContent !== 'Live') t.textContent = 'Live';
+      }catch(e){
+        console.warn('[DexGuard] live-indicator patch failed', e);
+      }
+    }
+    if(__DG_FORCE_LIVE_UI){
+      dgForceLiveIndicator();
+      // Keep it live even if internal logic changes it later
+      setInterval(dgForceLiveIndicator, 750);
+      document.addEventListener('visibilitychange', dgForceLiveIndicator, {passive:true});
+      window.addEventListener('online', dgForceLiveIndicator, {passive:true});
+      window.addEventListener('offline', dgForceLiveIndicator, {passive:true});
     }
     boot();
   })();
