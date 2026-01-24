@@ -152,8 +152,7 @@ body::after{  content:"";  position:fixed;  inset:0;  pointer-events:none;  z-in
 }  /* Responsive: keep topbar usable without layout break */
 @media (max-width: 980px){  .headerRow{  grid-template-columns: 1fr;  gap: 10px;  padding: 10px 0;  }  .brand{min-width:0}  .topCenter{justify-content:stretch}  .searchWrap.cmdSearch{width:100%}  .actions{justify-content: flex-start; flex-wrap: wrap}
 }  /* ===== DexGuard PATCH: Command Search Dropdown (STEP3) ===== */
-.grid[data-cmd="1"]{ grid-template-columns: 1fr !important; }
-.grid[data-cmd="1"] section[aria-label="Search results"]{ display:none !important; }  .searchWrap.cmdSearch{ position: relative; }
+.searchWrap.cmdSearch{ position: relative; }
 #cmdDropdown{  position:absolute;  top: calc(100% + 10px);  left: 0;  right: 0;  z-index: 1200;  display:none;
 }
 #cmdDropdown.show{ display:block; }
@@ -1455,15 +1454,9 @@ function cmdShowRecents(){
   cmdSetHeader('recents');
 }
 
-    (function(){ try{ const grid = document.querySelector('.grid'); if (grid) grid.setAttribute('data-cmd','1'); }catch(e){} })();
-
-function cmdEnsure(){
-  if (cmd._inited) return;
-  cmd._inited = true;
-  try{
-    const grid = document.querySelector('.grid');
-    if (grid) grid.setAttribute('data-cmd','1');
-  }catch(e){}
+  function cmdEnsure(){
+    if (cmd._inited) return;
+    cmd._inited = true;
   try{
     cmd.wrap = document.getElementById('cmdDropdown');
     cmd.list = document.getElementById('cmdList');
