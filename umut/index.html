@@ -690,8 +690,8 @@ DexGuard DexLike LiveChart v1
     .stMiniItem{
       padding:8px 10px;
       border-radius:12px;
-      border:1px solid rgba(255,255,255,.10);
-      background: rgba(255,255,255,.04);
+      border:1px solid rgba(255,255,255,.08);
+      background: transparent;
       min-width:0;
     }
     .stMiniK{
@@ -2089,9 +2089,15 @@ tbody tr.tradeSell:hover td:not(:nth-child(5)){
 
 /* ===== PATCH: Single Search (no buttons, no dropdown) ===== */
 .searchWrap.cmdSearch #btnSearch{ display:none !important; }
-#cmdDropdown{ display:none !important; } /* removed from DOM, extra safety */
-.dgInstantResults{ margin-top: 10px; }
-.dgInstantResults .results{ display:block; } /* results moved out of hidden panel */
+#cmdDropdown{ display:none !important; } /* extra safety */
+
+/* Results host: hidden unless open (fix "list stays forever") */
+.dgInstantResults{ margin-top: 10px; display:none !important; }
+.dgInstantResults.dgOpen{ display:block !important; }
+
+/* Ensure inner panels don't force visibility */
+.dgInstantResults .results{ display:none !important; }
+.dgInstantResults .results.show{ display:block !important; }
 .dgInstantResults .empty{ margin-top: 0; }
 /* Make results sit tight under the input (no big gap) */
 .dgInstantResults .resultItem{ margin-top: 0; }
@@ -3112,7 +3118,8 @@ function setStatus(kind, txt){
     function clearResults(){
       el.results.classList.remove('show');
       el.results.innerHTML = '';
-      el.resultsEmpty.style.display = '';
+      el.resultsEmpty.style.display = 'none';
+      try{ dgInstantSetOpen(false); }catch(e){}
       try{
         cmdHide(); cmdSetItems([]);
         // If command search is focused & empty, show recents
@@ -4019,6 +4026,7 @@ function cmdGlobalOutsideClose(){
         try{ cmdHide(); }catch(e){}
       }
 
+      try{ dgInstantSetOpen(true); }catch(e){}
       el.results.innerHTML = '';
       el.results.classList.add('show');
       el.resultsEmpty.style.display = 'none';
@@ -4511,7 +4519,13 @@ function cmdGlobalOutsideClose(){
     let searchTimer = 0;
     async function doSearch(userTriggered=false){
       const q = (el.q.value || '').trim();
-      if (!q){ try{ dgShowInstantDefaults(); }catch(e){} return; }
+      if (!q){
+        // If user cleared input, dismiss the results panel.
+        try{ clearResults(); }catch(e){}
+        try{ dgInstantSetOpen(false); }catch(e){}
+        setStatus('live','Ready');
+        return;
+      }
 
       const sid = ++state.sessionId;
       if (state.abort) state.abort.abort();
@@ -5371,6 +5385,9 @@ if (last && isFinite(last.close)){
             void refreshCandles(meta, {sid, signal: state.abort?.signal, reason:'live retry'});
           }
 
+          // keep liquidity / market cap fresh (DexScreener pair endpoint)
+          try{ void maybeRefreshPairStats(meta, {sid, signal}); }catch(e){}
+
           // reflect data source
           if (used) el.statusTxt.textContent = (document.visibilityState === 'hidden') ? 'Live (paused)' : 'Live';
 
@@ -5738,7 +5755,23 @@ if (last && isFinite(last.close)){
       // Search button removed (single search input)
       bindOnce(el.q, 'input', debounceSearch, null, 'q:input');
       bindOnce(el.q, 'focus', ()=>{ try{ const qv=(el.q.value||'').trim(); if(!qv) dgShowInstantDefaults(); }catch(e){} }, null, 'q:focus');
-      bindOnce(el.q, 'click', ()=>{ try{ const qv=(el.q.value||'').trim(); if(!qv) dgShowInstantDefaults(); }catch(e){} }, null, 'q:click');
+      bindOnce(el.q, 'click', ()=>{ try{ const qv=(el.q.value||'').trim(); if(!qv) dgShowInstantDefaults(); else dgInstantSetOpen(true); }catch(e){} }, null, 'q:click');
+
+      // Dismiss results when clicking outside the search card or when input blurs
+      bindOnce(document, 'pointerdown', (e)=>{
+        try{
+          const dock = document.getElementById('searchDock');
+          if (!dock) return;
+          const t = e && e.target ? e.target : null;
+          if (t && dock.contains(t)) return;
+          dgInstantClose();
+        }catch(err){}
+      }, {passive:true}, 'doc:pointerdown:dismiss');
+
+      bindOnce(el.q, 'blur', ()=>{
+        // allow clicks on results to fire first
+        setTimeout(()=>{ try{ dgInstantClose(); }catch(e){} }, 140);
+      }, null, 'q:blur');
 
       bindOnce(el.q, 'keydown', (e)=>{
         try{
@@ -5859,10 +5892,44 @@ if (last && isFinite(last.close)){
         if (empty && !host.contains(empty)) host.appendChild(empty);
         if (res && !host.contains(res)) host.appendChild(res);
 
+        try{ host.classList.remove('dgOpen'); }catch(e){}
         document.body.classList.add('dgSearchDocked');
       }catch(e){}
     }
 
+
+    // ===== PATCH: Instant Results open/close (dismiss on outside click / empty input) =====
+    function dgInstantSetOpen(on){
+      try{
+        const host = document.getElementById('dgInstantResults');
+        if (!host) return;
+        host.classList.toggle('dgOpen', !!on);
+      }catch(e){}
+    }
+
+    function dgInstantClose(){
+      try{
+        dgInstantSetOpen(false);
+        // keep DOM hooks but hide visuals
+        if (el && el.results) el.results.classList.remove('show');
+        if (el && el.resultsEmpty) el.resultsEmpty.style.display = 'none';
+      }catch(e){}
+    }
+
+    // Defaults shown only when search is focused (not permanently)
+    async function dgShowInstantDefaults(){
+      try{
+        dgInstantSetOpen(true);
+        // force normal (we no longer use cmd dropdown UI)
+        try{ state.searchUI = 'normal'; }catch(e){}
+        // tiny cached trending via existing loader
+        const pairs = await dgCmdLoadDefaults({force:false});
+        renderResults(Array.isArray(pairs) ? pairs : []);
+      }catch(e){
+        // quiet
+      }
+    }
+    // ===== /PATCH =====
 function boot(){
       try{ dgMobileInit(); }catch(e){}
       setStatus('', 'Booting…');
