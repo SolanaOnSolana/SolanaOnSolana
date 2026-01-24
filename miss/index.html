@@ -477,7 +477,7 @@ DexGuard DexLike LiveChart v1
       text-overflow:ellipsis;
     }
 
-    .results{ padding: 10px 12px 12px; display:none; }
+    .results{ padding: 10px 12px 12px; display:none; max-height: 360px; overflow:auto; overscroll-behavior: contain; }
     .results.show{display:block}
     .resultItem{
       display:grid;
@@ -2091,7 +2091,7 @@ tbody tr.tradeSell:hover td:not(:nth-child(5)){
 .searchWrap.cmdSearch #btnSearch{ display:none !important; }
 #cmdDropdown{ display:none !important; } /* removed from DOM, extra safety */
 .dgInstantResults{ margin-top: 10px; }
-.dgInstantResults .results{ display:block; max-height: 360px; overflow:auto; scrollbar-gutter: stable; } /* results moved out of hidden panel */
+.dgInstantResults .results{ display:block; } /* results moved out of hidden panel */
 .dgInstantResults .empty{ margin-top: 0; }
 /* Make results sit tight under the input (no big gap) */
 .dgInstantResults .resultItem{ margin-top: 0; }
@@ -3124,21 +3124,12 @@ function setStatus(kind, txt){
         if (focused && !qv){
           cmdShowRecents();
         }
-      }catch(e){}
 
-    // Show "default" search state when query is empty.
-    // IMPORTANT: Must reset any stale search results when the user deletes the query.
+    // Ensure empty query resets results immediately (live update on delete)
     function dgShowInstantDefaults(){
-      try{ state.searchUI = 'panel'; }catch(e){}
-      try{ clearResults(); }catch(e){
-        try{
-          // Fallback: hard clear the results container if any.
-          if (el && el.results){ el.results.classList.remove('show'); el.results.innerHTML=''; }
-          if (el && el.resultsEmpty){ el.resultsEmpty.style.display=''; }
-        }catch(_){}
-      }
+      try{ clearResults(); }catch(e){}
     }
-
+      }catch(e){}
     }
 
 // ========= Command Search Dropdown (STEP3) =========
@@ -4524,7 +4515,12 @@ function cmdGlobalOutsideClose(){
     let searchTimer = 0;
     async function doSearch(userTriggered=false){
       const q = (el.q.value || '').trim();
-      if (!q){ try{ dgShowInstantDefaults(); }catch(e){} return; }
+      if (!q){
+        // When query is cleared, immediately reset UI (do NOT keep stale results)
+        clearResults();
+        try{ dgShowInstantDefaults(); }catch(e){}
+        return;
+      }
 
       const sid = ++state.sessionId;
       if (state.abort) state.abort.abort();
