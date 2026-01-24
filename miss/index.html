@@ -2091,7 +2091,7 @@ tbody tr.tradeSell:hover td:not(:nth-child(5)){
 .searchWrap.cmdSearch #btnSearch{ display:none !important; }
 #cmdDropdown{ display:none !important; } /* removed from DOM, extra safety */
 .dgInstantResults{ margin-top: 10px; }
-.dgInstantResults .results{ display:block; } /* results moved out of hidden panel */
+.dgInstantResults .results{ display:block; max-height: 360px; overflow:auto; scrollbar-gutter: stable; } /* results moved out of hidden panel */
 .dgInstantResults .empty{ margin-top: 0; }
 /* Make results sit tight under the input (no big gap) */
 .dgInstantResults .resultItem{ margin-top: 0; }
@@ -3125,6 +3125,20 @@ function setStatus(kind, txt){
           cmdShowRecents();
         }
       }catch(e){}
+
+    // Show "default" search state when query is empty.
+    // IMPORTANT: Must reset any stale search results when the user deletes the query.
+    function dgShowInstantDefaults(){
+      try{ state.searchUI = 'panel'; }catch(e){}
+      try{ clearResults(); }catch(e){
+        try{
+          // Fallback: hard clear the results container if any.
+          if (el && el.results){ el.results.classList.remove('show'); el.results.innerHTML=''; }
+          if (el && el.resultsEmpty){ el.resultsEmpty.style.display=''; }
+        }catch(_){}
+      }
+    }
+
     }
 
 // ========= Command Search Dropdown (STEP3) =========
