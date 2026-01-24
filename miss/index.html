@@ -1333,8 +1333,9 @@ body::after{
 
 /* ===== DexGuard PATCH: Command Search Dropdown (STEP3) ===== */
 .grid[data-cmd="1"]{ grid-template-columns: 1fr !important; overflow: visible !important; }
-/* Keep results panel available, but dock it under the search input. */
-.grid[data-cmd="1"] section[aria-label="Search results"]{ display:block !important; }
+/* Keep legacy results panel in DOM (JS hooks), but hide it to avoid duplicate results.
+   Results are shown in the Command Search dropdown (topbar). */
+.grid[data-cmd="1"] section[aria-label="Search results"]{ display:none !important; }
 /* Ensure dropdown can escape the search panel and sit above content. */
 .panel[aria-label="Search"]{
   overflow: visible;
@@ -3871,6 +3872,22 @@ function cmdGlobalOutsideClose(){
     }
 
     function renderResults(pairs){
+
+      // If command dropdown exists (topbar Command Search), show results ONLY there to avoid duplicates.
+      const hasCmd = !!(document.getElementById('cmdDropdown') && document.getElementById('cmdList'));
+      if (hasCmd){
+        try{
+          cmdEnsure();
+          cmd.mode = 'results';
+          cmdSetHeader('results');
+          cmdSetItems(pairsToCmdItems(pairs||[]));
+          // Open dropdown on explicit search / render
+          cmdShow();
+        }catch(e){}
+        // Legacy panel stays in DOM for compatibility but is hidden by CSS in cmd mode.
+        try{ el.results.classList.remove('show'); el.results.innerHTML=''; el.resultsEmpty.style.display=''; }catch(e){}
+        return;
+      }
       try{ cmdEnsure(); cmdSetItems(pairsToCmdItems(pairs||[])); }catch(e){}
       el.results.innerHTML = '';
       el.results.classList.add('show');
