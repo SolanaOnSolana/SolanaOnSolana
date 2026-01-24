@@ -2525,7 +2525,39 @@ tbody tr.tradeSell:hover td:not(:nth-child(5)){
     }
 
     // ========= Fetch (Abort + backoff + dedupe) =========
+    const DG_CORS_FALLBACK = 'https://api.allorigins.win/raw?url=';
+    const dgCorsFallbackHosts = [
+      'https://api.dexscreener.com/',
+      'https://io.dexscreener.com/',
+    ];
     const inflight = new Map(); // finalUrl -> promise
+
+    function dgShouldUseCorsFallback(url){
+      if (!url) return false;
+      return dgCorsFallbackHosts.some(h => url.startsWith(h));
+    }
+    function dgIsCorsLikeError(err){
+      const msg = String(err && (err.message || err));
+      return msg.includes('Failed to fetch') || msg.includes('NetworkError') || msg.includes('CORS');
+    }
+    async function dgFetchJsonDirect(url, {signal=null, headers=null}={}){
+      const res = await fetch(url, {
+        method:'GET',
+        headers: Object.assign({'accept':'application/json'}, headers || {}),
+        signal,
+        cache:'no-store',
+        mode:'cors',
+      });
+      if (!res.ok) {
+        const txt = await res.text().catch(()=> '');
+        const err = new Error('HTTP '+res.status+' '+res.statusText);
+        err.status = res.status;
+        err.body = txt.slice(0,200);
+        throw err;
+      }
+      return res.json();
+    }
+
     async function fetchJson(url, {ttl=0, signal=null, headers=null}={}){
       const finalUrl = applyProxy(url);
       const cacheKey = finalUrl;
@@ -2536,21 +2568,19 @@ tbody tr.tradeSell:hover td:not(:nth-child(5)){
       if (inflight.has(cacheKey)) return inflight.get(cacheKey);
 
       const p = (async ()=>{
-        const res = await fetch(finalUrl, {
-          method:'GET',
-          headers: Object.assign({'accept':'application/json'}, headers || {}),
-          signal,
-          cache:'no-store',
-          mode:'cors',
-        });
-        if (!res.ok) {
-          const txt = await res.text().catch(()=> '');
-          const err = new Error('HTTP '+res.status+' '+res.statusText);
-          err.status = res.status;
-          err.body = txt.slice(0,200);
-          throw err;
+        let data;
+        const proxyActive = !!(settings.proxyUrl || '').trim();
+        const canFallback = !proxyActive && dgShouldUseCorsFallback(url);
+        try{
+          data = await dgFetchJsonDirect(finalUrl, {signal, headers});
+        }catch(err){
+          if (canFallback && dgIsCorsLikeError(err)){
+            const fallbackUrl = DG_CORS_FALLBACK + encodeURIComponent(url);
+            data = await dgFetchJsonDirect(fallbackUrl, {signal, headers});
+          } else {
+            throw err;
+          }
         }
-        const data = await res.json();
         if (ttl > 0) cacheSet(cacheKey, data, ttl);
         return data;
       })();
