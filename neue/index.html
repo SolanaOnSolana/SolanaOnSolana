@@ -753,7 +753,7 @@ if (last && isFinite(last.close)){  state.lastPriceByPool.set(poolKey(meta), las
           if (inSingle){
             out += ch;
             if (escape) escape = false;
-            else if (ch === '\') escape = true;
+            else if (ch === '\\') escape = true;
             else if (ch === "'") inSingle = false;
             i++;
             continue;
@@ -761,7 +761,7 @@ if (last && isFinite(last.close)){  state.lastPriceByPool.set(poolKey(meta), las
           if (inDouble){
             out += ch;
             if (escape) escape = false;
-            else if (ch === '\') escape = true;
+            else if (ch === '\\') escape = true;
             else if (ch === '"') inDouble = false;
             i++;
             continue;
@@ -769,16 +769,14 @@ if (last && isFinite(last.close)){  state.lastPriceByPool.set(poolKey(meta), las
           if (inBacktick){
             out += ch;
             if (escape) escape = false;
-            else if (ch === '\') escape = true;
+            else if (ch === '\\') escape = true;
             else if (ch === '`') inBacktick = false;
             i++;
             continue;
           }
           if (!inRegex && ch === '/' && nxt === '/'){ 
             i += 2;
-            while (i < input.length && input[i] !== '
-' && input[i] !== '
-') i++;
+            while (i < input.length && input[i] !== '\n' && input[i] !== '\r') i++;
             continue;
           }
           if (!inRegex && ch === '/' && nxt === '*'){
@@ -797,7 +795,7 @@ if (last && isFinite(last.close)){  state.lastPriceByPool.set(poolKey(meta), las
           if (inRegex){
             out += ch;
             if (escape) escape = false;
-            else if (ch === '\') escape = true;
+            else if (ch === '\\') escape = true;
             else if (ch === '[') inClass = true;
             else if (ch === ']') inClass = false;
             else if (ch === '/' && !inClass){
