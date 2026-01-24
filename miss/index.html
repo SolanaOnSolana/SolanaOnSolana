@@ -3327,14 +3327,24 @@ function cmdSetHeader(mode){
   const title = document.getElementById('cmdHeadTitle');
   const clearBtn = document.getElementById('cmdClearRecents');
   if (!head) return;
+
   if (mode === 'recents'){
     head.style.display = 'flex';
     if (title) title.textContent = 'Recent';
     if (clearBtn) clearBtn.style.display = '';
-  }else{
-    head.style.display = 'none';
-    if (clearBtn) clearBtn.style.display = 'none';
+    return;
   }
+
+  if (mode === 'defaults'){
+    head.style.display = 'flex';
+    if (title) title.textContent = 'Trending';
+    if (clearBtn) clearBtn.style.display = 'none';
+    return;
+  }
+
+  // results / anything else
+  head.style.display = 'none';
+  if (clearBtn) clearBtn.style.display = 'none';
 }
 function cmdShowRecents(){
   cmdEnsure();
@@ -3347,6 +3357,118 @@ function cmdShowRecents(){
   }
   cmdSetItems(items);
   cmdSetHeader('recents');
+
+/* ===== PATCH: Command Search Defaults (Trending) — keep UI fast, no extra panels ===== */
+async function dgCmdLoadDefaults(opts){
+  try{
+    const o = opts || {};
+    const force = !!o.force;
+
+    const chain = (state && state.chain) ? String(state.chain) : 'solana';
+    const cache = state.__cmdDefaults || (state.__cmdDefaults = {});
+    const now = Date.now();
+    const hit = cache[chain];
+
+    if (!force && hit && Array.isArray(hit.pairs) && hit.pairs.length && (now - (hit.ts||0) < 60_000)){
+      return hit.pairs;
+    }
+
+    // Separate abort from main search/candles; do not interfere with user actions.
+    if (state.__cmdDefaultsAbort) state.__cmdDefaultsAbort.abort();
+    state.__cmdDefaultsAbort = new AbortController();
+    const signal = state.__cmdDefaultsAbort.signal;
+
+    const chainId = CHAINS[chain].ds;
+
+    // Pull "boosted / trending" tokens from DexScreener. Keep it tiny (<=8).
+    let data = null;
+    try{ data = await withBackoff(() => fetchJson(dsBoostTopUrl(), {ttl: 20_000, signal}), {tries:2, signal}); }catch(e){}
+    let items = normalizeBoosts(data, chain);
+    if (!items.length){
+      try{
+        const fb = await withBackoff(() => fetchJson(dsBoostLatestUrl(), {ttl: 20_000, signal}), {tries:2, signal});
+        items = normalizeBoosts(fb, chain);
+      }catch(e){}
+    }
+    items = (items || []).slice(0, 8);
+
+    const queue = items.slice();
+    const pairs = [];
+
+    const worker = async ()=>{
+      while (queue.length){
+        const it = queue.shift();
+        const token = it && it.tokenAddress ? String(it.tokenAddress) : '';
+        if (!token) continue;
+        try{
+          const tps = await withBackoff(() => fetchJson(dsTokenPairsUrl(chainId, token), {ttl: 20_000, signal}), {tries:2, signal});
+          const best = pickBestPair(Array.isArray(tps) ? tps : (tps?.pairs || []));
+          const pairId = best?.pairAddress || best?.pairId || best?.pair || null;
+          if (!pairId) continue;
+
+          const pd = await withBackoff(() => fetchJson(dsPairsUrl(chainId, pairId), {ttl: 20_000, signal}), {tries:2, signal});
+          const p = pd?.pairs?.[0] || null;
+          if (p) pairs.push(p);
+        }catch(e){
+          // quiet
+        }
+      }
+    };
+
+    await Promise.all([worker(), worker()]);
+
+    cache[chain] = {ts: Date.now(), pairs};
+    return pairs;
+  }catch(e){
+    return [];
+  }
+}
+
+function cmdShowDefaults(){
+  cmdEnsure();
+  cmd.mode = 'defaults';
+  cmdSetHeader('defaults');
+
+  const chain = (state && state.chain) ? String(state.chain) : 'solana';
+  const cache = state.__cmdDefaults || {};
+  const hit = cache[chain];
+
+  // Fast path: cached
+  if (hit && Array.isArray(hit.pairs) && hit.pairs.length){
+    try{
+      cmdSetItems(pairsToCmdItems(hit.pairs));
+      cmdSetHeader('defaults');
+      cmdShow();
+    }catch(e){}
+    return;
+  }
+
+  // Loading skeleton while we fetch
+  try{ cmdSetLoading(true); }catch(e){}
+  try{ cmdSetHeader('defaults'); }catch(e){}
+
+  dgCmdLoadDefaults({force:false}).then((pairs)=>{
+    try{
+      if (!pairs || !pairs.length){ cmdHide(); return; }
+      cmd.mode = 'defaults';
+      cmdSetItems(pairsToCmdItems(pairs));
+      cmdSetHeader('defaults');
+      cmdShow();
+    }catch(e){}
+  });
+}
+
+function cmdShowEmptyList(){
+  try{
+    const rec = dgRecentsToCmdItems();
+    if (rec && rec.length){
+      cmdShowRecents();
+      return;
+    }
+  }catch(e){}
+  cmdShowDefaults();
+}
+/* ===== /PATCH ===== */
 }
 
     (function(){ try{ const grid = document.querySelector('.grid'); if (grid) grid.setAttribute('data-cmd','1'); }catch(e){} })();
@@ -3484,7 +3606,9 @@ function dgCmdReposition(){
     dgUpdateVvh();
 
     const vv = window.visualViewport;
-    const vTop = (vv && typeof vv.offsetTop === 'number') ? vv.offsetTop : 0;
+    // NOTE: Safari desktop may report visualViewport.offsetTop as scrollY; only use it on mobile (keyboard-safe).
+    const rawVTop = (vv && typeof vv.offsetTop === 'number') ? vv.offsetTop : 0;
+    const vTop = (typeof dgIsMobile === 'function' && dgIsMobile()) ? rawVTop : 0;
     const vH   = (vv && vv.height) ? vv.height : window.innerHeight;
 
     const r = input.getBoundingClientRect();
@@ -3543,7 +3667,7 @@ try{
 
 function cmdSetItems(items){
   cmdEnsure();
-  try{ cmdSetHeader(cmd.mode === 'recents' ? 'recents' : 'results'); }catch(e){}
+  try{ cmdSetHeader(cmd.mode === 'recents' ? 'recents' : (cmd.mode === 'defaults' ? 'defaults' : 'results')); }catch(e){}
   cmd.items = Array.isArray(items) ? items : [];
   if (!cmd.list) return;
   cmd.list.innerHTML = '';
@@ -4390,7 +4514,7 @@ function cmdGlobalOutsideClose(){
     let searchTimer = 0;
     async function doSearch(userTriggered=false){
       const q = (el.q.value || '').trim();
-      if (!q){ clearResults(); try{ if (document.activeElement === el.q) cmdShowRecents(); }catch(e){} return; }
+      if (!q){ clearResults(); try{ if (userTriggered || document.activeElement === el.q) cmdShowEmptyList(); else cmdHide(); }catch(e){} return; }
       try{ cmd.mode = 'results'; }catch(e){}
       try{ cmdSetLoading(true); }catch(e){}
 
@@ -5544,6 +5668,7 @@ if (last && isFinite(last.close)){
       clearAll();
       if (!silent) loadTrending();
       else loadTrending();
+      try{ dgCmdLoadDefaults({force:true}); }catch(e){}
     }
 
     // ========= Events binding (deduped + guarded) =========
@@ -5569,11 +5694,11 @@ if (last && isFinite(last.close)){
           // Always render results into the command dropdown for normal searches.
           state.searchUI = 'cmd';
         }catch(_){ }
-        try{ const qv=(el.q.value||'').trim(); if(state.searchUI==='cmd' && !qv) cmdShowRecents(); }catch(e){} 
+        try{ const qv=(el.q.value||'').trim(); if(state.searchUI==='cmd' && !qv) cmdShowEmptyList(); }catch(e){} 
       }, null, 'q:focus');
       bindOnce(el.q, 'click', ()=>{ 
         try{ state.searchUI='cmd'; }catch(_){ }
-        try{ const qv=(el.q.value||'').trim(); if(!qv) cmdShowRecents(); }catch(e){} 
+        try{ const qv=(el.q.value||'').trim(); if(!qv) cmdShowEmptyList(); }catch(e){} 
       }, null, 'q:click');
 
       bindOnce(el.q, 'keydown', (e)=>{ cmdHandleKeys(e); if (e.key === 'Enter'){ /* if dropdown handled, cmdHandleKeys prevented */ if (e.defaultPrevented) return; e.preventDefault(); try{ state.searchUI='cmd'; }catch(_){ } doSearch(true); } }, null, 'q:enter');
@@ -5691,8 +5816,22 @@ function boot(){
       clearResults();
       showTokenView(false);
       dgDockSearchUnderChains();
+      // Prime default coins for the search dropdown (no Enter needed)
+      try{ dgCmdLoadDefaults({force:false}); }catch(e){}
       // Trending removed (STEP17)
       try{ void dgRestoreLastState(); }catch(e){}
+      // If nothing is open yet, show defaults immediately under the search bar.
+      try{
+        setTimeout(()=>{
+          try{
+            const qv = (el.q && el.q.value) ? String(el.q.value).trim() : '';
+            if (qv) return;
+            if (state && state.current) return;
+            state.searchUI = 'cmd';
+            cmdShowEmptyList();
+          }catch(_e){}
+        }, 420);
+      }catch(e){}
       setStatus('live', 'Ready');
     }
 
