@@ -1335,7 +1335,6 @@ body::after{
 .grid[data-cmd="1"]{ grid-template-columns: 1fr !important; overflow: visible !important; }
 /* Keep legacy results panel in DOM (JS hooks), but hide it to avoid duplicate results.
    Results are shown in the Command Search dropdown (topbar). */
-.grid[data-cmd="1"] section[aria-label="Search results"]{ display:none !important; }
 /* Ensure dropdown can escape the search panel and sit above content. */
 .panel[aria-label="Search"]{
   overflow: visible;
@@ -2812,6 +2811,9 @@ tbody tr.tradeSell:hover td:not(:nth-child(5)){
     const state = {
       chain: 'solana',
       tf: '15m',
+      // Which search UI should show results: 'panel' or 'cmd'
+      searchUI: 'panel',
+      _cmdFocusUntil: 0,
       sessionId: 0,
       current: null, // meta
 
@@ -3873,22 +3875,28 @@ function cmdGlobalOutsideClose(){
 
     function renderResults(pairs){
 
-      // If command dropdown exists (topbar Command Search), show results ONLY there to avoid duplicates.
-      const hasCmd = !!(document.getElementById('cmdDropdown') && document.getElementById('cmdList'));
-      if (hasCmd){
+      // Route results to the right UI:
+      // - Normal click / typing -> render into the Search Results panel
+      // - Ctrl+K / ⌘K "command" intent -> render into the command dropdown only
+      const canCmd = !!(document.getElementById('cmdDropdown') && document.getElementById('cmdList'));
+      const useCmd = !!(canCmd && state && state.searchUI === 'cmd');
+
+      if (useCmd){
         try{
           cmdEnsure();
           cmd.mode = 'results';
           cmdSetHeader('results');
           cmdSetItems(pairsToCmdItems(pairs||[]));
-          // Open dropdown on explicit search / render
           cmdShow();
         }catch(e){}
-        // Legacy panel stays in DOM for compatibility but is hidden by CSS in cmd mode.
+        // Keep legacy panel in DOM for compatibility, but do not render to it in cmd mode.
         try{ el.results.classList.remove('show'); el.results.innerHTML=''; el.resultsEmpty.style.display=''; }catch(e){}
         return;
+      }else{
+        // Ensure cmd dropdown is not lingering on normal searches
+        try{ cmdHide(); }catch(e){}
       }
-      try{ cmdEnsure(); cmdSetItems(pairsToCmdItems(pairs||[])); }catch(e){}
+
       el.results.innerHTML = '';
       el.results.classList.add('show');
       el.resultsEmpty.style.display = 'none';
@@ -5553,10 +5561,19 @@ if (last && isFinite(last.close)){
       __DGW.__eventsBound = true;
 
       el.tabs.forEach(btn => bindOnce(btn, 'click', () => setChain(btn.dataset.chain), {passive:true}, 'tab:click'));
-      bindOnce(el.btnSearch, 'click', () => doSearch(true), null, 'btnSearch:click');
+      bindOnce(el.btnSearch, 'click', () => { try{ state.searchUI='panel'; }catch(_){ } doSearch(true); }, null, 'btnSearch:click');
       bindOnce(el.q, 'input', debounceSearch, null, 'q:input');
-      bindOnce(el.q, 'focus', ()=>{ try{ const qv=(el.q.value||'').trim(); if(!qv) cmdShowRecents(); }catch(e){} }, null, 'q:focus');
-      bindOnce(el.q, 'click', ()=>{ try{ const qv=(el.q.value||'').trim(); if(!qv) cmdShowRecents(); }catch(e){} }, null, 'q:click');
+      bindOnce(el.q, 'focus', ()=>{ 
+        try{ 
+          // Decide where results should render based on how focus was triggered
+          state.searchUI = (Date.now() < (state._cmdFocusUntil||0)) ? 'cmd' : 'panel';
+        }catch(_){ }
+        try{ const qv=(el.q.value||'').trim(); if(state.searchUI==='cmd' && !qv) cmdShowRecents(); else if(state.searchUI!=='cmd') cmdHide(); }catch(e){} 
+      }, null, 'q:focus');
+      bindOnce(el.q, 'click', ()=>{ 
+        try{ state.searchUI='panel'; }catch(_){ }
+        try{ const qv=(el.q.value||'').trim(); if(!qv) cmdHide(); }catch(e){} 
+      }, null, 'q:click');
 
       bindOnce(el.q, 'keydown', (e)=>{ cmdHandleKeys(e); if (e.key === 'Enter'){ /* if dropdown handled, cmdHandleKeys prevented */ if (e.defaultPrevented) return; e.preventDefault(); doSearch(true); } }, null, 'q:enter');
       cmdGlobalOutsideClose();
@@ -5579,6 +5596,7 @@ if (last && isFinite(last.close)){
           // Command Search focus: Ctrl+K / ⌘K
           if ((e.ctrlKey || e.metaKey) && String(e.key).toLowerCase() === 'k'){
             e.preventDefault();
+            try{ state.searchUI='cmd'; state._cmdFocusUntil = Date.now()+2000; }catch(_){ }
             if (el.q && el.q.focus){
               el.q.focus({preventScroll:true});
               try{ el.q.select && el.q.select(); }catch(_){}
