@@ -5566,14 +5566,14 @@ if (last && isFinite(last.close)){
       bindOnce(el.q, 'input', debounceSearch, null, 'q:input');
       bindOnce(el.q, 'focus', ()=>{ 
         try{ 
-          // Decide where results should render based on how focus was triggered
-          state.searchUI = (Date.now() < (state._cmdFocusUntil||0)) ? 'cmd' : 'panel';
+          // Always render results into the command dropdown for normal searches.
+          state.searchUI = 'cmd';
         }catch(_){ }
-        try{ const qv=(el.q.value||'').trim(); if(state.searchUI==='cmd' && !qv) cmdShowRecents(); else if(state.searchUI!=='cmd') cmdHide(); }catch(e){} 
+        try{ const qv=(el.q.value||'').trim(); if(state.searchUI==='cmd' && !qv) cmdShowRecents(); }catch(e){} 
       }, null, 'q:focus');
       bindOnce(el.q, 'click', ()=>{ 
-        try{ state.searchUI='panel'; }catch(_){ }
-        try{ const qv=(el.q.value||'').trim(); if(!qv) cmdHide(); }catch(e){} 
+        try{ state.searchUI='cmd'; }catch(_){ }
+        try{ const qv=(el.q.value||'').trim(); if(!qv) cmdShowRecents(); }catch(e){} 
       }, null, 'q:click');
 
       bindOnce(el.q, 'keydown', (e)=>{ cmdHandleKeys(e); if (e.key === 'Enter'){ /* if dropdown handled, cmdHandleKeys prevented */ if (e.defaultPrevented) return; e.preventDefault(); try{ state.searchUI='cmd'; }catch(_){ } doSearch(true); } }, null, 'q:enter');
