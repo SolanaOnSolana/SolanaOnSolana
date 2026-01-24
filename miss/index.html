@@ -1333,13 +1333,24 @@ body::after{
 
 /* ===== DexGuard PATCH: Command Search Dropdown (STEP3) ===== */
 .grid[data-cmd="1"]{ grid-template-columns: 1fr !important; overflow: visible !important; }
-/* Keep results panel hidden; show results directly under the search input. */
-.grid[data-cmd="1"] section[aria-label="Search results"]{ display:none !important; }
+/* Keep results panel available, but dock it under the search input. */
+.grid[data-cmd="1"] section[aria-label="Search results"]{ display:block !important; }
 /* Ensure dropdown can escape the search panel and sit above content. */
 .panel[aria-label="Search"]{
   overflow: visible;
   position: relative;
   z-index: 5;
+}
+
+/* Docked results panel under search input */
+#searchDock .searchResultsDock{
+  margin-top: 10px;
+}
+#searchDock .searchResultsDock .panelHead{
+  padding: 10px 12px 8px;
+}
+#searchDock .searchResultsDock .title{
+  font-size: 11px;
 }
 
 .searchWrap.cmdSearch{ position: relative; }
@@ -5624,9 +5635,14 @@ if (last && isFinite(last.close)){
       try{
         const dock = document.getElementById('searchDock');
         const wrap = document.querySelector('.searchWrap.cmdSearch');
+        const resultsPanel = document.querySelector('section[aria-label="Search results"]');
         if (!dock || !wrap) return;
         if (dock.contains(wrap)) return;
         dock.appendChild(wrap);
+        if (resultsPanel && !dock.contains(resultsPanel)){
+          resultsPanel.classList.add('searchResultsDock');
+          dock.appendChild(resultsPanel);
+        }
         document.body.classList.add('dgSearchDocked');
         // Recompute dropdown position for the new location (keyboard-safe on iOS)
         try{ if (typeof dgCmdReposition === 'function') dgCmdReposition(); }catch(e){}
