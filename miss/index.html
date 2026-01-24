@@ -2086,6 +2086,17 @@ tbody tr.tradeSell:hover td:not(:nth-child(5)){
 
 /* ===== /PATCH ===== */
 
+
+/* ===== PATCH: Single Search (no buttons, no dropdown) ===== */
+.searchWrap.cmdSearch #btnSearch{ display:none !important; }
+#cmdDropdown{ display:none !important; } /* removed from DOM, extra safety */
+.dgInstantResults{ margin-top: 10px; }
+.dgInstantResults .results{ display:block; } /* results moved out of hidden panel */
+.dgInstantResults .empty{ margin-top: 0; }
+/* Make results sit tight under the input (no big gap) */
+.dgInstantResults .resultItem{ margin-top: 0; }
+/* ===== /PATCH ===== */
+
 </style>
 </head>
 
@@ -2113,21 +2124,6 @@ tbody tr.tradeSell:hover td:not(:nth-child(5)){
                         <span class="searchIcon">⌕</span>
                         <input id="q" aria-label="Command Search" autocapitalize="off" autocomplete="off" spellcheck="false" placeholder="Command Search…  token / symbol / contract (⌘K)" />
                       </div>
-                      <button id="btnSearch" class="btn" title="Search">Search</button>
-                    
-<div id="cmdDropdown" aria-label="Command results">
-  <div class="cmdPanel">
-    <div id="cmdHead" class="cmdHead" style="display:none">
-      <div id="cmdHeadTitle" class="cmdHeadTitle">Recent</div>
-      <button id="cmdClearRecents" class="cmdClearRecents" type="button" aria-label="Clear Recents">Clear Recents</button>
-    </div>
-    <div id="cmdList" class="cmdList" role="listbox" aria-label="Search results"></div>
-    <div class="cmdFooter" aria-hidden="true">
-      <span><kbd>↑</kbd><kbd>↓</kbd> navigate • <kbd>Enter</kbd> open • <kbd>Esc</kbd> close</span>
-      <span class="muted">Max 8</span>
-    </div>
-  </div>
-</div>
 </div>
         </div>
 
@@ -4514,9 +4510,7 @@ function cmdGlobalOutsideClose(){
     let searchTimer = 0;
     async function doSearch(userTriggered=false){
       const q = (el.q.value || '').trim();
-      if (!q){ clearResults(); try{ if (userTriggered || document.activeElement === el.q) cmdShowEmptyList(); else cmdHide(); }catch(e){} return; }
-      try{ cmd.mode = 'results'; }catch(e){}
-      try{ cmdSetLoading(true); }catch(e){}
+      if (!q){ try{ dgShowInstantDefaults(); }catch(e){} return; }
 
       const sid = ++state.sessionId;
       if (state.abort) state.abort.abort();
@@ -4542,7 +4536,7 @@ function cmdGlobalOutsideClose(){
 
     function debounceSearch(){
       clearTimeout(searchTimer);
-      searchTimer = setTimeout(()=> { try{ state.searchUI='cmd'; }catch(_){ } doSearch(false); }, 260);
+      searchTimer = setTimeout(()=> { doSearch(false); }, 180);
     }
 
     // ========= Open pool / token =========
@@ -5687,30 +5681,28 @@ if (last && isFinite(last.close)){
       __DGW.__eventsBound = true;
 
       el.tabs.forEach(btn => bindOnce(btn, 'click', () => setChain(btn.dataset.chain), {passive:true}, 'tab:click'));
-      bindOnce(el.btnSearch, 'click', () => { try{ state.searchUI='cmd'; }catch(_){ } doSearch(true); }, null, 'btnSearch:click');
+      // Search button removed (single search input)
       bindOnce(el.q, 'input', debounceSearch, null, 'q:input');
-      bindOnce(el.q, 'focus', ()=>{ 
-        try{ 
-          // Always render results into the command dropdown for normal searches.
-          state.searchUI = 'cmd';
-        }catch(_){ }
-        try{ const qv=(el.q.value||'').trim(); if(state.searchUI==='cmd' && !qv) cmdShowEmptyList(); }catch(e){} 
-      }, null, 'q:focus');
-      bindOnce(el.q, 'click', ()=>{ 
-        try{ state.searchUI='cmd'; }catch(_){ }
-        try{ const qv=(el.q.value||'').trim(); if(!qv) cmdShowEmptyList(); }catch(e){} 
-      }, null, 'q:click');
+      bindOnce(el.q, 'focus', ()=>{ try{ const qv=(el.q.value||'').trim(); if(!qv) dgShowInstantDefaults(); }catch(e){} }, null, 'q:focus');
+      bindOnce(el.q, 'click', ()=>{ try{ const qv=(el.q.value||'').trim(); if(!qv) dgShowInstantDefaults(); }catch(e){} }, null, 'q:click');
 
-      bindOnce(el.q, 'keydown', (e)=>{ cmdHandleKeys(e); if (e.key === 'Enter'){ /* if dropdown handled, cmdHandleKeys prevented */ if (e.defaultPrevented) return; e.preventDefault(); try{ state.searchUI='cmd'; }catch(_){ } doSearch(true); } }, null, 'q:enter');
-      cmdGlobalOutsideClose();
-      // Recents: clear button (inside dropdown)
-      try{
-        const btnCR = document.getElementById('cmdClearRecents');
-        if (btnCR){
-          bindOnce(btnCR, 'mousedown', (e)=>{ e.preventDefault(); }, null, 'cmdClearRecents:md');
-          bindOnce(btnCR, 'click', (e)=>{ e.preventDefault(); dgClearRecents(); cmdShowRecents(); }, null, 'cmdClearRecents:click');
-        }
-      }catch(e){}
+      bindOnce(el.q, 'keydown', (e)=>{
+        try{
+          if (e.key === 'Enter'){
+            e.preventDefault();
+            // Open first visible result (if any). Otherwise run search.
+            const first = (el.results && el.results.querySelector) ? el.results.querySelector('.resultItem') : null;
+            if (first && first.click){ first.click(); return; }
+            doSearch(true);
+            return;
+          }
+          if (e.key === 'Escape'){
+            try{ el.q.value = ''; }catch(_){ }
+            doSearch(false);
+            try{ el.q.blur && el.q.blur(); }catch(_){ }
+          }
+        }catch(err){}
+      }, null, 'q:keydown');
 
 
       // Global hotkeys (no UI buttons needed)
@@ -5722,7 +5714,7 @@ if (last && isFinite(last.close)){
           // Command Search focus: Ctrl+K / ⌘K
           if ((e.ctrlKey || e.metaKey) && String(e.key).toLowerCase() === 'k'){
             e.preventDefault();
-            try{ state.searchUI='cmd'; state._cmdFocusUntil = Date.now()+2000; }catch(_){ }
+            try{ state._cmdFocusUntil = Date.now()+2000; }catch(_){ }
             if (el.q && el.q.focus){
               el.q.focus({preventScroll:true});
               try{ el.q.select && el.q.select(); }catch(_){}
@@ -5796,17 +5788,24 @@ if (last && isFinite(last.close)){
       try{
         const dock = document.getElementById('searchDock');
         const wrap = document.querySelector('.searchWrap.cmdSearch');
-        const resultsPanel = document.querySelector('section[aria-label="Search results"]');
         if (!dock || !wrap) return;
-        if (dock.contains(wrap)) return;
-        dock.appendChild(wrap);
-        if (resultsPanel && !dock.contains(resultsPanel)){
-          resultsPanel.classList.add('searchResultsDock');
-          dock.appendChild(resultsPanel);
+
+        if (!dock.contains(wrap)) dock.appendChild(wrap);
+
+        // Mount results directly under the search input (single search, no dropdown, no separate panel)
+        let host = document.getElementById('dgInstantResults');
+        if (!host){
+          host = document.createElement('div');
+          host.id = 'dgInstantResults';
+          host.className = 'dgInstantResults';
+          dock.appendChild(host);
         }
+        const res = document.getElementById('results');
+        const empty = document.getElementById('resultsEmpty');
+        if (empty && !host.contains(empty)) host.appendChild(empty);
+        if (res && !host.contains(res)) host.appendChild(res);
+
         document.body.classList.add('dgSearchDocked');
-        // Recompute dropdown position for the new location (keyboard-safe on iOS)
-        try{ if (typeof dgCmdReposition === 'function') dgCmdReposition(); }catch(e){}
       }catch(e){}
     }
 
@@ -5816,22 +5815,10 @@ function boot(){
       clearResults();
       showTokenView(false);
       dgDockSearchUnderChains();
-      // Prime default coins for the search dropdown (no Enter needed)
-      try{ dgCmdLoadDefaults({force:false}); }catch(e){}
+      // Prime defaults under the search input immediately
+      try{ dgShowInstantDefaults(); }catch(e){}
       // Trending removed (STEP17)
       try{ void dgRestoreLastState(); }catch(e){}
-      // If nothing is open yet, show defaults immediately under the search bar.
-      try{
-        setTimeout(()=>{
-          try{
-            const qv = (el.q && el.q.value) ? String(el.q.value).trim() : '';
-            if (qv) return;
-            if (state && state.current) return;
-            state.searchUI = 'cmd';
-            cmdShowEmptyList();
-          }catch(_e){}
-        }, 420);
-      }catch(e){}
       setStatus('live', 'Ready');
     }
 
