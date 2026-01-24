@@ -1335,6 +1335,7 @@ body::after{
 .grid[data-cmd="1"]{ grid-template-columns: 1fr !important; overflow: visible !important; }
 /* Keep legacy results panel in DOM (JS hooks), but hide it to avoid duplicate results.
    Results are shown in the Command Search dropdown (topbar). */
+section[aria-label="Search results"]{ display:none !important; }
 /* Ensure dropdown can escape the search panel and sit above content. */
 .panel[aria-label="Search"]{
   overflow: visible;
@@ -4417,7 +4418,7 @@ function cmdGlobalOutsideClose(){
 
     function debounceSearch(){
       clearTimeout(searchTimer);
-      searchTimer = setTimeout(()=> doSearch(false), 260);
+      searchTimer = setTimeout(()=> { try{ state.searchUI='cmd'; }catch(_){ } doSearch(false); }, 260);
     }
 
     // ========= Open pool / token =========
@@ -5561,7 +5562,7 @@ if (last && isFinite(last.close)){
       __DGW.__eventsBound = true;
 
       el.tabs.forEach(btn => bindOnce(btn, 'click', () => setChain(btn.dataset.chain), {passive:true}, 'tab:click'));
-      bindOnce(el.btnSearch, 'click', () => { try{ state.searchUI='panel'; }catch(_){ } doSearch(true); }, null, 'btnSearch:click');
+      bindOnce(el.btnSearch, 'click', () => { try{ state.searchUI='cmd'; }catch(_){ } doSearch(true); }, null, 'btnSearch:click');
       bindOnce(el.q, 'input', debounceSearch, null, 'q:input');
       bindOnce(el.q, 'focus', ()=>{ 
         try{ 
@@ -5575,7 +5576,7 @@ if (last && isFinite(last.close)){
         try{ const qv=(el.q.value||'').trim(); if(!qv) cmdHide(); }catch(e){} 
       }, null, 'q:click');
 
-      bindOnce(el.q, 'keydown', (e)=>{ cmdHandleKeys(e); if (e.key === 'Enter'){ /* if dropdown handled, cmdHandleKeys prevented */ if (e.defaultPrevented) return; e.preventDefault(); doSearch(true); } }, null, 'q:enter');
+      bindOnce(el.q, 'keydown', (e)=>{ cmdHandleKeys(e); if (e.key === 'Enter'){ /* if dropdown handled, cmdHandleKeys prevented */ if (e.defaultPrevented) return; e.preventDefault(); try{ state.searchUI='cmd'; }catch(_){ } doSearch(true); } }, null, 'q:enter');
       cmdGlobalOutsideClose();
       // Recents: clear button (inside dropdown)
       try{
