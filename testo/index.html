@@ -1694,50 +1694,18 @@ tbody tr.tradeSell:hover td:not(:nth-child(5)){
     height: 58px !important;
   }
 
-  /* Command dropdown becomes a bottom sheet */
+  /* Command dropdown (mobile): keep opening DOWN under the input (iOS Safari-safe)
+     - Use STEP10 visualViewport positioning (dgFixed + CSS vars)
+     - No full-screen sheet, no transparent scrims
+  */
   #cmdDropdown{
-    position: fixed !important;
+    padding: 0 !important;
+    bottom: auto !important;
+    top: auto !important;
     left: 0 !important;
     right: 0 !important;
-    bottom: 0 !important;
-    top: auto !important;
-    padding: 0 12px calc(env(safe-area-inset-bottom) + 12px) !important;
     z-index: 1400 !important;
-  }
-  #cmdDropdown .cmdPanel{
-    border-radius: 18px 18px 0 0 !important;
-    border-left: 0 !important;
-    border-right: 0 !important;
-    border-bottom: 0 !important;
-    box-shadow: 0 -24px 70px rgba(0,0,0,.60) !important;
-  }
-  /* Handle */
-  #cmdDropdown .cmdPanel::before{
-    content:"";
-    display:block;
-    width: 56px;
-    height: 5px;
-    border-radius: 999px;
-    background: rgba(255,255,255,.18);
-    margin: 10px auto 6px;
-  }
-  #cmdDropdown .cmdList{
-    max-height: min(52vh, 420px) !important;
-  }
-  #cmdDropdown .cmdRow{
-    padding: 12px 12px !important;
-  }
-  #cmdDropdown .cmdFooter{
-    display:none !important; /* app feel, less noise */
-  }
-  #cmdDropdown .cmdHead{
-    position: sticky;
-    top: 0;
-    z-index: 2;
-  }
-  #cmdDropdown .cmdClearRecents{
-    height: 36px;
-  }
+  } 
 
   /* Trending row stays swipeable but avoids page horizontal scrolling */
   .trendingRow{ padding: 10px; }
@@ -1860,7 +1828,7 @@ tbody tr.tradeSell:hover td:not(:nth-child(5)){
 }
 @supports (backdrop-filter: blur(1px)){
   #cmdDropdown .cmdPanel{
-    background: rgba(10,12,18,.88) !important;
+    background: rgba(10,12,18,.94) !important;
     backdrop-filter: blur(14px);
   }
 }
@@ -1895,12 +1863,16 @@ tbody tr.tradeSell:hover td:not(:nth-child(5)){
   background: rgba(104,195,255,.12);
 }
 
-/* Mobile: bottom-sheet stays within the *visual* viewport (keyboard-safe) */
+/* Mobile: keep dropdown pinned under the input (keyboard-safe via visualViewport vars) */
 @media (max-width: 720px){
-  #cmdDropdown{
-    /* already fixed in STEP8, but we enforce viewport-safe max height */
-    max-height: calc(var(--dgVvh) - 12px) !important;
+  #cmdDropdown.dgFixed{
+    max-height: calc(var(--dgVvh) - 8px) !important;
   }
+  #cmdDropdown.dgFixed .cmdPanel{
+    /* Cap the panel inside the *visual* viewport; list scrolls inside */
+    max-height: calc(var(--dgVvh) - var(--dgCmdTop) - 12px - env(safe-area-inset-bottom)) !important;
+  }
+}
   #cmdDropdown .cmdPanel{
     max-height: calc(var(--dgVvh) - 12px - env(safe-area-inset-bottom)) !important;
   }
@@ -1992,6 +1964,79 @@ tbody tr.tradeSell:hover td:not(:nth-child(5)){
 .table tbody tr.tradeSell td:last-child a.linkPill{
   border-color: rgba(255,104,121,.30) !important;
 }
+/* ===== /PATCH ===== */
+
+
+
+/* ===== PATCH: Token header metrics alignment + remove Explorer/Pair/DexScreener buttons (STEP14) ===== */
+
+/* A) Remove the 3 link pills completely from view (no gaps) */
+#lnkExplorer, #lnkPair, #lnkDex{ display:none !important; }
+
+/* B) Metrics grid/strip: make every stat tile same height + same internal baseline */
+.statsGrid{
+  align-items: stretch !important;      /* when STEP7 turns it into flex strip */
+}
+.statsGrid .stat{
+  height: 78px !important;             /* enough room for Change card tabs */
+  display:flex !important;
+  flex-direction:column !important;
+  justify-content:center !important;
+  gap: 6px !important;
+  padding-top: 10px !important;
+  padding-bottom: 10px !important;
+}
+.statsGrid .stat .k{
+  line-height: 1.05 !important;
+  margin: 0 !important;
+}
+.statsGrid .stat .v{
+  line-height: 1.12 !important;
+  display:flex;
+  align-items:center;
+  gap: 8px;
+  min-height: 18px;                    /* consistent baseline */
+}
+
+/* Change card inner layout: keep % perfectly aligned and tabs inside the same tile */
+.statsGrid .stat .stMain{
+  display:flex;
+  align-items:center !important;        /* fixes "percent higher" feel */
+  justify-content:space-between;
+  gap: 10px;
+  line-height: 1.1 !important;
+}
+.statsGrid .stat .stMain .delta{
+  line-height: 1.1 !important;
+  margin: 0 !important;
+}
+.statsGrid .stat .stTabs{
+  margin-top: 6px !important;
+  gap: 6px !important;
+  flex-wrap: nowrap !important;         /* avoid wrapping that breaks tile height */
+  overflow:hidden;                      /* keep clean */
+}
+.statsGrid .stat .stPill{
+  height: 22px !important;
+  padding: 0 8px !important;
+  font-size: 10px !important;
+  border-radius: 10px !important;
+  line-height: 22px !important;
+}
+
+/* Mobile: slightly taller for touch + keep consistent alignment */
+@media (max-width: 720px){
+  .statsGrid .stat{
+    height: 82px !important;
+  }
+  .statsGrid .stat .stPill{
+    height: 26px !important;
+    line-height: 26px !important;
+    padding: 0 10px !important;
+    font-size: 10px !important;
+  }
+}
+
 /* ===== /PATCH ===== */
 
 </style>
@@ -3139,8 +3184,8 @@ async function dgRestoreLastState(){
   // If no identifier, nothing to restore
   if (!pairId && !tokenAddress) return;
 
-  // Apply TF immediately so initial candle load uses it
-  if (tf) dgApplyTfUi(tf);
+  // Default TF on open: always 15m (ignore saved tf)
+  dgApplyTfUi('15m');
 
   // Suppress any user-visible errors/toasts during restore attempt
   __DG_SUPPRESS_TOAST = true;
@@ -3383,14 +3428,10 @@ function dgCmdReposition(){
     document.documentElement.style.setProperty('--dgCmdWidth', width + 'px');
     document.documentElement.style.setProperty('--dgCmdListMax', listMax + 'px');
 
-    // Only fix-position on non-mobile; mobile uses bottom sheet CSS.
+    // Fix-position dropdown under the input (desktop + mobile) via STEP10 CSS vars.
     try{
-      if (typeof dgIsMobile === 'function' && dgIsMobile()){
-        cmd.wrap.classList.remove('dgFixed');
-      }else{
-        cmd.wrap.classList.add('dgFixed');
-      }
-    }catch(e){}
+      cmd.wrap.classList.add('dgFixed');
+    }catch(e){} 
   }catch(e){}
 }
 
@@ -4331,6 +4372,7 @@ function cmdGlobalOutsideClose(){
       state.tradesList = [];
       state.winStats = null;
 
+      // Default timeframe on each open: 15m (rollback from forced 5m)
       if (state.tf !== '15m'){
         state.tf = '15m';
         el.tfs.forEach(b => b.classList.toggle('active', b.dataset.tf === state.tf));
@@ -4625,7 +4667,7 @@ function cmdGlobalOutsideClose(){
     }
     function maxCandlesForTf(tf){
       switch(tf){
-        case '1m': return 50000;   // ~34 days
+        case '1m': return 8000;    // ~5.5 days (stability; avoids 1m fetch overload)
         case '5m': return 60000;   // ~208 days
         case '15m': return 30000;  // ~312 days
         case '1h': return 8000;    // ~333 days
