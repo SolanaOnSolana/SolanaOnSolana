@@ -3250,6 +3250,7 @@ body:not(.dgHasToken) section.panel[aria-label="Token view"]{ display:none !impo
       _tfSwitching: false,
       _tfSwitchSid: 0,
       _autoFollow: true,
+      _lastFollowBucket: null,
       _usingFallbackCandles: false,
       _fallbackRetryAt: new Map(),
       _fallbackTimer: 0,
@@ -3490,13 +3491,31 @@ function setStatus(kind, txt){
       if (!state._rangeSub){
         state.chart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
           if (!range || !state.current) return;
-          const total = state.candles?.length || 0;
-          if (total > 0 && isFinite(range.to)){
-            state._pinToRight = range.to >= (total - 2);
-          } else {
-            state._pinToRight = true;
+          // Determine if user is still pinned at the far right (realtime).
+          // Use barsInLogicalRange (more reliable than comparing range.to to candle count),
+          // so panning/zooming doesn't incorrectly keep "follow" enabled.
+          let pinned = true;
+          try{
+            const info = state.series?.barsInLogicalRange?.(range);
+            if (info && typeof info.barsAfter === 'number' && isFinite(info.barsAfter)){
+              pinned = info.barsAfter <= 2;
+            } else {
+              const total = state.candles?.length || 0;
+              pinned = (total > 0 && isFinite(range.to)) ? (range.to >= (total - 2)) : true;
+            }
+          }catch(e){ pinned = true; }
+
+          const wasPinned = !!state._pinToRight;
+          state._pinToRight = pinned;
+
+          // If user scrolls away from the right edge, stop auto-follow.
+          if (!state._pinToRight){
+            state._autoFollow = false;
+          } else if (!wasPinned){
+            // If they scroll back to the right edge, resume follow.
+            state._autoFollow = true;
+            state._lastFollowBucket = null;
           }
-          if (!state._pinToRight) state._autoFollow = false;
           if (range.from > 10) return;
           clearTimeout(state._backfillTimer);
           state._backfillTimer = setTimeout(() => {
@@ -6733,8 +6752,16 @@ function shouldRetryCandles(meta){
         try{ state.series.update(c); }catch(e){}
       }
 
-      if (state._autoFollow){
-        try{ state.chart && state.chart.timeScale && state.chart.timeScale().scrollToRealTime(); }catch(e){}
+      // Follow-to-realtime only when user is pinned near the right edge AND a new candle bucket appears.
+      // This prevents the chart from constantly snapping right on every live trade update.
+      if (state._autoFollow && state._pinToRight){
+        try{
+          if (state._lastFollowBucket == null) state._lastFollowBucket = bucket;
+          if (bucket > state._lastFollowBucket){
+            state._lastFollowBucket = bucket;
+            state.chart && state.chart.timeScale && state.chart.timeScale().scrollToRealTime();
+          }
+        }catch(e){}
       }
     }
 
