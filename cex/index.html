@@ -863,6 +863,14 @@ DexGuard DexLike LiveChart v1
       flex-direction:column;
       gap:10px;
     }
+    .tradeLogo{
+      width: 22px;
+      height: 22px;
+      border-radius: 7px;
+      border: 1px solid rgba(255,255,255,.16);
+      box-shadow: 0 8px 18px rgba(0,0,0,.25);
+      object-fit: cover;
+    }
     .tradeTerminal{
       min-height: 420px;
       border-radius: 16px;
@@ -2697,14 +2705,17 @@ body.dgHasToken .dgBackBtn{ display:inline-flex; }
 
                 <section class="panel tradePanel" aria-label="Trade">
                   <div class="panelHead">
-                    <div class="title">Trade</div>
+                    <div class="title">
+                      <img class="tradeLogo" src="./dexguard.png" alt="DexGuard logo" />
+                      DexGuard Swap
+                    </div>
                     <div class="hint"><span class="kbd">Solana</span></div>
                   </div>
                   <div class="tradeBody">
                     <div id="tradeNotice" class="tradeNotice">Select a Solana token to enable instant buy/sell.</div>
                     <div id="tradeTerminal" class="tradeTerminal" aria-live="polite"></div>
                     <div class="tradeFoot">
-                      <span><b>Live Swap</b> Powered by Jupiter.</span>
+                      <span><b>Live Swap</b> DexGuard fees enabled.</span>
                       <span class="muted2">Wallet connect stays on your device.</span>
                     </div>
                   </div>
@@ -5325,6 +5336,8 @@ function cmdGlobalOutsideClose(){
     // ========= Trade (Solana / Jupiter) =========
     const JUPITER_SCRIPT = 'https://terminal.jup.ag/main-v2.js';
     const JUPITER_SOL_MINT = 'So11111111111111111111111111111111111111112';
+    const JUPITER_FEE_BPS = 50; // 0.5%
+    const JUPITER_FEE_ACCOUNT = 'Ff6M7U3WP1ZBJAg9UJHSNxhU3kjHgE6AZa2yw4mJ4jBU';
     let jupLoadPromise = null;
     let jupInitKey = '';
     let jupInitTimer = 0;
@@ -5408,6 +5421,8 @@ function cmdGlobalOutsideClose(){
             strictTokenList: false,
             initialInputMint: JUPITER_SOL_MINT,
             initialOutputMint: tokenMint,
+            platformFeeBps: JUPITER_FEE_BPS,
+            platformFeeAccount: JUPITER_FEE_ACCOUNT,
           };
           window.Jupiter.init(config);
           setTradeNotice('', 'hide');
