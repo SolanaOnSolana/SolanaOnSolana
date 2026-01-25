@@ -2513,6 +2513,128 @@ body.dgHasToken .dgBackBtn{ display:inline-flex; }
   border: 1px solid rgba(255,255,255,.10);
   background: rgba(0,0,0,.18);
 }
+
+/* Trade modal layout polish */
+#modalTradeBack .modalBody{
+  display:flex;
+  flex-direction: column;
+  gap: 12px;
+  position: relative;
+}
+.dgTradeTop{
+  position: sticky;
+  top: 0;
+  z-index: 6;
+  padding-top: 2px;
+  background: linear-gradient(180deg, rgba(7,7,17,.88), rgba(7,7,17,0));
+}
+.dgTradeHint{ letter-spacing:.2px; }
+
+/* Fee setup becomes a floating drawer (does not shrink the swap UI) */
+.dgTradeAdv{
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  top: 58px;
+  z-index: 7;
+  display:none;
+  max-width: 820px;
+  margin: 0 auto;
+  box-shadow: 0 18px 46px rgba(0,0,0,.55);
+  backdrop-filter: blur(14px);
+}
+.dgTradeAdv.open{ display:block; }
+.dgTradeAdvHead{
+  display:flex;
+  align-items:center;
+  justify-content: space-between;
+  gap:10px;
+  margin-bottom: 10px;
+}
+.dgTradeAdvTitle{
+  font-weight: 800;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  font-size: 12px;
+  color: rgba(255,255,255,.82);
+}
+.dgTradeAdv input{
+  width: 100%;
+  padding: 14px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(0,0,0,.22);
+  color: rgba(255,255,255,.92);
+}
+.dgTradeAdv .label{
+  font-size: 12px;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,.70);
+  margin-bottom: 8px;
+}
+.dgTradeAdv .hint{ line-height: 1.45; }
+
+/* Swap host fills remaining space */
+.dgTradeHost{
+  flex: 1;
+  min-height: 620px;
+  position: relative;
+}
+
+/* Wallet helper overlay (shown when no wallet detected / wallets=0) */
+.dgWalletHelp{
+  position:absolute;
+  inset: 0;
+  z-index: 8;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding: 18px;
+  background: rgba(0,0,0,.45);
+  backdrop-filter: blur(10px);
+}
+.dgWalletHelpCard{
+  width: min(520px, 100%);
+  border-radius: 18px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(7,7,17,.86);
+  box-shadow: 0 22px 60px rgba(0,0,0,.60);
+  padding: 16px 16px 14px;
+}
+.dgWalletHelpCard h3{
+  margin: 0 0 6px;
+  font-size: 16px;
+}
+.dgWalletHelpCard p{
+  margin: 0 0 12px;
+  color: rgba(255,255,255,.70);
+}
+.dgWalletBtns{
+  display:flex;
+  gap:10px;
+  flex-wrap: wrap;
+}
+.dgWalletBtns a{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(255,255,255,.06);
+}
+.dgWalletBtns a:hover{ background: rgba(255,255,255,.10); }
+.dgWalletBtns .primary{
+  border-color: rgba(20,241,149,.28);
+  background: rgba(20,241,149,.12);
+}
+.dgWalletSmall{
+  margin-top:10px;
+  font-size: 12px;
+  color: rgba(255,255,255,.60);
+}
+
 /* ===== /PATCH STEP42 ===== */
 
 </style>
@@ -2826,12 +2948,13 @@ body.dgHasToken .dgBackBtn{ display:inline-flex; }
       </div>
       <div class="modalBody">
         <div class="dgTradeTop">
-          <div class="dgTradeHint">Non-custodial swaps (Solana) — powered by Jupiter</div>
+          <div class="dgTradeHint">Non-custodial swaps (Solana) — routed via Jupiter</div>
           <button id="btnTradeAdvanced" class="btn ghost" title="Fee setup">Fee setup</button>
         </div>
 
         <div id="dgTradeAdvanced" class="dgTradeAdv">
-          <div class="field">
+          <div class="dgTradeAdvHead"><div class="dgTradeAdvTitle">Fee setup</div><button id="btnCloseTradeFee" class="btn icon" aria-label="Close fee setup">×</button></div>
+<div class="field">
             <div class="label">Integrator fee wallet (public)</div>
             <input id="dgFeeWallet" value="Ff6M7U3WP1ZBJAg9UJHSNxhU3kjHgE6AZa2yw4mJ4jBU" readonly />
             <div class="hint">This is only for display. Never share your seed phrase or private key.</div>
@@ -2849,7 +2972,21 @@ body.dgHasToken .dgBackBtn{ display:inline-flex; }
           </div>
         </div>
 
-        <div id="dgJupiterHost" class="dgTradeHost"></div>
+        <div class="dgTradeHostWrap" style="position:relative; flex:1; min-height:620px;">
+          <div id="dgJupiterHost" class="dgTradeHost"></div>
+          <div id="dgWalletHelp" class="dgWalletHelp" hidden>
+            <div class="dgWalletHelpCard">
+              <h3>No Solana wallet detected</h3>
+              <p>To trade, you need a Solana wallet extension (desktop) or a mobile wallet browser. If you&apos;re on Safari, use Chrome/Brave for best compatibility.</p>
+              <div class="dgWalletBtns">
+                <a class="primary" href="https://phantom.app/" target="_blank" rel="noreferrer noopener">Get Phantom</a>
+                <a href="https://solflare.com/" target="_blank" rel="noreferrer noopener">Get Solflare</a>
+                <a id="dgWalletHelpDismiss" href="#" title="Hide this message">Hide</a>
+              </div>
+              <div class="dgWalletSmall">If you already installed a wallet, refresh the page and try again.</div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -3311,8 +3448,11 @@ body.dgHasToken .dgBackBtn{ display:inline-flex; }
       modalTradeBack: $('#modalTradeBack'),
       btnCloseTradeModal: $('#btnCloseTradeModal'),
       btnTradeAdvanced: $('#btnTradeAdvanced'),
+      btnCloseTradeFee: $('#btnCloseTradeFee'),
       dgTradeAdvanced: $('#dgTradeAdvanced'),
       dgJupiterHost: $('#dgJupiterHost'),
+      dgWalletHelp: $('#dgWalletHelp'),
+      dgWalletHelpDismiss: $('#dgWalletHelpDismiss'),
       dgFeeWallet: $('#dgFeeWallet'),
       dgJupReferral: $('#dgJupReferral'),
       btnSaveTradeFee: $('#btnSaveTradeFee'),
@@ -7657,6 +7797,7 @@ function startLive(meta, {sid}){
           return;
         }
         el.modalTradeBack.classList.add('show');
+        try{ dgToggleTradeAdvanced(false); }catch(e){}
         try{ document.body.style.overflow = 'hidden'; }catch(e){}
         // prefill referral input
         try{ if (el.dgJupReferral) el.dgJupReferral.value = settings.jupReferralAccount || ''; }catch(e){}
@@ -7671,11 +7812,12 @@ function startLive(meta, {sid}){
       }catch(e){}
     }
 
-    function dgToggleTradeAdvanced(){
+    function dgToggleTradeAdvanced(force){
       try{
         if (!el.dgTradeAdvanced) return;
-        const show = (el.dgTradeAdvanced.style.display !== 'block');
-        el.dgTradeAdvanced.style.display = show ? 'block' : 'none';
+        const isOpen = el.dgTradeAdvanced.classList.contains('open');
+        const show = (force === true) ? true : (force === false ? false : !isOpen);
+        el.dgTradeAdvanced.classList.toggle('open', show);
       }catch(e){}
     }
 
@@ -7690,6 +7832,49 @@ function startLive(meta, {sid}){
         try{ if (window.Jupiter && typeof window.Jupiter.close === 'function') window.Jupiter.close(); }catch(e){}
         try{ if (el.dgJupiterHost) el.dgJupiterHost.innerHTML = ''; }catch(e){}
         dgInitJupiterTrade();
+      }catch(e){}
+    }
+
+
+    function dgHasSolWallet(){
+      try{
+        const p = window.phantom && window.phantom.solana;
+        if (p && typeof p.connect === 'function') return true;
+      }catch(e){}
+      try{
+        const s = window.solana;
+        if (s && typeof s.connect === 'function') return true;
+      }catch(e){}
+      return false;
+    }
+
+    let __dgWalletObs = null;
+    function dgSetupWalletHelp(){
+      try{
+        if (!el.dgWalletHelp || !el.dgJupiterHost) return;
+        // If no wallet detected at all, show helper immediately (and keep it until user installs a wallet)
+        if (!dgHasSolWallet()){
+          el.dgWalletHelp.hidden = false;
+        }
+
+        if (__dgWalletObs) return;
+        const check = () => {
+          try{
+            const t = (el.dgJupiterHost.textContent || '');
+            const noWallet = /No wallet found/i.test(t) || /Available Wallets\s*\(\s*0\s*\)/i.test(t);
+            if (noWallet){
+              el.dgWalletHelp.hidden = false;
+            }else{
+              // If wallets exist (or user dismissed), keep hidden
+              if (dgHasSolWallet()) el.dgWalletHelp.hidden = true;
+            }
+          }catch(e){}
+        };
+
+        __dgWalletObs = new MutationObserver(() => { check(); });
+        __dgWalletObs.observe(el.dgJupiterHost, { childList: true, subtree: true, characterData: true });
+        setTimeout(check, 120);
+        setTimeout(check, 600);
       }catch(e){}
     }
 
@@ -7748,6 +7933,7 @@ function startLive(meta, {sid}){
         // Initialize (idempotent guard)
         window.Jupiter.init(initProps);
         __dgTradeInited = true;
+        try{ dgSetupWalletHelp(); }catch(e){}
       }catch(e){
         console.warn('[DexGuard Trade] init failed', e);
       }
@@ -7757,8 +7943,10 @@ function startLive(meta, {sid}){
     try{ if (el.btnTrade) el.btnTrade.addEventListener('click', dgOpenTradeModal); }catch(e){}
     try{ if (el.btnCloseTradeModal) el.btnCloseTradeModal.addEventListener('click', dgCloseTradeModal); }catch(e){}
     try{ if (el.modalTradeBack) el.modalTradeBack.addEventListener('click', (ev)=>{ if (ev && ev.target === el.modalTradeBack) dgCloseTradeModal(); }); }catch(e){}
-    try{ if (el.btnTradeAdvanced) el.btnTradeAdvanced.addEventListener('click', dgToggleTradeAdvanced); }catch(e){}
+    try{ if (el.btnTradeAdvanced) el.btnTradeAdvanced.addEventListener('click', ()=>dgToggleTradeAdvanced()); }catch(e){}
+    try{ if (el.btnCloseTradeFee) el.btnCloseTradeFee.addEventListener('click', ()=>dgToggleTradeAdvanced(false)); }catch(e){}
     try{ if (el.btnSaveTradeFee) el.btnSaveTradeFee.addEventListener('click', dgSaveTradeFee); }catch(e){}
+    try{ if (el.dgWalletHelpDismiss) el.dgWalletHelpDismiss.addEventListener('click', (e)=>{ try{ e.preventDefault(); }catch(_){} if (el.dgWalletHelp) el.dgWalletHelp.hidden = true; }); }catch(e){}
 
     // keep trade button state correct
     try{ dgUpdateTradeButton(); }catch(e){}
