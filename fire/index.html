@@ -2165,7 +2165,7 @@ html.dgDebug .dgDebugOnly{ display:block !important; }
                       <div class="search" role="search">
                         <span class="searchIcon">⌕</span>
                         <input id="q" aria-label="Command Search" autocapitalize="off" autocomplete="off" spellcheck="false" placeholder="Search Token / Symbol / Contract...." />
-                        <button id="btnScanQuery" class="btn dgScanBtn scanInline" type="button" aria-label="Scan contract">SCAN</button>
+                        
                       </div>
 </div>
         </div>
@@ -2789,7 +2789,6 @@ html.dgDebug .dgDebugOnly{ display:block !important; }
       btnDS: $('#btnDS'),
       tabs: $$('.tab'),
       q: $('#q'),
-      btnScanQuery: $('#btnScanQuery'),
       btnSearch: $('#btnSearch'),
       trending: $('#trending'),
       trendingEmpty: $('#trendingEmpty'),
@@ -5617,7 +5616,7 @@ if (last && isFinite(last.close)){
 
         tr.innerHTML = `
           <td class="center typeCell"><span class="side ${sideCls}">${t.side}</span></td>
-          <td class="right mono muted timeCell">${t.tsSec ? timeAgo(t.tsSec) : '—'}</td>
+          <td class="right mono muted ageCell timeCell">${t.tsSec ? timeAgo(t.tsSec) : '—'}</td>
           <td class="right mono">${t.usd !== null ? fmtUsd2(t.usd) : '—'}</td>
           <td class="right mono">${t.priceUsd !== null ? fmtUSD(t.priceUsd) : '—'}</td>
           <td class="right mono">${t.amount !== null ? fmtAmt(t.amount) : '—'}</td>
@@ -5952,15 +5951,6 @@ if (last && isFinite(last.close)){
       el.tabs.forEach(btn => bindOnce(btn, 'click', () => setChain(btn.dataset.chain), {passive:true}, 'tab:click'));
       // Search button removed (single search input)
       bindOnce(el.q, 'input', debounceSearch, null, 'q:input');
-      // Scan button in search bar (expects contract address in input)
-      bindOnce(el.btnScanQuery, 'click', ()=>{
-        const v = (el.q.value || '').trim();
-        if (!v || v.length < 20 || /\s/.test(v)){
-          toast('Enter a contract address to scan');
-          return;
-        }
-        dgGoScan({chain: state.chain, address: v, pool: ''});
-      }, null, 'btnScanQuery:click');
 
       bindOnce(el.q, 'focus', ()=>{ try{ const qv=(el.q.value||'').trim(); if(!qv) dgShowInstantDefaults(); }catch(e){} }, null, 'q:focus');
       bindOnce(el.q, 'click', ()=>{ try{ const qv=(el.q.value||'').trim(); if(!qv) dgShowInstantDefaults(); }catch(e){} }, null, 'q:click');
