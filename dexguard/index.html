@@ -2380,7 +2380,49 @@ body:not(.dgHasToken) section.panel[aria-label="Token view"]{ display:none !impo
 }
 /* ===== /PATCH STEP39 ===== */
 
+/* ===== PATCH STEP40 (Back button + Social icons) ===== */
+.dgBackBtn{ display:none; }
+body.dgHasToken .dgBackBtn{ display:inline-flex; }
+.dgBackBtn{ align-items:center; gap:8px; padding:10px 12px; border-radius:14px; }
+.dgSocials{ display:flex; align-items:center; gap:8px; margin-left:10px; }
+.dgSocials a{
+  width:34px; height:34px; border-radius:12px;
+  display:inline-flex; align-items:center; justify-content:center;
+  border:1px solid rgba(255,255,255,.10);
+  background: rgba(255,255,255,.03);
+  color: rgba(255,255,255,.88);
+  text-decoration:none;
+}
+.dgSocials a:hover{ background: rgba(255,255,255,.06); }
+.dgSocials svg{ width:16px; height:16px; display:block; }
 
+/* Mobile: keep header actions compact */
+@media (max-width: 720px){
+  .dgSocials{ margin-left:8px; }
+  .dgBackBtn{ padding:10px 10px; }
+  .dgBackBtn{ border-radius:14px; }
+  .dgBackBtn{ font-size:13px; }
+  .dgBackBtn{ white-space:nowrap; }
+}
+
+
+
+
+
+/* ===== PATCH STEP41: Brand image + Social icons visibility ===== */
+.brandImg{
+  height: 56px;
+  width: auto;
+  display:block;
+  object-fit: contain;
+  filter: drop-shadow(0 10px 22px rgba(0,0,0,.45));
+}
+@media (max-width: 720px){
+  .brandImg{ height: 40px; }
+}
+/* Keep the old DG letter-logo hidden if still in DOM (safety) */
+.brand .logo, .brand .brandText{ display:none !important; }
+/* ===== /PATCH STEP41 ===== */
 </style>
 </head>
 
@@ -2389,17 +2431,7 @@ body:not(.dgHasToken) section.panel[aria-label="Token view"]{ display:none !impo
     <div class="wrap">
       <div class="headerRow">
         <div class="brand" aria-label="DexGuard">
-          <div class="logo" aria-hidden="true"><span>DG</span></div>
-          <div class="brandText">
-            <div class="brandTop">
-              <div class="pill" title="Live feeds are enabled (quiet mode)">
-                <span class="liveDot" aria-hidden="true"></span>
-                <b>LIVE</b>
-              </div>
-              <div class="brandName">DexGuard • DexLike</div>
-            </div>
-            <div id="subline" class="sub">Search + Live chart + Live trades. No ads. No overlays.</div>
-          </div>
+          <img class="brandImg" src="dexguard.png" alt="DexGuard" />
         </div>
 
         <div class="topCenter">
@@ -2413,6 +2445,7 @@ body:not(.dgHasToken) section.panel[aria-label="Token view"]{ display:none !impo
         </div>
 
         <div class="actions">
+          <button id="btnBack" class="btn ghost dgBackBtn" title="Back">← Back</button>
           <button id="btnSettings" class="btn ghost" title="Settings">Settings</button>
           <button id="btnClear" class="btn" title="Clear view">Clear</button>
           <a id="btnDS" class="btn grad" href="#" target="_blank" rel="noreferrer noopener" title="Open current pool on DexScreener">Open on DexScreener</a>
@@ -2561,6 +2594,7 @@ body:not(.dgHasToken) section.panel[aria-label="Token view"]{ display:none !impo
                     <a id="lnkPair" class="linkPill" href="#" target="_blank" rel="noreferrer noopener">Pair</a>
                     <a id="lnkDex" class="linkPill" href="#" target="_blank" rel="noreferrer noopener">DexScreener</a>
                                       <a id="lnkScan" class="linkPill scanPill" href="#" rel="noreferrer noopener">Scan</a>
+                    <div id="dgSocials" class="dgSocials" aria-label="Social links"></div>
                   </div>
                 </div>
               </div>
@@ -3135,6 +3169,7 @@ body:not(.dgHasToken) section.panel[aria-label="Token view"]{ display:none !impo
 
     // ========= DOM =========
     const el = {
+      btnBack: $('#btnBack'),
       btnSettings: $('#btnSettings'),
       btnClear: $('#btnClear'),
       btnDS: $('#btnDS'),
@@ -3160,6 +3195,7 @@ body:not(.dgHasToken) section.panel[aria-label="Token view"]{ display:none !impo
       lnkDex: $('#lnkDex'),
       lnkPair: $('#lnkPair'),
       lnkScan: $('#lnkScan'),
+      dgSocials: $('#dgSocials'),
       tfs: $$('.tf'),
       chartWrap: $('#chartWrap'),
       chartMeta: $('#chartMeta'),
@@ -3229,6 +3265,9 @@ body:not(.dgHasToken) section.panel[aria-label="Token view"]{ display:none !impo
       tf: '15m',
       // Which search UI should show results: 'panel' or 'cmd'
       searchUI: 'panel',
+      // Snapshot of last search so user can return to the previous results list
+      lastSearch: null,
+      _lastRenderedPairs: null,
       _cmdFocusUntil: 0,
       sessionId: 0,
       current: null, // meta
@@ -4785,6 +4824,7 @@ function cmdGlobalOutsideClose(){
         `;
 
         const open = () => {
+          try{ state.lastSearch = { q: String(el.q.value||'').trim(), chain: state.chain, pairs: Array.isArray(state._lastRenderedPairs)? state._lastRenderedPairs : [], ts: Date.now() }; }catch(e){}
           // Reset search UI immediately after selecting a token
           try{ el.q.value = ''; }catch(e){}
           try{ clearResults(); }catch(e){}
@@ -4827,6 +4867,8 @@ function cmdGlobalOutsideClose(){
     }
 
     function renderResults(pairs){
+
+      try{ state._lastRenderedPairs = Array.isArray(pairs) ? pairs : []; }catch(e){}
 
       // Route results to the right UI:
       // - Normal click / typing -> render into the Search Results panel
@@ -4903,6 +4945,7 @@ function cmdGlobalOutsideClose(){
         `;
 
         const open = () => {
+          try{ state.lastSearch = { q: String(el.q.value||'').trim(), chain: state.chain, pairs: Array.isArray(state._lastRenderedPairs)? state._lastRenderedPairs : [], ts: Date.now() }; }catch(e){}
           // Reset search UI immediately after selecting a token
           try{ el.q.value = ''; }catch(e){}
           try{ clearResults(); }catch(e){}
@@ -5151,6 +5194,7 @@ function cmdGlobalOutsideClose(){
         const k = document.getElementById('lnkExplorer'); if (k) el.lnkExplorer = k;
         const l = document.getElementById('lnkPair'); if (l) el.lnkPair = l;
         const m1 = document.getElementById('lnkDex'); if (m1) el.lnkDex = m1;
+        const n0 = document.getElementById('dgSocials'); if (n0) el.dgSocials = n0;
         const n = document.getElementById('btnDS'); if (n) el.btnDS = n;
       }catch(e){}
 
@@ -5186,8 +5230,192 @@ function cmdGlobalOutsideClose(){
           el.lnkScan.onclick = (e)=>{ e.preventDefault(); dgGoScan({chain: meta.chain, address: meta.token || meta.pool, pool: meta.pool}); };
         }catch(e){}
       }
+
+      try{ dgRenderSocials(meta); }catch(e){}
       el.chartMeta.textContent = `${sym}/${quote} • ${CHAINS[meta.chain].label} • pool ${shortAddr(meta.pool)}`;
     }
+
+
+/* ===== PATCH STEP40: Back navigation + Social icons ===== */
+function dgNormalizeUrl(u){
+  try{
+    if (!u) return '';
+    const s = String(u).trim();
+    if (!s) return '';
+    if (/^https?:\/\//i.test(s)) return s;
+    return 'https://' + s.replace(/^\/+/, '');
+  }catch(e){ return ''; }
+}
+
+function dgExtractSocialLinks(obj){
+  try{
+    const info = obj?.info || obj?.data?.attributes || obj || {};
+    const out = [];
+    const seen = new Set();
+    const push = (type, url, label) => {
+      const u = dgNormalizeUrl(url);
+      if (!u) return;
+      const t = (type || 'link').toLowerCase();
+      const key = t + '|' + u.toLowerCase();
+      if (seen.has(key)) return;
+      seen.add(key);
+      out.push({type:t, url:u, label: String(label||'').trim()});
+    };
+
+    const webs = info?.websites || info?.website || [];
+    if (Array.isArray(webs)){
+      for (const w of webs){
+        const url = w?.url || w?.link || w;
+        const label = w?.label || w?.name || 'Website';
+        push('website', url, label);
+      }
+    } else if (typeof webs === 'string'){
+      push('website', webs, 'Website');
+    }
+
+    const soc = info?.socials || info?.social || [];
+    if (Array.isArray(soc)){
+      for (const s of soc){
+        const type = (s?.type || s?.name || '').toLowerCase();
+        const url = s?.url || s?.link || '';
+        if (!url) continue;
+        const t = (type === 'twitter' || type === 'x') ? 'x' : type;
+        push(t || 'social', url, t || 'Social');
+      }
+    } else if (soc && typeof soc === 'object'){
+      for (const [k,v] of Object.entries(soc)){
+        const t = (k === 'twitter' || k === 'x') ? 'x' : k;
+        push(t, v, t);
+      }
+    }
+
+    
+    // Extra shapes: some APIs use `info.links` or direct string fields (twitter/x/telegram/discord)
+    try{
+      const linksArr = info?.links || obj?.links || [];
+      if (Array.isArray(linksArr)){
+        for (const a of linksArr){
+          const url = a?.url || a?.link || a;
+          const type = (a?.type || a?.name || a?.label || 'link');
+          const lbl = a?.label || a?.name || type;
+          push(type, url, lbl);
+        }
+      }
+      const direct = {
+        website: info?.websiteUrl || info?.siteUrl || info?.site || info?.homepage,
+        x: info?.twitterUrl || info?.twitter || info?.x || info?.xUrl,
+        telegram: info?.telegramUrl || info?.telegram || info?.tg,
+        discord: info?.discordUrl || info?.discord,
+      };
+      for (const [k,v] of Object.entries(direct)){
+        if (typeof v === 'string' && v.trim()) push(k, v, k);
+      }
+    }catch(e){}
+const order = {website:0, x:1, telegram:2, tg:2, discord:3};
+    out.sort((a,b)=> (order[a.type]??9) - (order[b.type]??9));
+    return out.slice(0, 6);
+  }catch(e){ return []; }
+}
+
+function dgIconSvg(type){
+  const t = String(type||'').toLowerCase();
+  if (t === 'x' || t === 'twitter'){
+    return `<svg viewBox="0 0 1200 1227" aria-hidden="true" focusable="false"><path d="M714 519L1160 0H1053L667 450L360 0H0L468 681L0 1227H107L515 756L840 1227H1200L714 519ZM566 691L521 627L164 105H302L590 520L635 584L1010 1122H872L566 691Z" fill="currentColor"/></svg>`;
+  }
+  if (t === 'telegram' || t === 'tg'){
+    return `<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M9.04 15.43 8.9 19.1c.59 0 .84-.25 1.14-.55l2.73-2.6 5.66 4.14c1.04.57 1.78.27 2.05-.96L23.94 4.7c.35-1.53-.55-2.13-1.56-1.75L1.8 10.6c-1.49.58-1.47 1.39-.27 1.76l5.27 1.64L19.05 6.6c.58-.38 1.1-.17.67.21L9.04 15.43z"/></svg>`;
+  }
+  if (t === 'discord'){
+    // Minimal "chat" icon (clean + recognizable enough)
+    return `<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M20 3H4a2 2 0 0 0-2 2v14l4-4h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2Zm-9 8H7V9h4v2Zm6 0h-4V9h4v2Z"/></svg>`;
+  }
+  // website / default: link icon
+  return `<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M10.6 13.4a1 1 0 0 0 1.4 1.4l3.8-3.8a3 3 0 0 0-4.2-4.2L9.8 8.6a1 1 0 1 0 1.4 1.4l1.8-1.8a1 1 0 0 1 1.4 1.4l-3.8 3.8ZM13.4 10.6a1 1 0 0 0-1.4-1.4l-3.8 3.8a3 3 0 1 0 4.2 4.2l1.8-1.8a1 1 0 1 0-1.4-1.4l-1.8 1.8a1 1 0 0 1-1.4-1.4l3.8-3.8Z"/></svg>`;
+}
+
+function dgRenderSocials(meta){
+  try{
+    const box = el.dgSocials || document.getElementById('dgSocials');
+    if (!box) return;
+    const links = Array.isArray(meta?.socialLinks) ? meta.socialLinks : [];
+    if (!links.length){
+      box.innerHTML = '';
+      box.style.display = 'none';
+      return;
+    }
+    box.style.display = 'flex';
+    box.innerHTML = links.map(l=>{
+      const type = escapeHtml((l.type||'link').toLowerCase());
+      const url = escapeHtml(l.url||'#');
+      const title = escapeHtml(l.label || l.type || 'Link');
+      return `<a class="dgSoc ${type}" href="${url}" target="_blank" rel="noreferrer noopener" aria-label="${title}" title="${title}">${dgIconSvg(type)}</a>`;
+    }).join('');
+  }catch(e){}
+}
+
+
+async function dgEnrichSocialsIfMissing(meta){
+  try{
+    if (!meta || meta._dgSocialsTried) return;
+    if (Array.isArray(meta.socialLinks) && meta.socialLinks.length) return;
+    const token = meta.token;
+    if (!token) return;
+    meta._dgSocialsTried = true;
+
+    // Try DexScreener token endpoint (often contains `info` with socials/websites)
+    const url = `https://api.dexscreener.com/latest/dex/tokens/${encodeURIComponent(token)}`;
+    const js = await fetchJson(url, {ttl: 0}).catch(()=>null);
+    const pairs = js?.pairs || js?.data?.pairs || js?.data || [];
+    if (!Array.isArray(pairs) || !pairs.length) return;
+
+    const chainId = (CHAINS[state.chain]?.ds || '').toLowerCase();
+    const best = pairs.find(p => String(p?.chainId||'').toLowerCase() === chainId) || pairs[0];
+    const links = dgExtractSocialLinks(best);
+    if (links && links.length){
+      meta.socialLinks = links;
+      dgRenderSocials(meta);
+      try{ rememberMeta(meta); }catch(e){}
+    }
+  }catch(e){}
+}
+
+
+function dgRestoreSearchSnapshot({focus=true}={}){
+  try{
+    const snap = state.lastSearch;
+    if (!snap) return false;
+    if (snap.chain && snap.chain !== state.chain){
+      setChain(snap.chain, {silent:true});
+    }
+    try{ state.searchUI = 'panel'; }catch(e){}
+    try{ el.q.value = snap.q || ''; }catch(e){}
+    renderResults(snap.pairs || []);
+    if (focus && el.q && el.q.focus){
+      try{ el.q.focus({preventScroll:true}); }catch(e){}
+    }
+    return true;
+  }catch(e){ return false; }
+}
+
+function dgBackToSearch(){
+  try{
+    stopLive();
+    if (state.abort) state.abort.abort();
+    state.abort = null;
+    state.current = null;
+    state.candles = [];
+    state.lastCandle = null;
+    state.lastTradeId = null;
+    try{ window.__DG_ALLOW_HIDE_ONCE = true; }catch(e){}
+    showTokenView(false);
+    setStatus('', 'Idle');
+  }catch(e){}
+  const ok = dgRestoreSearchSnapshot({focus:true});
+  if (!ok){
+    try{ el.q.focus({preventScroll:true}); }catch(e){}
+  }
+}
+/* ===== /PATCH STEP40 ===== */
 
 
 // ===== Live stats refresh (Market Cap / Liquidity / % / Vol) =====
@@ -5837,6 +6065,7 @@ function normalizeBoosts(raw, chainKey){
       try{
         const data = await withBackoff(() => fetchJson(dsSearchUrl(q), {ttl: 0, signal}), {tries:2, signal});
         if (sid !== state.sessionId) return;
+        try{ state.lastSearch = { q: String(el.q.value||'').trim(), chain: state.chain, pairs: Array.isArray(data?.pairs)? data.pairs : [], ts: Date.now() }; }catch(e){}
         renderResults(data?.pairs || []);
         setStatus('live', 'Search ready');
       }catch(e){
@@ -6001,6 +6230,9 @@ function normalizeBoosts(raw, chainKey){
           meta.logoUrl = dgFixLogoUrl(meta.logoUrl ?? (p?.info?.imageUrl || p?.baseToken?.logoURI || p?.baseToken?.icon || '')) || null;
           meta.dexId = meta.dexId ?? (p?.dexId || null);
 
+          // Social links (DexScreener info.socials / info.websites)
+          try{ meta.socialLinks = dgExtractSocialLinks(p); }catch(e){}
+
           meta.priceUsd = toNum(p?.priceUsd);
 
           // If we have both USD and quote-token price, infer quote token USD (e.g. SOL/USD) for stable conversions.
@@ -6033,6 +6265,7 @@ function normalizeBoosts(raw, chainKey){
           meta.liquidityUsd = toNum(p?.liquidity?.usd);
           meta.marketCapUsd = toNum(p?.fdv);
           setTokenUI(meta);
+          try{ dgEnrichSocialsIfMissing(meta); }catch(e){}
           rememberMeta(meta);
         }
       }catch(e){
@@ -6062,6 +6295,7 @@ function normalizeBoosts(raw, chainKey){
               meta.baseName = meta.baseName ?? (match?.baseToken?.name || null);
               meta.token = meta.token ?? (match?.baseToken?.address || null);
               meta.quoteSymbol = meta.quoteSymbol ?? (match?.quoteToken?.symbol || null);
+              try{ if (!meta.socialLinks || !meta.socialLinks.length) meta.socialLinks = dgExtractSocialLinks(match); }catch(e){}
             }
           }
         }catch(e){}
@@ -7331,6 +7565,7 @@ function startLive(meta, {sid}){
       };
       bindOnce(document, 'click', dgOnStatsTfClick, null, 'stPill:click');
 
+      bindOnce(el.btnBack, 'click', ()=>{ try{ dgBackToSearch(); }catch(e){} }, null, 'btnBack:click');
       bindOnce(el.btnClear, 'click', ()=> { try{ window.__DG_USER_CLEAR = true; window.__DG_ALLOW_HIDE_ONCE = true; }catch(e){} clearResults(); clearAll(); }, null, 'btnClear:click');
       bindOnce(el.btnSettings, 'click', openModal, null, 'btnSettings:click');
       bindOnce(el.btnCloseModal, 'click', closeModal, null, 'btnCloseModal:click');
