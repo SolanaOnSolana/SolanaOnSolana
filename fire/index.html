@@ -2141,6 +2141,9 @@ html.dgDebug .dgDebugOnly{ display:block !important; }
 .dgCopy:hover{ text-decoration: underline; }
 /* ===== /PATCH ===== */
 
+
+    /* DG patch: hide the empty 'Search and open...' hint card */
+    #tokenEmpty{display:none!important;}
 </style>
 </head>
 
@@ -3348,6 +3351,7 @@ function dgPersistLastStateFromMeta(meta){
       pairId: pairId || null,
       tokenAddress: token || null,
       tf: (state && state.tf) ? String(state.tf) : '15m',
+      scrollY: (typeof window!=='undefined' && window.scrollY!=null) ? Number(window.scrollY)||0 : 0,
       baseSymbol,
       baseName,
       quoteSymbol,
@@ -3380,6 +3384,51 @@ function dgApplyTfUi(tf){
   }catch(e){}
 }
 
+// DG patch: keep last state fresh + restore-friendly
+(function(){
+  try{
+    const __dgOrigApply = dgApplyTfUi;
+    dgApplyTfUi = function(tf){
+      const r = __dgOrigApply(tf);
+      try{ dgPersistLastStateTf(tf); }catch(e){}
+      return r;
+    };
+  }catch(e){}
+
+  try{
+    if (typeof openPool === 'function'){
+      const __dgOrigOpenPool = openPool;
+      openPool = async function(payload){
+        const res = await __dgOrigOpenPool(payload);
+        try{ if (state && state.current) dgPersistLastStateFromMeta(state.current); }catch(e){}
+        return res;
+      };
+    }
+  }catch(e){}
+
+  try{
+    if (typeof setChain === 'function'){
+      const __dgOrigSetChain = setChain;
+      setChain = function(chain){
+        const r = __dgOrigSetChain(chain);
+        try{ if (state && state.current) dgPersistLastStateFromMeta(state.current); }catch(e){}
+        return r;
+      };
+    }
+  }catch(e){}
+
+  // Also persist scroll position (throttled)
+  try{
+    let __dgScrollT = 0;
+    window.addEventListener('scroll', () => {
+      const now = Date.now();
+      if (now - __dgScrollT < 250) return;
+      __dgScrollT = now;
+      try{ dgWriteLastState({ scrollY: Number(window.scrollY)||0 }); }catch(e){}
+    }, { passive:true });
+  }catch(e){}
+})();
+
 async function dgRestoreLastState(){
   const hstate = dgReadHashState();
   const base = dgReadLastState() || {};
@@ -3411,6 +3460,13 @@ async function dgRestoreLastState(){
     } else {
       await openPool({ chain, tokenAddress, hint:'restore' });
     }
+
+    // Restore scroll position (best effort)
+    try{
+      const y = (saved && saved.scrollY!=null) ? (Number(saved.scrollY)||0) : 0;
+      if (y > 0){ setTimeout(() => { try{ window.scrollTo(0, y); }catch(e){} }, 80); }
+    }catch(e){}
+
   }catch(e){
     // silent fallback (no UI error); keep last-state for next try
     try{ showTokenView(false); }catch(_){}
