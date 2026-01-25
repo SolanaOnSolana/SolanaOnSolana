@@ -2347,6 +2347,21 @@ html.dgDebug .dgDebugOnly{ display:block !important; }
 /* STEP22 — Hide empty Token View panel (removes thin hint bar area when no token selected) */
 body:not(.dgHasToken) section.panel[aria-label="Token view"]{ display:none !important; }
 
+
+
+/* ===== PATCH STEP38: Mobile stats toggles dock + tap reliability ===== */
+.dgStatsDock{ display:none; align-items:center; }
+.dgStatsDock .stTabs{ display:flex; align-items:center; gap:6px; margin:0 !important; padding:0 !important; flex-wrap:nowrap !important; overflow:visible !important; }
+.dgStatsDock .stPill{ height:34px !important; line-height:34px !important; padding:0 10px !important; font-size:11px !important; border-radius:12px !important; }
+@media (max-width: 720px){
+  .dgStatsDock{ display:flex; }
+  .tokenHeader .linksRow{ align-items:center; flex-wrap:wrap; gap:8px; }
+  /* Prevent the stats pills from being clipped in tiny tiles (even briefly) */
+  #stChg .stTabs{ overflow:visible !important; }
+  .statsGrid .stat{ overflow:visible !important; }
+}
+/* ===== /PATCH STEP38 ===== */
+
 </style>
 </head>
 
@@ -4189,18 +4204,37 @@ function dgMobileScrollTo(which){
   try{
     const tb = document.getElementById('tokenBlock');
     if (!tb || tb.style.display === 'none') return;
+
+    // Toggle active state on buttons
+    try{
+      const nav = document.getElementById('mNav');
+      if (nav){
+        nav.querySelectorAll('button[data-nav]').forEach(b=>{
+          b.classList.toggle('on', String(b.dataset.nav||'') === String(which||''));
+        });
+      }
+    }catch(_e){}
+
     let target = null;
     if (which === 'info'){
       target = tb.querySelector('.tokenHeader') || tb;
     } else if (which === 'chart'){
       target = tb.querySelector('.chartPanel') || document.getElementById('chart');
     } else if (which === 'trades'){
-      // Prefer explicit panel label; fall back to first tableWrap within tokenBlock
       target = tb.querySelector('section[aria-label="Live trades"]') || tb.querySelector('.tableWrap') || tb;
+    } else {
+      target = tb;
     }
-    if (target && target.scrollIntoView){
-      target.scrollIntoView({behavior:'smooth', block:'start'});
-    }
+
+    if (!target) return;
+
+    // Smooth scroll with sticky-header offset (mobile Safari-safe)
+    const header = document.querySelector('.header');
+    const hh = header ? (header.getBoundingClientRect().height || 0) : 0;
+    const pad = 10;
+    const y = Math.max(0, (target.getBoundingClientRect().top + (window.pageYOffset||0)) - hh - pad);
+
+    window.scrollTo({ top: y, behavior: 'smooth' });
   }catch(e){ console.warn('[DexGuard] mobile nav scroll', e); }
 }
 function dgSyncMobileUI(){
@@ -4223,13 +4257,62 @@ function dgMobileInit(){
         bindOnce(b, 'click', ()=> dgMobileScrollTo(String(b.dataset.nav||'')), {passive:true}, 'mnav:' + (b.dataset.nav||''));
       });
       // Update visibility on resize/orientation changes
-      bindOnce(window, 'resize', ()=> { try{ dgSyncMobileUI(); }catch(_e){} }, {passive:true}, 'mnav:resize');
+      bindOnce(window, 'resize', ()=> { try{ dgSyncMobileUI(); }catch(_e){} try{ dgStatsDockSync(); }catch(_e2){} }, {passive:true}, 'mnav:resize');
     }
     // If command sheet is open and user scrolls, keep it non-intrusive
     bindOnce(document, 'scroll', ()=>{ /* intentionally empty (no overlays) */ }, {passive:true}, 'mnav:scroll');
     dgSyncMobileUI();
   }catch(e){ console.warn('[DexGuard] mobile init', e); }
 }
+
+/* ===== PATCH STEP38: Mobile stats toggles dock (next to Scan) ===== */
+function dgStatsDockSync(){
+  try{
+    const tb = document.getElementById('tokenBlock');
+    if (!tb || tb.style.display === 'none') return;
+
+    const stChg = document.getElementById('stChg');
+    if (!stChg) return;
+
+    const tokenHeader = tb.querySelector('.tokenHeader');
+    const linksRow = tokenHeader ? tokenHeader.querySelector('.linksRow') : null;
+    if (!linksRow) return;
+
+    // Ensure dock exists (insert before Scan pill)
+    let dock = linksRow.querySelector('.dgStatsDock');
+    if (!dock){
+      dock = document.createElement('div');
+      dock.className = 'dgStatsDock';
+      dock.setAttribute('aria-label','Stats timeframes');
+      const scan = linksRow.querySelector('#lnkScan');
+      if (scan && scan.parentNode === linksRow){
+        linksRow.insertBefore(dock, scan);
+      } else {
+        linksRow.appendChild(dock);
+      }
+    }
+
+    const freshTabs = stChg.querySelector('.stTabs');
+    const dockTabs = dock.querySelector('.stTabs');
+    const mobile = (typeof dgIsMobile === 'function') ? dgIsMobile() : (window.innerWidth <= 720);
+
+    if (mobile){
+      const tabs = freshTabs || dockTabs;
+      if (!tabs) return;
+      try{ dock.replaceChildren(tabs); }
+      catch(e){ dock.innerHTML=''; dock.appendChild(tabs); }
+    } else {
+      const tabs = freshTabs || dockTabs;
+      if (!tabs) return;
+      if (tabs.parentNode !== stChg){
+        stChg.appendChild(tabs);
+      }
+      try{ dock.innerHTML = ''; }catch(_e){}
+    }
+  }catch(e){}
+}
+/* ===== /PATCH STEP38 ===== */
+
 /* ========= /STEP8 ========= */
 
 function cmdSetLoading(on){
@@ -4930,6 +5013,7 @@ function cmdGlobalOutsideClose(){
         `</div>`;
 
       el.stChg.innerHTML = `<div class="stMain">${chgTop}</div>${tabs}`;
+      try{ dgStatsDockSync(); }catch(e){}
 
       const volFromMeta = (t)=>{
         if (t==='m5') return v5;
@@ -5034,6 +5118,100 @@ function cmdGlobalOutsideClose(){
       el.chartMeta.textContent = `${sym}/${quote} • ${CHAINS[meta.chain].label} • pool ${shortAddr(meta.pool)}`;
     }
 
+
+// ===== Live stats refresh (Market Cap / Liquidity / % / Vol) =====
+// Market cap + liquidity are sourced from DexScreener pair meta. We poll lightly so these numbers
+// keep up with price/liquidity changes while trades stream in, without causing chart flicker.
+function setTokenStatsUI(meta){
+  try{
+    const d = document.getElementById('stPrice'); if (d) el.stPrice = d;
+    const e1 = document.getElementById('stChg'); if (e1) el.stChg = e1;
+    const f = document.getElementById('stVol'); if (f) el.stVol = f;
+    const g = document.getElementById('stLiq'); if (g) el.stLiq = g;
+    const h = document.getElementById('stMcap'); if (h) el.stMcap = h;
+  }catch(e){}
+
+  try{
+    el.stPrice.textContent = meta.priceUsd!=null ? fmtUSD(meta.priceUsd) : '—';
+    setChgVolUI(meta);
+    el.stLiq.textContent = meta.liquidityUsd!=null ? fmtUSD(meta.liquidityUsd) : '—';
+    el.stMcap.textContent = meta.marketCapUsd!=null ? fmtUSD(meta.marketCapUsd) : '—';
+  }catch(e){}
+}
+
+const dgPairStatsPoll = { timer:null, ac:null, key:'', sid:0 };
+
+function stopPairStatsPoll(){
+  try{ if (dgPairStatsPoll.timer){ clearInterval(dgPairStatsPoll.timer); dgPairStatsPoll.timer=null; } }catch(e){}
+  try{ if (dgPairStatsPoll.ac){ dgPairStatsPoll.ac.abort(); dgPairStatsPoll.ac=null; } }catch(e){}
+  dgPairStatsPoll.key = '';
+  dgPairStatsPoll.sid = 0;
+}
+
+async function dgPollPairStats(meta, {sid=0, signal}={}){
+  try{
+    if (!meta || !meta.pool) return;
+    const chain = meta.chain || state.chain;
+    const dsChain = CHAINS[chain]?.ds;
+    if (!dsChain) return;
+
+    const url = dsPairsUrl(dsChain, meta.pool);
+    const data = await withBackoff(()=>fetchJson(url, {ttl: 1500, signal}), {tries:2, signal});
+    if (signal?.aborted) return;
+
+    const pair = (data && data.pairs && data.pairs[0]) ? data.pairs[0] : (data && data.pair ? data.pair : null);
+    if (!pair) return;
+
+    const src = {
+      priceUsd: toNum(pair?.priceUsd),
+      change5m: toNum(pair?.priceChange?.m5),
+      change1h: toNum(pair?.priceChange?.h1),
+      change6h: toNum(pair?.priceChange?.h6),
+      change24h: toNum(pair?.priceChange?.h24),
+      volume5mUsd: toNum(pair?.volume?.m5),
+      volume1hUsd: toNum(pair?.volume?.h1),
+      volume6hUsd: toNum(pair?.volume?.h6),
+      volume24hUsd: toNum(pair?.volume?.h24),
+      liquidityUsd: toNum(pair?.liquidity?.usd ?? pair?.liquidityUsd),
+      marketCapUsd: toNum(pair?.fdv ?? pair?.marketCap ?? pair?.marketCapUsd),
+    };
+
+    mergeMeta(meta, src);
+    try{ rememberMeta(meta); }catch(e){}
+
+    // Only touch UI if this same token is still open.
+    try{
+      if (!document.body.classList.contains('dgHasToken')) return;
+      const cur = state.current;
+      if (!cur || cur.pool !== meta.pool || cur.chain !== chain) return;
+      setTokenStatsUI(meta);
+    }catch(e){}
+  }catch(e){}
+}
+
+function startPairStatsPoll(meta, {sid=0}={}){
+  stopPairStatsPoll();
+  if (!meta || !meta.pool) return;
+
+  dgPairStatsPoll.sid = sid || 0;
+  dgPairStatsPoll.key = `${meta.chain}|${meta.pool}`;
+
+  dgPairStatsPoll.ac = new AbortController();
+  const signal = dgPairStatsPoll.ac.signal;
+
+  const run = ()=>{ try{ dgPollPairStats(meta, {sid: dgPairStatsPoll.sid, signal}); }catch(e){} };
+  run();
+
+  dgPairStatsPoll.timer = setInterval(()=>{
+    try{
+      if (!document.body.classList.contains('dgHasToken')) return;
+      const cur = state.current;
+      if (!cur || `${cur.chain}|${cur.pool}` !== dgPairStatsPoll.key) return;
+      run();
+    }catch(e){}
+  }, 4500);
+}
+
     function scrollChartIntoView(){
       const wrap = el.chartWrap;
       if (!wrap) return;
@@ -5060,6 +5238,7 @@ function cmdGlobalOutsideClose(){
       try{
         if (show) document.body.classList.add('dgHasToken');
         else document.body.classList.remove('dgHasToken');
+        try{ if (!show) stopPairStatsPoll(); }catch(e){}
       }catch(e){}
       try{ if(!show) dgHomeLoad && dgHomeLoad({force:false, silent:true, reason:'return-home'}); }catch(e){}
       el.tokenEmpty.style.display = 'none'; // never show the empty hint bar
@@ -5425,24 +5604,47 @@ function cmdGlobalOutsideClose(){
       }
     }
 
-    function normalizeBoosts(data, chain){
-      // DexScreener token-boosts/top|latest: usually {tokens:[...]} or array. Be defensive.
-      const arr = Array.isArray(data) ? data : (data?.tokens || data?.data || data?.results || []);
-      const dsChain = CHAINS[chain].ds;
-      const out = [];
-      for (const t of arr){
-        const c = (t?.chainId || t?.chain || '').toLowerCase();
-        if (c !== dsChain) continue;
-        out.push({
-          tokenAddress: t?.tokenAddress || t?.address || t?.token || null,
-          baseSymbol: t?.tokenSymbol || t?.symbol || null,
-          baseName: t?.tokenName || t?.name || null,
-          logoUrl: dgFixLogoUrl(t?.icon || t?.logoURI || t?.imageUrl || t?.image || '') || null,
-          boosts: t?.totalAmount || t?.amount || t?.boosts || null,
-        });
-      }
-      return out.slice(0, 16);
+function normalizeBoosts(raw, chainKey){
+  const dsChain = (CHAINS[chainKey]?.ds || String(chainKey||'')).toLowerCase();
+
+  const mapChain = (v)=>{
+    if (v == null) return '';
+    const s = String(v).trim().toLowerCase();
+    if (!s) return '';
+    // Sometimes DexScreener returns numeric chainIds (e.g. 1 / 56 / 8453)
+    if (/^\d+$/.test(s)){
+      if (s === '1') return 'ethereum';
+      if (s === '56') return 'bsc';
+      if (s === '8453') return 'base';
+      return s;
     }
+    if (s === 'eth') return 'ethereum';
+    if (s === 'bnb') return 'bsc';
+    if (s === 'binance') return 'bsc';
+    return s;
+  };
+
+  const out = [];
+  const items = (raw && (raw.data || raw.tokens || raw.items || raw)) ? (raw.data || raw.tokens || raw.items || raw) : [];
+  for (const t of (items || [])){
+    const tokenAddress = t.tokenAddress || t.address || t.token || t.ca || '';
+    if (!tokenAddress) continue;
+
+    const c = mapChain(t.chainId ?? t.chain ?? t.network ?? '');
+    // Keep only matching chain when chain is present; if missing, allow and let enrich step validate.
+    if (c && c !== dsChain) continue;
+
+    out.push({
+      chainId: c || dsChain,
+      tokenAddress,
+      url: t.url || '',
+      amount: toNum(t.amount),
+      icon: t.icon || t.logo || ''
+    });
+  }
+  return out;
+}
+
 
     async function enrichTrending(items, {sid, signal}){
       // For each token, pick best pool via token-pairs. Concurrency limit 3.
@@ -5625,6 +5827,7 @@ function cmdGlobalOutsideClose(){
       const signal = state.abort.signal;
 
       stopLive();
+      stopPairStatsPoll();
       state.lastTradeId = null;
       state.candles = [];
       state.lastCandle = null;
@@ -5687,6 +5890,7 @@ function cmdGlobalOutsideClose(){
       }finally{
         try{ setTokenUI(meta); }catch(e){}
         try{ rememberMeta(meta); }catch(e){}
+        try{ startPairStatsPoll(meta, {sid}); }catch(e){}
         scrollChartIntoView();
       }
 
@@ -7040,13 +7244,21 @@ function startLive(meta, {sid}){
       if (el.yZoomIn) bindOnce(el.yZoomIn, 'click', ()=> dgYZoom(-DG_YZOOM.step), {passive:true}, 'yzoom:in');
       if (el.yZoomOut) bindOnce(el.yZoomOut, 'click', ()=> dgYZoom(+DG_YZOOM.step), {passive:true}, 'yzoom:out');
 
-      bindOnce(el.stChg, 'click', (e)=>{
-        const b = e.target && e.target.closest ? e.target.closest('button[data-sttf]') : null;
-        if (!b) return;
-        state.statsUI = state.statsUI || {tf:'h24'};
-        state.statsUI.tf = b.dataset.sttf || 'h24';
-        setChgVolUI(state.current);
-      }, null, 'stChg:click');
+      // Statistics timeframe pills (works both inside tile and when docked next to Scan on mobile)
+      const dgOnStatsTfClick = (e)=>{
+        try{
+          const b = e.target && e.target.closest ? e.target.closest('button[data-sttf]') : null;
+          if (!b) return;
+          const tabs = b.closest ? b.closest('.stTabs') : null;
+          if (!tabs) return;
+          e.preventDefault();
+          state.statsUI = state.statsUI || {tf:'h24'};
+          state.statsUI.tf = b.dataset.sttf || 'h24';
+          setChgVolUI(state.current);
+          try{ dgStatsDockSync(); }catch(_e){}
+        }catch(_err){}
+      };
+      bindOnce(document, 'click', dgOnStatsTfClick, null, 'stPill:click');
 
       bindOnce(el.btnClear, 'click', ()=> { try{ window.__DG_USER_CLEAR = true; window.__DG_ALLOW_HIDE_ONCE = true; }catch(e){} clearResults(); clearAll(); }, null, 'btnClear:click');
       bindOnce(el.btnSettings, 'click', openModal, null, 'btnSettings:click');
