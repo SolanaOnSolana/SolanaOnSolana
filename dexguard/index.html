@@ -2385,6 +2385,26 @@ body:not(.dgHasToken) section.panel[aria-label="Token view"]{ display:none !impo
 body.dgHasToken .dgBackBtn{ display:inline-flex; }
 .dgBackBtn{ align-items:center; gap:8px; padding:10px 12px; border-radius:14px; }
 .dgSocials{ display:flex; align-items:center; gap:8px; margin-left:10px; }
+.dgSoc{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:34px;
+  height:34px;
+  border-radius: 12px;
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.10);
+  color: rgba(255,255,255,.82);
+  text-decoration:none;
+  transition: transform .08s ease, background .12s ease, border-color .12s ease;
+}
+.dgSoc:hover{ transform: translateY(-1px); background: rgba(255,255,255,.09); border-color: rgba(255,255,255,.18); }
+.dgSoc:active{ transform: translateY(0px) scale(.98); }
+.dgSoc svg{ width:18px; height:18px; display:block; }
+@media (max-width: 720px){
+  .dgSoc{ width:36px; height:36px; border-radius: 13px; }
+  .dgSoc svg{ width:19px; height:19px; }
+}
 .dgSocials a{
   width:34px; height:34px; border-radius:12px;
   display:inline-flex; align-items:center; justify-content:center;
@@ -2411,15 +2431,19 @@ body.dgHasToken .dgBackBtn{ display:inline-flex; }
 
 /* ===== PATCH STEP41: Brand image + Social icons visibility ===== */
 .brandImg{
-  height: 56px;
+  height: 64px;
   width: auto;
   display:block;
   object-fit: contain;
   filter: drop-shadow(0 10px 22px rgba(0,0,0,.45));
 }
 @media (max-width: 720px){
-  .brandImg{ height: 40px; }
+  .brandImg{ height: 78px; }
 }
+.brandHome{ cursor:pointer; text-decoration:none; }
+.brandHome:focus{ outline: none; }
+.brandHome:focus-visible{ box-shadow: 0 0 0 2px rgba(255,255,255,.25) inset; border-radius: 14px; }
+
 /* Keep the old DG letter-logo hidden if still in DOM (safety) */
 .brand .logo, .brand .brandText{ display:none !important; }
 /* ===== /PATCH STEP41 ===== */
@@ -2430,9 +2454,7 @@ body.dgHasToken .dgBackBtn{ display:inline-flex; }
   <header class="header">
     <div class="wrap">
       <div class="headerRow">
-        <div class="brand" aria-label="DexGuard">
-          <img class="brandImg" src="dexguard.png" alt="DexGuard" />
-        </div>
+        <a id="btnHome" class="brand brandHome" href="#" title="Home" aria-label="Home"><img class="brandImg" src="dexguard.png" alt="DexGuard" /></a>
 
         <div class="topCenter">
           <div class="searchWrap cmdSearch">
@@ -5232,6 +5254,7 @@ function cmdGlobalOutsideClose(){
       }
 
       try{ dgRenderSocials(meta); }catch(e){}
+      try{ if (!meta.socialLinks || !meta.socialLinks.length) dgEnrichSocialsIfMissing(meta); }catch(e){}
       el.chartMeta.textContent = `${sym}/${quote} • ${CHAINS[meta.chain].label} • pool ${shortAddr(meta.pool)}`;
     }
 
@@ -5356,11 +5379,15 @@ function dgRenderSocials(meta){
 
 async function dgEnrichSocialsIfMissing(meta){
   try{
-    if (!meta || meta._dgSocialsTried) return;
+    if (!meta) return;
     if (Array.isArray(meta.socialLinks) && meta.socialLinks.length) return;
-    const token = meta.token;
+
+    // token may arrive later (pairId-only opens). Don't mark tried until we actually have a token.
+    const token = meta.token || meta.tokenAddress || meta.address || null;
     if (!token) return;
+    if (meta._dgSocialsTried) return;
     meta._dgSocialsTried = true;
+
 
     // Try DexScreener token endpoint (often contains `info` with socials/websites)
     const url = `https://api.dexscreener.com/latest/dex/tokens/${encodeURIComponent(token)}`;
@@ -5414,6 +5441,33 @@ function dgBackToSearch(){
   if (!ok){
     try{ el.q.focus({preventScroll:true}); }catch(e){}
   }
+}
+
+function dgGoHome(){
+  try{
+    // hard reset to the start/home view (not the previous search snapshot)
+    stopLive();
+    if (state.abort) state.abort.abort();
+    state.abort = null;
+    state.current = null;
+    state.candles = [];
+    state.lastCandle = null;
+    state.lastTradeId = null;
+
+    try{ cmdHide && cmdHide(); }catch(e){}
+    try{ showTokenView(false); }catch(e){}
+    try{ setStatus('', 'Idle'); }catch(e){}
+
+    try{ el.q && (el.q.value = ''); }catch(e){}
+    try{ clearResults && clearResults(); }catch(e){}
+
+    // refresh home/discover modules if present
+    try{ dgHomeLoad && dgHomeLoad({force:false}); }catch(e){}
+    try{ dgShowInstantDefaults && dgShowInstantDefaults(); }catch(e){}
+    try{
+      window.scrollTo({top:0, behavior:'smooth'});
+    }catch(e){ try{ window.scrollTo(0,0); }catch(_e){} }
+  }catch(e){}
 }
 /* ===== /PATCH STEP40 ===== */
 
@@ -7491,6 +7545,13 @@ function startLive(meta, {sid}){
     function bindUIEvents(){
       if (__DGW.__eventsBound) return;
       __DGW.__eventsBound = true;
+
+      // Home logo
+      try{ const hb = document.getElementById('btnHome'); if (hb) {
+        bindOnce(hb, 'click', (e)=>{ try{ e.preventDefault(); }catch(_){} dgGoHome(); }, {capture:false}, 'home:click');
+        bindOnce(hb, 'keydown', (e)=>{ const k=String(e.key||''); if(k==='Enter'||k===' '){ try{ e.preventDefault(); }catch(_){} dgGoHome(); } }, {capture:false}, 'home:key');
+      } }catch(e){}
+
 
       el.tabs.forEach(btn => bindOnce(btn, 'click', () => setChain(btn.dataset.chain), {passive:true}, 'tab:click'));
       // Search button removed (single search input)
