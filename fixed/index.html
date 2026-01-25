@@ -2466,14 +2466,7 @@ body:not(.dgHasToken) section.panel[aria-label="Token view"]{ display:none !impo
                 </div>
 
                 <div class="dgHomeGrid">
-                  <section class="dgHomeBox" data-box="recents" aria-label="Recent pairs">
-                    <div class="dgBoxHead">
-                      <div class="dgBoxTitle">Recents</div>
-</div>
-                    <div class="dgRows" id="dgHomeRecents"></div>
-                  </section>
-
-                  <section class="dgHomeBox" data-box="trending" aria-label="Trending boosted">
+<section class="dgHomeBox" data-box="trending" aria-label="Trending boosted">
                     <div class="dgBoxHead">
                       <div class="dgBoxTitle">Boosted Top</div>
 </div>
@@ -2500,14 +2493,7 @@ body:not(.dgHasToken) section.panel[aria-label="Token view"]{ display:none !impo
 </div>
                     <div class="dgRows" id="dgHomePumpfun"></div>
                   </section>
-
-                  <section class="dgHomeBox" data-box="quick" aria-label="Quick jumps">
-                    <div class="dgBoxHead">
-                      <div class="dgBoxTitle">Quick Jumps</div>
 </div>
-                    <div class="dgQuick" id="dgHomeQuick"></div>
-                  </section>
-                </div>
 
                 <div class="dgHomeFooter muted2">
                   Data sources: DexScreener boosts + pair stats. Pump.fun is best-effort via DexScreener dexId filters (not guaranteed).
@@ -4900,7 +4886,7 @@ function cmdGlobalOutsideClose(){
     }
 
     function fmtDeltaSpan(v){
-      if (!isFinite(v)) return '—';
+      if (v === null || v === undefined || !Number.isFinite(v)) return '—';
       const cls = v >= 0 ? 'good' : 'bad';
       const s = (v>=0?'+':'') + fmtNum(v,2) + '%';
       return `<span class="delta ${cls}">${s}</span>`;
@@ -5301,6 +5287,14 @@ function cmdGlobalOutsideClose(){
       // Always re-render quick chips on chain changes
       try{ dgHomeRenderQuick(); }catch(e){}
       try{ dgHomeRenderRecents(); }catch(e){}
+      // Show Pump.fun radar ONLY on Solana (avoid misleading empty box on other chains)
+      try{
+        const pumpWrap = dgHome.boxes.pumpfun ? dgHome.boxes.pumpfun.closest('section') : null;
+        if (pumpWrap){
+          pumpWrap.style.display = (state.chain === 'solana') ? '' : 'none';
+        }
+      }catch(e){}
+
 
       const now = Date.now();
       const cached = dgHome.cacheByChain.get(state.chain);
@@ -6385,7 +6379,55 @@ function shouldRetryCandles(meta){
       }
     }
 
-    function startLive(meta, {sid}){
+    
+    // ===== PATCH (STEP36): keep LP/MC + stats windows updated while live trades run =====
+    async function refreshPairStats(meta, {sid, signal=null}={}){
+      try{
+        if (!meta || !meta.pool || !meta.dsChain) return;
+        const ds = await withBackoff(() => fetchJson(dsPairsUrl(meta.dsChain, meta.pool), {ttl: 0, signal}), {tries:2, signal});
+        if (sid && sid !== state.sessionId) return;
+        const p = ds?.pairs?.[0] || null;
+        if (!p) return;
+
+        const liq = toNum(p?.liquidity?.usd);
+        const mc = toNum(p?.fdv);
+        if (liq != null) meta.liquidityUsd = liq;
+        if (mc != null) meta.marketCapUsd = mc;
+
+        // refresh change/volume windows
+        meta.change5m = toNum(p?.priceChange?.m5);
+        meta.change1h = toNum(p?.priceChange?.h1);
+        meta.change6h = toNum(p?.priceChange?.h6);
+        meta.change24h = toNum(p?.priceChange?.h24);
+        meta.volume5mUsd = toNum(p?.volume?.m5);
+        meta.volume1hUsd = toNum(p?.volume?.h1);
+        meta.volume6hUsd = toNum(p?.volume?.h6);
+        meta.volume24hUsd = toNum(p?.volume?.h24);
+
+        // txns windows (for Vol panel details)
+        meta._txns = meta._txns || {};
+        const t5b = toNum(p?.txns?.m5?.buys); const t5s = toNum(p?.txns?.m5?.sells);
+        const t1b = toNum(p?.txns?.h1?.buys); const t1s = toNum(p?.txns?.h1?.sells);
+        const t6b = toNum(p?.txns?.h6?.buys); const t6s = toNum(p?.txns?.h6?.sells);
+        const t24b = toNum(p?.txns?.h24?.buys); const t24s = toNum(p?.txns?.h24?.sells);
+        meta._txns.m5 = {buys:t5b, sells:t5s, txns: (Number.isFinite(t5b)&&Number.isFinite(t5s)) ? (t5b+t5s) : null};
+        meta._txns.h1 = {buys:t1b, sells:t1s, txns: (Number.isFinite(t1b)&&Number.isFinite(t1s)) ? (t1b+t1s) : null};
+        meta._txns.h6 = {buys:t6b, sells:t6s, txns: (Number.isFinite(t6b)&&Number.isFinite(t6s)) ? (t6b+t6s) : null};
+        meta._txns.h24 = {buys:t24b, sells:t24s, txns: (Number.isFinite(t24b)&&Number.isFinite(t24s)) ? (t24b+t24s) : null};
+
+        // Update UI (do not touch the live trade price label)
+        if (state.current && state.current.pool === meta.pool){
+          try{ if (el.stLiq) el.stLiq.textContent = meta.liquidityUsd!=null ? fmtUSD(meta.liquidityUsd) : '—'; }catch(e){}
+          try{ if (el.stMcap) el.stMcap.textContent = meta.marketCapUsd!=null ? fmtUSD(meta.marketCapUsd) : '—'; }catch(e){}
+          try{ setChgVolUI(meta); }catch(e){}
+        }
+      }catch(e){
+        // quiet (best-effort)
+      }
+    }
+    // ===== /PATCH (STEP36) =====
+
+function startLive(meta, {sid}){
       stopLive();
       state.lastTradeId = null;
 
@@ -6530,6 +6572,16 @@ function shouldRetryCandles(meta){
               }
             }
           }
+          // Best-effort: refresh LP/MC + % windows occasionally (prevents stale stats when tf pills change)
+          try{
+            const hiddenNow = (document.visibilityState === 'hidden');
+            const nowMs = Date.now();
+            if (!hiddenNow && (nowMs - (state._pairPollTs||0)) > 12_000){
+              state._pairPollTs = nowMs;
+              void refreshPairStats(meta, {sid});
+            }
+          }catch(e){}
+
           if (shouldRetryCandles(meta)){
             void refreshCandles(meta, {sid, signal: state.abort?.signal, reason:'live retry'});
           }
