@@ -3465,6 +3465,7 @@ function setStatus(kind, txt){
           borderColor:'rgba(255,255,255,0.08)',
           timeVisible: true,
           secondsVisible: false,
+          rightOffset: 12,
         },
         crosshair: {
           mode: LightweightCharts?.CrosshairMode?.Normal ?? 0,
@@ -3474,6 +3475,9 @@ function setStatus(kind, txt){
         handleScroll: { mouseWheel:true, pressedMouseMove:true, horzTouchDrag:true, vertTouchDrag:false },
         handleScale: { axisPressedMouseMove:true, pinch:true, mouseWheel:true },
       });
+
+      // Keep a small right padding so realtime/follow doesn't hug the extreme right edge
+      try{ state.chart.timeScale().applyOptions({ rightOffset: 12 }); }catch(e){}
 
       state.series = state.chart.addCandlestickSeries({
         priceFormat: { type:'price', precision: 8, minMove: 0.00000001 },
