@@ -2965,7 +2965,7 @@ body.dgHasToken .dgBackBtn{ display:inline-flex; }
     const settings = {
       proxyUrl: localStorage.getItem(LS.proxy) || '',
       birdeyeKey: localStorage.getItem(LS.birdeye) || '',
-      pollLiveMs: 2500,
+      pollLiveMs: 1500,
       pollHiddenMs: 12000,
     };
 
@@ -3327,6 +3327,7 @@ body.dgHasToken .dgBackBtn{ display:inline-flex; }
       _usingFallbackCandles: false,
       _fallbackRetryAt: new Map(),
       _fallbackTimer: 0,
+      _bgDeepenTimer: 0,
     };
 
     
@@ -3432,6 +3433,7 @@ function setStatus(kind, txt){
     function resetChartForNewToken(meta){
       // Prevent old token candles staying visible while new token loads.
       initChart();
+      setChartLoading(true, true);
       try{ state.series && state.series.setData([]); }catch(e){}
       try{ state.chart && state.chart.timeScale && state.chart.timeScale().resetTimeScale(); }catch(e){}
       state._pinToRight = true;
@@ -6186,7 +6188,7 @@ function normalizeBoosts(raw, chainKey){
       state.candles = [];
       state.lastCandle = null;
       state._forceFitNext = true;
-      setChartLoading(false);
+      setChartLoading(true, true);
       el.tradesBody.innerHTML = '';
       el.tradeCount.textContent = '0';
       state.tradesMap = new Map();
@@ -6200,6 +6202,7 @@ function normalizeBoosts(raw, chainKey){
       }
 
       setTradesEmpty('loading');
+      setChartLoading(true, true);
 
       showTokenView(true);
       setStatus('', 'Loading token…');
@@ -6536,7 +6539,7 @@ function normalizeBoosts(raw, chainKey){
       if (cur) out.push(cur);
       return out;
     }
-    async function fetchGTOhlcvPaged(meta, tf, token, {sid, signal, beforeStart}){
+    async function fetchGTOhlcvPaged(meta, tf, token, {sid, signal, beforeStart, maxPages=50}){
       const map = tfToGT(tf);
       const limit = map.timeframe === 'day' ? 260 : map.timeframe === 'hour' ? 520 : 700;
       const max = maxCandlesForTf(tf);
@@ -6544,7 +6547,7 @@ function normalizeBoosts(raw, chainKey){
       let out = [];
       let pages = 0;
 
-      while (out.length < max && pages < 50){
+      while (out.length < max && pages < maxPages){
         pages++;
         let data = null;
         try{
@@ -6571,7 +6574,7 @@ function normalizeBoosts(raw, chainKey){
       return out;
     }
 
-    async function loadCandles(meta, tf, {sid, signal}){
+    async function loadCandles(meta, tf, {sid, signal, pageLimitOverride=null}={}){
       // Never show "fake/flat/suspicious" candles.
       // While switching TF we keep the previous chart visible and only show an overlay.
       // When opening a new pool (or no valid candles yet), we hard-hide the chart until data is good.
@@ -6616,7 +6619,10 @@ function normalizeBoosts(raw, chainKey){
       // 1) GeckoTerminal OHLCV (stable side: match user's token against Gecko pool base/quote)
       try{
         const side = lockedSide || 'base';
-        candles = await fetchGTOhlcvPaged(meta, tf, side, {sid, signal});
+        const pageLimit = (pageLimitOverride != null)
+          ? pageLimitOverride
+          : (state._tfSwitching ? 2 : (openingNew ? 3 : 5));
+        candles = await fetchGTOhlcvPaged(meta, tf, side, {sid, signal, maxPages: pageLimit});
         if (candles && candles.length){
           const bad = candles.every(c => !c || !isFinite(c.close) || c.close === 0);
           if (bad) candles = null;
@@ -6676,6 +6682,16 @@ function normalizeBoosts(raw, chainKey){
         state._usingFallbackCandles = false;
         applyCandlesToChart(nextCandles);
         setChartLoading(false, false);
+        if (openingNew && pageLimitOverride == null){
+          clearTimeout(state._bgDeepenTimer);
+          state._bgDeepenTimer = setTimeout(() => {
+            if (!state.current || state.current.pool !== meta.pool) return;
+            const __sid = state.sessionId;
+            const __signal = state.abort?.signal;
+            if (__signal && __signal.aborted) return;
+            void refreshCandles(meta, {sid: __sid, signal: __signal, reason: 'bg deepen', pageLimitOverride: 10});
+          }, 900);
+        }
       } else {
         // Never show fallback/flat/suspicious candles; keep prior chart (if any) and the loader overlay.
         state._usingFallbackCandles = true;
@@ -6903,7 +6919,7 @@ function shouldRetryCandles(meta){
       state.candleRetryAt.set(key, Date.now());
       return true;
     }
-    async function refreshCandles(meta, {sid, signal, reason=''}){
+    async function refreshCandles(meta, {sid, signal, reason='', pageLimitOverride=null}={}){
       if (state.candleRefreshLock) return;
       state.candleRefreshLock = true;
 
@@ -6912,7 +6928,7 @@ function shouldRetryCandles(meta){
       const __prevWasGood = !!(__prev && __prev.length >= 40 && !isFlatCandles(__prev) && !state._usingFallbackCandles);
 
       try{
-        await loadCandles(meta, state.tf, {sid, signal});
+        await loadCandles(meta, state.tf, {sid, signal, pageLimitOverride});
         if (sid !== state.sessionId) return;
 
         if (__prevWasGood && state._usingFallbackCandles){
@@ -7060,24 +7076,49 @@ function startLive(meta, {sid}){
       try{
         let trades = null;
         let used = '';
-        for (const u of urls){
+        const fetchTradesFrom = async (u) => {
           try{
             const data = await withBackoff(() => fetchJson(u, {ttl: 0, signal}), {tries:2, signal});
-            if (sid !== state.sessionId) return;
-
-            if (u.includes('dex/trades/v1')){
-              trades = normalizeDSTrades(data);
-              used = 'ds';
-            } else {
-              trades = normalizeGTTrades(data);
-              used = 'gt';
-            }
-
-            if (Array.isArray(trades) && trades.length) break;
+            if (sid !== state.sessionId) return {trades:null, used:''};
+            const list = u.includes('dex/trades/v1') ? normalizeDSTrades(data) : normalizeGTTrades(data);
+            return {trades: list, used: u.includes('dex/trades/v1') ? 'ds' : 'gt'};
           }catch(e){
             const msg = String(e && e.message || e);
             if (msg.includes('AbortError')) throw e;
-            // try next source quietly
+            return {trades:null, used:''};
+          }
+        };
+
+        const fetches = urls.map((u) => fetchTradesFrom(u));
+        const race = Promise.race([
+          sleep(1100).then(() => ({trades:null, used:'', timeout:true})),
+          ...fetches,
+        ]);
+        const first = await race;
+        if (sid !== state.sessionId) return;
+        if (first?.trades && first.trades.length){
+          trades = first.trades;
+          used = first.used;
+        } else {
+          const settled = await Promise.race([
+            Promise.allSettled(fetches),
+            sleep(1100).then(() => null),
+          ]);
+          if (settled){
+            for (const res of settled){
+              if (res.status === 'fulfilled' && res.value?.trades?.length){
+                trades = res.value.trades;
+                used = res.value.used;
+                break;
+              }
+            }
+            if (!trades){
+              const firstOk = settled.find(res => res.status === 'fulfilled' && Array.isArray(res.value?.trades));
+              if (firstOk){
+                trades = firstOk.value.trades;
+                used = firstOk.value.used;
+              }
+            }
           }
         }
 
