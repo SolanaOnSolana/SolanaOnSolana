@@ -845,6 +845,8 @@ DexGuard DexLike LiveChart v1
       gap:10px;
       align-items:flex-start;
     }
+    #searchHint{display:none !important;}
+
     .empty b{color: rgba(255,255,255,.86)}
     .sep{ opacity:.35; margin: 0 6px; }
 
@@ -2265,7 +2267,7 @@ html.dgDebug .dgDebugOnly{ display:block !important; }
 
         <section class="panel" aria-label="Token view">
           <div class="tokenView">
-            <div id="tokenEmpty" class="empty">
+            <div id="tokenEmpty" class="empty" id="searchHint">
               <div>🧭</div>
               <div><b>Search</b> and open a pair to load the live chart + trades.</div>
             </div>
@@ -2291,7 +2293,7 @@ html.dgDebug .dgDebugOnly{ display:block !important; }
 
               <div class="statsGrid">
                 <div class="stat"><div class="k">Price</div><div id="stPrice" class="v">—</div></div>
-                <div class="stat"><div class="k">Change</div><div id="stChg" class="v">—</div></div>
+                <div class="stat"><div class="k">Statistics</div><div id="stChg" class="v">—</div></div>
                 <div class="stat"><div class="k">Volume</div><div id="stVol" class="v">—</div></div>
                 <div class="stat"><div class="k">Liquidity</div><div id="stLiq" class="v">—</div></div>
                 <div class="stat"><div class="k">Market Cap</div><div id="stMcap" class="v">—</div></div>
@@ -3259,6 +3261,57 @@ function dgRecentsPush(meta){
 // ========= Last State Persistence (STEP5) =========
 const DG_LAST_STATE_KEY = 'dg_last_state_v1';
 
+// Also persist last opened token in the URL hash (so refresh/back keeps context)
+function dgReadHashState(){
+  try{
+    const h = String(location.hash || '');
+    if (!h.startsWith('#dg=')) return null;
+    const qs = new URLSearchParams(h.slice(4));
+    const chain = qs.get('chain') ? String(qs.get('chain')).toLowerCase() : '';
+    const pairId = qs.get('pair') || '';
+    const tokenAddress = qs.get('token') || '';
+    const tf = qs.get('tf') || '';
+    if (!chain || (!pairId && !tokenAddress)) return null;
+    return { chain, pairId, tokenAddress, tf };
+  }catch(e){ return null; }
+}
+
+function dgWriteHashState(meta){
+  try{
+    if (!meta || !meta.chain) return;
+    const chain = String(meta.chain || '').toLowerCase();
+    const pairId = meta.pool ? String(meta.pool) : (meta.pairId ? String(meta.pairId) : '');
+    const tokenAddress = meta.token ? String(meta.token) : (meta.tokenAddress ? String(meta.tokenAddress) : '');
+    if (!chain || (!pairId && !tokenAddress)) return;
+
+    const qs = new URLSearchParams();
+    qs.set('chain', chain);
+    if (pairId) qs.set('pair', pairId);
+    if (tokenAddress) qs.set('token', tokenAddress);
+    if (state && state.tf) qs.set('tf', String(state.tf));
+    const newHash = '#dg=' + qs.toString();
+
+    // replaceState avoids scroll-jumps that location.hash assignment can cause
+    if (location.hash !== newHash){
+      try{
+        history.replaceState(null, '', location.pathname + location.search + newHash);
+      }catch(_){
+        try{ location.hash = newHash; }catch(__){}
+      }
+    }
+  }catch(e){}
+}
+
+// Ensure we have a last-known state even if user reloads immediately
+try{
+  window.addEventListener('beforeunload', () => {
+    try{
+      if (state && state.current) dgPersistLastStateFromMeta(state.current);
+    }catch(e){}
+  });
+}catch(e){}
+
+
 function dgReadLastState(){
   try{
     const raw = localStorage.getItem(DG_LAST_STATE_KEY);
@@ -3300,6 +3353,7 @@ function dgPersistLastStateFromMeta(meta){
       quoteSymbol,
       logoUrl
     });
+      try{ dgWriteHashState({chain, pool: pairId || null, token: token || null}); }catch(e){}
   }catch(e){}
 }
 
@@ -3327,7 +3381,9 @@ function dgApplyTfUi(tf){
 }
 
 async function dgRestoreLastState(){
-  const saved = dgReadLastState();
+  const hstate = dgReadHashState();
+  const base = dgReadLastState() || {};
+  const saved = hstate ? Object.assign({}, base, hstate) : base;
   if (!saved || !saved.chain) return;
 
   const chain = String(saved.chain || '').toLowerCase();
@@ -3341,8 +3397,8 @@ async function dgRestoreLastState(){
   // If no identifier, nothing to restore
   if (!pairId && !tokenAddress) return;
 
-  // Default TF on open: always 15m (ignore saved tf)
-  dgApplyTfUi('15m');
+  // Restore previously used TF if available (fallback: 15m)
+  dgApplyTfUi(tf || '15m');
 
   // Suppress any user-visible errors/toasts during restore attempt
   __DG_SUPPRESS_TOAST = true;
@@ -3356,8 +3412,7 @@ async function dgRestoreLastState(){
       await openPool({ chain, tokenAddress, hint:'restore' });
     }
   }catch(e){
-    // silent fallback (no UI error); clear invalid state
-    try{ localStorage.removeItem(DG_LAST_STATE_KEY); }catch(_){}
+    // silent fallback (no UI error); keep last-state for next try
     try{ showTokenView(false); }catch(_){}
     try{ clearResults(); }catch(_){}
   }finally{
