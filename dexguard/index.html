@@ -2362,6 +2362,25 @@ body:not(.dgHasToken) section.panel[aria-label="Token view"]{ display:none !impo
 }
 /* ===== /PATCH STEP38 ===== */
 
+/* ===== PATCH STEP39: Mobile chart controls ===== */
+@media (max-width: 720px){
+  /* Keep all TF buttons on ONE line (no wrap). Allow horizontal scroll if needed. */
+  .chartTop .tfRow{
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    gap: 8px !important;
+    padding-bottom: 4px;
+  }
+  .chartTop .tfRow::-webkit-scrollbar{ display:none; }
+  .chartTop .tfRow .tf{ flex: 0 0 auto; }
+  .chartTop .tfRow .tf{ padding: 7px 10px !important; font-size: 12px !important; }
+  /* Remove legacy +/- Y-zoom buttons on mobile */
+  .yZoomRow{ display:none !important; }
+}
+/* ===== /PATCH STEP39 ===== */
+
+
 </style>
 </head>
 
@@ -2509,10 +2528,6 @@ body:not(.dgHasToken) section.panel[aria-label="Token view"]{ display:none !impo
                     <div class="dgRows" id="dgHomePumpfun"></div>
                   </section>
 </div>
-
-                <div class="dgHomeFooter muted2">
-                  Data sources: DexScreener boosts + pair stats. Pump.fun is best-effort via DexScreener dexId filters (not guaranteed).
-                </div>
               </div>
 
             </div>
@@ -2571,10 +2586,6 @@ body:not(.dgHasToken) section.panel[aria-label="Token view"]{ display:none !impo
                       <button class="tf" data-tf="1d">1d</button>
                     </div>
                     <div id="chartMeta" class="chartMeta ellipsis">—</div>
-                    <div class="yZoomRow" aria-label="Y Scale Controls">
-                      <button id="yZoomIn" class="yZoomBtn" type="button" aria-label="Y Zoom In" title="Y Zoom In">+</button>
-                      <button id="yZoomOut" class="yZoomBtn" type="button" aria-label="Y Zoom Out" title="Y Zoom Out">−</button>
-                    </div>
                   </div>
 
                   <div class="chartWrap" id="chartWrap">
@@ -3438,6 +3449,63 @@ function setStatus(kind, txt){
       dgApplyYZoom();
     }
 
+
+/* ===== PATCH STEP39: Mobile Y-axis drag (replace +/- buttons) ===== */
+function dgBindMobileYAxisDrag(){
+  try{
+    const wrap = el.chartWrap || document.getElementById('chartWrap');
+    if (!wrap || wrap.__dgYDragBound) return;
+    wrap.__dgYDragBound = true;
+
+    let active = false;
+    let lastY = 0;
+    let acc = 0;
+    const EDGE_PX = 76;     // only when gesture starts near the price scale (right edge)
+    const THRESH = 10;      // pixels per zoom step (feels natural on iOS)
+
+    const start = (e)=>{
+      try{
+        if (!dgIsMobile()) return;
+        const t = e.touches && e.touches[0];
+        if (!t) return;
+        const r = wrap.getBoundingClientRect();
+        const x = t.clientX - r.left;
+        if (x < (r.width - EDGE_PX)) { active = false; return; }
+        active = true;
+        lastY = t.clientY;
+        acc = 0;
+        // prevent page scroll while y-scaling
+        try{ e.preventDefault(); }catch(_){}
+      }catch(_){ active = false; }
+    };
+
+    const move = (e)=>{
+      if (!active) return;
+      const t = e.touches && e.touches[0];
+      if (!t) return;
+      const dy = t.clientY - lastY;
+      lastY = t.clientY;
+      acc += dy;
+
+      while (Math.abs(acc) >= THRESH){
+        const dir = acc > 0 ? 1 : -1;
+        // Drag DOWN => zoom OUT (more padding). Drag UP => zoom IN (less padding).
+        dgYZoom(dir * DG_YZOOM.step);
+        acc -= dir * THRESH;
+      }
+      try{ e.preventDefault(); }catch(_){}
+    };
+
+    const end = ()=>{ active = false; acc = 0; };
+
+    wrap.addEventListener('touchstart', start, {passive:false});
+    wrap.addEventListener('touchmove', move, {passive:false});
+    wrap.addEventListener('touchend', end, {passive:true});
+    wrap.addEventListener('touchcancel', end, {passive:true});
+  }catch(e){}
+}
+/* ===== /PATCH STEP39 ===== */
+
     function initChart(){
       if (state.chart) return;
       const wrap = el.chartWrap;
@@ -3493,7 +3561,10 @@ function setStatus(kind, txt){
       // Apply persisted Y-zoom margins (STEP12)
       dgApplyYZoom();
 
-      if (!state._rangeSub){
+      
+      // STEP39: enable touch-drag on the right price scale (mobile)
+      try{ dgBindMobileYAxisDrag(); }catch(e){}
+if (!state._rangeSub){
         state.chart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
           if (!range || !state.current) return;
           // Determine if user is still pinned at the far right (realtime).
