@@ -2411,14 +2411,14 @@ body.dgHasToken .dgBackBtn{ display:inline-flex; }
 
 /* ===== PATCH STEP41: Brand image + Social icons visibility ===== */
 .brandImg{
-  height: 26px;
+  height: 56px;
   width: auto;
   display:block;
   object-fit: contain;
   filter: drop-shadow(0 10px 22px rgba(0,0,0,.45));
 }
 @media (max-width: 720px){
-  .brandImg{ height: 22px; }
+  .brandImg{ height: 40px; }
 }
 /* Keep the old DG letter-logo hidden if still in DOM (safety) */
 .brand .logo, .brand .brandText{ display:none !important; }
@@ -5364,7 +5364,7 @@ async function dgEnrichSocialsIfMissing(meta){
 
     // Try DexScreener token endpoint (often contains `info` with socials/websites)
     const url = `https://api.dexscreener.com/latest/dex/tokens/${encodeURIComponent(token)}`;
-    const js = await dgFetchJSON(url, {cache:'no-store'}).catch(()=>null);
+    const js = await fetchJson(url, {ttl: 0}).catch(()=>null);
     const pairs = js?.pairs || js?.data?.pairs || js?.data || [];
     if (!Array.isArray(pairs) || !pairs.length) return;
 
