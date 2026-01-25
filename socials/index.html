@@ -2407,6 +2407,22 @@ body.dgHasToken .dgBackBtn{ display:inline-flex; }
 
 
 
+
+
+/* ===== PATCH STEP41: Brand image + Social icons visibility ===== */
+.brandImg{
+  height: 26px;
+  width: auto;
+  display:block;
+  object-fit: contain;
+  filter: drop-shadow(0 10px 22px rgba(0,0,0,.45));
+}
+@media (max-width: 720px){
+  .brandImg{ height: 22px; }
+}
+/* Keep the old DG letter-logo hidden if still in DOM (safety) */
+.brand .logo, .brand .brandText{ display:none !important; }
+/* ===== /PATCH STEP41 ===== */
 </style>
 </head>
 
@@ -2415,17 +2431,7 @@ body.dgHasToken .dgBackBtn{ display:inline-flex; }
     <div class="wrap">
       <div class="headerRow">
         <div class="brand" aria-label="DexGuard">
-          <div class="logo" aria-hidden="true"><span>DG</span></div>
-          <div class="brandText">
-            <div class="brandTop">
-              <div class="pill" title="Live feeds are enabled (quiet mode)">
-                <span class="liveDot" aria-hidden="true"></span>
-                <b>LIVE</b>
-              </div>
-              <div class="brandName">DexGuard • DexLike</div>
-            </div>
-            <div id="subline" class="sub">Search + Live chart + Live trades. No ads. No overlays.</div>
-          </div>
+          <img class="brandImg" src="dexguard.png" alt="DexGuard" />
         </div>
 
         <div class="topCenter">
@@ -5283,7 +5289,29 @@ function dgExtractSocialLinks(obj){
       }
     }
 
-    const order = {website:0, x:1, telegram:2, tg:2, discord:3};
+    
+    // Extra shapes: some APIs use `info.links` or direct string fields (twitter/x/telegram/discord)
+    try{
+      const linksArr = info?.links || obj?.links || [];
+      if (Array.isArray(linksArr)){
+        for (const a of linksArr){
+          const url = a?.url || a?.link || a;
+          const type = (a?.type || a?.name || a?.label || 'link');
+          const lbl = a?.label || a?.name || type;
+          push(type, url, lbl);
+        }
+      }
+      const direct = {
+        website: info?.websiteUrl || info?.siteUrl || info?.site || info?.homepage,
+        x: info?.twitterUrl || info?.twitter || info?.x || info?.xUrl,
+        telegram: info?.telegramUrl || info?.telegram || info?.tg,
+        discord: info?.discordUrl || info?.discord,
+      };
+      for (const [k,v] of Object.entries(direct)){
+        if (typeof v === 'string' && v.trim()) push(k, v, k);
+      }
+    }catch(e){}
+const order = {website:0, x:1, telegram:2, tg:2, discord:3};
     out.sort((a,b)=> (order[a.type]??9) - (order[b.type]??9));
     return out.slice(0, 6);
   }catch(e){ return []; }
@@ -5324,6 +5352,33 @@ function dgRenderSocials(meta){
     }).join('');
   }catch(e){}
 }
+
+
+async function dgEnrichSocialsIfMissing(meta){
+  try{
+    if (!meta || meta._dgSocialsTried) return;
+    if (Array.isArray(meta.socialLinks) && meta.socialLinks.length) return;
+    const token = meta.token;
+    if (!token) return;
+    meta._dgSocialsTried = true;
+
+    // Try DexScreener token endpoint (often contains `info` with socials/websites)
+    const url = `https://api.dexscreener.com/latest/dex/tokens/${encodeURIComponent(token)}`;
+    const js = await dgFetchJSON(url, {cache:'no-store'}).catch(()=>null);
+    const pairs = js?.pairs || js?.data?.pairs || js?.data || [];
+    if (!Array.isArray(pairs) || !pairs.length) return;
+
+    const chainId = (CHAINS[state.chain]?.ds || '').toLowerCase();
+    const best = pairs.find(p => String(p?.chainId||'').toLowerCase() === chainId) || pairs[0];
+    const links = dgExtractSocialLinks(best);
+    if (links && links.length){
+      meta.socialLinks = links;
+      dgRenderSocials(meta);
+      try{ rememberMeta(meta); }catch(e){}
+    }
+  }catch(e){}
+}
+
 
 function dgRestoreSearchSnapshot({focus=true}={}){
   try{
@@ -6210,6 +6265,7 @@ function normalizeBoosts(raw, chainKey){
           meta.liquidityUsd = toNum(p?.liquidity?.usd);
           meta.marketCapUsd = toNum(p?.fdv);
           setTokenUI(meta);
+          try{ dgEnrichSocialsIfMissing(meta); }catch(e){}
           rememberMeta(meta);
         }
       }catch(e){
