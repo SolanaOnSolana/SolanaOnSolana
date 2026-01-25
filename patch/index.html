@@ -6536,7 +6536,7 @@ function normalizeBoosts(raw, chainKey){
       if (cur) out.push(cur);
       return out;
     }
-    async function fetchGTOhlcvPaged(meta, tf, token, {sid, signal, beforeStart, maxPages=50}){
+    async function fetchGTOhlcvPaged(meta, tf, token, {sid, signal, beforeStart}){
       const map = tfToGT(tf);
       const limit = map.timeframe === 'day' ? 260 : map.timeframe === 'hour' ? 520 : 700;
       const max = maxCandlesForTf(tf);
@@ -6544,7 +6544,7 @@ function normalizeBoosts(raw, chainKey){
       let out = [];
       let pages = 0;
 
-      while (out.length < max && pages < maxPages){
+      while (out.length < max && pages < 50){
         pages++;
         let data = null;
         try{
@@ -6616,8 +6616,7 @@ function normalizeBoosts(raw, chainKey){
       // 1) GeckoTerminal OHLCV (stable side: match user's token against Gecko pool base/quote)
       try{
         const side = lockedSide || 'base';
-        const pageLimit = state._tfSwitching ? 4 : (openingNew ? 6 : 8);
-        candles = await fetchGTOhlcvPaged(meta, tf, side, {sid, signal, maxPages: pageLimit});
+        candles = await fetchGTOhlcvPaged(meta, tf, side, {sid, signal});
         if (candles && candles.length){
           const bad = candles.every(c => !c || !isFinite(c.close) || c.close === 0);
           if (bad) candles = null;
