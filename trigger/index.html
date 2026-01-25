@@ -683,23 +683,6 @@ DexGuard DexLike LiveChart v1
     }
 
     .stTabs{display:flex; gap:6px; flex-wrap:wrap; margin-top:8px}
-
-    /* ===== PATCH: Mobile stats timeframe host (move 5m/1h/6h/24h out of Statistics tile on small screens) ===== */
-    .mobileStatTabsHost{ display:none; align-items:center; justify-content:flex-end; gap:8px; width:100%; margin:8px 0 0; }
-    .mobileStatTabsHost .stTabs{ margin-top:0 !important; }
-    @media (max-width: 720px){
-      .tokenHeader .tokenRight{ display:flex; flex-direction:column; align-items:flex-end; width:100%; }
-      .tokenHeader .tokenRight .linksRow{ width:100%; justify-content:flex-end; flex-wrap:wrap; gap:8px; }
-      .mobileStatTabsHost{ display:flex; }
-      .mobileStatTabsHost .stTabs{
-        flex-wrap: nowrap !important;
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-        scrollbar-width: none;
-      }
-      .mobileStatTabsHost .stTabs::-webkit-scrollbar{ display:none; }
-    }
-    /* ===== /PATCH ===== */
     .stPill{
       padding:5px 9px;
       border-radius:999px;
@@ -1449,7 +1432,6 @@ section[aria-label="Search results"]{ display:none !important; }
   user-select: none;
 }
 #cmdDropdown .cmdRow + .cmdRow{ border-top: 1px solid rgba(255,255,255,.06); }
-cmdRow{ border-top: 1px solid rgba(255,255,255,.06); }
 #cmdDropdown .cmdRow:hover{ background: rgba(255,255,255,.06); }
 #cmdDropdown .cmdRow.active{ background: rgba(104,195,255,.10); }
 #cmdDropdown .cmdLogo{
@@ -2550,7 +2532,6 @@ body:not(.dgHasToken) section.panel[aria-label="Token view"]{ display:none !impo
                     <a id="lnkDex" class="linkPill" href="#" target="_blank" rel="noreferrer noopener">DexScreener</a>
                                       <a id="lnkScan" class="linkPill scanPill" href="#" rel="noreferrer noopener">Scan</a>
                   </div>
-                  <div id="mobileStatTabsHost" class="mobileStatTabsHost" aria-label="Stats timeframes"></div>
                 </div>
               </div>
 
@@ -2573,7 +2554,8 @@ body:not(.dgHasToken) section.panel[aria-label="Token view"]{ display:none !impo
                       <button class="tf" data-tf="1h">1h</button>
                       <button class="tf" data-tf="4h">4h</button>
                       <button class="tf" data-tf="1d">1d</button>
-<div id="chartMeta" class="chartMeta ellipsis">—</div>
+                    </div>
+                    <div id="chartMeta" class="chartMeta ellipsis">—</div>
                     <div class="yZoomRow" aria-label="Y Scale Controls">
                       <button id="yZoomIn" class="yZoomBtn" type="button" aria-label="Y Zoom In" title="Y Zoom In">+</button>
                       <button id="yZoomOut" class="yZoomBtn" type="button" aria-label="Y Zoom Out" title="Y Zoom Out">−</button>
@@ -3442,26 +3424,11 @@ function setStatus(kind, txt){
     }
 
     function initChart(){
-      // Robust init: chart container can be zero-sized when panels are hidden / just switched.
-      if (state.chart) return true;
+      if (state.chart) return;
       const wrap = el.chartWrap;
-      if (!wrap) return false;
-
-      const r = (wrap.getBoundingClientRect ? wrap.getBoundingClientRect() : {width:0,height:0});
-      const w = (r.width|0) || (wrap.clientWidth|0);
-      const h = (r.height|0) || (wrap.clientHeight|0);
-
-      if (w < 40 || h < 160){
-        // retry a few times until the layout has settled / panel becomes visible
-        state._chartInitTries = (state._chartInitTries|0) + 1;
-        if (state._chartInitTries <= 60){
-          try{ clearTimeout(state._chartInitTO); }catch(e){}
-          state._chartInitTO = setTimeout(()=>{ try{ initChart(); }catch(e){} }, 120);
-        }
-        return false;
-      }
-
-      state._chartInitTries = 0;
+      const w = wrap.clientWidth|0;
+      const h = wrap.clientHeight|0;
+      if (w < 40 || h < 160) return;
 
       state.chart = LightweightCharts.createChart($('#chart'), {
         width: w,
@@ -3482,48 +3449,92 @@ function setStatus(kind, txt){
         },
         timeScale: {
           borderColor:'rgba(255,255,255,0.08)',
-          rightOffset: 2,
-          barSpacing: 8,
-          fixLeftEdge: true,
-          lockVisibleTimeRangeOnResize: false,
           timeVisible: true,
           secondsVisible: false,
+          rightOffset: 12,
         },
         crosshair: {
-          mode: LightweightCharts.CrosshairMode.Normal,
-          vertLine: { color:'rgba(255,255,255,0.14)' },
-          horzLine: { color:'rgba(255,255,255,0.14)' },
+          mode: LightweightCharts?.CrosshairMode?.Normal ?? 0,
+          vertLine: { color:'rgba(255,255,255,0.16)', width:1 },
+          horzLine: { color:'rgba(255,255,255,0.16)', width:1 },
         },
-        handleScroll: { mouseWheel: true, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: false },
-        handleScale: { axisPressedMouseMove: true, mouseWheel: true, pinch: true },
+        handleScroll: { mouseWheel:true, pressedMouseMove:true, horzTouchDrag:true, vertTouchDrag:false },
+        handleScale: { axisPressedMouseMove:true, pinch:true, mouseWheel:true },
       });
+
+      // Keep a small right padding so realtime/follow doesn't hug the extreme right edge
+      try{ state.chart.timeScale().applyOptions({ rightOffset: 12 }); }catch(e){}
 
       state.series = state.chart.addCandlestickSeries({
-        upColor: 'rgba(36, 207, 148, 1)',
-        downColor: 'rgba(255, 74, 104, 1)',
-        borderVisible: false,
-        wickUpColor: 'rgba(36, 207, 148, 1)',
-        wickDownColor: 'rgba(255, 74, 104, 1)',
+        priceFormat: { type:'price', precision: 8, minMove: 0.00000001 },
+        upColor: 'rgba(20,241,149,0.88)',
+        downColor: 'rgba(255,104,121,0.82)',
+        borderUpColor: 'rgba(20,241,149,0.88)',
+        borderDownColor: 'rgba(255,104,121,0.82)',
+        wickUpColor: 'rgba(20,241,149,0.70)',
+        wickDownColor: 'rgba(255,104,121,0.70)',
       });
 
-      // Keep chart sized correctly if the container changes (mobile rotates / panels resize)
-      try{
-        if (!state._chartRO && 'ResizeObserver' in window){
-          state._chartRO = new ResizeObserver(()=>{
-            try{
-              if (!state.chart) return;
-              const nw = wrap.clientWidth|0;
-              const nh = wrap.clientHeight|0;
-              if (nw > 40 && nh > 160) state.chart.applyOptions({ width: nw, height: nh });
-            }catch(e){}
-          });
-          state._chartRO.observe(wrap);
-        }
-      }catch(e){}
+      // Apply persisted Y-zoom margins (STEP12)
+      dgApplyYZoom();
 
-      // initial fit
-      try{ state.chart.timeScale().fitContent(); }catch(e){}
-      return true;
+      if (!state._rangeSub){
+        state.chart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
+          if (!range || !state.current) return;
+          // Determine if user is still pinned at the far right (realtime).
+          // Use barsInLogicalRange (more reliable than comparing range.to to candle count),
+          // so panning/zooming doesn't incorrectly keep "follow" enabled.
+          let pinned = true;
+          try{
+            const info = state.series?.barsInLogicalRange?.(range);
+            if (info && typeof info.barsAfter === 'number' && isFinite(info.barsAfter)){
+              pinned = info.barsAfter <= 2;
+            } else {
+              const total = state.candles?.length || 0;
+              pinned = (total > 0 && isFinite(range.to)) ? (range.to >= (total - 2)) : true;
+            }
+          }catch(e){ pinned = true; }
+
+          const wasPinned = !!state._pinToRight;
+          state._pinToRight = pinned;
+
+          // If user scrolls away from the right edge, stop auto-follow.
+          if (!state._pinToRight){
+            state._autoFollow = false;
+          } else if (!wasPinned){
+            // If they scroll back to the right edge, resume follow.
+            state._autoFollow = true;
+            state._lastFollowBucket = null;
+          }
+          if (range.from > 10) return;
+          clearTimeout(state._backfillTimer);
+          state._backfillTimer = setTimeout(() => {
+            if (!state.current) return;
+            const sid = state.sessionId;
+            const signal = state.abort?.signal;
+            void backfillCandles(state.current, {sid, signal});
+          }, 200);
+        });
+        state._rangeSub = true;
+      }
+
+      // ResizeObserver with rAF throttle + suppress noisy RO errors
+      let raf = 0;
+      state.ro = new ResizeObserver(() => {
+        cancelAnimationFrame(raf);
+        raf = requestAnimationFrame(() => {
+          try{
+            const w2 = wrap.clientWidth|0;
+            const h2 = wrap.clientHeight|0;
+            if (!state.chart || w2 < 40 || h2 < 160) return;
+            state.chart.resize(w2, h2);
+          }catch(e){
+            const msg = String(e && e.message || e);
+            if (!msg.includes('ResizeObserver')) console.warn('[DexGuard] resize', msg);
+          }
+        });
+      });
+      state.ro.observe(wrap);
     }
 
     // ========= UI builders =========
@@ -3671,23 +3682,7 @@ function dgWriteUrlState(meta){
 
     const qs = sp.toString();
     const url = location.pathname + (qs ? ('?' + qs) : '') + (location.hash || '');
-    (function(){
-    try{
-      const spOld = new URLSearchParams(location.search || '');
-      const oldPair = (spOld.get('pair') || spOld.get('dg_pool') || spOld.get('dg_pair') || '').trim();
-      const oldCa = (spOld.get('ca') || spOld.get('dg_token') || spOld.get('dg_ca') || '').trim();
-      const hadToken = !!(oldPair || oldCa);
-      const newPair = (pairId || '').trim();
-      const newCa = (tokenAddress || '').trim();
-      const willHaveToken = !!(newPair || newCa);
-      const tokenChanged = (oldPair !== newPair) || (oldCa !== newCa);
-      const usePush = (willHaveToken && tokenChanged) || (!willHaveToken && hadToken);
-      if(usePush) history.pushState(null, '', url);
-      else history.replaceState(null, '', url);
-    }catch(_e){
-      history.replaceState(null, '', url);
-    }
-  })();
+    history.replaceState(null, '', url);
   }catch(e){}
 }
 function dgReadUrlState(){
@@ -3701,31 +3696,6 @@ function dgReadUrlState(){
     return { chain, pairId, tokenAddress, tf };
   }catch(e){ return null; }
 }
-
-
-/* ===== PATCH: SPA back/forward support (keeps in-app back working on mobile Safari) ===== */
-try{
-  bindOnce(window, 'popstate', (e)=>{
-    (async ()=>{
-      try{
-        const s = dgReadUrlState();
-        const chain = (s && s.chain) ? s.chain : '';
-        const pairId = (s && (s.pairId || s.pool)) ? (s.pairId || s.pool) : '';
-        const tokenAddress = (s && s.tokenAddress) ? s.tokenAddress : null;
-        const tf = (s && s.tf) ? s.tf : null;
-        if(chain && pairId && typeof openPool === "function"){
-          await openPool({chain, pairId, tokenAddress, source:"popstate"});
-          if(tf && typeof setTimeframe==="function"){ try{ await setTimeframe(tf); }catch(_e){} }
-        }else{
-          try{ window.__DG_USER_CLEAR = true; window.__DG_ALLOW_HIDE_ONCE = true; }catch(_e){}
-          if(typeof clearAll==="function") clearAll();
-        }
-      }catch(_e){}
-    })();
-  }, {passive:true}, 'dg:popstate');
-}catch(_e){}
-/* ===== /PATCH ===== */
-
 
 function dgWriteHashState(meta){
   try{
@@ -4228,24 +4198,8 @@ function dgMobileScrollTo(which){
       // Prefer explicit panel label; fall back to first tableWrap within tokenBlock
       target = tb.querySelector('section[aria-label="Live trades"]') || tb.querySelector('.tableWrap') || tb;
     }
-    if (target){
-      const header = document.querySelector('header.header');
-      const off = (header && header.getBoundingClientRect) ? (header.getBoundingClientRect().height || 0) : 0;
-      const y = (target.getBoundingClientRect ? target.getBoundingClientRect().top : 0) + (window.pageYOffset || window.scrollY || 0) - off - 10;
-      try{
-        window.scrollTo({top: Math.max(0, y), behavior:'smooth'});
-      }catch(_e){
-        window.scrollTo(0, Math.max(0, y));
-      }
-
-      // Ensure chart initializes after the scroll/tab switch (container may have been 0px before)
-      if (which === 'chart'){
-        try{
-          requestAnimationFrame(()=>{ try{ initChart(); }catch(e){} });
-          setTimeout(()=>{ try{ initChart(); }catch(e){} }, 120);
-          setTimeout(()=>{ try{ initChart(); }catch(e){} }, 320);
-        }catch(e){}
-      }
+    if (target && target.scrollIntoView){
+      target.scrollIntoView({behavior:'smooth', block:'start'});
     }
   }catch(e){ console.warn('[DexGuard] mobile nav scroll', e); }
 }
@@ -4977,19 +4931,7 @@ function cmdGlobalOutsideClose(){
 
       el.stChg.innerHTML = `<div class="stMain">${chgTop}</div>${tabs}`;
 
-      
-      try{
-        const host = document.getElementById('mobileStatTabsHost');
-        const isMob = (typeof dgIsMobile==="function") ? dgIsMobile() : (window.innerWidth <= 720);
-        if(host){
-          host.innerHTML = '';
-          if(isMob){
-            const tabsEl = el.stChg ? el.stChg.querySelector('.stTabs') : null;
-            if(tabsEl) host.appendChild(tabsEl);
-          }
-        }
-      }catch(e){}
-const volFromMeta = (t)=>{
+      const volFromMeta = (t)=>{
         if (t==='m5') return v5;
         if (t==='h1') return v1;
         if (t==='h6') return v6;
@@ -7225,16 +7167,6 @@ function startLive(meta, {sid}){
         state.statsUI.tf = b.dataset.sttf || 'h24';
         setChgVolUI(state.current);
       }, null, 'stChg:click');
-
-      // Mobile: stats timeframe pills may be re-homed outside #stChg, so listen globally as well.
-      bindOnce(document, 'click', (e)=>{
-        const b = e.target && e.target.closest ? e.target.closest('button[data-sttf]') : null;
-        if (!b) return;
-        state.statsUI = state.statsUI || {tf:'h24'};
-        state.statsUI.tf = b.dataset.sttf || 'h24';
-        setChgVolUI(state.current);
-      }, {passive:true}, 'stChg:clickDoc');
-
 
       bindOnce(el.btnClear, 'click', ()=> { try{ window.__DG_USER_CLEAR = true; window.__DG_ALLOW_HIDE_ONCE = true; }catch(e){} clearResults(); clearAll(); }, null, 'btnClear:click');
       bindOnce(el.btnSettings, 'click', openModal, null, 'btnSettings:click');
