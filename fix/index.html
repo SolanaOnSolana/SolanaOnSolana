@@ -3199,22 +3199,21 @@ function setStatus(kind, txt){
     function clearResults(){
       el.results.classList.remove('show');
       el.results.innerHTML = '';
+      el.resultsEmpty.style.display = '';
       try{
-        // Hide recents/results unless user is actively typing
-        if (window.cmdHideRecents) window.cmdHideRecents();
-        if (window.cmdHideResults) window.cmdHideResults();
+        cmdHide(); cmdSetItems([]);
+        // If command search is focused & empty, show recents
+        const qv = (el.q && el.q.value ? String(el.q.value).trim() : '');
         const focused = (document.activeElement === el.q);
-        const qv = String(el.q.value||'').trim();
         if (focused && !qv){
-          // If search is focused but empty, recents can be shown (if enabled)
-          if (window.cmdShowRecents) window.cmdShowRecents();
+          cmdShowRecents();
         }
-      }catch(e){}
-    }
 
+    // Ensure empty query resets results immediately (live update on delete)
     function dgShowInstantDefaults(){
-      // keep UI clean (no extra hint blocks / defaults)
-      clearResults();
+      try{ clearResults(); }catch(e){}
+    }
+      }catch(e){}
     }
 
 // ========= Command Search Dropdown (STEP3) =========
@@ -3524,7 +3523,7 @@ async function dgRestoreLastState(){
     try{
       const baseState = dgReadLastState();
       const urlState = Object.assign({}, dgReadUrlState(), dgReadHashState());
-      const hasUrl = !!(urlState && urlState.chain && (urlState.pairId || urlState.pool || urlState.tokenAddress || urlState.token));
+      const hasUrl = !!(urlState && urlState.chain && (urlState.pairId || urlState.pool));
 
       // Detect navigation type (first visit vs reload/back)
       let navType = "navigate";
@@ -4996,11 +4995,6 @@ function cmdGlobalOutsideClose(){
         const p = ds?.pairs?.[0] || null;
         if (p){
           meta.token = meta.token || p?.baseToken?.address || null;
-          if (meta.token && state.current && state.current.chain===chain && state.current.pool===pairId){
-            if (!state.current.tokenAddress) state.current.tokenAddress = String(meta.token);
-            // Persist URL/state again now that we have the canonical CA (fixes reload staying on the same coin)
-            try{ dgPersistLastStateFromMeta({ chain: chain, pool: pairId, token: String(meta.token), tf: state.current.tf }); }catch(e){}
-          }
           meta.baseSymbol = meta.baseSymbol ?? (p?.baseToken?.symbol || null);
           meta.baseName = meta.baseName ?? (p?.baseToken?.name || null);
           meta.quoteSymbol = meta.quoteSymbol ?? (p?.quoteToken?.symbol || null);
