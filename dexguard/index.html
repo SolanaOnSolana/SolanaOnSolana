@@ -3005,7 +3005,7 @@ body.dgHasToken .dgBackBtn{ display:inline-flex; }
                     </div>
 
                     <div class="dgSwapFinePrint muted2">
-                      Powered by: DEXGUARD
+                      Routing: Best route. Wallet stays on your device.
                     </div>
 
                     <div id="dgSwapMsg" class="dgSwapMsg" aria-live="polite"></div>
@@ -3522,7 +3522,7 @@ body.dgHasToken .dgBackBtn{ display:inline-flex; }
         try{
           const raw = localStorage.getItem('dg_swap_slippage_bps');
           const n = Number(raw);
-          return Number.isFinite(n) ? Math.max(10, Math.min(5000, Math.round(n))) : 50; // default 0.50%
+          return Number.isFinite(n) ? Math.max(10, Math.min(1000, Math.round(n))) : 50; // default 0.50%
         }catch(e){ return 50; }
       })();
       function slippageLabel(){
@@ -3532,7 +3532,7 @@ body.dgHasToken .dgBackBtn{ display:inline-flex; }
         return s + '%';
       }
       function setSlippageBps(next){
-        const n = Math.max(10, Math.min(5000, Math.round(Number(next)||0)));
+        const n = Math.max(10, Math.min(1000, Math.round(Number(next)||0)));
         slippageBps = n || 50;
         try{ localStorage.setItem('dg_swap_slippage_bps', String(slippageBps)); }catch(e){}
         if (ui.slip) ui.slip.textContent = slippageLabel();
@@ -3541,7 +3541,7 @@ body.dgHasToken .dgBackBtn{ display:inline-flex; }
       function editSlippage(){
         try{
           const currentPct = (slippageBps / 100);
-          const v = prompt('Set slippage % (example: 0.5, 1, 2.5).\nRange: 0.1% – 50%', String(currentPct));
+          const v = prompt('Set slippage % (example: 0.5, 1, 2.5).\nRange: 0.1% – 10%', String(currentPct));
           if (v == null) return;
           const pct = Number(String(v).trim().replace(',', '.'));
           if (!Number.isFinite(pct)) { msg('Invalid slippage value.', 'warn'); return; }
@@ -4036,7 +4036,8 @@ function applyPct(pct){
           wrapAndUnwrapSol: true,
           useSharedAccounts: true,
           dynamicComputeUnitLimit: true,
-          dynamicSlippage: false,
+          dynamicSlippage: true,
+          prioritizationFeeLamports: "auto",
           feeAccount: feeAccountStr,
           setupInstructions: setupIxs || []
         };
@@ -4108,7 +4109,13 @@ function applyPct(pct){
         }).compileToV0Message(luts);
         const tx = new solanaWeb3.VersionedTransaction(msgV0);
 
-        // sign + send
+        // sign + send (prefer wallet-native path when available; more reliable on mobile)
+        if (wallet.signAndSendTransaction){
+          const resp = await wallet.signAndSendTransaction(tx, { skipPreflight:false, maxRetries:3, preflightCommitment:'confirmed' });
+          const sig = (resp && typeof resp === 'object' && resp.signature) ? resp.signature : resp;
+          await c.confirmTransaction({ signature: sig, blockhash, lastValidBlockHeight }, 'confirmed');
+          return sig;
+        }
         const signed = await wallet.signTransaction(tx);
         const sig = await c.sendRawTransaction(signed.serialize(), { skipPreflight:false, maxRetries:3 });
         await c.confirmTransaction({ signature: sig, blockhash, lastValidBlockHeight }, 'confirmed');
@@ -4259,7 +4266,11 @@ ui.swapBtn.disabled = true;
           ui.route.textContent = '—';
         }catch(e){
           try{ console.warn('[DexGuard Swap] swap failed', e); }catch(_e){}
-          msg('Swap failed. Please try again.', 'warn');
+          const em = String((e && (e.message||e)) || '');
+          if (/reject|denied|cancel/i.test(em)) msg('Transaction cancelled.', 'warn');
+          else if (/insufficient/i.test(em)) msg('Not enough SOL to cover fees. Top up slightly and try again.', 'warn');
+          else if (/slippage|price/i.test(em)) msg('Price moved. Increase slippage a bit and retry.', 'warn');
+          else msg('Swap failed. Please try again.', 'warn');
         }finally{
           ui.swapBtn.disabled = false;
           if (ui.quoteBtn) ui.quoteBtn.disabled = false;
