@@ -2543,6 +2543,8 @@ body.dgHasToken .dgBackBtn{ display:inline-flex; }
   border-radius: 14px;
 }
 
+.dgSwapFiat{ margin-top:6px; font-size:12px; color: rgba(255,255,255,.55); }
+
 .dgSwapMid{ display:flex; align-items:center; gap:8px; opacity:.8; }
 .dgSwapMidLine{ height:1px; flex:1; background: rgba(255,255,255,.10); }
 .dgSwapMidDot{ width:22px; height:22px; border-radius:999px; display:flex; align-items:center; justify-content:center;
@@ -2647,6 +2649,20 @@ body.dgHasToken .dgBackBtn{ display:inline-flex; }
   font-size:11px;
   opacity:.75;
   line-height:1.35;
+}
+
+.dgSwapWalletModal{
+  pointer-events:auto;
+  -webkit-tap-highlight-color: transparent;
+}
+.dgSwapWalletModal *{
+  -webkit-tap-highlight-color: transparent;
+}
+.dgSwapWalletModalCard,
+.dgSwapWalletModalClose,
+.dgSwapWalletModalBtns .btn{
+  touch-action: manipulation;
+  pointer-events:auto;
 }
 /* ===== /DexGuard Swap Enhancements ===== */
 
@@ -2886,7 +2902,7 @@ body.dgHasToken .dgBackBtn{ display:inline-flex; }
                     </div>
 
                     <div class="dgSwapRow dgSwapRowSub">
-                      <div id="dgSwapSolBal" class="dgSwapBal mono muted2">SOL: —</div>
+                      <div id="dgSwapSolBal" class="dgSwapBal mono muted2">SOL: 0.00</div>
                     </div>
 
 
@@ -2906,6 +2922,7 @@ body.dgHasToken .dgBackBtn{ display:inline-flex; }
                             <div id="dgSwapFromBal" class="dgSwapBal mono muted2">—</div>
                           </div>
                           <input id="dgSwapAmount" class="input dgSwapAmount" inputmode="decimal" autocomplete="off" placeholder="0.0" />
+                          <div id="dgSwapPayFiat" class="dgSwapFiat muted2">—</div>
 
                         <div class="dgSwapPctRow" id="dgSwapPctRow" aria-label="Quick amounts">
                           <button class="btn ghost dgSwapPct" data-pct="max" type="button">MAX</button>
@@ -2962,12 +2979,16 @@ body.dgHasToken .dgBackBtn{ display:inline-flex; }
 
                     <div class="dgSwapMeta">
                       <div class="dgSwapMetaRow">
-                        <div class="dgSwapMetaK">Fee</div>
-                        <div class="dgSwapMetaV"><span class="kbd">0.5%</span> to <span class="mono muted2">Ff6…jBU</span></div>
+                        <div class="dgSwapMetaK">Network fee</div>
+                        <div class="dgSwapMetaV"><span class="kbd" id="dgSwapNetFee">—</span></div>
                       </div>
                       <div class="dgSwapMetaRow">
                         <div class="dgSwapMetaK">Slippage</div>
                         <div class="dgSwapMetaV"><span class="kbd" id="dgSwapSlip">0.5%</span></div>
+                      </div>
+                      <div class="dgSwapMetaRow">
+                        <div class="dgSwapMetaK">Price impact</div>
+                        <div class="dgSwapMetaV"><span class="kbd" id="dgSwapImpact">—</span></div>
                       </div>
                       <div class="dgSwapMetaRow">
                         <div class="dgSwapMetaK">Estimated out</div>
@@ -2980,12 +3001,11 @@ body.dgHasToken .dgBackBtn{ display:inline-flex; }
                     </div>
 
                     <div class="dgSwapBtns">
-                      <button id="dgSwapGetQuote" class="btn ghost dgSwapBtn" type="button">Get Quote</button>
-                      <button id="dgSwapDoSwap" class="btn grad dgSwapBtn" type="button" disabled>Swap</button>
+<button id="dgSwapDoSwap" class="btn grad dgSwapBtn" type="button" disabled>Swap</button>
                     </div>
 
                     <div class="dgSwapFinePrint muted2">
-                      Routing: Jupiter (API). Wallet stays on your device.
+                      Routing: Best route. Wallet stays on your device.
                     </div>
 
                     <div id="dgSwapMsg" class="dgSwapMsg" aria-live="polite"></div>
@@ -3081,7 +3101,7 @@ body.dgHasToken .dgBackBtn{ display:inline-flex; }
 
         
         <div class="field">
-          <div class="label">JUPITER_API_KEY (required for Swap)</div>
+          <div class="label">Jupiter API Key (optional)</div>
           <input id="jupKey" class="input" placeholder="Paste your free key from portal.jup.ag (stored locally)" />
           <div class="help">
             Required for DexGuard Swap routing. Stored locally in your browser only.
@@ -3451,7 +3471,7 @@ body.dgHasToken .dgBackBtn{ display:inline-flex; }
 
     /* =========================================================
        DexGuard Swap (custom UI) — routed via Jupiter Metis Swap API
-       - Requires user to paste free JUPITER_API_KEY in Settings
+       - Requires user to paste Jupiter API key (optional) in Settings
        - Fee: fixed 0.5% via platformFeeBps (non-editable)
        - Wallets: Phantom / Solflare / Backpack (window providers)
        ========================================================= */
@@ -3459,7 +3479,33 @@ body.dgHasToken .dgBackBtn{ display:inline-flex; }
       const SOL_MINT = 'So11111111111111111111111111111111111111112'; // WSOL mint used by Jupiter for native SOL routing
       const FEE_BPS = 50; // 0.50%
       const FEE_WALLET = 'Ff6M7U3WP1ZBJAg9UJHSNxhU3kjHgE6AZa2yw4mJ4jBU';
-      const JUP_BASE = 'https://api.jup.ag/swap/v1';
+      const JUP_BASE_FREE = 'https://gentle-butterfly-e891solanaonsolana.zeendoftheworldonsol.workers.dev/jup/swap/v1';
+      const JUP_BASE_PAID = 'https://gentle-butterfly-e891solanaonsolana.zeendoftheworldonsol.workers.dev/jup/swap/v1';
+
+      const FETCH_TIMEOUT_MS = 12000;
+      const RPC_TIMEOUT_MS = 8500;
+
+      function withTimeout(promise, ms){
+        let t;
+        const timeout = new Promise((_,rej)=>{ t=setTimeout(()=>rej(new Error('TIMEOUT')), ms); });
+        return Promise.race([promise, timeout]).finally(()=>{ try{ clearTimeout(t);}catch(e){} });
+      }
+
+      async function fetchWithTimeout(url, options={}, ms=FETCH_TIMEOUT_MS){
+        const ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+        let t;
+        try{
+          if (ctrl){
+            const o = Object.assign({}, options);
+            o.signal = ctrl.signal;
+            t = setTimeout(()=>{ try{ ctrl.abort(); }catch(e){} }, ms);
+            return await fetch(url, o);
+          }
+          return await withTimeout(fetch(url, options), ms);
+        }finally{
+          try{ clearTimeout(t); }catch(e){}
+        }
+      }
 
       const tokenCache = new Map(); // mint -> {sym,name,decimals}
       let chartToken = { mint: null, sym: '—', name: '—' };
@@ -3471,6 +3517,38 @@ body.dgHasToken .dgBackBtn{ display:inline-flex; }
       let wallet = null;
       let connection = null;
       const cachedBalances = { solLamports:0, fromUi:0, toUi:0 };
+      // Slippage (editable) — stored locally
+      let slippageBps = (() => {
+        try{
+          const raw = localStorage.getItem('dg_swap_slippage_bps');
+          const n = Number(raw);
+          return Number.isFinite(n) ? Math.max(10, Math.min(5000, Math.round(n))) : 50; // default 0.50%
+        }catch(e){ return 50; }
+      })();
+      function slippageLabel(){
+        const pct = slippageBps / 100;
+        // Keep it neat (e.g. 0.5%, 1%, 2.25%)
+        const s = (pct % 1 === 0) ? String(pct.toFixed(0)) : String(pct).replace(/0+$/,'').replace(/\.$/,'');
+        return s + '%';
+      }
+      function setSlippageBps(next){
+        const n = Math.max(10, Math.min(5000, Math.round(Number(next)||0)));
+        slippageBps = n || 50;
+        try{ localStorage.setItem('dg_swap_slippage_bps', String(slippageBps)); }catch(e){}
+        if (ui.slip) ui.slip.textContent = slippageLabel();
+        refreshQuote(true);
+      }
+      function editSlippage(){
+        try{
+          const currentPct = (slippageBps / 100);
+          const v = prompt('Set slippage % (example: 0.5, 1, 2.5).\nRange: 0.1% – 50%', String(currentPct));
+          if (v == null) return;
+          const pct = Number(String(v).trim().replace(',', '.'));
+          if (!Number.isFinite(pct)) { msg('Invalid slippage value.', 'warn'); return; }
+          setSlippageBps(Math.round(pct * 100));
+        }catch(e){}
+      }
+
 
       const ui = {};
       const PK = (x)=> new solanaWeb3.PublicKey(x);
@@ -3485,8 +3563,36 @@ body.dgHasToken .dgBackBtn{ display:inline-flex; }
 
       function msg(text, kind='info'){
         if (!ui.msg) return;
-        ui.msg.textContent = text || '';
-        ui.msg.classList.toggle('show', !!text);
+        let t = (text == null) ? '' : String(text);
+
+        // Sanitize technical/internal messages
+        const upper = t.toUpperCase();
+        if (upper.includes('JUPITER') || upper.includes('API KEY') || upper.includes('X-API-KEY')) {
+          t = 'Swap temporarily unavailable. Please try again.';
+          kind = 'warn';
+        }
+        if (upper.includes('QUOTE_FAILED') || upper.includes('NO QUOTE')) {
+          t = 'Could not get a quote. Please try again.';
+          kind = 'warn';
+        }
+        if (upper.includes('SWAP_BUILD_FAILED')) {
+          t = 'Could not build the swap. Please try again.';
+          kind = 'warn';
+        }
+        if (upper.includes('FAILED TO FETCH') || upper.includes('NETWORKERROR') || upper.includes('TIMEOUT')) {
+          t = 'Network issue. Please try again.';
+          kind = 'warn';
+        }
+        if (upper.includes('USER REJECT') || upper.includes('REJECTED')) {
+          t = 'Swap cancelled.';
+          kind = 'warn';
+        }
+
+        // Keep it short & user-facing
+        if (t.length > 160) t = t.slice(0, 160) + '…';
+
+        ui.msg.textContent = t || '';
+        ui.msg.classList.toggle('show', !!t);
         ui.msg.dataset.kind = kind;
       }
 
@@ -3516,28 +3622,31 @@ body.dgHasToken .dgBackBtn{ display:inline-flex; }
       }
 
       function rpcCandidates(){
-        // Use a small public set. If user has a proxy, requests can be proxied.
+        // Prefer CORS-friendly public RPCs for browser usage.
         return [
-          'https://api.mainnet-beta.solana.com',
-          'https://solana-api.projectserum.com',
+          'https://solana-rpc.publicnode.com',
           'https://rpc.ankr.com/solana',
+          'https://api.mainnet-beta.solana.com',
         ];
       }
 
-      async function ensureConnection(){
+      function rpcFetch(url, opts){
+        // Route via optional proxy + add a hard timeout (prevents infinite "Loading")
+        return fetchWithTimeout(applyProxy(url), opts || {}, RPC_TIMEOUT_MS);
+      }
+async function ensureConnection(){
         if (connection) return connection;
-        // pick first responsive
         const urls = rpcCandidates();
         for (const url of urls){
           try{
-            const c = new solanaWeb3.Connection(url, { commitment: 'confirmed' });
-            await c.getLatestBlockhash('confirmed');
+            const c = new solanaWeb3.Connection(url, { commitment: 'confirmed', fetch: rpcFetch });
+            await withTimeout(c.getLatestBlockhash('confirmed'), 4500);
             connection = c;
             return connection;
           }catch(e){}
         }
-        // last resort: still create one
-        connection = new solanaWeb3.Connection(urls[0], { commitment:'confirmed' });
+        // last resort (may still fail, but won't block UI due to timeouts)
+        connection = new solanaWeb3.Connection(urls[0], { commitment:'confirmed', fetch: rpcFetch });
         return connection;
       }
 
@@ -3550,11 +3659,62 @@ body.dgHasToken .dgBackBtn{ display:inline-flex; }
 
       function buildBrowseLink(kind){
         const url = encodeURIComponent(String(location.href||''));
-        const ref = encodeURIComponent(String(location.origin||''));
+        const ref = encodeURIComponent(String(location.href||''));
         if (kind === 'phantom') return `https://phantom.app/ul/browse/${url}?ref=${ref}`;
         if (kind === 'solflare') return `https://solflare.com/ul/v1/browse/${url}?ref=${ref}`;
         if (kind === 'backpack') return `https://backpack.app/ul/v1/browse/${url}?ref=${ref}`;
         return '';
+      }
+
+      // Robust tap handler (mobile Safari/Chrome/Phantom webview): avoids "buttons do nothing" issues.
+      // Uses pointer/touch/click with a short dedupe window.
+      let __dgTapTS = 0;
+      function bindTap(el, fn){
+        if (!el || typeof fn !== 'function') return;
+        const handler = (e)=>{
+          try{
+            const now = Date.now();
+            // Dedupe rapid multi-events (touchend + click)
+            if (now - __dgTapTS < 500) { e && e.preventDefault && e.preventDefault(); e && e.stopPropagation && e.stopPropagation(); return; }
+            __dgTapTS = now;
+            e && e.preventDefault && e.preventDefault();
+            e && e.stopPropagation && e.stopPropagation();
+          }catch(_e){}
+          try{ fn(); }catch(_e){}
+        };
+        try{ el.addEventListener('pointerup', handler, {passive:false}); }catch(e){}
+        try{ el.addEventListener('touchend', handler, {passive:false}); }catch(e){}
+        try{ el.addEventListener('click', handler, {passive:false}); }catch(e){}
+      }
+
+      function openWalletBrowse(kind){
+        const link = buildBrowseLink(kind);
+        if (!link) return;
+
+        // Preserve current token view when round-tripping through a wallet deep-link
+        try{ dgMarkRestoreNextLoad(); }catch(e){}
+        try{ if (state && state.current) dgPersistLastStateFromMeta(state.current); }catch(e){}
+        // Best-effort deep-link: navigate in the same tab first (more reliable on iOS/Firefox)
+        try{ window.location.href = link; return; }catch(e){}
+        // Fallback: anchor click + location fallback
+        try{
+          const a = document.createElement('a');
+          a.href = link;
+          a.target = '_self';
+          a.rel = 'noopener';
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+        }catch(e){}
+        try{ window.location.assign(link); }catch(e){ try{ window.location.href = link; }catch(_e){} }
+        // If nothing happens, show a helpful hint (kept short)
+        setTimeout(()=>{
+          try{
+            if (document.visibilityState === 'visible') {
+              msg('If nothing opened: launch your wallet app → in-app browser → open this site, then tap Connect Wallet again.', 'info');
+            }
+          }catch(e){}
+        }, 1200);
       }
 
       function openWalletModal(){
@@ -3571,31 +3731,65 @@ body.dgHasToken .dgBackBtn{ display:inline-flex; }
       async function refreshBalances(){
         try{
           if (!ui.solBal || !ui.fromBal || !ui.toBal) return;
+
+          // Not connected: show zeros (requested)
           if (!wallet || !(wallet.publicKey)) {
-            ui.solBal.textContent = 'SOL: —';
-            ui.fromBal.textContent = 'Balance: —';
-            ui.toBal.textContent = 'Balance: —';
+            ui.solBal.textContent = 'SOL: 0.00';
+            ui.fromBal.textContent = 'Balance: 0.00';
+            ui.toBal.textContent = 'Balance: 0.00';
             cachedBalances.solLamports = 0;
             cachedBalances.fromUi = 0;
             cachedBalances.toUi = 0;
             return;
           }
-          const c = await ensureConnection();
+
+          // Always show a numeric value immediately (never get stuck on "Loading…")
+          const solCached = (Number(cachedBalances.solLamports||0) / 1e9);
+          ui.solBal.textContent = `SOL: ${solCached ? formatNum(solCached, 6) : '0.00'}`;
+          const fCached = Number(cachedBalances.fromUi||0);
+          const tCached = Number(cachedBalances.toUi||0);
+          ui.fromBal.textContent = `Balance: ${fCached ? formatNum(fCached, 6) : '0.00'}`;
+          ui.toBal.textContent = `Balance: ${tCached ? formatNum(tCached, 6) : '0.00'}`;
+
           const owner = wallet.publicKey;
-          const lamports = await c.getBalance(owner, 'confirmed');
-          cachedBalances.solLamports = lamports || 0;
-          const sol = (cachedBalances.solLamports / 1e9);
-          ui.solBal.textContent = `SOL: ${formatNum(sol, 6)}`;
+          const c = await withTimeout(ensureConnection(), 5200).catch(()=>null);
+          if (!c) return;
 
-          const fromBal = await getTokenBalanceUi(owner, fromMint);
-          const toBal = await getTokenBalanceUi(owner, toMint);
-          cachedBalances.fromUi = fromBal;
-          cachedBalances.toUi = toBal;
+          let lamports = null;
+          try{
+            lamports = await withTimeout(withBackoff(()=>c.getBalance(owner, 'confirmed'), {tries:3, baseMs:260}), 6500);
+          }catch(e){ lamports = null; }
 
-          ui.fromBal.textContent = `Balance: ${formatNum(fromBal, 6)}`;
-          ui.toBal.textContent = `Balance: ${formatNum(toBal, 6)}`;
+          if (lamports != null && Number.isFinite(Number(lamports))){
+            cachedBalances.solLamports = Number(lamports) || 0;
+          }
+
+          // Token balances (best-effort with timeouts)
+          let fromBal = null, toBal = null;
+          try{ fromBal = await withTimeout(withBackoff(()=>getTokenBalanceUi(owner, fromMint), {tries:2, baseMs:240}), 6500); }catch(e){ fromBal = null; }
+          try{ toBal = await withTimeout(withBackoff(()=>getTokenBalanceUi(owner, toMint), {tries:2, baseMs:240}), 6500); }catch(e){ toBal = null; }
+
+          if (fromBal != null) cachedBalances.fromUi = fromBal;
+          if (toBal != null) cachedBalances.toUi = toBal;
+
+          const sol = (Number(cachedBalances.solLamports||0) / 1e9);
+          ui.solBal.textContent = `SOL: ${sol ? formatNum(sol, 6) : '0.00'}`;
+          const f = Number(cachedBalances.fromUi||0);
+          const t = Number(cachedBalances.toUi||0);
+          ui.fromBal.textContent = `Balance: ${f ? formatNum(f, 6) : '0.00'}`;
+          ui.toBal.textContent = `Balance: ${t ? formatNum(t, 6) : '0.00'}`;
+
+          // If we couldn't fetch, retry shortly (quiet)
+          if (lamports == null || fromBal == null || toBal == null){
+            setTimeout(()=>{ try{ refreshBalances(); }catch(_e){} }, 1600);
+          }
+
         }catch(e){
-          // quiet
+          try{
+            if (wallet && wallet.publicKey){
+              setTimeout(()=>{ try{ refreshBalances(); }catch(_e){} }, 1800);
+            }
+          }catch(_){ }
         }
       }
 
@@ -3613,8 +3807,9 @@ body.dgHasToken .dgBackBtn{ display:inline-flex; }
           if (!m || isSolMint(m)) {
             return (cachedBalances.solLamports || 0) / 1e9;
           }
-          const c = await ensureConnection();
-          const resp = await c.getParsedTokenAccountsByOwner(ownerPk, { mint: PK(m) }, 'confirmed');
+          const c = await withTimeout(ensureConnection(), 5200).catch(()=>null);
+          if (!c) return null;
+          const resp = await withTimeout(c.getParsedTokenAccountsByOwner(ownerPk, { mint: PK(m) }, 'confirmed'), 6500);
           const list = (resp && resp.value) ? resp.value : [];
           let sum = 0;
           for (const it of list){
@@ -3627,11 +3822,35 @@ body.dgHasToken .dgBackBtn{ display:inline-flex; }
           }
           return sum;
         }catch(e){
-          return 0;
+          return null;
         }
       }
 
-      function applyPct(pct){
+      
+      // Fiat helper (SOL only) — best-effort, cached.
+      const _solFiatCache = { ts:0, usd:null, eur:null };
+      async function getSolFiat(){
+        try{
+          const now = Date.now();
+          if (_solFiatCache.usd && (now - _solFiatCache.ts) < 60_000) return _solFiatCache;
+          const u = 'https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd,eur';
+          const res = await fetchWithTimeout(u, { headers:{'accept':'application/json'}, cache:'no-store' }, 6500);
+          if (!res.ok) return _solFiatCache;
+          const j = await res.json();
+          const usd = j && j.solana && Number(j.solana.usd);
+          const eur = j && j.solana && Number(j.solana.eur);
+          if (Number.isFinite(usd) || Number.isFinite(eur)){
+            _solFiatCache.ts = now;
+            _solFiatCache.usd = Number.isFinite(usd) ? usd : _solFiatCache.usd;
+            _solFiatCache.eur = Number.isFinite(eur) ? eur : _solFiatCache.eur;
+          }
+          return _solFiatCache;
+        }catch(e){
+          return _solFiatCache;
+        }
+      }
+
+function applyPct(pct){
         try{
           const p = String(pct||'').toLowerCase();
           if (!wallet || !wallet.publicKey) { msg('Connect wallet first.', 'warn'); return; }
@@ -3670,7 +3889,7 @@ body.dgHasToken .dgBackBtn{ display:inline-flex; }
         const provider = getProvider();
         if (!provider) {
           if (isMobileDevice()) { openWalletModal(); return; }
-          msg('No wallet found. Install Phantom, Solflare or Backpack.', 'warn');
+          msg('Wallet not detected. On mobile, open this site inside your wallet’s in-app browser.', 'warn');
           return;
         }
         try{
@@ -3776,59 +3995,84 @@ body.dgHasToken .dgBackBtn{ display:inline-flex; }
 
       async function jupQuote({inMint, outMint, inAmountRaw, slippageBps}){
         const key = jupKey();
-        if (!key) throw new Error('Missing JUPITER_API_KEY');
-        const u = new URL(JUP_BASE + '/quote');
-        u.searchParams.set('inputMint', inMint);
-        u.searchParams.set('outputMint', outMint);
-        u.searchParams.set('amount', String(inAmountRaw));
-        u.searchParams.set('swapMode', 'ExactIn');
-        u.searchParams.set('slippageBps', String(slippageBps));
-        u.searchParams.set('platformFeeBps', String(FEE_BPS));
-        // Let Jupiter decide venues; this covers Meteora/Raydium/Orca/Pump venues that Jupiter integrates.
-        const finalUrl = applyProxy(u.toString());
-        const res = await fetch(finalUrl, { headers: { 'accept':'application/json', 'x-api-key': key }, cache:'no-store' });
-        if (!res.ok){
-          const t = await res.text().catch(()=> '');
-          throw new Error('Quote failed: ' + res.status + ' ' + t.slice(0,180));
+        const headers = { 'accept':'application/json' };
+        if (key) headers['x-api-key'] = key;
+
+        const mkUrl = (base) => {
+          const u = new URL(base + '/quote');
+          u.searchParams.set('inputMint', inMint);
+          u.searchParams.set('outputMint', outMint);
+          u.searchParams.set('amount', String(inAmountRaw));
+          u.searchParams.set('swapMode', 'ExactIn');
+          u.searchParams.set('slippageBps', String(slippageBps));
+          u.searchParams.set('platformFeeBps', String(FEE_BPS));
+          return applyProxy(u.toString());
+        };
+
+        const urls = [mkUrl(JUP_BASE_FREE), mkUrl(JUP_BASE_PAID)];
+        let lastErr = null;
+        for (const finalUrl of urls){
+          try{
+            const res = await fetchWithTimeout(finalUrl, { headers, cache:'no-store' }, FETCH_TIMEOUT_MS);
+            if (res.ok) return res.json();
+            // If auth required, try next base
+            if (res.status === 401 || res.status === 403) { lastErr = new Error('AUTH'); continue; }
+            lastErr = new Error('QUOTE_FAILED');
+          }catch(e){
+            lastErr = e;
+          }
         }
-        return res.json();
+        throw (lastErr || new Error('QUOTE_FAILED'));
       }
 
       async function jupSwapInstructions({userPubkey, quote, feeAccountStr, setupIxs}){
         const key = jupKey();
-        if (!key) throw new Error('Missing JUPITER_API_KEY');
+        const headers = { 'Content-Type': 'application/json' };
+        if (key) headers['x-api-key'] = key;
+
         const body = {
           userPublicKey: userPubkey,
           quoteResponse: quote,
           wrapAndUnwrapSol: true,
           useSharedAccounts: true,
-          asLegacyTransaction: false,
           dynamicComputeUnitLimit: true,
+          dynamicSlippage: false,
           feeAccount: feeAccountStr,
+          setupInstructions: setupIxs || []
         };
-        const finalUrl = applyProxy(JUP_BASE + '/swap-instructions');
-        const res = await fetch(finalUrl, {
-          method:'POST',
-          headers: { 'content-type':'application/json', 'accept':'application/json', 'x-api-key': key },
-          body: JSON.stringify(body),
-        });
-        if (!res.ok){
-          const t = await res.text().catch(()=> '');
-          throw new Error('Swap build failed: ' + res.status + ' ' + t.slice(0,180));
+
+        const mkUrl = (base) => applyProxy(base + '/swap-instructions');
+        const urls = [mkUrl(JUP_BASE_FREE), mkUrl(JUP_BASE_PAID)];
+        let lastErr = null;
+        for (const finalUrl of urls){
+          try{
+            const res = await fetchWithTimeout(finalUrl, { method:'POST', headers, body: JSON.stringify(body), cache:'no-store' }, FETCH_TIMEOUT_MS);
+            if (res.ok) return res.json();
+            if (res.status === 401 || res.status === 403) { lastErr = new Error('AUTH'); continue; }
+            lastErr = new Error('SWAP_INSTRUCTIONS_FAILED');
+          }catch(e){
+            lastErr = e;
+          }
         }
-        const data = await res.json();
-        // prepend our ATA creation (if needed) into setupInstructions
-        if (setupIxs && setupIxs.length){
-          data.setupInstructions = [...setupIxs, ...(data.setupInstructions || [])];
+        throw (lastErr || new Error('SWAP_INSTRUCTIONS_FAILED'));
+      }
+
+      function b64ToU8(b64){
+        try{
+          const bin = atob(String(b64||''));
+          const out = new Uint8Array(bin.length);
+          for (let i=0;i<bin.length;i++) out[i] = bin.charCodeAt(i);
+          return out;
+        }catch(e){
+          return new Uint8Array([]);
         }
-        return data;
       }
 
       function decodeIx(ix){
         return new solanaWeb3.TransactionInstruction({
           programId: PK(ix.programId),
           keys: (ix.accounts || []).map(a => ({ pubkey: PK(a.pubkey), isSigner: !!a.isSigner, isWritable: !!a.isWritable })),
-          data: solanaWeb3.Buffer.from(ix.data, 'base64'),
+          data: b64ToU8(ix.data),
         });
       }
 
@@ -3884,22 +4128,15 @@ body.dgHasToken .dgBackBtn{ display:inline-flex; }
           if (!toMint) return;
           const amt = parseAmount();
           if (!amt) { ui.out.textContent = '—'; ui.route.textContent = '—'; ui.swapBtn.disabled = true; return; }
-
-          if (!jupKey()){
-            ui.swapBtn.disabled = true;
-            if (!silent) msg('Open Settings → paste your free JUPITER_API_KEY to enable swaps.', 'warn');
-            return;
-          }
+          // Quotes work without a wallet; swapping requires a connected wallet.
           if (!wallet || !wallet.publicKey){
             ui.swapBtn.disabled = true;
-            if (!silent) msg('Connect your wallet to get a live quote.', 'info');
-            return;
+            if (!silent) msg('Connect your wallet to swap.', 'info');
           }
-
-          const inDec = await getMintDecimals(fromMint);
+const inDec = await getMintDecimals(fromMint);
           const inRaw = BigInt(Math.floor(amt * Math.pow(10, inDec)));
-          const slippageBps = 50; // 0.50%
-          ui.slip.textContent = '0.5%';
+          const slippageBpsLocal = slippageBps;
+          ui.slip.textContent = slippageLabel();
 
           ui.swapBtn.disabled = true;
           ui.route.textContent = '…';
@@ -3910,7 +4147,7 @@ body.dgHasToken .dgBackBtn{ display:inline-flex; }
           const { ata, needsCreate } = await ensureFeeAta(feeMint);
           const feeAccountStr = ata.toString();
 
-          const quote = await jupQuote({ inMint: String(fromMint), outMint: String(toMint), inAmountRaw: inRaw.toString(), slippageBps });
+          const quote = await jupQuote({ inMint: String(fromMint), outMint: String(toMint), inAmountRaw: inRaw.toString(), slippageBps: slippageBpsLocal });
           lastQuote = { quote, feeAccountStr, feeMint, needsCreate };
 
           // Estimated out (raw → decimal best effort)
@@ -3919,17 +4156,52 @@ body.dgHasToken .dgBackBtn{ display:inline-flex; }
           const outAmount = Number(quote.outAmount || 0) / Math.pow(10, outDec);
           ui.out.textContent = isFinite(outAmount) ? outAmount.toLocaleString(undefined, {maximumFractionDigits: 8}) : '—';
 
+          // Price impact + fees (Phantom-like info)
+          try{
+            const pi = Number(quote.priceImpactPct);
+            if (ui.impact){
+              if (Number.isFinite(pi)) ui.impact.textContent = (pi*100).toFixed(2) + '%';
+              else ui.impact.textContent = '—';
+            }
+            const netFeeSol = 0.000005; // best-effort baseline (1 signature)
+            let feeTxt = `≈ ${netFeeSol.toFixed(6)} SOL`;
+            if (ui.netFee){
+              // If paying with SOL, show EUR estimate too
+              if (isSolMint(fromMint) && Number.isFinite(amt)){
+                const fx = await getSolFiat();
+                const eur = fx && Number.isFinite(fx.eur) ? (netFeeSol * fx.eur) : null;
+                if (eur != null) feeTxt += ` (≈ €${eur.toFixed(3)})`;
+              }
+              ui.netFee.textContent = feeTxt;
+            }
+
+            // Input fiat (SOL only)
+            if (ui.payFiat){
+              if (isSolMint(fromMint) && Number.isFinite(amt) && amt > 0){
+                const fx = await getSolFiat();
+                const eur = fx && Number.isFinite(fx.eur) ? (amt * fx.eur) : null;
+                const usd = fx && Number.isFinite(fx.usd) ? (amt * fx.usd) : null;
+                if (eur != null && usd != null) ui.payFiat.textContent = `≈ €${eur.toFixed(2)} (≈ $${usd.toFixed(2)})`;
+                else if (eur != null) ui.payFiat.textContent = `≈ €${eur.toFixed(2)}`;
+                else if (usd != null) ui.payFiat.textContent = `≈ $${usd.toFixed(2)}`;
+                else ui.payFiat.textContent = '—';
+              }else{
+                ui.payFiat.textContent = '—';
+              }
+            }
+          }catch(_e){}
+
           // Route labels
           const labels = (quote.routePlan || []).map(r => r?.swapInfo?.label).filter(Boolean);
           ui.route.textContent = labels.length ? labels.slice(0,3).join(' → ') + (labels.length>3 ? ' …' : '') : '—';
 
-          ui.swapBtn.disabled = false;
+          ui.swapBtn.disabled = !(wallet && wallet.publicKey);
           if (!silent) msg('');
         }catch(e){
           ui.swapBtn.disabled = true;
           ui.out.textContent = '—';
           ui.route.textContent = '—';
-          if (!silent) msg(String(e && e.message ? e.message : e), 'warn');
+          if (!silent) msg('Swap temporarily unavailable. Please try again.', 'warn');
         }
       }
 
@@ -3939,14 +4211,12 @@ body.dgHasToken .dgBackBtn{ display:inline-flex; }
           if (!toMint) { msg('Pick a destination token.', 'warn'); return; }
           const amt = parseAmount();
           if (!amt) { msg('Enter an amount.', 'warn'); return; }
-          if (!jupKey()){ msg('Open Settings → paste your JUPITER_API_KEY.', 'warn'); return; }
-
-          ui.swapBtn.disabled = true;
-          ui.quoteBtn.disabled = true;
+ui.swapBtn.disabled = true;
+          if (ui.quoteBtn) ui.quoteBtn.disabled = true;
           msg('Building transaction…', 'info');
 
           // ensure quote fresh
-          await refreshQuote(true);
+          await refreshQuote(false);
           if (!lastQuote || !lastQuote.quote) throw new Error('No quote');
           const { quote, feeAccountStr, feeMint, needsCreate } = lastQuote;
 
@@ -3982,15 +4252,17 @@ body.dgHasToken .dgBackBtn{ display:inline-flex; }
           msg('Please approve the swap in your wallet…', 'info');
           const sig = await buildAndSend(instr);
 
-          msg('Swap sent: ' + short(sig), 'ok');
+          try{ console.info('[DexGuard Swap] signature', sig); }catch(e){}
+          msg('Swap submitted.', 'ok');
           ui.amount.value = '';
           ui.out.textContent = '—';
           ui.route.textContent = '—';
         }catch(e){
-          msg(String(e && e.message ? e.message : e), 'warn');
+          try{ console.warn('[DexGuard Swap] swap failed', e); }catch(_e){}
+          msg('Swap failed. Please try again.', 'warn');
         }finally{
           ui.swapBtn.disabled = false;
-          ui.quoteBtn.disabled = false;
+          if (ui.quoteBtn) ui.quoteBtn.disabled = false;
         }
       }
 
@@ -4101,6 +4373,7 @@ body.dgHasToken .dgBackBtn{ display:inline-flex; }
         ui.connect = document.getElementById('dgSwapConnect');
         ui.wallet = document.getElementById('dgSwapWallet');
         ui.amount = document.getElementById('dgSwapAmount');
+        ui.payFiat = document.getElementById('dgSwapPayFiat');
         ui.fromSym = document.getElementById('dgSwapFromSym');
         ui.fromSub = document.getElementById('dgSwapFromSub');
         ui.toSym = document.getElementById('dgSwapToSym');
@@ -4121,6 +4394,16 @@ body.dgHasToken .dgBackBtn{ display:inline-flex; }
         ui.out = document.getElementById('dgSwapOut');
         ui.route = document.getElementById('dgSwapRoute');
         ui.slip = document.getElementById('dgSwapSlip');
+        ui.netFee = document.getElementById('dgSwapNetFee');
+        ui.impact = document.getElementById('dgSwapImpact');
+        if (ui.slip){
+          ui.slip.textContent = slippageLabel();
+          ui.slip.style.cursor = 'pointer';
+          ui.slip.setAttribute('role','button');
+          ui.slip.setAttribute('tabindex','0');
+          ui.slip.addEventListener('click', editSlippage);
+          ui.slip.addEventListener('keydown', (e)=>{ if (e && (e.key==='Enter' || e.key===' ')) { e.preventDefault(); editSlippage(); } });
+        }
         ui.msg = document.getElementById('dgSwapMsg');
         ui.solBal = document.getElementById('dgSwapSolBal');
         ui.fromBal = document.getElementById('dgSwapFromBal');
@@ -4128,6 +4411,13 @@ body.dgHasToken .dgBackBtn{ display:inline-flex; }
         ui.pctRow = document.getElementById('dgSwapPctRow');
 
         ui.walletModal = document.getElementById('dgSwapWalletModal');
+
+        // Ensure the wallet modal is attached to <body> (fixes tap/click issues inside transformed containers on mobile)
+        try{
+          if (ui.walletModal && ui.walletModal.parentElement !== document.body){
+            document.body.appendChild(ui.walletModal);
+          }
+        }catch(e){}
         ui.walletModalClose = document.getElementById('dgSwapWalletModalClose');
         ui.openPhantom = document.getElementById('dgSwapOpenPhantom');
         ui.openSolflare = document.getElementById('dgSwapOpenSolflare');
@@ -4141,15 +4431,21 @@ body.dgHasToken .dgBackBtn{ display:inline-flex; }
           applyPct(t.getAttribute('data-pct'));
         });
 
-        if (ui.walletModal) ui.walletModal.addEventListener('click', (e)=>{
-          const el = e && e.target ? e.target : null;
-          if (!el) return;
-          if (el.getAttribute && el.getAttribute('data-close') === '1') closeWalletModal();
-        });
-        if (ui.walletModalClose) ui.walletModalClose.addEventListener('click', closeWalletModal);
-        if (ui.openPhantom) ui.openPhantom.addEventListener('click', ()=>{ closeWalletModal(); location.href = buildBrowseLink('phantom'); });
-        if (ui.openSolflare) ui.openSolflare.addEventListener('click', ()=>{ closeWalletModal(); location.href = buildBrowseLink('solflare'); });
-        if (ui.openBackpack) ui.openBackpack.addEventListener('click', ()=>{ closeWalletModal(); location.href = buildBrowseLink('backpack'); });
+        if (ui.walletModal){
+          // Close when tapping the scrim (works even when click events are flaky in mobile webviews)
+          const scrim = ui.walletModal.querySelector('.dgSwapWalletModalScrim');
+          bindTap(scrim, closeWalletModal);
+          // Also support clicking the scrim via event delegation (desktop)
+          ui.walletModal.addEventListener('click', (e)=>{
+            const el = e && e.target ? e.target : null;
+            if (!el) return;
+            if (el.getAttribute && el.getAttribute('data-close') === '1') closeWalletModal();
+          });
+        }
+        bindTap(ui.walletModalClose, closeWalletModal);
+        bindTap(ui.openPhantom, ()=>{ closeWalletModal(); openWalletBrowse('phantom'); });
+        bindTap(ui.openSolflare, ()=>{ closeWalletModal(); openWalletBrowse('solflare'); });
+        bindTap(ui.openBackpack, ()=>{ closeWalletModal(); openWalletBrowse('backpack'); });
 
         if (ui.flip) ui.flip.addEventListener('click', flip);
         if (ui.editFrom) ui.editFrom.addEventListener('click', toggleFromAdv);
@@ -5151,7 +5447,9 @@ async function dgRestoreLastState(){
         if(nav && nav.type) navType = nav.type;
       }catch(e){}
 
-      const allowBase = (navType === "reload" || navType === "back_forward");
+      const restoreFlag = dgConsumeRestoreFlag();
+
+      const allowBase = restoreFlag || (navType === "reload" || navType === "back_forward");
 
       // First visit: don't auto-open a random old token unless URL explicitly encodes one.
       if(!hasUrl && !allowBase) return;
