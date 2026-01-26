@@ -2863,7 +2863,6 @@ body.dgHasToken .dgBackBtn{ display:inline-flex; }
                               <button id="dgSwapApplyToMint" class="btn dgSwapApply" type="button" title="Apply mint">Set</button>
                             </div>
                             <div class="dgSwapHintRow">
-                              <span class="mono muted2">Default: current chart token</span>
                               <button id="dgSwapUseChart" class="btn ghost dgSwapMiniBtn" type="button" title="Reset To to chart token">Use Chart</button>
                             </div>
                           </div>
@@ -3436,6 +3435,21 @@ body.dgHasToken .dgBackBtn{ display:inline-flex; }
       }
 
       async function connect(){
+        // Toggle: if already connected, clicking becomes Disconnect
+        if (wallet && (wallet.publicKey || wallet.isConnected)) {
+          try{
+            if (typeof wallet.disconnect === 'function') await wallet.disconnect();
+          }catch(e){}
+          wallet = null;
+          ui.wallet.textContent = '—';
+          ui.connect.textContent = 'Connect Wallet';
+          ui.connect.classList.remove('ghost');
+          ui.connect.classList.add('grad');
+          msg('Disconnected.', 'ok');
+          await refreshQuote(true);
+          return;
+        }
+
         const provider = getProvider();
         if (!provider) { msg('No wallet found. Install Phantom, Solflare or Backpack.', 'warn'); return; }
         try{
@@ -3443,7 +3457,7 @@ body.dgHasToken .dgBackBtn{ display:inline-flex; }
           wallet = provider;
           const pubkey = (provider.publicKey || res?.publicKey);
           ui.wallet.textContent = pubkey ? short(pubkey.toString()) : 'Connected';
-          ui.connect.textContent = 'Connected';
+          ui.connect.textContent = 'Disconnect';
           ui.connect.classList.add('ghost');
           ui.connect.classList.remove('grad');
           msg('');
@@ -3451,6 +3465,7 @@ body.dgHasToken .dgBackBtn{ display:inline-flex; }
         }catch(e){
           msg('Wallet connect cancelled.', 'warn');
         }
+      }
       }
 
       function isSolMint(m){ return String(m||'') === SOL_MINT; }
