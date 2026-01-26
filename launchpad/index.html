@@ -1,0 +1,868 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>DexGuard Launch — Solana Token Launchpad</title>
+  <meta name="theme-color" content="#070A0F" />
+  <style>
+    :root{
+      --bg:#070A0F; --panel:#0B1020; --panel2:#0A0F1A;
+      --stroke:rgba(255,255,255,.10); --stroke2:rgba(255,255,255,.14);
+      --text:#E9EEFF; --muted:rgba(233,238,255,.65);
+      --good:#2CFF9A; --warn:#FFB020; --bad:#FF4D6D;
+      --glow:rgba(44,255,154,.24);
+      --shadow: 0 18px 60px rgba(0,0,0,.55);
+      --radius:18px;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
+    }
+    *{ box-sizing:border-box; }
+    html,body{ height:100%; }
+    body{
+      margin:0; font-family:var(--sans); background:
+        radial-gradient(1200px 600px at 20% -10%, rgba(44,255,154,.10), transparent 60%),
+        radial-gradient(1000px 700px at 100% 10%, rgba(80,120,255,.12), transparent 55%),
+        linear-gradient(180deg, #05070C, #070A0F 30%, #05070C);
+      color:var(--text);
+    }
+    a{ color:inherit; text-decoration:none; }
+    .wrap{ max-width:1180px; margin:0 auto; padding:16px 14px 80px; }
+    .topbar{
+      position:sticky; top:0; z-index:50;
+      padding:12px 10px; margin:0 -14px 14px;
+      background:rgba(7,10,15,.78);
+      backdrop-filter: blur(10px);
+      border-bottom:1px solid rgba(255,255,255,.08);
+    }
+    .toprow{
+      max-width:1180px; margin:0 auto; display:flex; gap:10px; align-items:center; justify-content:space-between;
+      padding:0 14px;
+    }
+    .brand{ display:flex; gap:10px; align-items:center; }
+    .logo{
+      width:36px; height:36px; border-radius:12px;
+      background: radial-gradient(circle at 30% 30%, rgba(44,255,154,.9), rgba(44,255,154,.15) 55%, rgba(80,120,255,.18) 100%);
+      border:1px solid rgba(44,255,154,.35);
+      box-shadow: 0 0 0 6px rgba(44,255,154,.06), 0 12px 40px rgba(0,0,0,.4);
+    }
+    .title{
+      display:flex; flex-direction:column; line-height:1.05;
+    }
+    .title b{ font-size:14px; letter-spacing:.5px; }
+    .title span{ font-size:12px; color:var(--muted); }
+    .actions{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:flex-end; }
+    .pill{
+      border:1px solid var(--stroke);
+      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+      border-radius:999px;
+      padding:8px 10px;
+      font-size:12px; color:var(--muted);
+      display:flex; gap:8px; align-items:center;
+      box-shadow: 0 10px 24px rgba(0,0,0,.25);
+    }
+    .btn{
+      border:1px solid var(--stroke2);
+      background: linear-gradient(180deg, rgba(255,255,255,.09), rgba(255,255,255,.04));
+      color:var(--text);
+      padding:10px 12px;
+      border-radius:14px;
+      font-size:13px;
+      cursor:pointer;
+      transition:.15s transform,.15s border-color,.15s background;
+      user-select:none;
+    }
+    .btn:hover{ transform:translateY(-1px); border-color:rgba(44,255,154,.38); background: linear-gradient(180deg, rgba(44,255,154,.10), rgba(255,255,255,.04)); }
+    .btn:active{ transform:translateY(0px); }
+    .btn.primary{
+      border-color: rgba(44,255,154,.55);
+      background: linear-gradient(180deg, rgba(44,255,154,.18), rgba(44,255,154,.06));
+      box-shadow: 0 0 0 6px rgba(44,255,154,.06), 0 16px 50px rgba(0,0,0,.45);
+    }
+    .btn.danger{ border-color: rgba(255,77,109,.55); background: linear-gradient(180deg, rgba(255,77,109,.18), rgba(255,77,109,.06)); }
+    .grid{
+      display:grid;
+      grid-template-columns: 1.15fr .85fr;
+      gap:14px;
+      align-items:start;
+    }
+    @media (max-width: 980px){
+      .grid{ grid-template-columns: 1fr; }
+      .toprow{ gap:10px; }
+      .actions{ justify-content:flex-start; }
+    }
+    .card{
+      background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
+      border:1px solid rgba(255,255,255,.10);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+    }
+    .card .head{
+      padding:14px 14px 12px;
+      display:flex; align-items:center; justify-content:space-between; gap:10px;
+      border-bottom:1px solid rgba(255,255,255,.08);
+      background: linear-gradient(180deg, rgba(255,255,255,.04), transparent);
+    }
+    .card .head .h{
+      display:flex; flex-direction:column; gap:2px;
+    }
+    .card .head .h b{ font-size:13px; letter-spacing:.4px; }
+    .card .head .h span{ font-size:12px; color:var(--muted); }
+    .card .body{ padding:14px; }
+    .steps{
+      display:flex; gap:8px; flex-wrap:wrap;
+    }
+    .step{
+      padding:8px 10px; border-radius:999px;
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.18);
+      font-size:12px; color:var(--muted);
+      display:flex; gap:8px; align-items:center;
+    }
+    .dot{ width:8px; height:8px; border-radius:999px; background:rgba(233,238,255,.25); }
+    .step.active{ border-color: rgba(44,255,154,.45); color:rgba(233,238,255,.9); background: rgba(44,255,154,.08); }
+    .step.active .dot{ background: var(--good); box-shadow: 0 0 0 5px rgba(44,255,154,.10); }
+
+    .row{ display:grid; grid-template-columns: 1fr 1fr; gap:12px; }
+    @media (max-width:720px){ .row{ grid-template-columns:1fr; } }
+    label{ display:block; font-size:12px; color:var(--muted); margin:0 0 6px; }
+    input, textarea, select{
+      width:100%;
+      padding:11px 12px;
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.22);
+      color: var(--text);
+      outline:none;
+      font-size:13px;
+    }
+    textarea{ min-height:92px; resize:vertical; }
+    input:focus, textarea:focus, select:focus{ border-color: rgba(44,255,154,.45); box-shadow: 0 0 0 5px rgba(44,255,154,.08); }
+    .hint{ font-size:12px; color:var(--muted); margin-top:8px; line-height:1.45; }
+    .kpi{
+      display:flex; gap:10px; flex-wrap:wrap; align-items:center;
+      font-family: var(--mono);
+      font-size:12px; color:rgba(233,238,255,.85);
+    }
+    .kpi .chip{
+      padding:7px 9px; border-radius:12px;
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.20);
+    }
+    .divider{ height:1px; background:rgba(255,255,255,.08); margin:14px 0; }
+    .status{
+      font-family:var(--mono);
+      font-size:12px;
+      line-height:1.45;
+      white-space:pre-wrap;
+      color:rgba(233,238,255,.86);
+      background: rgba(0,0,0,.24);
+      border:1px solid rgba(255,255,255,.10);
+      border-radius:14px;
+      padding:12px;
+      max-height: 220px;
+      overflow:auto;
+    }
+    .ok{ color: var(--good); }
+    .bad{ color: var(--bad); }
+    .warn{ color: var(--warn); }
+
+    .mini{
+      font-size:12px; color:var(--muted);
+      display:flex; gap:10px; flex-wrap:wrap; align-items:center;
+    }
+    .links{
+      display:flex; gap:8px; flex-wrap:wrap;
+    }
+    .link{
+      padding:9px 10px;
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.16);
+      font-size:12px; color:rgba(233,238,255,.9);
+    }
+    .link:hover{ border-color: rgba(44,255,154,.35); }
+    .footer-note{
+      margin-top:14px;
+      font-size:12px;
+      color:rgba(233,238,255,.55);
+      line-height:1.55;
+    }
+    .modalOverlay{
+      position:fixed; inset:0; background:rgba(0,0,0,.62);
+      display:none; align-items:center; justify-content:center;
+      z-index:9999;
+      padding:18px;
+    }
+    .modal{
+      width:min(560px, 100%);
+      border-radius:22px;
+      border:1px solid rgba(255,255,255,.12);
+      background: linear-gradient(180deg, rgba(12,16,28,.95), rgba(8,10,15,.92));
+      box-shadow: 0 30px 120px rgba(0,0,0,.75);
+      overflow:hidden;
+    }
+    .modalHead{
+      padding:14px 14px 12px;
+      display:flex; justify-content:space-between; align-items:center; gap:10px;
+      border-bottom:1px solid rgba(255,255,255,.08);
+    }
+    .modalHead b{ font-size:13px; letter-spacing:.4px; }
+    .modalBody{ padding:14px; }
+    .walletList{ display:grid; grid-template-columns:1fr; gap:10px; }
+    .walletItem{
+      display:flex; align-items:center; justify-content:space-between; gap:10px;
+      padding:12px 12px;
+      border-radius:16px;
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.20);
+      cursor:pointer;
+    }
+    .walletItem:hover{ border-color: rgba(44,255,154,.35); }
+    .walletItem small{ color:var(--muted); }
+  </style>
+</head>
+
+<body>
+  <div class="topbar">
+    <div class="toprow">
+      <div class="brand">
+        <div class="logo" aria-hidden="true"></div>
+        <div class="title">
+          <b>DexGuard Launch</b>
+          <span>Solana Token Launchpad (MVP)</span>
+        </div>
+      </div>
+
+      <div class="actions">
+        <div class="pill" title="Network / Wallet">
+          <span id="netDot" style="width:8px;height:8px;border-radius:999px;background:rgba(255,255,255,.25)"></span>
+          <span id="netLabel">Mainnet</span>
+          <span style="opacity:.35">•</span>
+          <span id="walletLabel">Not connected</span>
+        </div>
+
+        <button class="btn" id="btnOpenWallets">Choose Wallet</button>
+        <button class="btn primary" id="btnConnect">Connect</button>
+        <button class="btn danger" id="btnDisconnect" style="display:none;">Disconnect</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <div class="grid">
+      <!-- LEFT -->
+      <div class="card">
+        <div class="head">
+          <div class="h">
+            <b>Launch Wizard</b>
+            <span>Create SPL Token + optional Metadata. No backend needed.</span>
+          </div>
+          <div class="steps" id="steps">
+            <div class="step active" data-step="1"><span class="dot"></span>1 Wallet</div>
+            <div class="step" data-step="2"><span class="dot"></span>2 Token</div>
+            <div class="step" data-step="3"><span class="dot"></span>3 Metadata</div>
+            <div class="step" data-step="4"><span class="dot"></span>4 Review</div>
+            <div class="step" data-step="5"><span class="dot"></span>5 Deploy</div>
+          </div>
+        </div>
+
+        <div class="body">
+          <div class="row">
+            <div>
+              <label>Token Name</label>
+              <input id="name" placeholder="e.g. DexGuard Token" maxlength="32" />
+            </div>
+            <div>
+              <label>Symbol</label>
+              <input id="symbol" placeholder="e.g. DGUARD" maxlength="10" />
+            </div>
+          </div>
+
+          <div class="row" style="margin-top:12px;">
+            <div>
+              <label>Decimals</label>
+              <select id="decimals">
+                <option value="9" selected>9 (Standard)</option>
+                <option value="6">6</option>
+                <option value="5">5</option>
+                <option value="3">3</option>
+                <option value="0">0</option>
+              </select>
+            </div>
+            <div>
+              <label>Initial Supply</label>
+              <input id="supply" placeholder="e.g. 1000000000" inputmode="decimal" />
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="row">
+            <div>
+              <label>Metadata URI (optional)</label>
+              <input id="metaUri" placeholder="ipfs://... or https://.../metadata.json" />
+              <div class="hint">If you provide a metadata URI, we will try to create/update Metaplex metadata on-chain.</div>
+            </div>
+            <div>
+              <label>Description (optional, for your own records)</label>
+              <textarea id="desc" placeholder="What is your token about?"></textarea>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="row">
+            <div>
+              <label><input type="checkbox" id="renounceMint" /> Renounce Mint Authority after mint</label>
+              <div class="hint">Prevents future minting. Irreversible.</div>
+            </div>
+            <div>
+              <label><input type="checkbox" id="disableFreeze" /> Disable Freeze Authority</label>
+              <div class="hint">Prevents freezing token accounts. Irreversible if set to null.</div>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <div style="display:flex; gap:10px; flex-wrap:wrap;">
+            <button class="btn" id="btnReview">Review</button>
+            <button class="btn primary" id="btnDeploy">Deploy (Sign TX)</button>
+            <button class="btn" id="btnClear">Clear</button>
+          </div>
+
+          <div class="footer-note">
+            ⚠️ This MVP creates a token on Solana (SPL). Creating liquidity pools, bonding curves, and “Pumpfun-like” mechanics are separate modules.
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT -->
+      <div class="card">
+        <div class="head">
+          <div class="h">
+            <b>Wallet & Output</b>
+            <span>Balance, explorer links, logs, and saved launches.</span>
+          </div>
+        </div>
+        <div class="body">
+          <div class="kpi">
+            <div class="chip">Address: <span id="addr">—</span></div>
+            <div class="chip">SOL: <span id="sol">—</span></div>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="mini">
+            <span>Result:</span>
+            <span id="mintOut" class="warn">No token deployed yet</span>
+          </div>
+
+          <div class="links" style="margin-top:10px;">
+            <a class="link" id="lnkMint" href="#" target="_blank" rel="noreferrer" style="display:none;">Explorer: Mint</a>
+            <a class="link" id="lnkCreator" href="#" target="_blank" rel="noreferrer" style="display:none;">Explorer: Creator</a>
+            <a class="link" id="lnkJup" href="#" target="_blank" rel="noreferrer" style="display:none;">Buy on Jupiter</a>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="mini" style="justify-content:space-between;">
+            <span>Logs</span>
+            <button class="btn" id="btnCopyLog">Copy</button>
+          </div>
+          <div id="log" class="status" style="margin-top:10px;">Ready.</div>
+
+          <div class="divider"></div>
+
+          <div class="mini" style="justify-content:space-between;">
+            <span>Saved Launches (local)</span>
+            <button class="btn" id="btnClearSaved">Clear</button>
+          </div>
+          <div id="saved" class="status" style="margin-top:10px; max-height:220px;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Wallet chooser modal -->
+  <div class="modalOverlay" id="walletModal">
+    <div class="modal">
+      <div class="modalHead">
+        <b>Choose Wallet Provider</b>
+        <button class="btn" id="btnCloseModal">Close</button>
+      </div>
+      <div class="modalBody">
+        <div class="walletList" id="walletList"></div>
+        <div class="hint" style="margin-top:10px;">
+          If you are on mobile and nothing happens, open this page inside your wallet’s in-app browser (e.g., Phantom browser).
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Solana libs -->
+  <script src="https://unpkg.com/@solana/web3.js@1.95.2/lib/index.iife.min.js"></script>
+  <script src="https://unpkg.com/@solana/spl-token@0.4.9/lib/index.iife.min.js"></script>
+
+  <script>
+    (function(){
+      const { Connection, clusterApiUrl, PublicKey, SystemProgram, Transaction } = solanaWeb3;
+      const spl = splToken;
+
+      // ===== CONFIG =====
+      const CLUSTER = "mainnet-beta"; // switch to "devnet" for testing
+      const RPC = "https://api.mainnet-beta.solana.com"; // replace with your paid RPC later
+      const EXPLORER = (addr) => `https://solscan.io/account/${addr}`;
+      const EXPLORER_TX = (sig) => `https://solscan.io/tx/${sig}`;
+      const EXPLORER_MINT = (mint) => `https://solscan.io/token/${mint}`;
+
+      const conn = new Connection(RPC, "confirmed");
+
+      // ===== UI =====
+      const $ = (id)=>document.getElementById(id);
+      const logEl = $("log");
+      const stepsEl = $("steps");
+      const addrEl = $("addr");
+      const solEl  = $("sol");
+      const mintOutEl = $("mintOut");
+      const lnkMint = $("lnkMint");
+      const lnkCreator = $("lnkCreator");
+      const lnkJup = $("lnkJup");
+
+      const walletLabel = $("walletLabel");
+      const netLabel = $("netLabel");
+      const netDot = $("netDot");
+
+      netLabel.textContent = (CLUSTER === "devnet") ? "Devnet" : "Mainnet";
+      netDot.style.background = (CLUSTER === "devnet") ? "rgba(255,176,32,.9)" : "rgba(44,255,154,.9)";
+      netDot.style.boxShadow = (CLUSTER === "devnet") ? "0 0 0 5px rgba(255,176,32,.12)" : "0 0 0 5px rgba(44,255,154,.12)";
+
+      const btnConnect = $("btnConnect");
+      const btnDisconnect = $("btnDisconnect");
+      const btnOpenWallets = $("btnOpenWallets");
+      const btnReview = $("btnReview");
+      const btnDeploy = $("btnDeploy");
+      const btnClear = $("btnClear");
+      const btnCopyLog = $("btnCopyLog");
+      const btnClearSaved = $("btnClearSaved");
+
+      // Modal
+      const walletModal = $("walletModal");
+      const walletList = $("walletList");
+      const btnCloseModal = $("btnCloseModal");
+
+      // ===== STATE =====
+      let selectedWalletKey = localStorage.getItem("dg_launch_wallet") || "phantom";
+      let wallet = null; // provider object
+      let pubkey = null;
+
+      // ===== HELPERS =====
+      function setStep(n){
+        [...stepsEl.querySelectorAll(".step")].forEach(s=>{
+          s.classList.toggle("active", String(s.dataset.step) === String(n));
+        });
+      }
+      function fmtAddr(a){
+        if(!a) return "—";
+        const s = String(a);
+        return s.slice(0,4)+"…"+s.slice(-4);
+      }
+      function log(msg, cls){
+        const stamp = new Date().toLocaleTimeString();
+        const line = `[${stamp}] ${msg}`;
+        const safe = line.replace(/</g,"&lt;").replace(/>/g,"&gt;");
+        logEl.innerHTML += `\n<span class="${cls||""}">${safe}</span>`;
+        logEl.scrollTop = logEl.scrollHeight;
+      }
+      function setLogReset(msg){
+        logEl.textContent = msg;
+      }
+      async function refreshBalance(){
+        if(!pubkey){ solEl.textContent="—"; return; }
+        const lamports = await conn.getBalance(pubkey, "confirmed");
+        solEl.textContent = (lamports/1e9).toFixed(4);
+      }
+      function saveLaunch(obj){
+        const key = "dg_launches";
+        const arr = JSON.parse(localStorage.getItem(key) || "[]");
+        arr.unshift(obj);
+        localStorage.setItem(key, JSON.stringify(arr.slice(0,20)));
+        renderSaved();
+      }
+      function renderSaved(){
+        const key = "dg_launches";
+        const arr = JSON.parse(localStorage.getItem(key) || "[]");
+        if(!arr.length){ $("saved").textContent="—"; return; }
+        $("saved").textContent = arr.map(x=>{
+          return `${x.time}  |  ${x.symbol}  |  ${x.mint}  |  ${x.sig}`;
+        }).join("\n");
+      }
+      function explorerLinkMint(mint){
+        lnkMint.href = EXPLORER_MINT(mint);
+        lnkMint.style.display="";
+      }
+      function explorerLinkCreator(addr){
+        lnkCreator.href = EXPLORER(addr);
+        lnkCreator.style.display="";
+      }
+      function jupLink(mint){
+        // Jupiter swap link: SOL -> token
+        const url = `https://jup.ag/swap/SOL-${mint}`;
+        lnkJup.href = url;
+        lnkJup.style.display="";
+      }
+
+      function getProviders(){
+        // Try multiple known injections
+        const w = window;
+        const list = [];
+        if(w?.solana?.isPhantom) list.push({key:"phantom", name:"Phantom", obj:w.solana});
+        // Solflare sometimes injects window.solflare, and may also expose window.solana.isSolflare
+        if(w?.solflare) list.push({key:"solflare", name:"Solflare", obj:w.solflare});
+        if(w?.solana?.isSolflare) list.push({key:"solflare", name:"Solflare (solana)", obj:w.solana});
+        // Backpack
+        if(w?.backpack?.solana) list.push({key:"backpack", name:"Backpack", obj:w.backpack.solana});
+        // Generic solana (if nothing else)
+        if(w?.solana && !list.some(x=>x.obj===w.solana)) list.push({key:"solana", name:"Injected Solana", obj:w.solana});
+        // De-dupe by key
+        const map = new Map();
+        list.forEach(x=>{ if(!map.has(x.key)) map.set(x.key, x); });
+        return [...map.values()];
+      }
+
+      function selectWallet(key){
+        selectedWalletKey = key;
+        localStorage.setItem("dg_launch_wallet", key);
+        const providers = getProviders();
+        const found = providers.find(p=>p.key===key) || providers[0];
+        wallet = found ? found.obj : null;
+        $("btnOpenWallets").textContent = found ? found.name : "Choose Wallet";
+        return wallet;
+      }
+
+      function openWalletModal(){
+        const providers = getProviders();
+        walletList.innerHTML = "";
+        if(!providers.length){
+          walletList.innerHTML = `<div class="walletItem" style="cursor:default;">
+            <div><b>No wallet found</b><br><small>Install Phantom/Solflare/Backpack or open in wallet browser.</small></div>
+          </div>`;
+        } else {
+          providers.forEach(p=>{
+            const div = document.createElement("div");
+            div.className = "walletItem";
+            div.innerHTML = `<div><b>${p.name}</b><br><small>${p.key}</small></div><div style="opacity:.6">Select</div>`;
+            div.onclick = ()=>{
+              selectWallet(p.key);
+              walletModal.style.display="none";
+              log(`Selected wallet: ${p.name}`, "ok");
+            };
+            walletList.appendChild(div);
+          });
+        }
+        walletModal.style.display="flex";
+      }
+
+      function closeWalletModal(){ walletModal.style.display="none"; }
+
+      async function connect(){
+        const w = selectWallet(selectedWalletKey);
+        if(!w){
+          openWalletModal();
+          throw new Error("No wallet provider found.");
+        }
+        setStep(1);
+        log("Connecting wallet…");
+        const resp = await w.connect();
+        pubkey = new PublicKey(resp.publicKey.toString());
+        addrEl.textContent = fmtAddr(pubkey.toBase58());
+        walletLabel.textContent = fmtAddr(pubkey.toBase58());
+        btnConnect.style.display="none";
+        btnDisconnect.style.display="";
+        explorerLinkCreator(pubkey.toBase58());
+        await refreshBalance();
+        log("Wallet connected.", "ok");
+        setStep(2);
+      }
+
+      async function disconnect(){
+        if(wallet?.disconnect) await wallet.disconnect();
+        pubkey = null;
+        addrEl.textContent = "—";
+        solEl.textContent = "—";
+        walletLabel.textContent = "Not connected";
+        btnConnect.style.display="";
+        btnDisconnect.style.display="none";
+        log("Disconnected.", "warn");
+        setStep(1);
+      }
+
+      function getForm(){
+        const name = $("name").value.trim();
+        const symbol = $("symbol").value.trim();
+        const decimals = parseInt($("decimals").value, 10);
+        const supplyStr = $("supply").value.trim();
+        const supply = supplyStr ? Number(supplyStr) : NaN;
+        const metaUri = $("metaUri").value.trim();
+        const desc = $("desc").value.trim();
+        const renounceMint = $("renounceMint").checked;
+        const disableFreeze = $("disableFreeze").checked;
+
+        return { name, symbol, decimals, supply, metaUri, desc, renounceMint, disableFreeze };
+      }
+
+      function validateForm(f){
+        const errs = [];
+        if(!pubkey) errs.push("Connect wallet first.");
+        if(!f.name || f.name.length<2) errs.push("Token Name is required.");
+        if(!f.symbol || f.symbol.length<2) errs.push("Symbol is required.");
+        if(!Number.isFinite(f.decimals) || f.decimals<0 || f.decimals>9) errs.push("Decimals must be 0..9.");
+        if(!Number.isFinite(f.supply) || f.supply<=0) errs.push("Initial Supply must be > 0.");
+        if(f.metaUri && !/^https?:\/\/|^ipfs:\/\//i.test(f.metaUri)) errs.push("Metadata URI must start with https:// or ipfs://");
+        return errs;
+      }
+
+      function review(){
+        const f = getForm();
+        const errs = validateForm(f);
+        if(errs.length){
+          log("Review failed:\n- " + errs.join("\n- "), "bad");
+          return;
+        }
+        setStep(4);
+        const summary =
+`Review:
+- Name: ${f.name}
+- Symbol: ${f.symbol}
+- Decimals: ${f.decimals}
+- Initial Supply: ${f.supply}
+- Metadata URI: ${f.metaUri || "(none)"}
+- Renounce Mint Authority: ${f.renounceMint ? "YES" : "no"}
+- Disable Freeze Authority: ${f.disableFreeze ? "YES" : "no"}
+
+Wallet: ${pubkey.toBase58()}`;
+        log(summary, "ok");
+      }
+
+      async function deploy(){
+        const f = getForm();
+        const errs = validateForm(f);
+        if(errs.length){
+          log("Deploy blocked:\n- " + errs.join("\n- "), "bad");
+          return;
+        }
+        if(!wallet?.signTransaction && !wallet?.signAllTransactions){
+          log("Wallet cannot sign transactions.", "bad");
+          return;
+        }
+
+        setStep(5);
+        mintOutEl.textContent = "Deploying…";
+        mintOutEl.className = "warn";
+
+        try{
+          // Create mint account + initialize mint + create ATA + mintTo
+          const mintKeypair = solanaWeb3.Keypair.generate();
+          const mintPub = mintKeypair.publicKey;
+
+          log(`Mint address (new): ${mintPub.toBase58()}`);
+
+          // Rent-exempt for mint
+          const mintLen = spl.MINT_SIZE;
+          const lamportsForMint = await conn.getMinimumBalanceForRentExemption(mintLen);
+
+          const tx = new Transaction();
+          tx.feePayer = pubkey;
+
+          // Create mint account
+          tx.add(SystemProgram.createAccount({
+            fromPubkey: pubkey,
+            newAccountPubkey: mintPub,
+            space: mintLen,
+            lamports: lamportsForMint,
+            programId: spl.TOKEN_PROGRAM_ID
+          }));
+
+          // Initialize mint
+          const freezeAuth = f.disableFreeze ? null : pubkey;
+          tx.add(spl.createInitializeMintInstruction(
+            mintPub,
+            f.decimals,
+            pubkey,
+            freezeAuth,
+            spl.TOKEN_PROGRAM_ID
+          ));
+
+          // Create associated token account for creator
+          const ata = await spl.getAssociatedTokenAddress(
+            mintPub,
+            pubkey,
+            false,
+            spl.TOKEN_PROGRAM_ID,
+            spl.ASSOCIATED_TOKEN_PROGRAM_ID
+          );
+
+          tx.add(spl.createAssociatedTokenAccountInstruction(
+            pubkey,
+            ata,
+            pubkey,
+            mintPub,
+            spl.TOKEN_PROGRAM_ID,
+            spl.ASSOCIATED_TOKEN_PROGRAM_ID
+          ));
+
+          // Mint initial supply (adjust for decimals)
+          const multiplier = BigInt(10) ** BigInt(f.decimals);
+          const amount = BigInt(Math.floor(f.supply)) * multiplier;
+
+          tx.add(spl.createMintToInstruction(
+            mintPub,
+            ata,
+            pubkey,
+            amount,
+            [],
+            spl.TOKEN_PROGRAM_ID
+          ));
+
+          // Optionally renounce mint authority (set to null)
+          if(f.renounceMint){
+            tx.add(spl.createSetAuthorityInstruction(
+              mintPub,
+              pubkey,
+              spl.AuthorityType.MintTokens,
+              null,
+              [],
+              spl.TOKEN_PROGRAM_ID
+            ));
+          }
+
+          // Optionally disable freeze authority (set to null) if not already null
+          if(f.disableFreeze){
+            tx.add(spl.createSetAuthorityInstruction(
+              mintPub,
+              pubkey,
+              spl.AuthorityType.FreezeAccount,
+              null,
+              [],
+              spl.TOKEN_PROGRAM_ID
+            ));
+          }
+
+          // Recent blockhash
+          const latest = await conn.getLatestBlockhash("confirmed");
+          tx.recentBlockhash = latest.blockhash;
+
+          // Partially sign with mint keypair (because we created the mint account)
+          tx.partialSign(mintKeypair);
+
+          // Wallet signs
+          const signed = await wallet.signTransaction(tx);
+
+          log("Sending transaction…");
+          const sig = await conn.sendRawTransaction(signed.serialize(), { skipPreflight:false, preflightCommitment:"confirmed" });
+          log(`Signature: ${sig}`, "ok");
+          log(`Explorer TX: ${EXPLORER_TX(sig)}`);
+
+          const conf = await conn.confirmTransaction({ signature:sig, ...latest }, "confirmed");
+          if(conf.value.err) throw new Error("Transaction failed: " + JSON.stringify(conf.value.err));
+
+          // Success
+          const mintStr = mintPub.toBase58();
+          mintOutEl.textContent = mintStr;
+          mintOutEl.className = "ok";
+
+          explorerLinkMint(mintStr);
+          jupLink(mintStr);
+
+          await refreshBalance();
+
+          saveLaunch({
+            time: new Date().toISOString(),
+            symbol: f.symbol,
+            mint: mintStr,
+            sig
+          });
+
+          log("Token deployed successfully ✅", "ok");
+          log(`Mint: ${mintStr}`, "ok");
+          log(`Creator ATA: ${ata.toBase58()}`, "ok");
+
+          // Metadata: MVP note (we don't construct Metaplex tx here to keep it stable in a single-file).
+          if(f.metaUri){
+            log("Metadata URI provided. On-chain Metaplex metadata creation is a separate transaction/module (recommended to add with @metaplex-foundation/mpl-token-metadata).", "warn");
+          }
+
+        } catch(e){
+          console.error(e);
+          mintOutEl.textContent = "Deploy failed";
+          mintOutEl.className = "bad";
+          log("ERROR: " + (e?.message || String(e)), "bad");
+        }
+      }
+
+      function clearForm(){
+        $("name").value="";
+        $("symbol").value="";
+        $("supply").value="";
+        $("metaUri").value="";
+        $("desc").value="";
+        $("renounceMint").checked=false;
+        $("disableFreeze").checked=false;
+        mintOutEl.textContent="No token deployed yet";
+        mintOutEl.className="warn";
+        lnkMint.style.display="none";
+        lnkJup.style.display="none";
+        setLogReset("Ready.");
+        setStep(pubkey ? 2 : 1);
+      }
+
+      // ===== EVENTS =====
+      btnOpenWallets.onclick = openWalletModal;
+      btnCloseModal.onclick = closeWalletModal;
+      walletModal.addEventListener("click", (e)=>{ if(e.target===walletModal) closeWalletModal(); });
+
+      btnConnect.onclick = async ()=>{ try{ await connect(); }catch(e){ log("Connect failed: " + (e?.message||e), "bad"); } };
+      btnDisconnect.onclick = async ()=>{ try{ await disconnect(); }catch(e){ log("Disconnect failed: " + (e?.message||e), "bad"); } };
+
+      btnReview.onclick = review;
+      btnDeploy.onclick = deploy;
+      btnClear.onclick = clearForm;
+
+      btnCopyLog.onclick = async ()=>{
+        try{
+          await navigator.clipboard.writeText(logEl.textContent);
+          log("Copied logs to clipboard.", "ok");
+        } catch(e){
+          log("Clipboard copy failed.", "warn");
+        }
+      };
+
+      btnClearSaved.onclick = ()=>{
+        localStorage.removeItem("dg_launches");
+        renderSaved();
+        log("Saved launches cleared.", "warn");
+      };
+
+      // ===== INIT =====
+      renderSaved();
+      selectWallet(selectedWalletKey);
+      setStep(1);
+
+      // Auto-refresh balance every 20s when connected
+      setInterval(()=>{ if(pubkey) refreshBalance().catch(()=>{}); }, 20000);
+
+      // Helpful note if no providers
+      window.addEventListener("load", ()=>{
+        const providers = getProviders();
+        if(!providers.length){
+          log("No wallet provider detected. Install Phantom/Solflare/Backpack or open this page inside wallet browser.", "warn");
+        } else {
+          log("Wallet providers detected: " + providers.map(p=>p.name).join(", "), "ok");
+        }
+      });
+
+    })();
+  </script>
+</body>
+</html>
