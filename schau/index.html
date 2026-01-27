@@ -1,0 +1,3687 @@
+<!doctype html>
+<html lang="en">
+<head>
+ <meta charset="utf-8" />
+ <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+ <meta name="theme-color" content="#070711" />
+
+ <title>$SOS Solana on Solana</title>
+ <meta name="description" content="$SOS Solana on Solana. Meet the Guardian of the chain." />
+
+ <meta property="og:title" content="$SOS Solana on Solana" />
+ <meta property="og:description" content="Meet the Guardian of the chain." />
+ <meta property="og:type" content="website" />
+ <meta property="og:image" content="assets/logo.png" />
+
+ <style>
+ :root{
+ --bg:#070711;
+ --panel: rgba(255,255,255,.06);
+ --panel2: rgba(255,255,255,.085);
+ --stroke: rgba(255,255,255,.12);
+
+ --text: rgba(255,255,255,.92);
+ --muted: rgba(255,255,255,.72);
+
+ --g:#14F195;
+ --c:#00D1FF;
+ --p:#9945FF;
+
+ --radius: 22px;
+ --shadow2: 0 14px 44px rgba(0,0,0,.45);
+ --shadowSoft: 0 10px 28px rgba(0,0,0,.28);
+ --max: 1120px;
+
+ --ring: 0 0 0 6px rgba(20,241,149,.08);
+ }
+
+ *{box-sizing:border-box}
+ html{height:100%}
+body{min-height:100%; min-height:100dvh}
+ html{scroll-behavior:smooth}
+
+ body{
+ margin:0;
+ color:var(--text);
+ font: 16px/1.6 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+ background: var(--bg);
+ overflow-x:hidden;
+ position: relative;
+ }
+
+ body::before{
+ content:"";
+ position: fixed;
+ inset: 0;
+ z-index: -1;
+ pointer-events: none;
+ background:
+ radial-gradient(1200px 760px at 10% 5%, rgba(153,69,255,.24), transparent 60%),
+ radial-gradient(1000px 720px at 90% 10%, rgba(20,241,149,.18), transparent 58%),
+ radial-gradient(900px 640px at 72% 92%, rgba(0,209,255,.14), transparent 58%),
+ radial-gradient(900px 640px at 0% 95%, rgba(0,209,255,.06), transparent 60%),
+ var(--bg);
+ transform: translateZ(0);
+ }
+
+ a{color:inherit; text-decoration:none}
+img{max-width:100%; height:auto}
+ .wrap{max-width:var(--max); margin:0 auto; padding:0 18px}
+
+ /* ===== ACCESSIBILITY ===== */
+ :focus-visible{
+ outline:none;
+ box-shadow: var(--ring);
+ border-radius: 14px;
+ }
+
+ /* ===== BASE UI ===== */
+ .btn{
+ display:inline-flex; align-items:center; justify-content:center;
+ padding:9px 12px;
+ border-radius: 999px;
+ border: 1px solid rgba(255,255,255,.14);
+ background: rgba(255,255,255,.06);
+ color: rgba(255,255,255,.90);
+ font-weight:900;
+ font-size:13px;
+ transition: transform .15s ease, background .15s ease, box-shadow .15s ease, border-color .15s ease;
+ white-space: nowrap;
+ user-select:none;
+ -webkit-tap-highlight-color: transparent;
+ }
+ .btn:hover{background: rgba(255,255,255,.10); transform: translateY(-1px)}
+ .btn:active{transform: translateY(0px) scale(.99)}
+ .btn.primary,
+ .btn.grad{
+ border: 0;
+ background: linear-gradient(90deg, var(--g), var(--c), var(--p));
+ color: #061012;
+ box-shadow: 0 14px 28px rgba(0,0,0,.28);
+ }
+ .btn.ghost{ background: rgba(255,255,255,.06); }
+ .btn.icon{
+ width:44px;
+ padding:9px 0;
+ letter-spacing:2px;
+ font-weight:1000;
+ }
+
+ .card{
+ background: linear-gradient(180deg, rgba(255,255,255,.075), rgba(255,255,255,.045));
+ border: 1px solid rgba(255,255,255,.11);
+ border-radius: var(--radius);
+ box-shadow: var(--shadow2);
+ position: relative;
+ }
+ .cardInner{padding:28px}
+
+ section{padding:34px 0}
+
+ .gradText{
+ background: linear-gradient(90deg, var(--g), var(--c), var(--p));
+ -webkit-background-clip:text; background-clip:text; color:transparent;
+ }
+
+ /* ===== HEADER (CLEAN, NO CHAOS) ===== */
+ .header{
+ position:sticky; top:0; z-index:40;
+ backdrop-filter: blur(14px);
+ background: rgba(7,7,17,.68);
+ border-bottom: 1px solid rgba(255,255,255,.08);
+ }
+
+ .headerRow{
+ display:grid;
+ grid-template-columns: auto 1fr auto;
+ align-items:center;
+ gap:12px;
+ padding:12px 0;
+ }
+
+ .brand{
+ display:flex; align-items:center; gap:12px;
+ min-width: 210px;
+ white-space: nowrap;
+ }
+ .brand img{
+ width:40px; height:40px; object-fit:contain;
+ filter: drop-shadow(0 10px 25px rgba(0,0,0,.45));
+ }
+ .brandText{display:flex; flex-direction:column; line-height:1.05}
+ .brandText .ticker{font-weight:1000; letter-spacing:.2px; font-size:18px}
+ .brandText .name{font-weight:750; color:var(--muted); font-size:14px}
+
+ .nav{
+ display:flex; align-items:center; justify-content:center;
+ gap:10px;
+ min-width: 0;
+ overflow:hidden;
+ }
+
+ .headerActions{
+ display:flex;
+ align-items:center;
+ justify-content:flex-end;
+ gap:10px;
+ min-width: 240px;
+ white-space: nowrap;
+ }
+
+ /* Desktop: show 2 tool buttons + menu for socials/bot */
+ .toolLinksDesktop{ display:flex; gap:10px; align-items:center; }
+
+ /* Desktop menu (⋯) */
+ .menu{ position:relative; display:inline-flex; }
+
+ /* Floating menu only (header removed) */
+ .menuFloat{
+ position: fixed;
+ top: calc(env(safe-area-inset-top) + 12px);
+ right: 12px;
+ z-index: 999;
+}
+ .menuBtn{ font-size: 20px; padding: 10px 14px; border-radius: 16px; }
+
+ .menuLabel{
+ font-size: 11.5px;
+ letter-spacing: .12em;
+ text-transform: uppercase;
+ color: rgba(255,255,255,.55);
+ padding: 10px 10px 6px;
+ }
+ .menuSep{
+ height: 1px;
+ margin: 10px 6px;
+ background: rgba(255,255,255,.10);
+ }
+
+ /* Icons */
+ .ico{ width: 34px; height: 34px; display:block; }
+ .ico.sm{ width: 28px; height: 28px; }
+
+ /* How-to-buy steps with icons */
+ .stepTop{display:flex; align-items:center; justify-content:space-between; margin-bottom: 10px;}
+ .stepIcon{
+ width: 46px; height: 46px;
+ display:grid; place-items:center;
+ border-radius: 16px;
+ background: rgba(255,255,255,.06);
+ border: 1px solid rgba(255,255,255,.10);
+ box-shadow: 0 10px 30px rgba(0,0,0,.22);
+ }
+
+ /* Tokenomics stat icons */
+ .statHead{display:flex; align-items:center; gap:12px;}
+ .statIcon{
+ width: 46px; height: 46px;
+ display:grid; place-items:center;
+ border-radius: 16px;
+ background: rgba(255,255,255,.05);
+ border: 1px solid rgba(255,255,255,.10);
+ }
+
+ /* Remove leftover header spacing expectations */
+ .header{display:none !important;}
+.menuPop{
+ position:absolute;
+ top: calc(100% + 12px);
+ right: 0;
+ width: 380px;
+ max-width: calc(100vw - 28px);
+ max-height: calc(100vh - 96px);
+ padding: 10px;
+ padding-bottom: calc(10px + 120px + env(safe-area-inset-bottom)); /* ✅ allow scroll past bottom dock on iOS */
+ border-radius: 18px;
+ border: 1px solid rgba(255,255,255,.12);
+ background:
+ radial-gradient(120% 90% at 0% 0%, rgba(153,69,255,.18), rgba(153,69,255,0) 55%),
+ radial-gradient(120% 90% at 100% 0%, rgba(0,209,255,.16), rgba(0,209,255,0) 55%),
+ rgba(10,10,22,.92);
+ backdrop-filter: blur(18px);
+ -webkit-backdrop-filter: blur(18px);
+ box-shadow: 0 22px 70px rgba(0,0,0,.62);
+ display:none;
+ z-index: 200;
+ overflow:auto;
+ overscroll-behavior: contain;
+ -webkit-overflow-scrolling: touch;
+ transform-origin: top right;
+ transform: translateY(-8px) scale(.98);
+ opacity: 0;
+ }
+ .menuPop.open{ display:block; opacity:1; transform: translateY(0) scale(1); }
+
+ /* nicer scrollbar (desktop) */
+ .menuPop::-webkit-scrollbar{ width: 10px; }
+ .menuPop::-webkit-scrollbar-thumb{ background: rgba(255,255,255,.10); border-radius: 999px; border: 2px solid rgba(10,10,22,.6); }
+ .menuPop::-webkit-scrollbar-track{ background: rgba(255,255,255,.03); border-radius: 999px; }
+
+ .menuLabel{
+ font-size: 11px;
+ text-transform: uppercase;
+ letter-spacing: .14em;
+ font-weight: 900;
+ color: rgba(255,255,255,.62);
+ padding: 10px 10px 6px;
+ }
+ .menuSep{
+ height:1px;
+ margin: 8px 10px;
+ background: rgba(255,255,255,.10);
+ }
+
+ .menuItem{
+ display:flex;
+ align-items:flex-start;
+ justify-content:space-between;
+ gap:12px;
+ padding:11px 12px;
+ border-radius: 14px;
+ font-weight: 900;
+ color: rgba(255,255,255,.92);
+ background: transparent;
+ transition: .14s ease;
+ line-height: 1.25;
+ }
+ .menuItem .menuText{
+ flex: 1;
+ min-width: 0;
+ white-space: normal;
+ }
+ .menuItem:hover{
+ background: rgba(255,255,255,.07);
+ transform: translateY(-1px);
+ }
+
+ .menuBadge{
+ flex: 0 0 auto;
+ font-size:11px;
+ font-weight:950;
+ padding:6px 10px;
+ border-radius:999px;
+ border:1px solid rgba(255,255,255,.12);
+ background: rgba(255,255,255,.06);
+ color: rgba(255,255,255,.78);
+ align-self: flex-start;
+ }
+
+ /* badge colors */
+ .menuBadge.badgeSection{
+ background: rgba(0,209,255,.10);
+ border-color: rgba(0,209,255,.22);
+ color: rgba(215,250,255,.92);
+ }
+ .menuBadge.badgeTool{
+ background: rgba(20,241,149,.10);
+ border-color: rgba(20,241,149,.24);
+ color: rgba(215,255,235,.92);
+ }
+ .menuBadge.badgeSocial{
+ background: rgba(153,69,255,.10);
+ border-color: rgba(153,69,255,.22);
+ color: rgba(240,228,255,.92);
+ }
+ .menuBadge.badgeBot{
+ background: rgba(255,255,255,.08);
+ border-color: rgba(255,255,255,.14);
+ color: rgba(255,255,255,.88);
+ }
+
+/* ✅ DexGuard brand item in menu (gold) */
+.menuMain{ display:block; font-weight: 1000; letter-spacing: -.2px; }
+.menuSub{
+  display:block;
+  margin-top: 4px;
+  font-size: 12px;
+  font-weight: 850;
+  color: rgba(255,255,255,.62);
+}
+.menuItem.dexItem{
+  background: rgba(255,215,0,.06);
+  box-shadow: 0 0 0 1px rgba(255,215,0,.16) inset;
+}
+.menuItem.dexItem:hover{
+  background: rgba(255,215,0,.09);
+  box-shadow: 0 0 0 1px rgba(255,215,0,.22) inset;
+}
+.menuBadge.badgeDex{
+  background: rgba(255,215,0,.12);
+  border-color: rgba(255,215,0,.38);
+  color: rgba(255,245,210,.96);
+  box-shadow: 0 0 0 1px rgba(0,0,0,.10) inset;
+}
+
+ /* Mobile drawer */
+ .mToggle{ display:none; }
+ .mOverlay{
+ position:fixed;
+ inset:0;
+ background: rgba(0,0,0,.55);
+ backdrop-filter: blur(6px);
+ opacity:0;
+ pointer-events:none;
+ transition: .18s ease;
+ z-index: 80;
+ }
+ .mOverlay.open{
+ opacity:1;
+ pointer-events:auto;
+ }
+ .mDrawer{
+ position:fixed;
+ top:0; right:0;
+ height:100dvh;
+ width: min(92vw, 380px);
+ transform: translateX(110%);
+ transition: .22s ease;
+ z-index: 90;
+ padding: 14px 14px 18px;
+ background: rgba(10,10,22,.92);
+ border-left: 1px solid rgba(255,255,255,.10);
+ box-shadow: -20px 0 80px rgba(0,0,0,.55);
+ backdrop-filter: blur(16px);
+ overflow:auto;
+ -webkit-overflow-scrolling: touch;
+ overscroll-behavior: contain;
+ padding-bottom: calc(18px + 120px + env(safe-area-inset-bottom)); /* allow scroll past bottom dock */
+ }
+ .mDrawer.open{ transform: translateX(0); }
+
+ .mTop{
+ display:flex;
+ align-items:center;
+ justify-content:space-between;
+ gap:10px;
+ padding: 6px 4px 12px;
+ border-bottom: 1px solid rgba(255,255,255,.10);
+ margin-bottom: 12px;
+ }
+ .mTitle{
+ font-weight:1000;
+ letter-spacing:-.2px;
+ }
+ .mGroup{
+ margin-top:12px;
+ }
+ .mLabel{
+ font-size:12px;
+ font-weight:950;
+ letter-spacing:.55px;
+ text-transform:uppercase;
+ color: rgba(255,255,255,.62);
+ margin: 10px 6px 8px;
+ }
+ .mList{
+ display:flex;
+ flex-direction:column;
+ gap:10px;
+ }
+ .mList .btn{
+ width:100%;
+ justify-content:flex-start;
+ padding: 11px 14px;
+ border-radius: 16px;
+ }
+
+ /* ===== HERO ===== */
+ .hero{padding-top:22px}
+ .heroCard{
+ padding:38px 24px;
+ text-align:center;
+ position: relative;
+ overflow: hidden;
+ isolation: isolate;
+ }
+ .heroCard::before{
+ content:"";
+ position:absolute;
+ inset:-90px -40px;
+ background: url("assets/logo.png") no-repeat 50% 35%;
+ background-size: min(880px, 120%);
+ opacity: .075;
+ filter: saturate(1.1) blur(.2px);
+ transform: translateZ(0);
+ z-index: 0;
+ pointer-events:none;
+ }
+ .heroCard::after{
+ content:"";
+ position:absolute;
+ inset:0;
+ background:
+ radial-gradient(900px 520px at 18% 28%, rgba(20,241,149,.10), transparent 62%),
+ radial-gradient(900px 520px at 82% 20%, rgba(0,209,255,.09), transparent 62%),
+ radial-gradient(900px 520px at 70% 86%, rgba(153,69,255,.09), transparent 62%);
+ opacity:.9;
+ z-index:0;
+ pointer-events:none;
+ }
+ .heroCard > *{position: relative; z-index: 1}
+
+ .heroTitle{
+ margin: 10px 0 0;
+ font-weight: 900;
+ letter-spacing: -0.9px;
+ line-height: 1.02;
+ font-size: clamp(46px, 5.6vw, 78px);
+ }
+ .heroSubName{
+ margin: 10px 0 0;
+ font-weight: 950;
+ font-size: clamp(18px, 2.2vw, 30px);
+ letter-spacing: .18em;
+ text-transform: uppercase;
+ color: rgba(255,255,255,.92);
+ }
+
+ .heroPoem{
+ margin: 14px auto 0;
+ max-width: 860px;
+ color: rgba(255,255,255,.76);
+ font-weight: 720;
+ font-size: clamp(15px, 1.2vw, 17px);
+ line-height: 1.56;
+ text-align: center;
+ text-wrap: balance;
+ }
+ .heroPoemText{
+ margin:0;
+ }
+ .heroPoemText b{
+ color: rgba(255,255,255,.92);
+ font-weight: 900;
+ }
+ .heroActions{
+ margin-top: 18px;
+ display:flex; gap:12px; justify-content:center; flex-wrap:wrap;
+ }
+ .heroContract{
+ margin: 16px auto 0;
+ max-width: 860px;
+ }
+
+ /* ===== WHAT IS ===== */
+ .twoCol{
+ display:grid;
+ grid-template-columns: 1.35fr .65fr;
+ gap:18px;
+ align-items:start;
+ }
+ .h2{
+ margin:0 0 12px;
+ font-size: 34px;
+ line-height:1.18;
+ font-weight: 1000;
+ letter-spacing:-.7px;
+ }
+ .bodyText{color: rgba(255,255,255,.74); font-weight: 650;}
+ .bodyText p{margin: 0 0 14px}
+ .bodyText p:last-child{margin:0}
+
+ /* ===== THE LORE BOX ===== */
+ .loreBox{
+ align-self: start;
+ border: 1px solid rgba(255,255,255,.10);
+ background: rgba(0,0,0,.18);
+ border-radius: 18px;
+ box-shadow: var(--shadowSoft);
+ padding: 16px;
+ overflow:hidden;
+ position: relative;
+ }
+ .loreBox::after{
+ content:"";
+ position:absolute; inset:0;
+ background:
+ radial-gradient(900px 520px at 20% 20%, rgba(20,241,149,.08), transparent 62%),
+ radial-gradient(900px 520px at 80% 18%, rgba(0,209,255,.07), transparent 62%),
+ radial-gradient(900px 520px at 70% 88%, rgba(153,69,255,.07), transparent 62%);
+ opacity:.9;
+ pointer-events:none;
+ }
+ .loreInner{ position:relative; z-index:1; }
+
+ .loreTitle{
+ margin: 2px 0 10px;
+ font-weight: 1100;
+ letter-spacing: -.6px;
+ line-height: 1.15;
+ font-size: 20px;
+ }
+
+ .loreMedia{
+ margin-top: 12px;
+ display:flex;
+ justify-content:center;
+ }
+ .loreMedia img{
+ width:100%;
+ max-width: 320px;
+ height:auto;
+ object-fit:contain;
+ filter: drop-shadow(0 18px 44px rgba(0,0,0,.60));
+ }
+
+ /* ✅ PROOFS BUTTONS */
+ .proofsRow{
+ margin-top: 12px;
+ display: grid;
+ gap: 10px;
+ align-items: stretch;
+ max-width: 320px;
+ margin-left: auto;
+ margin-right: auto;
+ }
+ .proofsRow .btn{
+ width: 100%;
+ justify-content: center;
+ }
+ .proofLabel{
+ margin: 0 auto;
+ }
+
+ .proofBtn{
+ position: relative;
+ padding: 10px 14px;
+ font-weight: 1000;
+ letter-spacing: .2px;
+ }
+ .proofBtn::before{
+ content:"";
+ position:absolute;
+ inset:-1px;
+ border-radius: 999px;
+ background: radial-gradient(120px 60px at 30% 30%, rgba(255,255,255,.20), transparent 60%);
+ pointer-events:none;
+ opacity:.55;
+ }
+ .pokeDot{
+ width:10px; height:10px;
+ border-radius:999px;
+ background: rgba(255,255,255,.88);
+ box-shadow: 0 0 0 3px rgba(0,0,0,.18), 0 0 0 6px rgba(255,255,255,.10);
+ flex: 0 0 auto;
+ }
+ .proofLabel{
+ display:inline-flex;
+ align-items:center;
+ gap:10px;
+ padding:8px 10px;
+ border-radius:999px;
+ border:1px solid rgba(255,255,255,.14);
+ background: rgba(255,255,255,.06);
+ color: rgba(255,255,255,.82);
+ font-weight: 950;
+ font-size:12px;
+ letter-spacing:.45px;
+ text-transform:uppercase;
+ }
+
+ /* ===== ROADMAP (TOKENOMICS EXTENSION) ===== */
+ .roadmap{
+ margin-top: 18px;
+ border-radius: 20px;
+ border: 1px solid rgba(255,255,255,.10);
+ background: rgba(0,0,0,.18);
+ box-shadow: var(--shadowSoft);
+ overflow:hidden;
+ position: relative;
+ }
+ .roadmap::after{
+ content:"";
+ position:absolute; inset:-60px;
+ background:
+ radial-gradient(380px 220px at 18% 20%, rgba(20,241,149,.10), transparent 62%),
+ radial-gradient(420px 260px at 82% 22%, rgba(0,209,255,.08), transparent 62%),
+ radial-gradient(420px 260px at 62% 92%, rgba(153,69,255,.08), transparent 62%);
+ opacity:.95;
+ pointer-events:none;
+ }
+ .roadmapInner{ position:relative; z-index:1; padding: 18px; }
+
+ .roadmapHead{
+ display:flex;
+ align-items:flex-end;
+ justify-content:space-between;
+ gap:12px;
+ flex-wrap:wrap;
+ margin-bottom: 12px;
+ }
+ .roadmapHead h3{
+ margin:0;
+ font-weight: 1100;
+ letter-spacing: -.6px;
+ font-size: 22px;
+ line-height:1.2;
+ }
+ .roadmapHead p{
+ margin:8px 0 0;
+ color: rgba(255,255,255,.72);
+ font-weight: 700;
+ max-width: 70ch;
+ }
+
+ .roadChips{ display:flex; gap:8px; flex-wrap:wrap; }
+ .roadChips .pill{ background: rgba(255,255,255,.06); }
+
+ .roadGrid{
+ display:grid;
+ grid-template-columns: 1fr 1fr;
+ gap: 12px;
+ align-items:stretch;
+ margin-top: 14px;
+ }
+
+ .roadItem{
+ border-radius: 18px;
+ border: 1px solid rgba(255,255,255,.10);
+ background: rgba(0,0,0,.18);
+ box-shadow: var(--shadowSoft);
+ padding: 16px;
+ position: relative;
+ overflow:hidden;
+ transform: translateY(12px);
+ opacity: 0;
+ transition: transform .55s ease, opacity .55s ease;
+ will-change: transform, opacity;
+ }
+ .roadItem.in{ transform: translateY(0); opacity: 1; }
+
+ .roadTop{
+ display:flex;
+ align-items:flex-start;
+ justify-content:space-between;
+ gap: 12px;
+ flex-wrap:wrap;
+ margin-bottom: 10px;
+ }
+ .phase{
+ display:flex;
+ flex-direction:column;
+ gap:6px;
+ min-width: 0;
+ }
+ .phase .pnum{
+ font-size:12px;
+ font-weight: 1000;
+ letter-spacing:.55px;
+ text-transform:uppercase;
+ color: rgba(255,255,255,.66);
+ }
+ .phase .ptitle{
+ font-weight: 1100;
+ letter-spacing: -.6px;
+ line-height: 1.12;
+ font-size: 18px;
+ }
+ .theme{
+ display:inline-flex;
+ align-items:center;
+ gap:10px;
+ padding: 8px 10px;
+ border-radius: 999px;
+ border: 1px solid rgba(255,255,255,.12);
+ background: rgba(255,255,255,.06);
+ color: rgba(255,255,255,.86);
+ font-weight: 950;
+ font-size: 12px;
+ white-space: nowrap;
+ }
+ .theme .dot{
+ width: 10px;
+ height: 10px;
+ border-radius: 999px;
+ background: linear-gradient(90deg, var(--g), var(--c), var(--p));
+ box-shadow: 0 0 0 4px rgba(255,255,255,.07);
+ }
+
+ .roadCols{
+ display:grid;
+ grid-template-columns: 1fr;
+ gap: 10px;
+ margin-top: 10px;
+ }
+ .roadBlock{
+ border-radius: 16px;
+ border: 1px solid rgba(255,255,255,.10);
+ background: rgba(0,0,0,.16);
+ padding: 12px;
+ }
+ .roadLabel{
+ font-size:12px;
+ font-weight: 1000;
+ letter-spacing:.55px;
+ text-transform:uppercase;
+ color: rgba(255,255,255,.62);
+ margin-bottom: 8px;
+ }
+ .roadText{ color: rgba(255,255,255,.74); font-weight: 700; }
+ .roadText ul{ margin:0; padding-left: 18px; }
+ .roadText li{ margin: 8px 0; }
+
+ .roadOutcome{
+ margin-top: 10px;
+ padding: 12px;
+ border-radius: 16px;
+ border: 1px solid rgba(255,255,255,.10);
+ background: rgba(0,0,0,.20);
+ color: rgba(255,255,255,.78);
+ font-weight: 750;
+ }
+ .roadOutcome b{ color: rgba(255,255,255,.92); }
+
+ .roadFoot{
+ margin-top: 14px;
+ display:flex;
+ align-items:center;
+ justify-content:space-between;
+ gap: 10px;
+ flex-wrap:wrap;
+ padding-top: 14px;
+ border-top: 1px solid rgba(255,255,255,.10);
+ }
+ .roadFoot .mini{
+ color: rgba(255,255,255,.66);
+ font-weight: 750;
+ font-size: 13px;
+ }
+
+ @media (max-width: 860px){
+ .roadGrid{ grid-template-columns: 1fr; }
+ .roadmapInner{ padding: 16px; }
+ }
+
+ /* ===== TOKENOMICS ===== */
+ .grid3{
+ display:grid;
+ grid-template-columns: repeat(3, 1fr);
+ gap:14px;
+ }
+ .stat{
+ padding:16px;
+ border-radius: 18px;
+ border: 1px solid rgba(255,255,255,.10);
+ background: rgba(0,0,0,.18);
+ box-shadow: var(--shadowSoft);
+ }
+ .stat .k{color: rgba(255,255,255,.70); font-weight:900; font-size:12px; letter-spacing:.55px; text-transform:uppercase}
+ .stat .v{margin-top:8px; font-weight:1000; font-size:20px}
+ .stat .v .grad{background: linear-gradient(90deg, var(--g), var(--c), var(--p)); -webkit-background-clip:text; background-clip:text; color:transparent;}
+
+ /* ===== COPY BOX (shared) ===== */
+ .copyBox{
+ display:flex;
+ align-items:center;
+ justify-content:space-between;
+ gap:12px;
+ cursor:pointer;
+ transition: transform .15s ease, background .15s ease, border-color .15s ease;
+ }
+ .copyBox:hover{
+ transform: translateY(-1px);
+ background: rgba(0,0,0,.22);
+ border-color: rgba(255,255,255,.14);
+ }
+ .copyText{
+ margin-top:10px;
+ font-family:ui-monospace, Menlo, Consolas, monospace;
+ color:rgba(255,255,255,.88);
+ overflow:hidden;
+ text-overflow:ellipsis;
+ white-space:nowrap;
+ }
+ .copyHint{
+ font-size:12px;
+ font-weight:950;
+ color:rgba(255,255,255,.70);
+ border:1px solid rgba(255,255,255,.14);
+ background:rgba(255,255,255,.06);
+ border-radius:999px;
+ padding:8px 10px;
+ flex:0 0 auto;
+ }
+ .copyHint.ok{
+ border:0;
+ color:#061012;
+ background: linear-gradient(90deg, var(--g), var(--c), var(--p));
+ }
+
+ /* ===== HOW TO BUY ===== */
+ .steps{
+ display:grid;
+ grid-template-columns: repeat(4, 1fr);
+ gap:14px;
+ }
+ .step{
+ padding:16px;
+ border-radius: 18px;
+ border: 1px solid rgba(255,255,255,.10);
+ background: rgba(0,0,0,.18);
+ box-shadow: var(--shadowSoft);
+ }
+ .step .num{
+ width:28px; height:28px; border-radius:10px;
+ display:inline-flex; align-items:center; justify-content:center;
+ background: rgba(255,255,255,.08);
+ border: 1px solid rgba(255,255,255,.12);
+ font-weight: 1000;
+ margin-bottom: 10px;
+ }
+ .step h4{margin:0 0 8px; font-weight: 1000}
+ .step p{margin:0; color: rgba(255,255,255,.74); font-weight:650}
+
+ /* ===== FAQ ===== */
+ details{
+ border-radius: 18px;
+ border: 1px solid rgba(255,255,255,.10);
+ background: rgba(0,0,0,.18);
+ padding: 14px 16px;
+ box-shadow: var(--shadowSoft);
+ }
+ details + details{margin-top:12px}
+ summary{
+ cursor:pointer;
+ font-weight: 950;
+ color: rgba(255,255,255,.90);
+ list-style:none;
+ }
+ summary::-webkit-details-marker{display:none}
+ details p{margin:10px 0 0; color: rgba(255,255,255,.74); font-weight:650}
+
+ /* ===== SOCIALS ===== */
+ .socialRow{display:flex; gap:12px; flex-wrap:wrap;}
+
+ footer{
+ padding: 24px 0 40px;
+ color: rgba(255,255,255,.55);
+ font-weight:650;
+ text-align:center;
+ }
+
+ /* ===== TOOLS (CLEAN + NOT LONG + ALWAYS STACKED) ===== */
+ .toolsGrid{
+ display:grid;
+ grid-template-columns: 1fr; /* ✅ always under each other */
+ gap:18px;
+ align-items:stretch;
+ }
+
+ .toolCard{
+ position:relative;
+ overflow:hidden;
+ isolation:isolate;
+ transform: translateZ(0);
+ transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+ }
+ .toolCard:hover{
+ transform: translateY(-2px);
+ border-color: rgba(255,255,255,.16);
+ box-shadow: 0 18px 60px rgba(0,0,0,.55);
+ }
+
+ .toolCard::after{
+ content:"";
+ position:absolute; inset:0;
+ background:
+ radial-gradient(900px 520px at 18% 28%, rgba(20,241,149,.12), transparent 62%),
+ radial-gradient(900px 520px at 82% 20%, rgba(0,209,255,.10), transparent 62%),
+ radial-gradient(900px 520px at 70% 86%, rgba(153,69,255,.10), transparent 62%);
+ opacity:.9;
+ z-index:0;
+ pointer-events:none;
+ }
+
+ /* Watermarks (disabled for cleaner tool cards) */
+ .dnaCard::before,
+ .guardianCard::before{
+ content:none !important;
+ display:none !important;
+ }
+
+/* ✅ guardian.png */
+
+ .toolInner{ position:relative; z-index:1; padding:22px; }
+
+ .toolTop{
+ display:flex;
+ align-items:center;
+ justify-content:space-between;
+ gap:12px;
+ flex-wrap:wrap;
+ margin-bottom:12px;
+ }
+
+ .toolTag{
+ display:inline-flex;
+ align-items:center;
+ gap:8px;
+ padding:8px 10px;
+ border-radius:999px;
+ border:1px solid rgba(255,255,255,.14);
+ background: rgba(255,255,255,.06);
+ font-weight:950;
+ font-size:12px;
+ letter-spacing:.38px;
+ text-transform:uppercase;
+ color: rgba(255,255,255,.78);
+ }
+
+ .toolPills{display:flex;flex-wrap:wrap;gap:10px;justify-content:flex-end}
+.toolRight{display:flex;flex-direction:column;align-items:flex-end;gap:10px}
+/* TOOL RIGHT PATCH */
+.toolHeaderRow{align-items:flex-start}
+.toolPills{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.toolRight{display:flex;flex-direction:column;align-items:flex-end;gap:10px;max-width:46%}
+@media (max-width: 980px){
+  .toolRight{max-width:100%;align-items:flex-start}
+  .toolPills{justify-content:flex-start}
+}
+
+.toolCorner b{color:var(--g)}
+ .pill{
+ font-size:12px;
+ font-weight:900;
+ color: rgba(255,255,255,.70);
+ border: 1px solid rgba(255,255,255,.12);
+ background: rgba(0,0,0,.18);
+ border-radius: 999px;
+ padding:7px 10px;
+ }
+
+ .toolGrid{
+ display:grid;
+ grid-template-columns: 1.05fr .95fr;
+ gap:16px;
+ align-items:start;
+ }
+
+ .toolH{
+ margin:0;
+ font-weight:1100;
+ letter-spacing:-.9px;
+ line-height:1.05;
+ font-size: clamp(30px, 3.4vw, 50px);
+ }
+
+ /* ✅ keep text compact (no “endless” cards) */
+ .toolLead{
+ margin-top:10px;
+ color: rgba(255,255,255,.76);
+ font-weight:700;
+ max-width: 62ch;
+ display:-webkit-box;
+ -webkit-line-clamp: 5;
+ -webkit-box-orient: vertical;
+ overflow:hidden;
+ }
+
+ .featureChips{
+ margin-top:14px;
+ display:flex;
+ flex-wrap:wrap;
+ gap:10px;
+ }
+
+ .chip{
+ padding:9px 12px;
+ border-radius:999px;
+ border:1px solid rgba(255,255,255,.12);
+ background: rgba(0,0,0,.20);
+ color: rgba(255,255,255,.82);
+ font-weight:900;
+ font-size:13px;
+ white-space:nowrap;
+ }
+
+ /* ✅ keep “what you get” compact via internal scroll (content not removed) */
+ .toolBox{
+ border:1px solid rgba(255,255,255,.10);
+ background: rgba(0,0,0,.18);
+ border-radius:18px;
+ padding:16px;
+ box-shadow: var(--shadowSoft);
+ max-height: 210px;
+ overflow:auto;
+ }
+ .toolBox::-webkit-scrollbar{ width:0; height:0; }
+
+ .toolBoxTitle{
+ font-weight:950;
+ font-size:12px;
+ letter-spacing:.55px;
+ text-transform:uppercase;
+ color: rgba(255,255,255,.72);
+ margin-bottom:10px;
+ position: sticky;
+ top: 0;
+ background: rgba(0,0,0,.00);
+ backdrop-filter: blur(0px);
+ }
+
+ .toolList{
+ margin:0;
+ padding-left:18px;
+ color: rgba(255,255,255,.74);
+ font-weight:700;
+ }
+ .toolList li{ margin:8px 0; }
+
+ .toolCTA{
+ margin-top:14px;
+ display:flex;
+ gap:12px;
+ flex-wrap:wrap;
+ align-items:center;
+ }
+
+ .toolMini{
+ color: rgba(255,255,255,.60);
+ font-weight:750;
+ font-size:13px;
+ }
+
+ /* ===== RESPONSIVE ===== */
+
+ @media (max-width: 980px){
+ .headerRow{
+ grid-template-columns: auto 1fr auto;
+ }
+ .nav{
+ justify-content:flex-start;
+ overflow:auto;
+ -webkit-overflow-scrolling: touch;
+ padding-bottom:2px;
+ }
+ .nav::-webkit-scrollbar{height:0}
+ }
+
+ /* Mobile: no chaos → drawer menu */
+ @media (max-width: 860px){
+ section{padding:28px 0}
+
+ .headerRow{
+ grid-template-columns: 1fr auto;
+ gap:10px;
+ }
+
+ .nav{ display:none; } /* ✅ hide the button row on mobile */
+
+ .toolLinksDesktop{ display:none; } /* ✅ hide big buttons on mobile */
+ .menu{ display:inline-flex !important; }  /* ✅ keep the ⋯ menu on mobile */
+.mToggle{ display:none !important; }      /* ✅ disable mobile drawer toggle (not in HTML) */
+
+ .brand{ min-width: 0; }
+ .brandText .name{ font-size:13px; }
+
+ .heroCard{padding:34px 16px}
+ .heroCard::before{
+ background-position: 50% 28%;
+ background-size: min(700px, 132%);
+ opacity: .065;
+ }
+
+ .twoCol{grid-template-columns: 1fr}
+ .grid3{grid-template-columns: 1fr}
+ .steps{grid-template-columns: 1fr}
+
+ .toolInner{ padding:18px; }
+ .toolGrid{ grid-template-columns: 1fr; gap:14px; }
+ .toolH{ font-size: clamp(26px, 7vw, 38px); }
+ .toolBox{ max-height: none; overflow: visible; }
+
+ .dnaCard::before,
+ .guardianCard::before{
+ background-position: 50% 30%;
+ background-size: min(740px, 140%);
+ opacity: .075;
+ }
+
+ .copyBox{
+ flex-direction: column;
+ align-items:flex-start;
+ }
+ .copyHint{ align-self:flex-end; }
+
+ /* ✅ proofs buttons full width on mobile */
+ .proofsRow .btn{
+ width:100%;
+ justify-content:center;
+ }
+
+ /* lore image a bit smaller on mobile */
+ .loreMedia img{ max-width: 280px; }
+ }
+
+ @media (max-width: 420px){
+ .btn{padding:9px 11px}
+ .cardInner{padding:20px}
+ }
+
+ /* ===== TOOLS UPGRADE (MAKE IT FEEL LIKE REAL APPS) ===== */
+ .toolsIntro{
+ padding: 0;
+ overflow:hidden;
+ }
+ .toolsIntroInner{
+ padding: 22px;
+ display:grid;
+ grid-template-columns: 1.1fr .9fr;
+ gap:16px;
+ align-items:center;
+ position:relative;
+ isolation:isolate;
+ }
+ .toolsIntroInner::after{
+ content:"";
+ position:absolute; inset:0;
+ background:
+ radial-gradient(900px 520px at 18% 28%, rgba(20,241,149,.14), transparent 62%),
+ radial-gradient(900px 520px at 82% 20%, rgba(0,209,255,.12), transparent 62%),
+ radial-gradient(900px 520px at 70% 86%, rgba(153,69,255,.12), transparent 62%);
+ opacity:.95;
+ z-index:0;
+ pointer-events:none;
+ }
+ .toolsIntroInner > *{ position:relative; z-index:1; }
+
+ .toolsKicker{
+ display:inline-flex;
+ align-items:center;
+ gap:10px;
+ font-size:12px;
+ font-weight:1000;
+ letter-spacing:.55px;
+ text-transform:uppercase;
+ color: rgba(255,255,255,.70);
+ }
+ .toolsKicker .dot{
+ width:10px; height:10px; border-radius:999px;
+ background: linear-gradient(90deg, var(--g), var(--c), var(--p));
+ box-shadow: 0 0 0 4px rgba(255,255,255,.07);
+ }
+ .toolsTitle{
+ margin: 8px 0 0;
+ font-weight: 1100;
+ letter-spacing: -1px;
+ line-height: 1.05;
+ font-size: clamp(28px, 3.6vw, 44px);
+ }
+ .toolsDesc{
+ margin: 10px 0 0;
+ color: rgba(255,255,255,.74);
+ font-weight: 700;
+ max-width: 64ch;
+ }
+ .toolsQuick{
+ margin-top: 14px;
+ display:flex;
+ gap:12px;
+ flex-wrap:wrap;
+ align-items:center;
+ }
+
+ .toolBigTiles{
+ display:grid;
+ grid-template-columns: 1fr 1fr;
+ gap:12px;
+ align-items:stretch;
+ }
+ .tile{
+ border-radius: 18px;
+ border: 1px solid rgba(255,255,255,.12);
+ background: rgba(0,0,0,.18);
+ box-shadow: var(--shadowSoft);
+ padding: 14px;
+ display:flex;
+ flex-direction:column;
+ gap:10px;
+ transition: transform .16s ease, border-color .16s ease, background .16s ease;
+ user-select:none;
+ }
+ .tile:hover{ transform: translateY(-2px); border-color: rgba(255,255,255,.18); background: rgba(0,0,0,.22); }
+ .tileTop{ display:flex; align-items:center; justify-content:space-between; gap:10px; }
+ .tileIcon{
+ width:38px; height:38px; border-radius: 14px;
+ display:grid; place-items:center;
+ color:#061012;
+ font-weight:1100;
+ background: linear-gradient(90deg, var(--g), var(--c), var(--p));
+ box-shadow: 0 14px 28px rgba(0,0,0,.25);
+ }
+ .tileName{ font-weight: 1050; letter-spacing:-.4px; }
+ .tileHint{ color: rgba(255,255,255,.68); font-weight: 750; font-size: 13px; }
+ .tileCta{
+ margin-top:auto;
+ display:inline-flex;
+ align-items:center;
+ justify-content:space-between;
+ gap:10px;
+ padding: 10px 12px;
+ border-radius: 14px;
+ border: 1px solid rgba(255,255,255,.12);
+ background: rgba(255,255,255,.06);
+ font-weight: 1000;
+ }
+
+ /* Make tool cards feel like clickable apps */
+ .toolCard{ cursor:pointer; }
+ .toolCard[data-href] .toolTag{ opacity: .95; }
+ .toolCorner{display:inline-flex;align-items:center;gap:8px;font-weight:800;font-size:13px;padding:10px 14px;border-radius:999px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);box-shadow:0 10px 28px rgba(0,0,0,.28);backdrop-filter: blur(10px);-webkit-backdrop-filter: blur(10px);cursor:pointer;user-select:none}
+ .toolCorner b{ color: transparent; background: linear-gradient(90deg, var(--g), var(--c), var(--p)); -webkit-background-clip:text; background-clip:text; }
+
+ .toolHeaderRow{
+ display:flex;
+ align-items:flex-start;
+ justify-content:space-between;
+ gap:12px;
+ margin-bottom: 12px;
+ }
+ .toolId{
+ display:flex;
+ align-items:center;
+ gap:12px;
+ min-width: 0;
+ }
+ .toolIcon{
+ width: 46px;
+ height: 46px;
+ border-radius: 18px;
+ display:grid;
+ place-items:center;
+ color:#061012;
+ font-weight:1100;
+ background: linear-gradient(90deg, var(--g), var(--c), var(--p));
+ box-shadow: 0 16px 34px rgba(0,0,0,.28);
+ flex: 0 0 auto;
+ }
+ .toolIdText{ min-width:0; }
+ .toolIdText .sub{
+ margin-top: 3px;
+ color: rgba(255,255,255,.70);
+ font-weight: 850;
+ font-size: 13px;
+ }
+
+ .toolSide{
+ display:flex;
+ flex-direction:column;
+ gap:12px;
+ }
+ .toolPreview{
+ border-radius: 18px;
+ border: 1px solid rgba(255,255,255,.10);
+ background: rgba(0,0,0,.18);
+ box-shadow: var(--shadowSoft);
+ padding: 14px;
+ position: relative;
+ overflow:hidden;
+ }
+ .toolPreview::after{
+ content:"";
+ position:absolute; inset:-40px;
+ background:
+ radial-gradient(220px 140px at 20% 30%, rgba(20,241,149,.18), transparent 60%),
+ radial-gradient(240px 160px at 80% 30%, rgba(0,209,255,.14), transparent 60%),
+ radial-gradient(240px 160px at 60% 90%, rgba(153,69,255,.14), transparent 60%);
+ opacity:.95;
+ pointer-events:none;
+ }
+ .toolPreviewInner{ position:relative; z-index:1; }
+ .toolPreviewTop{
+ display:flex;
+ align-items:center;
+ justify-content:space-between;
+ gap:10px;
+ margin-bottom: 10px;
+ }
+ .liveBadge{
+ display:inline-flex;
+ align-items:center;
+ gap:8px;
+ padding: 7px 10px;
+ border-radius: 999px;
+ background: rgba(255,255,255,.06);
+ border: 1px solid rgba(255,255,255,.12);
+ color: rgba(255,255,255,.84);
+ font-weight: 1000;
+ font-size: 12px;
+ }
+ .liveBadge .ping{
+ width:9px; height:9px; border-radius:999px;
+ background: rgba(20,241,149,.95);
+ box-shadow: 0 0 0 5px rgba(20,241,149,.10);
+ }
+ .previewTitle{ font-weight: 1050; letter-spacing:-.35px; }
+ .previewLines{ display:grid; gap:8px; }
+ .bar{
+ height: 10px;
+ border-radius: 999px;
+ background: rgba(255,255,255,.10);
+ overflow:hidden;
+ position:relative;
+ }
+ .bar::before{
+ content:"";
+ position:absolute; inset:0;
+ background: linear-gradient(90deg, rgba(20,241,149,.75), rgba(0,209,255,.75), rgba(153,69,255,.75));
+ width: var(--w, 72%);
+ border-radius: 999px;
+ opacity: .95;
+ }
+
+ /* Mobile bottom tool dock (super obvious) */
+ .toolsDock{ display:none; }
+
+body.menuOpen .toolsDock{ display:none !important; }
+@media (max-width: 860px){
+ body{ padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
+
+ .toolsIntroInner{ grid-template-columns: 1fr; }
+ .toolBigTiles{ grid-template-columns: 1fr; }
+ .tile{ padding: 14px 14px 12px; }
+
+ .toolCorner{ position: static; margin-top: 10px; align-self:flex-start; }
+ .toolHeaderRow{ flex-direction:column; align-items:flex-start; }
+
+ .toolsDock{
+ display:flex;
+ position:fixed;
+ left: 12px;
+ right: 12px;
+ bottom: 12px;
+ z-index: 120;
+ padding: 10px;
+ gap: 10px;
+ border-radius: 18px;
+ border: 1px solid rgba(255,255,255,.12);
+ background: rgba(10,10,22,.78);
+ backdrop-filter: blur(16px);
+ box-shadow: 0 18px 70px rgba(0,0,0,.60);
+ }
+ .dockBtn{
+ flex: 1 1 auto;
+ display:inline-flex;
+ align-items:center;
+ justify-content:center;
+ gap:10px;
+ padding: 12px 12px;
+ border-radius: 14px;
+ font-weight: 1050;
+ letter-spacing: -.2px;
+ border: 0;
+ color: #061012;
+ background: linear-gradient(90deg, var(--g), var(--c), var(--p));
+ box-shadow: 0 14px 28px rgba(0,0,0,.25);
+ -webkit-tap-highlight-color: transparent;
+ }
+ .dockBtn .mini{
+ display:inline-flex;
+ align-items:center;
+ justify-content:center;
+ width: 26px;
+ height: 26px;
+ border-radius: 10px;
+ background: rgba(255,255,255,.22);
+ border: 1px solid rgba(255,255,255,.14);
+ color: rgba(6,16,18,.88);
+ font-weight: 1100;
+ }
+ }
+
+ /* ROADMAP TIMELINE (NEXT LEVEL) */
+ #roadmap .sub{ color: var(--muted); margin-top: 6px; max-width: 70ch; }
+ .roadHeader{ display:flex; align-items:flex-end; justify-content:space-between; gap:16px; }
+ .roadLegend{ display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end; }
+ .badge{ font-size:12px; font-weight:950; padding:7px 10px; border-radius:999px; border:1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.06); }
+ .badge.done{ border-color: rgba(20,241,149,.35); box-shadow: 0 0 0 1px rgba(20,241,149,.12) inset; }
+ .badge.next{ border-color: rgba(0,209,255,.35); box-shadow: 0 0 0 1px rgba(0,209,255,.12) inset; }
+ .badge.planned{ border-color: rgba(153,69,255,.35); box-shadow: 0 0 0 1px rgba(153,69,255,.12) inset; }
+
+ .timeline{ position:relative; margin-top: 18px; padding: 10px 0 6px; }
+ .timeline:before{
+ content:"";
+ position:absolute;
+ left:50%;
+ top:0;
+ bottom:0;
+ width:2px;
+ background: linear-gradient(to bottom, rgba(20,241,149,.0), rgba(255,255,255,.14), rgba(153,69,255,.0));
+ transform: translateX(-50%);
+ }
+
+ .tlItem{ display:grid; grid-template-columns: 1fr 56px 1fr; gap: 18px; align-items: stretch; margin: 14px 0; opacity:0; filter: blur(2px); }
+ .tlItem.left{ transform: translateX(-34px); }
+ .tlItem.right{ transform: translateX(34px); }
+ .tlItem.in{ opacity:1; transform: translateX(0); filter: blur(0); transition: .55s cubic-bezier(.2,.8,.2,1); }
+
+ .tlCol.mid{ display:flex; justify-content:center; position:relative; }
+ .tlNode{
+ width: 14px; height: 14px; border-radius: 999px;
+ background: rgba(255,255,255,.85);
+ box-shadow: 0 0 0 6px rgba(153,69,255,.10), 0 0 0 1px rgba(255,255,255,.12) inset, 0 16px 40px rgba(0,0,0,.55);
+ margin-top: 22px;
+ }
+ .tlCard{
+ background: rgba(255,255,255,.06);
+ border: 1px solid rgba(255,255,255,.12);
+ border-radius: 18px;
+ padding: 14px 14px 12px;
+ box-shadow: 0 18px 60px rgba(0,0,0,.35);
+ backdrop-filter: blur(10px);
+ position: relative;
+ overflow: hidden;
+ }
+ .tlCard:before{
+ content:"";
+ position:absolute; inset:-2px;
+ background: radial-gradient(900px 300px at 10% 0%, rgba(20,241,149,.18), transparent 55%),
+ radial-gradient(900px 300px at 90% 100%, rgba(153,69,255,.16), transparent 55%);
+ pointer-events:none;
+ }
+ .tlMeta{ position:relative; z-index:1; }
+ .tlPhase{ font-weight:1000; letter-spacing:-.2px; }
+ .tlTitle{ font-size: 18px; font-weight:1050; letter-spacing:-.3px; margin-top: 6px; }
+ .tlTag{ color: var(--muted); margin-top: 3px; font-size: 13px; }
+
+ .tlList{ position:relative; z-index:1; margin: 10px 0 0; padding: 0; list-style: none; display:flex; flex-direction:column; gap: 8px; }
+ .tlList li{ display:flex; gap: 10px; align-items:flex-start; color: rgba(255,255,255,.88); }
+ .tlList li:before{ content:""; width:8px; height:8px; border-radius:999px; margin-top: 7px; flex: 0 0 8px; background: rgba(255,255,255,.35); box-shadow: 0 0 0 3px rgba(255,255,255,.06); }
+ .tlList li.done{ color: rgba(255,255,255,.70); text-decoration: line-through; text-decoration-thickness: 2px; text-decoration-color: rgba(20,241,149,.55); }
+ .tlList li.done:before{ background: rgba(20,241,149,.95); box-shadow: 0 0 0 3px rgba(20,241,149,.12); }
+ .tlList li.next:before{ background: rgba(0,209,255,.95); box-shadow: 0 0 0 3px rgba(0,209,255,.12); }
+ .tlList li.planned:before{ background: rgba(153,69,255,.95); box-shadow: 0 0 0 3px rgba(153,69,255,.12); }
+
+ /* Mobile timeline: single column, left rail */
+ @media (max-width: 880px){
+ .roadHeader{ flex-direction:column; align-items:flex-start; }
+ .roadLegend{ justify-content:flex-start; }
+ .timeline:before{ left: 16px; transform:none; }
+ .tlItem{ grid-template-columns: 34px 1fr; gap: 14px; }
+ .tlCol.a, .tlCol.b{ grid-column: 2; }
+ .tlCol.mid{ grid-column: 1; justify-content:flex-start; }
+ .tlNode{ margin-top: 18px; }
+ .tlItem.left, .tlItem.right{ transform: translateY(22px); }
+ .tlItem.in{ transform: translateY(0); }
+ }
+
+/* ===== Dex-style Top Trending Bar + Search (Main Page) ===== */
+:root{
+  /* will be set by JS to the actual fixed top bar height */
+  --topBarTotal: 0px;
+  /* Desktop ticker speed (mobile overrides below). Slightly slower for readability on big screens. */
+  --tickerSpeed: 8.2s;
+  /* distance the marquee should travel for one full cycle (set by JS) */
+  --tickerDistance: 50%;
+
+  /* chain colors */
+  --solColor: #9945FF;
+  --ethColor: #627EEA;
+  --bnbColor: #F3BA2F;
+  --baseColor:#0052FF;
+
+  --netColor: var(--solColor);
+  --netGlow: rgba(153,69,255,.22);
+}
+
+body.net-sol{ --netColor: var(--solColor); --netGlow: rgba(153,69,255,.22); }
+body.net-eth{ --netColor: var(--ethColor); --netGlow: rgba(98,126,234,.22); }
+body.net-bnb{ --netColor: var(--bnbColor); --netGlow: rgba(243,186,47,.22); }
+body.net-base{ --netColor: var(--baseColor); --netGlow: rgba(0,82,255,.22); }
+
+body{ padding-top: 0; }
+.topBar{
+  position: relative;
+  top: 0; left: 0; right: 0;
+  z-index: 85;
+  background: rgba(7,7,17,.62);
+  border-bottom: 1px solid rgba(255,255,255,.10);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  transition: none;
+  will-change: auto;
+}
+
+
+
+.topBarInner{
+  max-width: var(--max);
+  margin: 0 auto;
+  padding: calc(10px + env(safe-area-inset-top)) 14px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.topRow{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap: 12px;
+  flex-wrap:wrap;
+}
+
+.bottomRow{
+  display:flex;
+  align-items:center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.hotBlock{ display:flex; align-items:center; gap: 12px; flex-wrap:wrap; }
+.hotLabel{
+  display:inline-flex;
+  align-items:center;
+  gap: 10px;
+  padding: 9px 14px;
+  border-radius: 999px;
+  background: rgba(255,65,65,.10);
+  border: 1px solid rgba(255,65,65,.20);
+  box-shadow: 0 12px 32px rgba(0,0,0,.24);
+  font-weight: 1100;
+  letter-spacing: .6px;
+}
+.hotFire{ width: 18px; height: 18px; opacity: .95; }
+
+/* Dexguard button (matches the style from your reference) */
+.dexguardBtn{
+  display:inline-flex;
+  align-items:center;
+  gap:12px;
+  padding: 9px 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.12);
+  background:
+    radial-gradient(140% 120% at 0% 0%, rgba(0,209,255,.18), rgba(0,209,255,0) 55%),
+    radial-gradient(140% 120% at 100% 100%, rgba(153,69,255,.18), rgba(153,69,255,0) 55%),
+    rgba(8,18,40,.50);
+  box-shadow: 0 12px 34px rgba(0,0,0,.28);
+  color: rgba(255,255,255,.92);
+  font-weight: 1050;
+  cursor:pointer;
+  user-select:none;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform .15s ease, background .15s ease, border-color .15s ease, box-shadow .15s ease;
+}
+.dexguardBtn:hover{
+  transform: translateY(-1px);
+  border-color: rgba(255,255,255,.18);
+  background:
+    radial-gradient(140% 120% at 0% 0%, rgba(0,209,255,.22), rgba(0,209,255,0) 60%),
+    radial-gradient(140% 120% at 100% 100%, rgba(153,69,255,.22), rgba(153,69,255,0) 60%),
+    rgba(8,18,40,.62);
+  box-shadow: 0 16px 46px rgba(0,0,0,.36);
+}
+.dexguardBtn:active{ transform: translateY(0px) scale(.995); }
+
+/* ✨ Dexguard shine pulse (subtle, every few seconds) */
+.dexguardBtn{ position:relative; overflow:hidden; }
+.dexguardBtn::after{
+  content:"";
+  position:absolute;
+  inset:-60% -40%;
+  background: linear-gradient(120deg,
+    transparent 0%,
+    rgba(255,255,255,.00) 35%,
+    rgba(255,255,255,.22) 50%,
+    rgba(255,255,255,.06) 60%,
+    transparent 75%
+  );
+  transform: translateX(-170%) rotate(10deg);
+  opacity:0;
+  pointer-events:none;
+  mix-blend-mode: screen;
+  animation: dexguardShine 6.8s ease-in-out infinite;
+}
+@keyframes dexguardShine{
+  0%, 72%{ opacity:0; transform: translateX(-170%) rotate(10deg); }
+  78%{ opacity:.70; }
+  92%{ opacity:0; transform: translateX(170%) rotate(10deg); }
+  100%{ opacity:0; transform: translateX(170%) rotate(10deg); }
+}
+
+/* ✅ DexGuard free logo (kein Button) */
+.dexguardLogo{
+  display:inline-flex;
+  align-items:center;
+  justify-content:flex-start;
+  height: 48px;           /* desktop */
+  padding: 0;
+  margin-left: 10px;      /* align with ticker below */
+  margin-right: 4px;
+  cursor: pointer;
+  user-select:none;
+  -webkit-tap-highlight-color: transparent;
+}
+.dexguardLogo img{
+  height: 48px;           /* desktop */
+  width: auto;
+  display:block;
+  object-fit: contain;
+  filter: drop-shadow(0 10px 20px rgba(0,0,0,.35));
+}
+.dexguardLogo:hover{ transform: translateY(-1px); }
+.dexguardLogo:active{ transform: translateY(0px) scale(.995); }
+
+
+
+.dexguardChip{
+  position: relative;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding: 7px 14px;
+  border-radius: 999px;
+  background: rgba(3,12,24,.65);
+  border: 1px solid rgba(255,255,255,.10);
+  font-weight: 1100;
+  letter-spacing: .28em;
+  font-size: 13px;
+  color: rgba(255,255,255,.96);
+}
+.dexguardChip::before{
+  content:"";
+  position:absolute;
+  inset:-2px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(20,241,149,.88), rgba(0,209,255,.88), rgba(153,69,255,.88));
+  z-index:-1;
+  opacity:.9;
+}
+
+.dexguardText{
+  font-weight: 1050;
+  letter-spacing: -.2px;
+  font-size: 20px;
+  line-height: 1;
+}
+
+@media (max-width: 520px){
+  .dexguardText{ font-size: 18px; }
+  .dexguardBtn{ padding: 9px 14px; gap: 10px; }
+  .dexguardChip{ padding: 7px 12px; }
+}
+
+
+.chainToggle{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding: 6px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.10);
+  background: rgba(255,255,255,.04);
+}
+/* Chain selector buttons (neon + always readable text) */
+.chainBtn{
+  appearance:none;
+  border: 1px solid rgba(255,255,255,.14);
+  background: rgba(255,255,255,.05);
+  color: rgba(255,255,255,.92);
+  font-weight: 1000;
+  font-size: 12px;
+  padding: 8px 10px;
+  border-radius: 999px;
+  cursor:pointer;
+  letter-spacing: .35px;
+  transition: transform .15s ease, background .15s ease, border-color .15s ease, box-shadow .15s ease;
+}
+.chainBtn:hover{ background: rgba(255,255,255,.09); transform: translateY(-1px); }
+.chainBtn:active{ transform: translateY(0px) scale(.99); }
+.chainBtn.active{
+  color: rgba(255,255,255,.96);
+  text-shadow: 0 1px 0 rgba(0,0,0,.35);
+  border: 1px solid rgba(255,255,255,.10);
+  background: rgba(255,255,255,.08);
+  box-shadow: 0 10px 26px rgba(0,0,0,.28);
+}
+
+/* per-chain neon tint (inactive) — keep text WHITE */
+.chainBtn[data-net="solana"]{ border-color: rgba(153,69,255,.50); background: rgba(153,69,255,.10); box-shadow: 0 0 0 1px rgba(153,69,255,.12) inset, 0 10px 22px rgba(153,69,255,.10); }
+.chainBtn[data-net="eth"]{ border-color: rgba(98,126,234,.50); background: rgba(98,126,234,.10); box-shadow: 0 0 0 1px rgba(98,126,234,.12) inset, 0 10px 22px rgba(98,126,234,.10); }
+.chainBtn[data-net="bsc"]{ border-color: rgba(243,186,47,.52); background: rgba(243,186,47,.10); box-shadow: 0 0 0 1px rgba(243,186,47,.12) inset, 0 10px 22px rgba(243,186,47,.10); }
+.chainBtn[data-net="base"]{ border-color: rgba(0,82,255,.52); background: rgba(0,82,255,.10); box-shadow: 0 0 0 1px rgba(0,82,255,.12) inset, 0 10px 22px rgba(0,82,255,.10); }
+
+/* per-chain active fill (neon) — text stays WHITE */
+body.net-sol .chainBtn.active{ background: linear-gradient(90deg, rgba(153,69,255,.96), rgba(153,69,255,.52)); border-color: rgba(255,255,255,.96); box-shadow: 0 0 0 1px rgba(153,69,255,.20) inset, 0 12px 30px rgba(153,69,255,.18), 0 16px 34px rgba(0,0,0,.34); }
+body.net-eth .chainBtn.active{ background: linear-gradient(90deg, rgba(98,126,234,.96), rgba(98,126,234,.52)); border-color: rgba(255,255,255,.96); box-shadow: 0 0 0 1px rgba(98,126,234,.20) inset, 0 12px 30px rgba(98,126,234,.18), 0 16px 34px rgba(0,0,0,.34); }
+body.net-bnb .chainBtn.active{ background: linear-gradient(90deg, rgba(243,186,47,.96), rgba(243,186,47,.50)); border-color: rgba(255,255,255,.96); box-shadow: 0 0 0 1px rgba(243,186,47,.20) inset, 0 12px 30px rgba(243,186,47,.16), 0 16px 34px rgba(0,0,0,.34); }
+body.net-base .chainBtn.active{ background: linear-gradient(90deg, rgba(0,82,255,.96), rgba(0,82,255,.50)); border-color: rgba(255,255,255,.96); box-shadow: 0 0 0 1px rgba(0,82,255,.20) inset, 0 12px 30px rgba(0,82,255,.16), 0 16px 34px rgba(0,0,0,.34); }
+
+.tickerWrap{
+  flex: 1;
+  min-width: 0;
+  position: relative;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255,255,255,.05);
+  border: 1px solid rgba(255,255,255,.10);
+  box-shadow: 0 10px 30px rgba(0,0,0,.22);
+  padding: 10px 12px;
+}
+
+.tickerWrap:before,
+.tickerWrap:after{
+  content:"";
+  position:absolute;
+  top:0; bottom:0;
+  width: 44px;
+  pointer-events:none;
+  z-index: 2;
+}
+.tickerWrap:before{
+  left:0;
+  background: linear-gradient(90deg, rgba(7,7,17,.95), rgba(7,7,17,0));
+}
+.tickerWrap:after{
+  right:0;
+  background: linear-gradient(270deg, rgba(7,7,17,.95), rgba(7,7,17,0));
+}
+
+.tickerTrack{
+  display:flex;
+  gap: 10px;
+  align-items:center;
+  white-space: nowrap;
+  will-change: transform;
+  animation: tickerMarquee var(--tickerSpeed) linear infinite;
+}
+
+.tickerWrap:hover .tickerTrack{ animation-play-state: paused; }
+
+@keyframes tickerMarquee{
+  0%{ transform: translateX(0); }
+  100%{ transform: translateX(calc(-1 * var(--tickerDistance))); }
+}
+
+.tickerItem{
+  display:inline-flex;
+  align-items:center;
+  gap: 10px;
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.10);
+  box-shadow: 0 0 0 1px var(--netGlow) inset;
+  color: rgba(255,255,255,.92);
+  font-weight: 900;
+  font-size: 13px;
+  letter-spacing: .1px;
+}
+
+/* Tiny logo inside the trending ticker */
+.tickerLogoWrap{
+  width:28px;
+  height:28px;
+  flex:0 0 28px;
+  border-radius: 6px;
+  overflow:hidden;
+  display:grid;
+  place-items:center;
+  background: rgba(255,255,255,.07);
+  border: 1px solid rgba(255,255,255,.10);
+  box-shadow: 0 8px 18px rgba(0,0,0,.22);
+}
+.tickerLogo{
+  width:100%;
+  height:100%;
+  object-fit: cover;
+  display:block;
+}
+.tickerLogoFallback{
+  font-size: 12px;
+  font-weight: 1100;
+  color: rgba(255,255,255,.90);
+  line-height: 1;
+}
+.tickerItem.top1 .tickerLogoWrap{
+  border-color: rgba(255,215,0,.35);
+  box-shadow: 0 0 0 1px rgba(255,215,0,.15) inset, 0 10px 22px rgba(0,0,0,.22);
+}
+.tickerItem .rank{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width: 28px;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.10);
+  font-size: 12px;
+  font-weight: 1000;
+  color: var(--netColor);
+}
+.tickerItem .sym{ font-weight: 950; }
+.tickerItem .chain{ font-weight: 1000; color: var(--netColor); font-size: 12px; letter-spacing:.2px; }
+
+.tickerPct{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.10);
+  font-size: 12px;
+  font-weight: 950;
+  color: rgba(255,255,255,.90);
+}
+.tickerPct.up{
+  color: rgba(20,241,149,.98);
+  background: rgba(20,241,149,.10);
+  border-color: rgba(20,241,149,.22);
+}
+.tickerPct.down{
+  color: rgba(255,90,90,.96);
+  background: rgba(255,90,90,.10);
+  border-color: rgba(255,90,90,.22);
+}
+
+
+.tickerItem.top1{
+  background: rgba(255,215,0,.10);
+  border-color: rgba(255,215,0,.32);
+  box-shadow: 0 0 0 1px rgba(255,215,0,.18) inset, 0 12px 30px rgba(0,0,0,.26);
+}
+.tickerItem.top1 .rank{
+  background: linear-gradient(90deg, #F3BA2F, #FFD700, #FFF2B0);
+  color: rgba(10,10,22,.92);
+  border: 0;
+  font-weight: 1100;
+}
+.tickerItem.top1 .chain{ color: rgba(255,215,0,.92); }
+
+.dexSearch{ position: relative; width: 360px; max-width: 44vw; }
+.dexSearchInner{
+  display:flex;
+  gap: 8px;
+  align-items:center;
+  padding: 10px 10px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.05);
+  border: 1px solid rgba(255,255,255,.10);
+  box-shadow: 0 10px 30px rgba(0,0,0,.22);
+}
+.dexInput{
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: 0;
+  outline: none;
+  color: rgba(255,255,255,.92);
+  font-weight: 850;
+  font-size: 13px;
+}
+.dexInput::placeholder{ color: rgba(255,255,255,.55); font-weight: 800; }
+
+.dexMiniBtn{ padding: 8px 10px; border-radius: 999px; font-size: 12px; font-weight: 1000; }
+
+.dexMiniBtn.copyBtn{
+  border-color: rgba(20,241,149,.22);
+  background: radial-gradient(220px 80px at 20% 20%, rgba(20,241,149,.18), transparent 60%),
+              rgba(255,255,255,.06);
+}
+.dexMiniBtn.copyBtn:hover{
+  border-color: rgba(20,241,149,.34);
+  box-shadow: 0 0 0 1px rgba(20,241,149,.18) inset, 0 14px 30px rgba(0,0,0,.35);
+}
+
+.dexMiniBtn.chartBtn{
+  border-color: rgba(0,209,255,.22);
+  background: radial-gradient(220px 80px at 20% 20%, rgba(0,209,255,.16), transparent 60%),
+              rgba(255,255,255,.06);
+}
+.dexMiniBtn.chartBtn:hover{
+  border-color: rgba(0,209,255,.34);
+  box-shadow: 0 0 0 1px rgba(0,209,255,.18) inset, 0 14px 30px rgba(0,0,0,.35);
+}
+
+.dexResults{
+  position:absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: min(560px, calc(100vw - 28px));
+  max-height: 60vh;
+  overflow:auto;
+  padding: 10px;
+  border-radius: 18px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(10,10,22,.92);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  z-index: 120;
+}
+
+/* Search result rows (clean + mobile-first) */
+.dexResRow{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap: 12px;
+  padding: 12px 12px;
+  border-radius: 18px;
+  border: 1px solid rgba(255,255,255,.10);
+  background: radial-gradient(900px 240px at 10% 0%, rgba(20,241,149,.10), transparent 55%),
+              radial-gradient(900px 240px at 90% 100%, rgba(153,69,255,.10), transparent 55%),
+              rgba(255,255,255,.03);
+}
+.dexResLeft{ flex:1; min-width:0; }
+.dexResTitle{
+  font-size: 15px;
+  line-height: 1.15;
+  font-weight: 980;
+  letter-spacing: -.2px;
+  color: rgba(255,255,255,.95);
+}
+
+/* ✅ Search result title row with token logo */
+.dexResTitleRow{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  min-width:0;
+}
+.dexLogoWrap{
+  width:40px;
+  height:40px;
+  border-radius: 14px;
+  overflow:hidden;
+  flex:0 0 40px;
+  display:grid;
+  place-items:center;
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.10);
+  box-shadow: 0 10px 24px rgba(0,0,0,.25);
+  position:relative;
+}
+.dexLogo{
+  width:100%;
+  height:100%;
+  object-fit: cover;
+  display:block;
+}
+.dexLogoFallback{
+  position:absolute;
+  inset:0;
+  display:grid;
+  place-items:center;
+  font-weight: 1100;
+  font-size: 14px;
+  color: rgba(255,255,255,.92);
+  letter-spacing: .2px;
+}
+.dexLogoWrap:not(.noimg) .dexLogoFallback{
+  opacity: 0;
+}
+
+@media (max-width: 420px){
+  .dexLogoWrap{ width:36px; height:36px; flex-basis:36px; border-radius:13px; }
+  .dexLogoFallback{ font-size: 13px; }
+}
+
+/* ✅ Search meta layout: always 24h left, then MCap/FDV, CA below */
+.dexResMeta{
+  margin-top: 7px;
+  display:grid;
+  gap: 6px;
+  color: rgba(255,255,255,.70);
+  font-size: 12px;
+  line-height: 1.25;
+  font-weight: 720;
+}
+.dexMetaRow{
+  display:flex;
+  flex-wrap:wrap;
+  gap: 6px;
+  align-items:center;
+}
+.dexMetaRow.stats{
+  flex-wrap:nowrap;
+}
+.dexMetaRow.ca .dexPill{
+  max-width: 100%;
+}
+@media (max-width: 420px){
+  .dexMetaRow.stats{ flex-wrap:wrap; }
+}
+
+/* Bigger logo on mobile, but still compact */
+@media (max-width: 520px){
+  .dexLogoWrap{ width:36px; height:36px; flex-basis:36px; border-radius: 13px; }
+  .dexLogoFallback{ font-size: 13px; }
+}
+
+.dexPill{
+  display:inline-flex;
+  align-items:center;
+  gap: 6px;
+  padding: 5px 9px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.10);
+  background: rgba(255,255,255,.06);
+}
+.dexPill.up{ color: rgba(20,241,149,.95); border-color: rgba(20,241,149,.22); }
+.dexPill.down{ color: rgba(255,93,93,.95); border-color: rgba(255,93,93,.22); }
+.dexPill.chain-solana{ color: rgba(153,69,255,.95); border-color: rgba(153,69,255,.22); }
+.dexPill.chain-eth{ color: rgba(98,126,234,.95); border-color: rgba(98,126,234,.22); }
+.dexPill.chain-bsc{ color: rgba(243,186,47,.95); border-color: rgba(243,186,47,.22); }
+.dexPill.chain-base{ color: rgba(0,82,255,.95); border-color: rgba(0,82,255,.22); }
+.dexResActions{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap: 8px;
+  flex-shrink:0;
+}
+.dexMiniBtn{
+  padding: 8px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 950;
+}
+
+@media (max-width: 860px){
+  .dexResRow{ padding: 12px 10px; }
+}
+@media (max-width: 560px){
+  .dexResRow{
+    flex-direction:column;
+    align-items:stretch;
+    gap: 10px;
+  }
+  .dexResActions{
+    justify-content:flex-start;
+    width:100%;
+    flex-wrap:wrap;
+  }
+  .dexResActions .dexMiniBtn{ flex: 1 1 calc(33% - 6px); min-width: 120px; text-align:center; }
+}
+
+
+/* mobile: stack + keep everything clickable */
+@media (max-width: 860px){
+  :root{ --tickerSpeed: 5.2s; } /* ✅ mobile speed stays exactly as-is */
+
+  /* Mobile topbar: ultra clean, no horizontal scrolling, no cramped UI */
+  .topBarInner{ padding: calc(10px + env(safe-area-inset-top)) 12px 10px; gap: 10px; }
+
+  /* Row 1: label + chain selector (wraps nicely) */
+  .topRow{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap: 10px;
+    flex-wrap:wrap;
+  }
+  .hotBlock{ width:100%; display:flex; align-items:center; justify-content:flex-start; gap:10px; flex-wrap:wrap; }
+  .hotLabel{ padding: 9px 12px; font-size: 12px; letter-spacing: .5px; }
+  .hotFire{ width: 16px; height: 16px; }
+
+  /* Dexguard: EXACT same height as LIVE TRENDING (mobile) */
+  .hotLabel{ height: 40px; padding: 0 12px; }
+  .dexguardLogo{ height: 40px; }
+  .dexguardLogo img{ height: 40px; }
+  .dexguardBtn{ gap:10px; }
+  .dexguardChip{ padding: 4px 10px; font-size: 11px; line-height: 1; }
+  .dexguardText{ font-size: 15px; line-height: 1; }
+
+
+  /* Chain selector: 4 equal buttons, always visible (no scrolling) */
+  .chainToggle{
+    width: 100%;
+    display:grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+    padding: 0;
+    background: transparent;
+    border: 0;
+    overflow: visible;
+    justify-content: stretch;
+  }
+  .chainBtn{ width:100%; padding:  9px 0; font-size: 12px; }
+  .chainBtn{ box-shadow: 0 0 0 1px rgba(255,255,255,.06) inset, 0 10px 22px rgba(0,0,0,.20); }
+
+  /* Row 2: ticker */
+  .tickerWrap{ width: 100%; padding: 9px 10px; }
+  .tickerItem{ font-size: 12.5px; padding: 7px 9px; gap: 8px; }
+  .tickerLogoWrap{ width:22px; height:22px; flex:0 0 22px; border-radius:6px; }
+  .tickerLogoFallback{ font-size: 11px; }
+  .tickerItem .rank{ min-width: 26px; height: 21px; font-size: 11px; }
+
+  /* Row 3: search */
+  .bottomRow{ flex-direction: column; align-items: stretch; gap: 10px; }
+  .dexSearch{ width: 100%; max-width: 100%; }
+  .dexSearchInner{ padding: 10px 12px; }
+  /* prevent iOS input zoom */
+  .dexInput{ font-size: 16px; }
+  .dexMiniBtn{ padding: 8px 10px; }
+
+  /* Menu button: always top-right and sized for iOS */
+  .menuBtn{ padding: 9px 12px; border-radius: 14px; font-size: 20px; }
+  .menuPop{ width: min(340px, calc(100vw - 24px)); }
+}
+
+@media (max-width: 380px){
+  .chainBtn{ font-size: 11.5px; padding: 7px 0; }
+}
+
+/* reduced motion */
+@media (prefers-reduced-motion: reduce){
+  .tickerTrack{ animation: none !important; }
+}
+
+
+
+/* ============================
+   MOBILE ULTRA (LAYOUT ONLY)
+   Keeps desktop unchanged
+============================ */
+@media (max-width: 860px){
+  /* Mobile topbar: clean strip (no big bordered block) */
+  .topBar{
+    background: rgba(7,7,17,.62);
+    border-bottom: 1px solid rgba(255,255,255,.10);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    padding: 0;
+  }
+  .topBarInner{
+    max-width: var(--max);
+    margin: 0 auto;
+    padding: calc(10px + env(safe-area-inset-top)) 12px 10px;
+    border-radius: 0;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  /* Menu button always top-right, slightly smaller on mobile */
+  .menuBtn{ padding: 9px 12px; border-radius: 16px; }
+
+  /* Page spacing feels designed for mobile */
+  .wrap{ padding-left: 12px; padding-right: 12px; }
+  section{ padding: 26px 0; }
+
+  /* Hero: tighter + more premium */
+  .hero{ padding-top: 10px; }
+  .heroCard{
+    padding: 26px 16px;
+    border-radius: 26px;
+  }
+  .heroTitle{ font-size: clamp(38px, 10vw, 54px); }
+  .heroSubName{ letter-spacing: .55em; font-size: 12px; }
+  .heroPoemText{ font-size: 14.5px; line-height: 1.62; }
+
+  /* CTA buttons: 2-column grid, full width */
+  .heroActions{
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    justify-content: stretch;
+  }
+  .heroActions .btn{ width: 100%; justify-content: center; }
+
+  /* Cards overall */
+  .cardInner{ padding: 18px; border-radius: 22px; }
+  .h2{ font-size: 28px; }
+
+  /* Tool CTAs full width */
+  .toolCTA{ flex-direction: column; align-items: stretch; }
+}
+</style>
+</head>
+
+<body>
+
+ <!-- ICON SPRITE (no emojis) -->
+ <svg aria-hidden="true" focusable="false" style="position:absolute;width:0;height:0;overflow:hidden">
+ <defs>
+ <linearGradient id="gradBrand" x1="0" y1="0" x2="1" y2="0">
+ <stop offset="0" stop-color="var(--g)"/>
+ <stop offset="0.5" stop-color="var(--c)"/>
+ <stop offset="1" stop-color="var(--p)"/>
+ </linearGradient>
+ </defs>
+
+ <symbol id="ico-vault" viewBox="0 0 24 24">
+ <path d="M4.5 7.5h15a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-15a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2Z" fill="none" stroke="url(#gradBrand)" stroke-width="2" stroke-linecap="round"/>
+ <path d="M7 7.5V6a3 3 0 0 1 3-3h4a3 3 0 0 1 3 3v1.5" fill="none" stroke="url(#gradBrand)" stroke-width="2" stroke-linecap="round"/>
+ <path d="M12 12.2a1.8 1.8 0 1 0 0 3.6a1.8 1.8 0 0 0 0-3.6Z" fill="none" stroke="url(#gradBrand)" stroke-width="2"/>
+ <path d="M12 10.5v1.7" fill="none" stroke="url(#gradBrand)" stroke-width="2" stroke-linecap="round"/>
+ </symbol>
+
+ <symbol id="ico-sol" viewBox="0 0 24 24">
+ <path d="M6 7.2c.5-.5 1.2-.8 1.9-.8h12.6c.4 0 .6.5.3.8l-2 2c-.5.5-1.2.8-1.9.8H4.3c-.4 0-.6-.5-.3-.8l2-2Z" fill="url(#gradBrand)"/>
+ <path d="M6 13c.5-.5 1.2-.8 1.9-.8h12.6c.4 0 .6.5.3.8l-2 2c-.5.5-1.2.8-1.9.8H4.3c-.4 0-.6-.5-.3-.8l2-2Z" fill="url(#gradBrand)" opacity=".9"/>
+ <path d="M6 18.8c.5-.5 1.2-.8 1.9-.8h12.6c.4 0 .6.5.3.8l-2 2c-.5.5-1.2.8-1.9.8H4.3c-.4 0-.6-.5-.3-.8l2-2Z" fill="url(#gradBrand)" opacity=".8"/>
+ </symbol>
+
+ <symbol id="ico-arrows" viewBox="0 0 24 24">
+ <path d="M7 7h10l-2-2" fill="none" stroke="url(#gradBrand)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+ <path d="M17 7l-2 2" fill="none" stroke="url(#gradBrand)" stroke-width="2" stroke-linecap="round"/>
+ <path d="M17 17H7l2 2" fill="none" stroke="url(#gradBrand)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+ <path d="M7 17l2-2" fill="none" stroke="url(#gradBrand)" stroke-width="2" stroke-linecap="round"/>
+ </symbol>
+
+ <symbol id="ico-swap" viewBox="0 0 24 24">
+ <path d="M8 7h10" fill="none" stroke="url(#gradBrand)" stroke-width="2" stroke-linecap="round"/>
+ <path d="M16 5l2 2-2 2" fill="none" stroke="url(#gradBrand)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+ <path d="M16 17H6" fill="none" stroke="url(#gradBrand)" stroke-width="2" stroke-linecap="round"/>
+ <path d="M8 19l-2-2 2-2" fill="none" stroke="url(#gradBrand)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+ <path d="M11 11.2h2" fill="none" stroke="url(#gradBrand)" stroke-width="2" stroke-linecap="round" opacity=".7"/>
+ </symbol>
+
+ <symbol id="ico-community" viewBox="0 0 24 24">
+ <path d="M8.2 12.2a3 3 0 1 1 0-6a3 3 0 0 1 0 6Z" fill="none" stroke="url(#gradBrand)" stroke-width="2"/>
+ <path d="M16 11.2a2.6 2.6 0 1 1 0-5.2a2.6 2.6 0 0 1 0 5.2Z" fill="none" stroke="url(#gradBrand)" stroke-width="2" opacity=".85"/>
+ <path d="M3.6 20c.7-3.1 2.7-4.8 5.3-4.8s4.6 1.7 5.3 4.8" fill="none" stroke="url(#gradBrand)" stroke-width="2" stroke-linecap="round"/>
+ <path d="M14.2 15.8c1.8.2 3.1 1.4 3.8 4.2" fill="none" stroke="url(#gradBrand)" stroke-width="2" stroke-linecap="round" opacity=".8"/>
+ </symbol>
+
+ <symbol id="ico-fire" viewBox="0 0 24 24">
+ <path d="M12 22c4 0 7-3 7-7c0-3.5-2.6-5.8-4.3-7.8c-.7-.8-1.2-1.7-1.4-2.7c-1 1.1-2 2.4-2.6 3.9c-.8 2-.4 3.1-1.9 4.6c-1.1 1.1-3 2.4-3 5.1c0 4 3 6.9 6.2 6.9Z" fill="none" stroke="url(#gradBrand)" stroke-width="2" stroke-linejoin="round"/>
+ <path d="M10.2 15.4c.2-1.5 1.3-2.4 2-3.4c.3-.4.5-.8.6-1.2c.6 1 .9 1.8 1.1 2.7c.2 1.1-.3 1.8-.8 2.5c-.5.7-.7 1.1-.7 1.9c0 1.4 1.1 2.1 2 2.4" fill="none" stroke="url(#gradBrand)" stroke-width="2" stroke-linecap="round" opacity=".75"/>
+ </symbol>
+
+ <symbol id="ico-percent" viewBox="0 0 24 24">
+ <path d="M19 5L5 19" fill="none" stroke="url(#gradBrand)" stroke-width="2" stroke-linecap="round"/>
+ <path d="M7.5 9a1.8 1.8 0 1 0 0-3.6a1.8 1.8 0 0 0 0 3.6Z" fill="none" stroke="url(#gradBrand)" stroke-width="2"/>
+ <path d="M16.5 18.6a1.8 1.8 0 1 0 0-3.6a1.8 1.8 0 0 0 0 3.6Z" fill="none" stroke="url(#gradBrand)" stroke-width="2"/>
+ </symbol>
+
+ <symbol id="ico-stack" viewBox="0 0 24 24">
+ <path d="M12 4l9 5-9 5-9-5 9-5Z" fill="none" stroke="url(#gradBrand)" stroke-width="2" stroke-linejoin="round"/>
+ <path d="M21 9v6l-9 5-9-5V9" fill="none" stroke="url(#gradBrand)" stroke-width="2" stroke-linejoin="round" opacity=".8"/>
+ </symbol>
+ </svg>
+
+ <!-- TOP TRENDING BAR + SEARCH (Dex-style) -->
+ <div class="topBar" id="topBar">
+   <div class="topBarInner">
+     <div class="topRow">
+       <div class="hotBlock" aria-label="Hot trending live">
+         <a class="dexguardLogo" id="dexguardLogo" href="https://www.solanax1.com/dexguard" aria-label="Open DexGuard">
+           <img src="dexguard.png" alt="DexGuard" />
+         </a>
+
+         <div class="hotLabel" title="Live trending">
+           <svg class="hotFire" aria-hidden="true"><use href="#ico-fire"></use></svg>
+           <span>LIVE TRENDING</span>
+         </div>
+       </div>
+
+       <div class="chainToggle" id="chainToggle" role="tablist" aria-label="Choose chain">
+         <button class="chainBtn active" type="button" data-net="solana" aria-pressed="true">SOL</button>
+         <button class="chainBtn" type="button" data-net="eth" aria-pressed="false">ETH</button>
+         <button class="chainBtn" type="button" data-net="bsc" aria-pressed="false">BNB</button>
+         <button class="chainBtn" type="button" data-net="base" aria-pressed="false">BASE</button>
+       </div>
+     </div>
+
+     <div class="bottomRow">
+       <div class="tickerWrap" aria-label="Trending tokens">
+         <div class="tickerTrack" id="trendTrack">
+           <span class="tickerItem" style="opacity:.75"><span class="rank">…</span><span class="tickerLogoWrap"><span class="tickerLogoFallback">•</span></span><span class="sym">Trending</span></span><span class="tickerItem" style="opacity:.75"><span class="rank">…</span><span class="tickerLogoWrap"><span class="tickerLogoFallback">•</span></span><span class="sym">Trending</span></span><span class="tickerItem" style="opacity:.75"><span class="rank">…</span><span class="tickerLogoWrap"><span class="tickerLogoFallback">•</span></span><span class="sym">Trending</span></span><span class="tickerItem" style="opacity:.75"><span class="rank">…</span><span class="tickerLogoWrap"><span class="tickerLogoFallback">•</span></span><span class="sym">Trending</span></span><span class="tickerItem" style="opacity:.75"><span class="rank">…</span><span class="tickerLogoWrap"><span class="tickerLogoFallback">•</span></span><span class="sym">Trending</span></span><span class="tickerItem" style="opacity:.75"><span class="rank">…</span><span class="tickerLogoWrap"><span class="tickerLogoFallback">•</span></span><span class="sym">Trending</span></span><span class="tickerItem" style="opacity:.75"><span class="rank">…</span><span class="tickerLogoWrap"><span class="tickerLogoFallback">•</span></span><span class="sym">Trending</span></span><span class="tickerItem" style="opacity:.75"><span class="rank">…</span><span class="tickerLogoWrap"><span class="tickerLogoFallback">•</span></span><span class="sym">Trending</span></span>
+         </div>
+       </div>
+
+       <div class="dexSearch" role="search" aria-label="Search token by name or contract">
+         <div class="dexSearchInner">
+           <input class="dexInput" id="dexSearchInput" autocomplete="off" spellcheck="false" placeholder="Search token / paste contract…" />
+         </div>
+         <div class="dexResults" id="dexResults" hidden></div>
+       </div>
+     </div>
+   </div>
+ </div>
+
+<!-- FLOATING MENU (ALL NAV INSIDE) -->
+ <div class="menuFloat" id="menuFloat">
+ <div class="menu" id="menu">
+ <button
+ class="btn ghost icon menuBtn"
+ id="menuBtn"
+ aria-haspopup="true"
+ aria-expanded="false"
+ aria-label="Open menu"
+ >
+ ⋯
+ </button>
+
+ <div class="menuPop" id="menuPop" role="menu" aria-label="Quick links">
+
+ <div class="menuLabel">Navigate</div>
+
+ <a class="menuItem dexItem" role="menuitem" href="https://www.solanax1.com/dexguard" target="_blank" rel="noopener">
+   <span class="menuText"><span class="menuMain">DexGuard DEX</span><span class="menuSub">Official $SOS DEX</span></span>
+   <span class="menuBadge badgeDex">DEX</span>
+ </a>
+ <a class="menuItem" role="menuitem" href="#what"><span class="menuText">What is $SOS?</span><span class="menuBadge badgeSection">Section</span></a>
+ <a class="menuItem" role="menuitem" href="#tools"><span class="menuText">Tools</span><span class="menuBadge badgeSection">Section</span></a>
+ <a class="menuItem" role="menuitem" href="#tokenomics"><span class="menuText">Tokenomics</span><span class="menuBadge badgeSection">Section</span></a>
+ <a class="menuItem" role="menuitem" href="#roadmap"><span class="menuText">Roadmap</span><span class="menuBadge badgeSection">Section</span></a>
+ <a class="menuItem" role="menuitem" href="#buy"><span class="menuText">How to Buy</span><span class="menuBadge badgeSection">Section</span></a>
+ <a class="menuItem" role="menuitem" href="#faq"><span class="menuText">FAQ</span><span class="menuBadge badgeSection">Section</span></a>
+ <a class="menuItem" role="menuitem" href="#socials"><span class="menuText">Socials</span><span class="menuBadge badgeSection">Section</span></a>
+
+ <div class="menuSep"></div>
+ <div class="menuLabel">Tools</div>
+ <a class="menuItem" role="menuitem" href="https://solanax1.com/wallet" target="_blank" rel="noreferrer"><span class="menuText">Guardian Wallet Scanner</span><span class="menuBadge badgeTool">Tool</span></a>
+ <a class="menuItem" role="menuitem" href="https://solanax1.com/contract" target="_blank" rel="noreferrer"><span class="menuText">Guardian Contract Scanner</span><span class="menuBadge badgeTool">Tool</span></a>
+
+ <div class="menuSep"></div>
+ <div class="menuLabel">Social</div>
+ <a class="menuItem" role="menuitem" href="https://x.com/Solana_X1" target="_blank" rel="noreferrer"><span class="menuText">X</span><span class="menuBadge badgeSocial">Social</span></a>
+ <a class="menuItem" role="menuitem" href="https://t.me/Solana_X1" target="_blank" rel="noreferrer"><span class="menuText">Telegram</span><span class="menuBadge badgeSocial">Social</span></a>
+ <a class="menuItem" role="menuitem" href="https://t.me/solanaonsolana_bot" target="_blank" rel="noreferrer"><span class="menuText">Bot</span><span class="menuBadge badgeBot">Bot</span></a>
+
+ </div>
+ </div>
+ </div>
+
+ <!-- HERO -->
+<main id="top" class="wrap">
+ <section class="hero">
+ <div class="card heroCard">
+ <h1 class="heroTitle"><span class="gradText">$SOS</span></h1>
+ <div class="heroSubName">SOLANA ON SOLANA</div>
+ <div class="heroPoem">
+ <p class="heroPoemText">She wasn’t created by the chain the chain was waiting for her. Born to protect balance, she returned when culture turned to chaos. <b>$SOS</b> isn’t a trend; it’s a guardian protocol for memecoins, communities, and conviction on Solana. No hype. No promises. Just presence. This is culture under protection.</p>
+ </div>
+
+ <div class="heroActions">
+ <a class="btn primary" href="https://t.me/Solana_X1" target="_blank" rel="noreferrer">Join Telegram</a>
+ <a class="btn grad" href="https://x.com/Solana_X1" target="_blank" rel="noreferrer">Follow on X</a>
+ <a class="btn grad" href="https://t.me/solanaonsolana_bot" target="_blank" rel="noreferrer">Use the Bot</a>
+ </div>
+
+ <!-- Contract under hero -->
+ <div class="heroContract">
+ <div class="stat copyBox" data-copy="XXXXXXXXXXXXXXXXXXXXXXXX" role="button" tabindex="0" aria-label="Copy Contract Address">
+ <div style="min-width:0">
+ <div class="k">Contract Address</div>
+ <div class="copyText">XXXXXXXXXXXXXXXXXXXXXXXX</div>
+ </div>
+ <div class="copyHint">Click to copy</div>
+ </div>
+ </div>
+
+ </div>
+ </section>
+
+ <!-- WHAT IS -->
+ <section id="what">
+ <div class="card">
+ <div class="cardInner">
+ <div class="twoCol">
+ <div>
+ <h2 class="h2">What is $SOS?</h2>
+ <div class="bodyText">
+ <p><b>Before blockchains.</b> Before memecoins. Before Solana the Chain. There was <b>Solana the Guardian</b>, inspired by the Pokémon Ranger first introduced in 2006.</p>
+<p>Rangers like Solana were not trained to dominate systems. They observed them. Read patterns. Acted only when balance broke.</p>
+<p>That mindset came first.</p>
+<p>When on-chain systems emerged—fast, permissionless, and driven by culture—the same dynamic appeared again. Speed amplified creativity. Scale amplified participation. Noise became a byproduct of success.</p>
+<p>Solana the Guardian launched on Solana the Chain because that is where the culture moves fastest, and where the cost of confusion is highest. Permissionless creation unlocked innovation, but it also flooded the system with noise, bad actors, and disposable projects. <b>$SOS</b> applies a guardian discipline where it matters most: inside an ecosystem that works, scales, and therefore demands clarity to sustain itself.</p>
+<p><b>$SOS turns that discipline into a guided on-chain journey:</b></p>
+<p><b>🛡 Discovery</b> — where meaningful activity is surfaced before it becomes noise</p>
+<p><b>🛡 Research</b> — where wallets, contracts, and market behavior are understood in context</p>
+<p><b>🛡 Trade</b> — where action is deliberate, guarded, and informed by intelligence</p>
+<p><b>🛡 Launch</b> — where creation follows structure, standards, and accountability</p>
+<p>Together, these stages form <b>$SOS: The Solana Intelligence Layer.</b></p>
+<p>No predictions. No promises. It’s proof-of-purpose.</p>
+ </div>
+ </div>
+
+ <!-- ✅ THE LORE: separate small box (Proofs + Buttons + Image) -->
+ <div class="loreBox" aria-label="The Lore">
+ <div class="loreInner">
+ <div class="loreTitle">The Lore: <span class="gradText">Origins of Solana</span></div>
+
+ <div class="proofsRow" aria-label="Pokémon proofs">
+ <span class="proofLabel"><span class="pokeDot"></span> Proofs</span>
+
+ <a class="btn grad proofBtn" href="https://bulbapedia.bulbagarden.net/wiki/Solana" target="_blank" rel="noreferrer">
+ Pokémon • Bulbapedia
+ </a>
+
+ <a class="btn grad proofBtn" href="https://pokemon.fandom.com/wiki/Solana" target="_blank" rel="noreferrer">
+ Pokémon • Fandom
+ </a>
+ </div>
+
+ <div class="loreMedia">
+ <!-- ✅ renamed sticker.png → WHAT.png -->
+ <img src="assets/WHAT.png" alt="$SOS Lore Sticker" />
+ </div>
+ </div>
+ </div>
+
+ </div>
+
+ </div>
+ </div>
+ </section>
+
+ <!-- TOOLS (UPGRADED • OBVIOUS • MOBILE-FIRST) -->
+ <section id="tools">
+
+ <!-- Tools intro (makes it instantly obvious this is interactive) -->
+ <div class="card toolsIntro">
+ <div class="toolsIntroInner">
+ <div>
+ <div class="toolsKicker"><span class="dot"></span> Tools</div>
+ <h2 class="toolsTitle">Scan wallets. Scan contracts. <span class="gradText">Instantly.</span></h2>
+ <p class="toolsDesc">
+ These are not blog sections they’re live tools. Open a scanner below to analyze a wallet or a token contract in seconds.
+ </p>
+ <div class="toolsQuick">
+ <a class="btn primary" href="https://solanax1.com/wallet" target="_blank" rel="noreferrer">Open Wallet Scanner</a>
+ <a class="btn grad" href="https://solanax1.com/contract" target="_blank" rel="noreferrer">Open Contract Scanner</a>
+ </div>
+ </div>
+
+ <div class="toolBigTiles" aria-label="Quick tool tiles">
+ <a class="tile" href="https://solanax1.com/wallet" target="_blank" rel="noreferrer" aria-label="Open Wallet Scanner">
+ <div class="tileTop">
+ <div class="tileIcon">W</div>
+ <div class="menuBadge">LIVE TOOL</div>
+ </div>
+ <div class="tileName">Guardian Wallet Scanner</div>
+ <div class="tileHint">Profile Solana wallets • archetypes • shareable card</div>
+ <div class="tileCta">Tap to scan <span aria-hidden="true">→</span></div>
+ </a>
+
+ <a class="tile" href="https://solanax1.com/contract" target="_blank" rel="noreferrer" aria-label="Open Contract Scanner">
+ <div class="tileTop">
+ <div class="tileIcon">C</div>
+ <div class="menuBadge">LIVE TOOL</div>
+ </div>
+ <div class="tileName">Guardian Contract Scanner</div>
+ <div class="tileHint">Multi chain • holders % • bubble map • export report</div>
+ <div class="tileCta">Tap to scan <span aria-hidden="true">→</span></div>
+ </a>
+ </div>
+ </div>
+ </div>
+
+ <div style="height:16px"></div>
+
+ <div class="toolsGrid">
+
+ <!-- DNA -->
+ <div class="card toolCard dnaCard" data-href="https://solanax1.com/wallet" role="link" tabindex="0" aria-label="Open Guardian Wallet Scanner">
+ <div class="toolInner">
+
+ <div class="toolHeaderRow">
+ <div class="toolId">
+ <div class="toolIcon" aria-hidden="true">W</div>
+ <div class="toolIdText">
+ <div class="toolTag">GUARDIAN INTELLIGENCE • WALLET SCANNER</div>
+ <div class="sub">Solana wallets • archetypes • shareable identity signal</div>
+ </div>
+ </div>
+
+ <div class="toolRight">
+<div class="toolPills">
+ <span class="pill">Mainnet</span>
+ <span class="pill">On chain</span>
+ <span class="pill">Shareable</span>
+ </div>
+<div class="toolCorner"><b>Open</b> Wallet Scanner →</div>
+</div>
+ </div>
+
+ <div class="toolGrid">
+ <div>
+ <h2 class="toolH">
+ Scan any wallet. <span class="gradText">Reveal the Guardian.</span>
+ </h2>
+
+ <div class="toolLead">
+ The Guardian is now operational. The <b>Wallet Scanner</b> profiles Solana wallets by
+ <b>power</b>, <b>stability</b>, <b>activity</b>, and <b>venue footprint</b> and shows how aligned they are with <b>$SOS</b>.
+ <br><br>
+ This is the culture layer turning into an on chain identity signal.
+ </div>
+
+ <div class="featureChips" aria-label="Key features">
+ <span class="chip">Archetype tiers</span>
+ <span class="chip">Venue footprint</span>
+ <span class="chip">Share to X</span>
+ <span class="chip">$SOS alignment</span>
+ </div>
+
+ <div class="toolCTA">
+ <a class="btn grad" href="https://solanax1.com/wallet" target="_blank" rel="noreferrer">Open Guardian Wallet Scanner</a>
+ <span class="toolMini">Instant readout • Verifiable signals</span>
+ </div>
+ </div>
+
+ <div class="toolSide">
+ <div class="toolPreview" aria-label="Preview">
+ <div class="toolPreviewInner">
+ <div class="toolPreviewTop">
+ <span class="liveBadge"><span class="ping"></span> Live Preview</span>
+ <span class="menuBadge">Wallet</span>
+ </div>
+ <div class="previewTitle">Instant Snapshot</div>
+ <div class="previewLines" style="margin-top:10px">
+ <div class="bar" style="--w:78%"></div>
+ <div class="bar" style="--w:62%"></div>
+ <div class="bar" style="--w:86%"></div>
+ </div>
+ </div>
+ </div>
+
+ <div class="toolBox">
+ <ul class="toolList">
+ <li>Archetype classification (Guardian tiers)</li>
+ <li>Power / Stability / Activity scores</li>
+ <li>Top venues (Jupiter, Raydium, Orca…)</li>
+ <li>$SOS alignment + holding tier</li>
+ <li>Share to X in one click</li>
+ </ul>
+ </div>
+ </div>
+ </div>
+
+ </div>
+ </div>
+
+ <!-- GUARDIAN -->
+ <div class="card toolCard guardianCard" data-href="https://solanax1.com/contract" role="link" tabindex="0" aria-label="Open Guardian Contract Scanner">
+ <div class="toolInner">
+
+ <div class="toolHeaderRow">
+ <div class="toolId">
+ <div class="toolIcon" aria-hidden="true">C</div>
+ <div class="toolIdText">
+ <div class="toolTag">GUARDIAN SYSTEM • MULTI-CHAIN CONTRACT SCANNER</div>
+ <div class="sub">Solana + ETH + BNB + Base • holders % • clusters • export</div>
+ </div>
+ </div>
+
+ <div class="toolRight">
+<div class="toolPills">
+ <span class="pill">Mainnet</span>
+ <span class="pill">Multichain</span>
+ <span class="pill">Branded Report</span>
+ </div>
+<div class="toolCorner"><b>Open</b> Contract Scanner →</div>
+</div>
+ </div>
+
+ <div class="toolGrid">
+ <div>
+ <h2 class="toolH">Scan any contract. <span class="gradText">Multi Chain Guardian Check.</span></h2>
+
+ <div class="toolLead">
+ The <b>Guardian Contract Scanner</b> runs a fast, action driven security scan across
+ <b>Solana</b>, <b>Ethereum</b>, <b>BNB Chain</b> and <b>Base</b>.
+ It returns a clean verdict + score with <b>color coded</b> risk flags (mint/freeze/owner,
+ mintable, blacklist/whitelist controls, trading limits) plus a live <b>DEX snapshot</b>.
+ <br><br>
+ You also get <b>Top Holders</b> with accurate supply %, a <b>Bubble Map</b>
+ (wallet connections + clusters/bundles), explorer deep links, and a <b>branded downloadable report</b>
+ with the token logo + $SOS watermark.
+ </div>
+
+ <div class="featureChips" aria-label="Key features">
+ <span class="chip">Multichain</span>
+ <span class="chip">Color-coded security</span>
+ <span class="chip">Bubble map & clusters</span>
+ <span class="chip">Download report</span>
+ </div>
+
+ <div class="toolCTA">
+ <a class="btn grad" href="https://solanax1.com/contract" target="_blank" rel="noreferrer">Open Guardian Contract Scanner</a>
+ <span class="toolMini">Multichain verdict • Bubble map + report</span>
+ </div>
+ </div>
+
+ <div class="toolSide">
+ <div class="toolPreview" aria-label="Preview">
+ <div class="toolPreviewInner">
+ <div class="toolPreviewTop">
+ <span class="liveBadge"><span class="ping"></span> Live Preview</span>
+ <span class="menuBadge">Contract</span>
+ </div>
+ <div class="previewTitle">Risk Flags + Clusters</div>
+ <div class="previewLines" style="margin-top:10px">
+ <div class="bar" style="--w:92%"></div>
+ <div class="bar" style="--w:58%"></div>
+ <div class="bar" style="--w:74%"></div>
+ </div>
+ </div>
+ </div>
+
+ <div class="toolBox">
+ <ul class="toolList">
+ <li>Solana + ETH + BNB + Base scanning</li>
+ <li>Verdict + score with color coded security flags</li>
+ <li>Top holders with accurate supply %</li>
+ <li>Bubble map (connections + clusters)</li>
+ <li>Bundles + explorer deep-links + branded report export</li>
+ </ul>
+ </div>
+ </div>
+ </div>
+
+ </div>
+ </div>
+
+ </div>
+ </section>
+
+ <!-- Mobile tool dock (always visible on phones) -->
+ <div class="toolsDock" aria-label="Quick tool access">
+ <a class="dockBtn" href="https://solanax1.com/wallet" target="_blank" rel="noreferrer"><span class="mini">W</span> Wallet Scan</a>
+ <a class="dockBtn" href="https://solanax1.com/contract" target="_blank" rel="noreferrer"><span class="mini">C</span> Contract Scan</a>
+ </div>
+
+ <!-- TOKENOMICS -->
+ <section id="tokenomics">
+ <div class="card">
+ <div class="cardInner">
+ <h2 class="h2">Tokenomics</h2>
+ <div class="grid3">
+ <div class="stat">
+ <div class="statHead">
+ <div class="statIcon" aria-hidden="true"><svg class="ico sm"><use href="#ico-stack" xlink:href="#ico-stack"></use></svg></div>
+ <div>
+ <div class="k">Supply</div>
+ <div class="v"><span class="grad">1,000,000,000</span> SOS</div>
+ </div>
+ </div>
+ </div>
+ <div class="stat">
+ <div class="statHead">
+ <div class="statIcon" aria-hidden="true"><svg class="ico sm"><use href="#ico-percent" xlink:href="#ico-percent"></use></svg></div>
+ <div>
+ <div class="k">Tax</div>
+ <div class="v">0%</div>
+ </div>
+ </div>
+ </div>
+ <div class="stat">
+ <div class="statHead">
+ <div class="statIcon" aria-hidden="true"><svg class="ico sm"><use href="#ico-fire" xlink:href="#ico-fire"></use></svg></div>
+ <div>
+ <div class="k">Supply</div>
+ <div class="v">Burned</div>
+ </div>
+ </div>
+ </div>
+</div>
+
+ <div style="height:14px"></div>
+
+ <div class="stat copyBox" data-copy="XXXXXXXXXXXXXXXXXXXXXXXX" role="button" tabindex="0" aria-label="Copy Contract Address">
+ <div style="min-width:0">
+ <div class="k">Contract Address</div>
+ <div class="copyText">XXXXXXXXXXXXXXXXXXXXXXXX</div>
+ </div>
+ <div class="copyHint">Click to copy</div>
+ </div>
+
+ <div style="height:18px"></div>
+
+ </div>
+ </div>
+ </section>
+
+ <!-- ROADMAP (SEPARATE SECTION • SCROLL TIMELINE) -->
+ <section id="roadmap">
+ <div class="card">
+ <div class="cardInner">
+ <div class="roadHeader">
+ <div>
+ <h2 class="h2">Roadmap</h2>
+ <p class="sub">$SOS: The Solana Intelligence Layer. Tools → research → signals → execution → creation.</p>
+ </div>
+ <div class="roadLegend" aria-label="Roadmap legend">
+ <span class="badge done">Done</span>
+ <span class="badge next">In progress</span>
+ <span class="badge planned">Planned</span>
+ </div>
+ </div>
+
+ <div class="timeline" aria-label="Roadmap timeline">
+
+ <div class="tlItem left" data-i="0">
+ <div class="tlCol a">
+ <div class="tlCard">
+ <div class="tlMeta">
+ <div class="tlPhase">Phase I</div>
+ <div class="tlTitle">Foundation</div>
+ <div class="tlTag">Establish clarity on Solana</div>
+ </div>
+ <ul class="tlList">
+  <li class="done">WalletGuard v1 (Solana): wallet behavior analysis + credibility context for Solana addresses</li>
+ <li class="done">ContractGuard v1 (Solana): smart contract logic + risk analysis for Solana programs</li>
+ <li class="done">DEXGuard v1 (Solana): market intelligence focused on transaction flow + wallet interaction (not hype)</li>
+ <li class="done">Core platform + Guardian framework + Solana-first UX shipped</li>
+ <li class="done">$SOS established as a trusted research + intelligence layer for Solana users</li>
+ </ul>
+ </div>
+ </div>
+ <div class="tlCol mid"><div class="tlNode" aria-hidden="true"></div></div>
+ <div class="tlCol b"></div>
+ </div>
+
+ <div class="tlItem right" data-i="1">
+ <div class="tlCol a"></div>
+ <div class="tlCol mid"><div class="tlNode" aria-hidden="true"></div></div>
+ <div class="tlCol b">
+ <div class="tlCard">
+ <div class="tlMeta">
+ <div class="tlPhase">Phase II</div>
+ <div class="tlTitle">Signal & Execution</div>
+ <div class="tlTag">Turn intelligence into guarded action</div>
+ </div>
+ <ul class="tlList">
+  <li class="next">SignalGuard v1 (Solana): AI signal engine for whale activity, capital flow, and converging market signals</li>
+ <li class="planned">TradeGuard v1 (Solana): guarded click-and-trade execution from verified intelligence surfaces</li>
+ <li class="planned">Public intelligence reports + pattern analysis</li>
+ <li class="planned">Tiered access for advanced intelligence + execution tools</li>
+ <li class="planned">WalletGuard v2 (Multi-chain): cross-chain wallet behavior + pattern analysis</li>
+ <li class="planned">ContractGuard v2 (Multi-chain): advanced heuristics + cross-chain contract risk detection</li>
+ <li class="planned">DEXGuard v2 (Multi-chain): unified liquidity + transaction visibility across supported chains</li>
+ </ul>
+ </div>
+ </div>
+ </div>
+
+ <div class="tlItem left" data-i="2">
+ <div class="tlCol a">
+ <div class="tlCard">
+ <div class="tlMeta">
+ <div class="tlPhase">Phase III</div>
+ <div class="tlTitle">Creation & Expansion</div>
+ <div class="tlTag">Scale intelligence across chains and creators</div>
+ </div>
+ <ul class="tlList">
+  <li class="planned">SignalGuard v2 (Multi-chain): cross-chain correlation, confidence scoring, and advanced alert filtering</li>
+ <li class="planned">TradeGuard v2 (Multi-chain): guarded execution across supported ecosystems</li>
+ <li class="planned">LaunchGuard: guided creator launchpad with standards, step-by-step launches, and post-launch accountability</li>
+ <li class="planned">Agent Marketplace</li>
+ <li class="planned">Growth OS: ecosystem participation + verified campaigns</li>
+ <li class="planned">Strategic integrations positioning $SOS as a portable intelligence layer</li>
+ </ul>
+ </div>
+ </div>
+ <div class="tlCol mid"><div class="tlNode" aria-hidden="true"></div></div>
+ <div class="tlCol b"></div>
+ </div>
+
+ <div class="tlItem right" data-i="3">
+ <div class="tlCol a"></div>
+ <div class="tlCol mid"><div class="tlNode" aria-hidden="true"></div></div>
+ <div class="tlCol b">
+ <div class="tlCard">
+ <div class="tlMeta">
+ <div class="tlPhase">Phase IV</div>
+ <div class="tlTitle">Autonomy & Permanence</div>
+ <div class="tlTag">Make $SOS a portable intelligence OS</div>
+ </div>
+ <ul class="tlList">
+  <li class="planned">Guardian Graph: entity mapping for wallets, deployers, clusters, and capital flow across chains</li>
+ <li class="planned">Always-on alerts: customizable watchlists + context-first notifications</li>
+ <li class="planned">Open intelligence API + embeddable widgets for partner platforms</li>
+ <li class="planned">Reputation layer for creators, pools, and agents based on verifiable behavior</li>
+ <li class="planned">Governance + protection fund for ecosystem incident response and clean-up initiatives</li>
+ </ul>
+ </div>
+ </div>
+ </div>
+
+ </div>
+ </div>
+ </div>
+ </section>
+
+ <!-- HOW TO BUY -->
+ <section id="buy">
+ <div class="card">
+ <div class="cardInner">
+ <h2 class="h2">How to Buy</h2>
+ <div class="steps">
+ <div class="step">
+ <div class="stepTop">
+ <div class="stepIcon" aria-hidden="true"><svg class="ico"><use href="#ico-vault" xlink:href="#ico-vault"></use></svg></div>
+ <div class="num">1</div>
+ </div>
+ <h4>Get a Wallet</h4>
+ <p>Use a Solana wallet (Phantom, Solflare, Backpack) and set it up securely.</p>
+ </div>
+ <div class="step">
+ <div class="stepTop">
+ <div class="stepIcon" aria-hidden="true"><svg class="ico"><use href="#ico-arrows" xlink:href="#ico-arrows"></use></svg></div>
+ <div class="num">2</div>
+ </div>
+ <h4>Fund with SOL</h4>
+ <p>Buy SOL on an exchange and send it to your Solana wallet address.</p>
+ </div>
+ <div class="step">
+ <div class="stepTop">
+ <div class="stepIcon" aria-hidden="true"><svg class="ico"><use href="#ico-swap" xlink:href="#ico-swap"></use></svg></div>
+ <div class="num">3</div>
+ </div>
+ <h4>Swap for $SOS</h4>
+ <p>Use a Solana DEX and swap SOL → $SOS using the official contract address.</p>
+ </div>
+ <div class="step">
+ <div class="stepTop">
+ <div class="stepIcon" aria-hidden="true"><svg class="ico"><use href="#ico-community" xlink:href="#ico-community"></use></svg></div>
+ <div class="num">4</div>
+ </div>
+ <h4>Join the Community</h4>
+ <p>Follow updates, memes, and announcements via Telegram and X.</p>
+ </div>
+</div>
+ </div>
+ </div>
+ </section>
+
+ <!-- FAQ -->
+ <section id="faq">
+ <div class="card">
+ <div class="cardInner">
+ <h2 class="h2">FAQ</h2>
+
+ <details>
+ <summary>What is $SOS?</summary>
+ <p>$SOS is a Solana native memecoin built around a guardian character made for Solana culture and community energy.</p>
+ </details>
+
+ <details>
+ <summary>Which chain is $SOS on?</summary>
+ <p>$SOS is on Solana.</p>
+ </details>
+
+ <details>
+ <summary>How do I buy $SOS?</summary>
+ <p>Get a Solana wallet, fund it with SOL, then swap SOL → $SOS on a Solana DEX using the official contract address.</p>
+ </details>
+
+ <details>
+ <summary>Where can I follow updates?</summary>
+ <p>Use the Socials section below for Telegram, X, and the Telegram bot.</p>
+ </details>
+ </div>
+ </div>
+ </section>
+
+ <!-- SOCIALS -->
+ <section id="socials">
+ <div class="card">
+ <div class="cardInner">
+ <h2 class="h2">$SOS</h2>
+ <div class="sub">Solana on Solana</div>
+ <div style="height:8px"></div>
+ <div style="color: rgba(255,255,255,.78); max-width: 72ch">
+  $SOS is an AI-assisted Solana driven ecosystem for on-chain discovery, research, trading, and launching.
+ </div>
+
+ <div class="socialRow">
+ <a class="btn grad" href="#tools">Tools</a>
+ <a class="btn grad" href="https://t.me/Solana_X1" target="_blank" rel="noreferrer">Telegram</a>
+ <a class="btn grad" href="https://x.com/Solana_X1" target="_blank" rel="noreferrer">X (Twitter)</a>
+ <a class="btn grad" href="https://t.me/solanaonsolana_bot" target="_blank" rel="noreferrer">Telegram Bot</a>
+ </div>
+
+ <div style="height:14px"></div>
+
+ <div class="stat copyBox" data-copy="XXXXXXXXXXXXXXXXXXXXXXXX" role="button" tabindex="0" aria-label="Copy Contract Address">
+ <div style="min-width:0">
+ <div class="k">Contract Address</div>
+ <div class="copyText">XXXXXXXXXXXXXXXXXXXXXXXX</div>
+ </div>
+ <div class="copyHint">Click to copy</div>
+ </div>
+ </div>
+ </div>
+ </section>
+
+ <footer>
+ © <span id="y"></span> $SOS Solana on Solana. All content is for community and entertainment.
+ </footer>
+ </main>
+
+ <script>
+ // Year
+ document.getElementById("y").textContent = new Date().getFullYear();
+
+ // Copy helpers
+ function setHint(el, ok){
+ if(!el) return;
+ if(ok){
+ el.textContent = "Copied!";
+ el.classList.add("ok");
+ window.setTimeout(() => {
+ el.textContent = "Click to copy";
+ el.classList.remove("ok");
+ }, 1200);
+ } else {
+ el.textContent = "Copy failed";
+ window.setTimeout(() => {
+ el.textContent = "Click to copy";
+ }, 1200);
+ }
+ }
+
+ async function copyText(text){
+ try{
+ await navigator.clipboard.writeText(text);
+ return true;
+ }catch(e){
+ const ta = document.createElement("textarea");
+ ta.value = text;
+ ta.setAttribute("readonly","");
+ ta.style.position="fixed";
+ ta.style.top="-9999px";
+ document.body.appendChild(ta);
+ ta.select();
+ try{
+ const ok = document.execCommand("copy");
+ document.body.removeChild(ta);
+ return ok;
+ }catch(err){
+ document.body.removeChild(ta);
+ return false;
+ }
+ }
+ }
+
+ document.querySelectorAll(".copyBox").forEach(box => {
+ const value = (box.getAttribute("data-copy") || "").trim();
+ const hint = box.querySelector(".copyHint");
+
+ const handler = async () => {
+ const ok = await copyText(value);
+ setHint(hint, ok);
+ };
+
+ box.addEventListener("click", handler);
+ box.addEventListener("keydown", (e) => {
+ if(e.key === "Enter" || e.key === " "){
+ e.preventDefault();
+ handler();
+ }
+ });
+ });
+
+ // Desktop menu (⋯)
+ const menuBtn = document.getElementById("menuBtn");
+ const menuPop = document.getElementById("menuPop");
+
+ function closeMenu(){
+ if(!menuPop) return;
+ menuPop.classList.remove("open");
+ if(menuBtn) menuBtn.setAttribute("aria-expanded","false");
+ document.body.classList.remove("menuOpen");
+ }
+ 
+ // Close menu when a link is clicked
+ if(menuPop){
+ menuPop.querySelectorAll('a').forEach(a=>a.addEventListener('click', closeMenu));
+ }
+function toggleMenu(){
+ const open = menuPop.classList.toggle("open");
+ menuBtn.setAttribute("aria-expanded", open ? "true" : "false");
+ document.body.classList.toggle("menuOpen", open);
+ }
+
+ if(menuBtn && menuPop){
+ menuBtn.addEventListener("click", (e) => {
+ e.stopPropagation();
+ toggleMenu();
+ });
+ document.addEventListener("click", () => closeMenu());
+ document.addEventListener("keydown", (e) => {
+ if(e.key === "Escape") closeMenu();
+ });
+ menuPop.addEventListener("click", (e) => e.stopPropagation());
+ }
+
+ // Tool cards: make the entire card clickable (but don’t hijack real links/buttons)
+ function isInteractive(el){
+ if(!el) return false;
+ return !!el.closest('a, button, input, textarea, select, summary, details');
+ }
+
+ document.querySelectorAll('.toolCard[data-href]').forEach(card => {
+ const href = (card.getAttribute('data-href') || '').trim();
+ if(!href) return;
+
+ const go = () => window.open(href, '_blank', 'noopener,noreferrer');
+
+ card.addEventListener('click', (e) => {
+ if(isInteractive(e.target)) return;
+ go();
+ });
+
+ card.addEventListener('keydown', (e) => {
+ if(e.key === 'Enter' || e.key === ' '){
+ e.preventDefault();
+ go();
+ }
+ });
+ });
+
+ // Mobile drawer
+ const mOpen = document.getElementById("mOpen");
+ const mClose = document.getElementById("mClose");
+ const mDrawer = document.getElementById("mDrawer");
+ const mOverlay = document.getElementById("mOverlay");
+
+ function openDrawer(){ if(!mDrawer) return;
+ mDrawer.classList.add("open");
+ mOverlay.classList.add("open");
+ mDrawer.setAttribute("aria-hidden","false");
+ mOverlay.setAttribute("aria-hidden","false");
+ document.body.style.overflow = "hidden";
+ }
+
+ function closeDrawer(){ if(!mDrawer) return;
+ mDrawer.classList.remove("open");
+ mOverlay.classList.remove("open");
+ mDrawer.setAttribute("aria-hidden","true");
+ mOverlay.setAttribute("aria-hidden","true");
+ document.body.style.overflow = "";
+ }
+
+ if(mOpen && mClose && mDrawer && mOverlay){
+ mOpen && mOpen.addEventListener("click", (e) => { e.preventDefault(); openDrawer(); });
+ mClose && mClose.addEventListener("click", (e) => { e.preventDefault(); closeDrawer(); });
+ mOverlay && mOverlay.addEventListener("click", () => closeDrawer());
+ document.addEventListener("keydown", (e) => { if(e.key === "Escape") closeDrawer(); });
+
+ // close drawer on link click
+ mDrawer.querySelectorAll('a[href^="#"]').forEach(a=>{
+ a.addEventListener("click", ()=> closeDrawer());
+ });
+ }
+
+ // Roadmap reveal on scroll
+ (function(){
+ const items = Array.from(document.querySelectorAll('.tlItem'));
+ if(!items.length) return;
+
+ items.forEach((el) => {
+ const i = parseInt(el.getAttribute('data-i') || '0', 10);
+ el.style.transitionDelay = (i * 110) + 'ms';
+ });
+
+ const io = new IntersectionObserver((entries) => {
+ entries.forEach((e) => {
+ if(e.isIntersecting){
+ e.target.classList.add('in');
+ io.unobserve(e.target);
+ }
+ });
+ }, { threshold: 0.14, rootMargin: '0px 0px -12% 0px' });
+
+ items.forEach(el => io.observe(el));
+ })();
+
+ // ===== DexScreener: Trending ticker + Search dropdown =====
+ (function(){
+   const $ = (sel, root=document) => root.querySelector(sel);
+   const trendTrack = $("#trendTrack");
+   const inEl = $("#dexSearchInput");
+   const resEl = $("#dexResults");
+   const btnGo = $("#dexSearchGo"); // (removed from UI)
+   const btnCopy = $("#dexSearchCopy"); // (removed from UI)
+
+   // Where to send users for the Contract Scanner.
+   // Your page already links to https://solanax1.com/contract, so we default to "/contract".
+   const SCANNER_PAGE = (window.SOS_SCANNER_URL && String(window.SOS_SCANNER_URL)) || (location.origin + "/contract");
+
+   const NET_TO_DEX_CHAIN = { solana: "solana", eth: "ethereum", bsc: "bsc", base: "base" };
+   const DEX_TO_SCANNER_CHAIN = { solana: "sol", ethereum: "eth", bsc: "bnb", base: "base" };
+
+   function looksEvmAddress(x){
+     const s = String(x||"").trim();
+     return /^0x[a-fA-F0-9]{40}$/.test(s);
+   }
+   function looksSolAddress(x){
+     const s = String(x||"").trim();
+     // quick base58-ish (no 0,O,I,l) + typical length range
+     return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(s);
+   }
+   function looksAddressForNet(net, x){
+     if(net === "solana") return looksSolAddress(x);
+     if(net === "eth" || net === "bsc" || net === "base") return looksEvmAddress(x);
+     // fallback: accept either
+     return looksEvmAddress(x) || looksSolAddress(x);
+   }
+   function openScanner(addr, dexChainId){
+     const dc = String(dexChainId||"").toLowerCase();
+     const scannerChain = DEX_TO_SCANNER_CHAIN[dc] || DEX_TO_SCANNER_CHAIN[NET_TO_DEX_CHAIN[activeNet]||""] || "sol";
+     const url = `${SCANNER_PAGE}?chain=${encodeURIComponent(scannerChain)}&addr=${encodeURIComponent(String(addr||"").trim())}`;
+     window.location.href = url;
+   }
+
+   if(!trendTrack || !inEl || !resEl) return;
+   // Chain toggle events
+
+   const toggleEl = document.getElementById('chainToggle');
+   if(toggleEl){
+     toggleEl.addEventListener('click', (e)=>{
+       const btn = e.target.closest('.chainBtn');
+       if(!btn) return;
+       const net = btn.getAttribute('data-net');
+       setActiveNet(net);
+     });
+   }
+
+   const esc = (s="") => String(s)
+     .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+     .replace(/"/g,"&quot;").replace(/'/g,"&#39;");
+
+   const shortAddr = (a="") => a && a.length > 12 ? (a.slice(0,6)+"…"+a.slice(-4)) : a;
+
+   function formatCompact(n){
+     const num = Number(n);
+     if(!Number.isFinite(num)) return '—';
+     const abs = Math.abs(num);
+     const sign = num < 0 ? '-' : '';
+     const units = [
+       {v: 1e12, s: 'T'},
+       {v: 1e9,  s: 'B'},
+       {v: 1e6,  s: 'M'},
+       {v: 1e3,  s: 'K'},
+     ];
+     for(const u of units){
+       if(abs >= u.v){
+         const v = abs / u.v;
+         const dec = v < 10 ? 2 : (v < 100 ? 1 : 0);
+         let out = v.toFixed(dec);
+         // trim trailing zeros
+         out = out.replace(/\.0+$/,'').replace(/(\.[0-9]*?)0+$/,'$1');
+         return sign + out + u.s;
+       }
+     }
+     // < 1K
+     return sign + String(Math.round(abs));
+   }
+
+   function toast(msg){
+     // lightweight reuse of status if exists, otherwise subtle title flash
+     try{
+       document.title = msg;
+       setTimeout(()=>{ document.title = document.title.replace(msg,"").trim() || "$SOS — Solana on Solana"; }, 700);
+     }catch(e){}
+   }
+
+   // Dexguard logo (go to Dexguard page)
+   const dexguardLogo = $("#dexguardLogo");
+   if(dexguardLogo){
+     dexguardLogo.addEventListener('click', (e)=>{
+       e.preventDefault();
+       window.location.href = "https://www.solanax1.com/dexguard";
+     });
+   }
+
+
+  async function safeJson(url, opts={}){
+    const timeoutMs = Number(opts.timeoutMs ?? 12000);
+    const retries = Number(opts.retries ?? 2);
+    const retryBase = Number(opts.retryBaseMs ?? 800);
+
+    let lastErr = null;
+    for(let attempt=0; attempt<=retries; attempt++){
+      const controller = new AbortController();
+      const t = setTimeout(()=>controller.abort(), timeoutMs);
+      try{
+        const r = await fetch(url, {cache:"no-store", signal: controller.signal});
+        clearTimeout(t);
+        if(!r.ok){
+          // Retry common transient statuses
+          if((r.status===429 || r.status>=500) && attempt<retries){
+            await new Promise(res=>setTimeout(res, retryBase * Math.pow(2, attempt)));
+            continue;
+          }
+          throw new Error("HTTP "+r.status);
+        }
+        const txt = await r.text();
+        try{ return JSON.parse(txt); }
+        catch(_e){ throw new Error("Bad JSON"); }
+      }catch(e){
+        clearTimeout(t);
+        lastErr = e;
+        if(attempt<retries){
+          await new Promise(res=>setTimeout(res, retryBase * Math.pow(2, attempt)));
+          continue;
+        }
+      }
+    }
+    throw lastErr || new Error("Fetch failed");
+  }
+
+   async function fetchTokenSymbol(chainId, tokenAddress){
+     // Use token-pairs endpoint to infer baseToken symbol/name
+     try{
+       const pairs = await safeJson(`https://api.dexscreener.com/token-pairs/v1/${encodeURIComponent(chainId)}/${encodeURIComponent(tokenAddress)}`);
+       const p = Array.isArray(pairs) ? pairs[0] : null;
+       const sym = p?.baseToken?.symbol || p?.baseToken?.name || "";
+       const name = p?.baseToken?.name || "";
+       return { sym, name, pairUrl: p?.url || "", pairAddress: p?.pairAddress || "" };
+     }catch(e){
+       return { sym:"", name:"", pairUrl:"", pairAddress:"" };
+     }
+   }
+
+   const NETWORKS = {
+     solana: { label: 'SOL' },
+     eth: { label: 'ETH' },
+     bsc: { label: 'BNB' },
+     base: { label: 'BASE' }
+   };
+
+   let activeNet = 'solana';
+   let trendTimer = null;
+  let trendReqId = 0;
+  const TREND_CACHE_TTL = 20 * 60 * 1000; // 20 min
+
+  function trendCacheKey(net){ return `sos_trending_cache_v2_${net}`; }
+
+  function readTrendCache(net){
+    try{
+      const raw = localStorage.getItem(trendCacheKey(net));
+      if(!raw) return null;
+      const obj = JSON.parse(raw);
+      if(!obj || !obj.items) return null;
+      if(obj.ts && (Date.now() - obj.ts) > TREND_CACHE_TTL) return null;
+      return obj;
+    }catch(_e){ return null; }
+  }
+
+  function writeTrendCache(net, items){
+    try{ localStorage.setItem(trendCacheKey(net), JSON.stringify({ts: Date.now(), items})); }catch(_e){}
+  }
+
+   // Make the marquee a true endless loop: distance + duration scale with content width.
+   function syncTickerMarquee(){
+     try{
+       if(!trendTrack) return;
+       const isMobile = window.matchMedia('(max-width: 860px)').matches;
+       // Readable-but-fast speed: adapt to the real width so the loop is seamless on all screens.
+       // (Higher px/s = faster. We intentionally keep this conservative so you can actually read.)
+       const pxPerSec = isMobile ? 120 : 95;
+
+       requestAnimationFrame(()=>{
+         // We render the items twice (A+B). One full cycle should travel exactly A.
+         const total = trendTrack.scrollWidth || 0;
+         if(total < 20) return;
+         const one = Math.max(1, Math.round(total / 2));
+         document.documentElement.style.setProperty('--tickerDistance', one + 'px');
+
+         // Keep the animation within a readable band.
+         const dur = Math.min(22, Math.max(6.5, one / pxPerSec));
+         document.documentElement.style.setProperty('--tickerSpeed', dur.toFixed(2) + 's');
+       });
+     }catch(_e){}
+   }
+
+   // Re-sync on resize (debounced)
+   let _tickerResizeT = null;
+   window.addEventListener('resize', ()=>{
+     clearTimeout(_tickerResizeT);
+     _tickerResizeT = setTimeout(syncTickerMarquee, 120);
+   }, {passive:true});
+
+  async function loadTrending(net){
+    const myReq = ++trendReqId;
+    // show cached immediately (prevents blank/unavailable flashes)
+    const cached = readTrendCache(net);
+    try{
+      if(cached && trendTrack && (!trendTrack.innerHTML || /(Trending unavailable|Loading trending)/i.test(trendTrack.textContent||""))){
+        trendTrack.innerHTML = cached.items + cached.items;
+        syncTickerMarquee();
+      }
+
+      const url = `https://api.geckoterminal.com/api/v2/networks/${encodeURIComponent(net)}/trending_pools?include=base_token,quote_token`;
+      const data = await safeJson(url, {timeoutMs: 12000, retries: 2, retryBaseMs: 900});
+      if(myReq !== trendReqId) return; // stale response
+       const pools = Array.isArray(data?.data) ? data.data.slice(0,10) : [];
+       const included = Array.isArray(data?.included) ? data.included : [];
+
+       const byKey = new Map();
+       for(const inc of included){
+         if(!inc || !inc.id) continue;
+         const id = String(inc.id);
+         byKey.set(id, inc);
+         if(inc.type) byKey.set(String(inc.type)+':' + id, inc);
+       }
+
+       if(!pools.length) throw new Error('No data');
+
+      const items = pools.map((pool, n) => {
+         const a = pool?.attributes || {};
+         const rel = pool?.relationships || {};
+         const baseRef = rel?.base_token?.data || null;
+         const quoteRef = rel?.quote_token?.data || null;
+         const baseId = baseRef?.id ? String(baseRef.id) : '';
+         const baseType = baseRef?.type ? String(baseRef.type) : '';
+         const quoteId = quoteRef?.id ? String(quoteRef.id) : '';
+         const quoteType = quoteRef?.type ? String(quoteRef.type) : '';
+         const baseT = baseId ? ((byKey.get(baseType+':' + baseId) || byKey.get(baseId))?.attributes || {}) : {};
+         const quoteT = quoteId ? ((byKey.get(quoteType+':' + quoteId) || byKey.get(quoteId))?.attributes || {}) : {};
+         const sym = (baseT?.symbol || baseT?.name || '').trim() || (a?.name ? String(a.name).split('/')[0].trim() : '') || 'TOKEN';
+         const symClean = String(sym||'TOKEN').replace(/[^a-zA-Z0-9_$\.\-]/g,'').slice(0,24) || 'TOKEN';
+         const symDisp = symClean.startsWith('$') ? symClean : ('$' + symClean.replace(/^\$/,''));
+         const pctRaw = ((a?.price_change_percentage && (a.price_change_percentage.h24 ?? a.price_change_percentage['h24'] ?? a.price_change_percentage['24h'])) ?? a?.price_change_percentage_24h ?? a?.price_change_percentage_h24 ?? a?.price_change_percentage_24h_in_percent ?? null);
+         const pctNum = (pctRaw===null || pctRaw===undefined || pctRaw==='') ? NaN : Number(pctRaw);
+         const pctTxt = Number.isFinite(pctNum) ? `${pctNum>0?'+':''}${pctNum.toFixed(2)}%` : '';
+         const pctCls = Number.isFinite(pctNum) ? (pctNum>0?'up':(pctNum<0?'down':'')) : '';
+        const logoUrlRaw = String(
+          baseT?.image_url || baseT?.imageUrl || baseT?.image || baseT?.logo_url || baseT?.logoUrl ||
+          quoteT?.image_url || quoteT?.imageUrl || quoteT?.image || quoteT?.logo_url || quoteT?.logoUrl ||
+          a?.image_url || a?.imageUrl || a?.base_token_image_url || a?.base_token_imageUrl || a?.token_image_url || a?.token_imageUrl ||
+          ''
+        ).trim();
+        let logoUrl = logoUrlRaw;
+        if(logoUrl && logoUrl.startsWith('/')) logoUrl = 'https://www.geckoterminal.com' + logoUrl;
+        const first = (symClean || 'T').slice(0,1).toUpperCase();
+         const poolAddr = (a?.address || '').trim();
+         // Prefer token address (GeckoTerminal base_token id is usually the token CA)
+         const tokenAddr = String((baseT?.address || baseId || '')).trim();
+         // Map Gecko networks to DexGuard chains
+         const guardNet = (net === 'solana') ? 'sol' : (net === 'eth') ? 'eth' : (net === 'bsc') ? 'bnb' : 'base';
+         // If tokenAddr is missing, keep GeckoTerminal as a safe fallback (never break the ticker)
+         const href = tokenAddr
+           ? `/dexguard?chain=${encodeURIComponent(guardNet)}&addr=${encodeURIComponent(tokenAddr)}`
+           : (poolAddr ? `https://www.geckoterminal.com/${encodeURIComponent(net)}/pools/${encodeURIComponent(poolAddr)}` : '#');
+         const top1 = (n===0);
+         const cls = `tickerItem${top1?' top1':''}`;
+         const rankTxt = top1 ? `🔥 #1` : `#${n+1}`;
+        const logo = logoUrl
+          ? `<span class="tickerLogoWrap"><img class="tickerLogo" src="${esc(logoUrl)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove(); var w=this.closest('.tickerLogoWrap'); if(w){w.innerHTML='<span class=tickerLogoFallback>${esc(first)}</span>';}">
+            </span>`
+          : `<span class="tickerLogoWrap"><span class="tickerLogoFallback">${esc(first)}</span></span>`;
+         return `<a class="${cls}" href="${esc(href)}" target="_blank" rel="noreferrer">
+           <span class="rank">${esc(rankTxt)}</span>
+          ${logo}
+           <span class="sym">${esc(symDisp)}</span>
+           ${pctTxt ? `<span class="tickerPct ${esc(pctCls)}">${esc(pctTxt)}</span>` : ''}
+         </a>`;
+       }).join('');
+
+      writeTrendCache(net, items);
+      trendTrack.innerHTML = items + items;
+
+       // ✅ ensure it runs through the full list before looping (no "cut" mid-way)
+       syncTickerMarquee();
+
+
+    }catch(e){
+      if(myReq !== trendReqId) return;
+      const keepExisting = !!(trendTrack && trendTrack.children && trendTrack.children.length > 0);
+      const cached2 = readTrendCache(net);
+      if(cached2 && trendTrack){
+        trendTrack.innerHTML = cached2.items + cached2.items;
+        toast('Trending temporarily unavailable');
+      }else if(!keepExisting){
+        trendTrack.innerHTML = `<span class="tickerItem" style="opacity:.75"><span class="rank">!</span><span class="sym">Trending unavailable</span><span class="chain" style="display:none">${esc(net)}</span></span>`;
+      }else{
+        toast('Trending temporarily unavailable');
+      }
+      syncTickerMarquee();
+            // quick self-heal retry (no reload needed)
+      setTimeout(()=>{ if(activeNet===net) loadTrending(net); }, 4500);
+    }
+  }
+
+   function setActiveNet(net){
+     if(!net || !NETWORKS[net]) net = 'solana';
+     activeNet = net;
+
+     // theme class for chain-colored UI
+     document.body.classList.remove('net-sol','net-eth','net-bnb','net-base');
+     document.body.classList.add(net==='solana'?'net-sol':net==='eth'?'net-eth':net==='bsc'?'net-bnb':'net-base');
+
+     // buttons
+     const wrap = document.getElementById('chainToggle');
+     if(wrap){
+       wrap.querySelectorAll('.chainBtn').forEach(b=>{
+         const on = (b.getAttribute('data-net') === net);
+         b.classList.toggle('active', on);
+         b.setAttribute('aria-pressed', on ? 'true' : 'false');
+       });
+     }
+
+     // load now + refresh
+     clearInterval(trendTimer);
+     loadTrending(net);
+     trendTimer = setInterval(()=>loadTrending(net), 30000);
+   }
+
+   // Start with Solana trending
+   setActiveNet('solana');
+
+   // Search dropdown
+   let tmr = null;
+   let lastQ = "";
+   let searchReqId = 0;
+   async function runSearch(q){
+     q = (q || "").trim();
+     lastQ = q;
+     const mySReq = ++searchReqId;
+     if(!q){
+       resEl.hidden = true;
+       resEl.innerHTML = "";
+       resEl.dataset.bestCa = "";
+       resEl.dataset.bestChain = "";
+       return;
+     }
+     try{
+       const data = await safeJson(`https://api.dexscreener.com/latest/dex/search?q=${encodeURIComponent(q)}`);
+       const pairs = data?.pairs || [];
+       const top = pairs.slice(0, 10);
+
+       if(!top.length){
+         resEl.innerHTML = `<div class="dexResRow" style="opacity:.75"><div class="dexResLeft">
+           <div class="dexResTitle">No results</div>
+           <div class="dexResMeta">Try symbol, name, or paste a contract.</div>
+         </div></div>`;
+         resEl.hidden = false;
+         resEl.dataset.bestCa = "";
+         resEl.dataset.bestChain = "";
+         return;
+       }
+
+       // store a "best" candidate for the top-right Scan button
+       const want = (NET_TO_DEX_CHAIN[activeNet] || "solana").toLowerCase();
+       const best = top.find(p => String(p?.chainId||"").toLowerCase() === want) || top[0];
+       resEl.dataset.bestCa = best?.baseToken?.address || "";
+       resEl.dataset.bestChain = best?.chainId || "";
+
+       resEl.innerHTML = top.map(p=>{
+         const chainIdRaw = (p.chainId || '');
+         const chain = String(chainIdRaw).toUpperCase();
+         const chainClass = 'chain-' + String(chainIdRaw).toLowerCase();
+         const dex = (p.dexId || "").toUpperCase();
+         const baseSym = p.baseToken?.symbol || "TOKEN";
+         const quoteSym = p.quoteToken?.symbol || "";
+         const title = quoteSym ? `${baseSym}/${quoteSym}` : `${baseSym}`;
+         const logoUrl = (p?.info?.imageUrl || p?.info?.image || p?.baseToken?.logoURI || p?.baseToken?.logo || p?.baseToken?.image || "");
+         const ch24 = p.priceChange?.h24;
+         const chClass = (typeof ch24 === 'number') ? (ch24>0?'up':(ch24<0?'down':'')) : '';
+         const chTxt = (typeof ch24 === "number") ? `${ch24>0?"+":""}${ch24.toFixed(2)}%` : "—";
+         const mcapVal = (p.marketCap != null ? Number(p.marketCap) : (p.fdv != null ? Number(p.fdv) : null));
+         const mcap = (typeof mcapVal === 'number' && Number.isFinite(mcapVal)) ? `$${formatCompact(mcapVal)}` : "—";
+         const mcapLabel = (p.marketCap != null ? "MCap" : (p.fdv != null ? "FDV" : "MCap"));
+         const ca = p.baseToken?.address || "";
+
+         // Route to DexGuard (internal)
+         const dc = String(p.chainId||'').toLowerCase();
+         const guardChain = DEX_TO_SCANNER_CHAIN[dc] || DEX_TO_SCANNER_CHAIN[NET_TO_DEX_CHAIN[activeNet]||''] || 'sol';
+         const href = `/dexguard?chain=${encodeURIComponent(guardChain)}&addr=${encodeURIComponent(String(ca||''))}`;
+         return `<div class="dexResRow">
+           <div class="dexResLeft">
+             <div class="dexResTitleRow">
+               <div class="dexLogoWrap ${logoUrl?"":"noimg"}">
+                 ${logoUrl ? `<img class="dexLogo" src="${esc(logoUrl)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.style.display='none'; this.closest('.dexLogoWrap').classList.add('noimg');">` : ``}
+                 <span class="dexLogoFallback">${esc((baseSym||"T").slice(0,1).toUpperCase())}</span>
+               </div>
+               <div class="dexResTitle">${esc(title)}</div>
+             </div>
+             <div class="dexResMeta">
+               <div class="dexMetaRow">
+                 <span class="dexPill ${esc(chainClass)}">${esc(chain)}</span>
+                 <span class="dexPill">${esc(dex || "DEX")}</span>
+               </div>
+               <div class="dexMetaRow stats">
+                 <span class="dexPill ${esc(chClass)}">24h ${esc(chTxt)}</span>
+                 <span class="dexPill">${esc(mcapLabel)} ${esc(mcap)}</span>
+               </div>
+               <div class="dexMetaRow ca">
+                 <span class="dexPill" title="${esc(ca)}">CA ${esc(shortAddr(ca))}</span>
+               </div>
+             </div>
+           </div>
+           <div class="dexResActions">
+             <button class="btn ghost dexMiniBtn copyBtn" type="button" data-copy="${esc(ca)}">Copy CA</button>
+             <a class="btn ghost dexMiniBtn chartBtn dexA" href="${esc(href)}">Chart</a>
+            <button class="btn grad dexMiniBtn" type="button" data-scan="${esc(ca)}" data-chain="${esc(p.chainId || '')}">Scanner</button>
+           </div>
+         </div>`;
+       }).join("");
+
+       resEl.hidden = false;
+     }catch(e){
+       const hasResults = !!(resEl && !resEl.hidden && resEl.querySelector('.dexResRow'));
+       if(hasResults){
+         toast('Try again');
+         return;
+       }
+       resEl.innerHTML = `<div class="dexResRow" style="opacity:.75"><div class="dexResLeft">
+         <div class="dexResTitle">Not found</div>
+         <div class="dexResMeta">Try again.</div>
+       </div></div>`;
+       resEl.hidden = false;
+     }
+   }
+
+   inEl.addEventListener("input", () => {
+     const q = inEl.value;
+     clearTimeout(tmr);
+     tmr = setTimeout(()=> runSearch(q), 250);
+   });
+   if(btnGo){
+
+
+     btnGo.addEventListener("click", () => {
+       // Search button should NOT navigate away. It simply forces an immediate local search.
+       const q = (inEl.value || "").trim();
+       if(!q) { inEl.focus(); return; }
+       clearTimeout(tmr);
+       runSearch(q);
+       resEl.hidden = false;
+       inEl.focus();
+     });
+   }
+   if(btnCopy){
+
+
+     btnCopy.addEventListener("click", () => {
+       // Scan: redirects to the Contract Scanner and auto-runs with the selected CA.
+       // If user typed a real CA, we use it. Otherwise we use the best dropdown match.
+       (async () => {
+         const q = (inEl.value || "").trim();
+         if(!q) return;
+
+         // 1) If input already looks like a CA for the active network, use it.
+         if(looksAddressForNet(activeNet, q) || looksEvmAddress(q) || looksSolAddress(q)){
+           openScanner(q, NET_TO_DEX_CHAIN[activeNet] || "solana");
+           return;
+         }
+
+         // 2) If dropdown already has a best candidate, use it.
+         const bestCa = (resEl.dataset.bestCa || "").trim();
+         const bestChain = (resEl.dataset.bestChain || "").trim();
+         if(bestCa){
+           openScanner(bestCa, bestChain || (NET_TO_DEX_CHAIN[activeNet] || "solana"));
+           return;
+         }
+
+         // 3) Fallback: query DexScreener once and pick a best result.
+         try{
+           const data = await safeJson(`https://api.dexscreener.com/latest/dex/search?q=${encodeURIComponent(q)}`);
+           const pairs = Array.isArray(data?.pairs) ? data.pairs : [];
+           const want = (NET_TO_DEX_CHAIN[activeNet] || "solana").toLowerCase();
+           const pick = pairs.find(p => String(p?.chainId||"").toLowerCase() === want) || pairs[0];
+           const ca = pick?.baseToken?.address || "";
+           if(ca){
+             openScanner(ca, pick?.chainId || want);
+             return;
+           }
+         }catch(_e){}
+
+         toast("No scan target");
+       })();
+     });
+   }
+
+   // action buttons in dropdown (copy + scanner)
+   resEl.addEventListener("click", async (e) => {
+     const copyBtn = e.target.closest("button[data-copy]");
+     if(copyBtn){
+       const val = copyBtn.getAttribute("data-copy") || "";
+       if(!val) return;
+       try{
+         await navigator.clipboard.writeText(val);
+         copyBtn.textContent = "Copied";
+         setTimeout(()=> copyBtn.textContent="Copy CA", 900);
+       }catch(err){
+         copyBtn.textContent = "Error";
+         setTimeout(()=> copyBtn.textContent="Copy CA", 900);
+       }
+       return;
+     }
+
+     const scanBtn = e.target.closest("button[data-scan]");
+     if(scanBtn){
+       const ca = scanBtn.getAttribute("data-scan") || "";
+       const chainId = scanBtn.getAttribute("data-chain") || "";
+       if(!ca) return;
+       openScanner(ca, chainId);
+       return;
+     }
+   });
+
+   // close dropdown when clicking outside
+   document.addEventListener("click", (e) => {
+     const inside = e.target.closest(".dexSearch");
+     if(!inside && !resEl.hidden){
+       resEl.hidden = true;
+     }
+   });
+
+   // keyboard: Enter triggers go
+   inEl.addEventListener("keydown", (e) => {
+     if(e.key === "Enter"){
+       e.preventDefault();
+       const q = (inEl.value || "").trim();
+       if(!q) { inEl.focus(); return; }
+       clearTimeout(tmr);
+       runSearch(q);
+       resEl.hidden = false;
+       inEl.focus();
+     }
+     if(e.key === "Escape"){
+       resEl.hidden = true;
+     }
+   });
+ })();
+
+</script>
+</body>
+</html>
