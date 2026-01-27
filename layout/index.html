@@ -1,0 +1,1899 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#07070c" />
+
+  <title>$SOS Solana on Solana</title>
+  <meta name="description" content="$SOS Solana on Solana. Meet the Guardian of the chain." />
+
+  <meta property="og:title" content="$SOS Solana on Solana" />
+  <meta property="og:description" content="Meet the Guardian of the chain." />
+  <meta property="og:type" content="website" />
+  <meta property="og:image" content="assets/logo.png" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <style>
+    :root{
+      --bg:#06070b;
+      --bg2:#0b0c14;
+      --panel: rgba(255,255,255,.06);
+      --panel-strong: rgba(255,255,255,.09);
+      --stroke: rgba(255,255,255,.12);
+      --text: rgba(255,255,255,.92);
+      --muted: rgba(255,255,255,.65);
+      --cyan:#08e7ff;
+      --violet:#7e5bff;
+      --green:#20ffb6;
+      --radius: 22px;
+      --shadow: 0 20px 60px rgba(0,0,0,.35);
+      --shadow-soft: 0 12px 36px rgba(0,0,0,.35);
+      --max: 1200px;
+      --ring: 0 0 0 4px rgba(8,231,255,.18);
+      --tickerSpeed: 10s;
+      --tickerDistance: 900px;
+    }
+
+    *{box-sizing:border-box}
+    html{height:100%; scroll-behavior:smooth}
+    body{
+      margin:0;
+      min-height:100%;
+      min-height:100dvh;
+      background: var(--bg);
+      color: var(--text);
+      font: 16px/1.7 "Inter", system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      overflow-x:hidden;
+      position: relative;
+    }
+
+    body::before,
+    body::after{
+      content:"";
+      position: fixed;
+      inset: 0;
+      z-index:-2;
+      pointer-events:none;
+    }
+    body::before{
+      background:
+        radial-gradient(900px 600px at 10% 10%, rgba(126,91,255,.22), transparent 60%),
+        radial-gradient(800px 520px at 90% 12%, rgba(8,231,255,.16), transparent 55%),
+        radial-gradient(900px 700px at 50% 90%, rgba(32,255,182,.12), transparent 60%),
+        var(--bg);
+    }
+    body::after{
+      background:
+        linear-gradient(transparent 0%, rgba(255,255,255,.04) 40%, transparent 80%) 0 0/100% 6px,
+        linear-gradient(90deg, rgba(255,255,255,.04) 1px, transparent 1px) 0 0/90px 90px;
+      mix-blend-mode: screen;
+      opacity:.12;
+      z-index:-1;
+      animation: scan 18s linear infinite;
+    }
+
+    @keyframes scan{
+      from{background-position:0 0, 0 0;}
+      to{background-position:0 200px, 120px 120px;}
+    }
+
+    a{color:inherit; text-decoration:none}
+    img{max-width:100%; height:auto; display:block}
+    .wrap{max-width:var(--max); margin:0 auto; padding:0 20px}
+
+    :focus-visible{
+      outline: none;
+      box-shadow: var(--ring);
+      border-radius: 14px;
+    }
+
+    .glass{
+      background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.04));
+      border: 1px solid var(--stroke);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(16px);
+    }
+
+    .btn{
+      display:inline-flex; align-items:center; justify-content:center;
+      gap:8px;
+      padding:10px 16px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.16);
+      background: rgba(255,255,255,.06);
+      color: var(--text);
+      font-weight:700;
+      font-size:13px;
+      letter-spacing:.02em;
+      transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease, background .2s ease;
+      white-space: nowrap;
+    }
+    .btn:hover{ transform: translateY(-1px); border-color: rgba(255,255,255,.3); }
+    .btn:active{ transform: translateY(0px) scale(.98); }
+    .btn.primary{
+      border: none;
+      background: linear-gradient(90deg, var(--cyan), var(--violet));
+      color: #05060a;
+      box-shadow: 0 12px 30px rgba(8,231,255,.25);
+    }
+    .btn.neon{
+      border-color: rgba(8,231,255,.5);
+      color: var(--cyan);
+      box-shadow: 0 0 0 1px rgba(8,231,255,.15) inset;
+    }
+    .btn.ghost{ background: transparent; }
+    .pill{
+      display:inline-flex; align-items:center; gap:6px;
+      padding:4px 10px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.18);
+      font-size:11px;
+      letter-spacing:.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .gradText{
+      background: linear-gradient(90deg, var(--cyan), var(--violet), var(--green));
+      -webkit-background-clip:text;
+      background-clip:text;
+      color: transparent;
+    }
+
+    header.siteHeader{
+      position: sticky;
+      top:0;
+      z-index:120;
+      background: rgba(6,7,11,.75);
+      border-bottom: 1px solid rgba(255,255,255,.06);
+      backdrop-filter: blur(18px);
+    }
+    .headerInner{
+      display:grid;
+      grid-template-columns: auto 1fr auto;
+      align-items:center;
+      gap:16px;
+      padding:14px 0;
+    }
+    .brand{
+      display:flex; align-items:center; gap:10px;
+      font-family: "Space Grotesk", "Inter", sans-serif;
+      font-weight:700;
+      letter-spacing:.02em;
+    }
+    .brand img{ width:36px; height:36px; }
+    .nav{
+      display:flex;
+      gap:12px;
+      justify-content:center;
+      font-size:13px;
+      color: var(--muted);
+      flex-wrap:wrap;
+    }
+    .nav a{ padding:6px 8px; border-radius:999px; }
+    .nav a:hover{ color: var(--text); background: rgba(255,255,255,.06); }
+    .headerActions{
+      display:flex;
+      gap:10px;
+      align-items:center;
+    }
+
+    .menu{
+      position: relative;
+    }
+    .menuBtn{
+      padding:8px 12px;
+      border-radius: 14px;
+    }
+    .menuPop{
+      position:absolute;
+      right:0;
+      top: calc(100% + 8px);
+      min-width: 220px;
+      background: rgba(10,12,18,.98);
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 16px;
+      padding:12px;
+      display:none;
+      box-shadow: var(--shadow-soft);
+      z-index:200;
+    }
+    .menuPop.open{ display:block; }
+    .menuLabel{
+      font-size:11px;
+      text-transform: uppercase;
+      color: rgba(255,255,255,.5);
+      letter-spacing:.12em;
+      margin:8px 4px;
+    }
+    .menuItem{
+      display:flex; align-items:center; justify-content:space-between;
+      gap:8px;
+      padding:8px 10px;
+      border-radius: 12px;
+      font-size:13px;
+      color: var(--text);
+      background: transparent;
+    }
+    .menuItem:hover{ background: rgba(255,255,255,.06); }
+    .menuBadge{
+      font-size:10px;
+      padding:3px 8px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.16);
+      color: var(--muted);
+    }
+
+    .topBar{
+      position: relative;
+      z-index:60;
+      padding: 10px 0 0;
+    }
+    .topBarInner{
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+    }
+    .tickerPanel{
+      display:grid;
+      grid-template-columns: 1fr auto;
+      gap:16px;
+      align-items:center;
+    }
+    .tickerHead{
+      display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+    }
+    .dexguardLogo{
+      display:inline-flex; align-items:center; justify-content:center;
+      width:42px; height:42px;
+      border-radius: 14px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.04);
+      padding:6px;
+    }
+    .dexguardLogo img{ width:100%; height:100%; object-fit:contain; }
+    .hotLabel{
+      display:inline-flex; align-items:center; gap:8px;
+      font-weight:700;
+      font-size:12px;
+      letter-spacing:.2em;
+      text-transform: uppercase;
+      color: var(--cyan);
+    }
+    .chainToggle{
+      display:flex; gap:6px; padding:6px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.08);
+      background: rgba(255,255,255,.04);
+    }
+    .chainBtn{
+      padding:6px 12px;
+      border-radius:999px;
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--muted);
+      font-weight:700;
+      font-size:12px;
+      letter-spacing:.08em;
+      text-transform: uppercase;
+      cursor:pointer;
+    }
+    .chainBtn.active{
+      color: #03040a;
+      background: linear-gradient(120deg, var(--cyan), var(--violet));
+      border-color: transparent;
+      box-shadow: 0 8px 20px rgba(8,231,255,.25);
+    }
+
+    .tickerWrap{
+      overflow:hidden;
+      border-radius: 16px;
+      border:1px solid rgba(255,255,255,.08);
+      background: rgba(255,255,255,.04);
+    }
+    .tickerTrack{
+      display:flex;
+      align-items:center;
+      gap:14px;
+      padding: 12px 16px;
+      white-space: nowrap;
+      animation: ticker var(--tickerSpeed) linear infinite;
+      will-change: transform;
+    }
+    .tickerItem{
+      display:inline-flex; align-items:center; gap:8px;
+      padding:6px 12px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.05);
+      font-size:12px;
+      color: var(--text);
+    }
+    .tickerItem.top1{ border-color: rgba(8,231,255,.45); }
+    .tickerLogoWrap{
+      width:20px; height:20px; border-radius:6px;
+      display:grid; place-items:center;
+      background: rgba(255,255,255,.08);
+      overflow:hidden;
+    }
+    .tickerLogo{ width:100%; height:100%; object-fit:cover; }
+    .tickerLogoFallback{ font-size:10px; font-weight:700; color: var(--muted); }
+    .tickerPct.up{ color: var(--green); }
+    .tickerPct.down{ color: #ff6e6e; }
+
+    @keyframes ticker{
+      from{ transform: translateX(0); }
+      to{ transform: translateX(calc(-1 * var(--tickerDistance))); }
+    }
+
+    .dexSearch{
+      position: relative;
+      width: 340px;
+      max-width: 42vw;
+    }
+    .dexSearchInner{
+      border-radius: 14px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.05);
+      padding:8px 12px;
+    }
+    .dexInput{
+      width:100%;
+      border:0;
+      outline:0;
+      background: transparent;
+      color: var(--text);
+      font-weight:600;
+    }
+    .dexResults{
+      position:absolute;
+      top: calc(100% + 8px);
+      left:0;
+      width:100%;
+      background: rgba(10,12,18,.98);
+      border:1px solid rgba(255,255,255,.08);
+      border-radius: 18px;
+      box-shadow: var(--shadow-soft);
+      z-index:120;
+      max-height: 360px;
+      overflow:auto;
+    }
+    .dexResRow{
+      display:flex; gap:12px; padding:12px;
+      border-bottom: 1px solid rgba(255,255,255,.06);
+    }
+    .dexResRow:last-child{ border-bottom:0; }
+    .dexResLeft{ flex:1; min-width:0; }
+    .dexResTitle{ font-weight:700; }
+    .dexResTitleRow{ display:flex; gap:10px; align-items:center; }
+    .dexLogoWrap{
+      width:32px; height:32px; border-radius:10px; overflow:hidden;
+      background: rgba(255,255,255,.08);
+      display:grid; place-items:center;
+      flex-shrink:0;
+    }
+    .dexLogo{ width:100%; height:100%; object-fit:cover; }
+    .dexLogoFallback{ font-size:11px; font-weight:700; color: var(--muted); }
+    .dexResMeta{ display:flex; flex-direction:column; gap:6px; margin-top:6px; font-size:12px; color: var(--muted); }
+    .dexMetaRow{ display:flex; flex-wrap:wrap; gap:6px; }
+    .dexPill{
+      padding:3px 8px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.14);
+      font-size:11px;
+    }
+    .dexPill.up{ color: var(--green); border-color: rgba(32,255,182,.35); }
+    .dexPill.down{ color: #ff6e6e; border-color: rgba(255,110,110,.35); }
+    .dexPill.chain-solana{ color: #b48dff; border-color: rgba(180,141,255,.35); }
+    .dexPill.chain-eth{ color: #6e8bff; border-color: rgba(110,139,255,.35); }
+    .dexPill.chain-bsc{ color: #f5c84c; border-color: rgba(245,200,76,.35); }
+    .dexPill.chain-base{ color: #4e7bff; border-color: rgba(78,123,255,.35); }
+    .dexResActions{
+      display:flex; flex-direction:column; gap:6px; align-items:flex-end;
+    }
+    .dexMiniBtn{ font-size:11px; padding:6px 10px; }
+
+    main{ padding: 24px 0 80px; }
+    section{ padding: 32px 0; }
+    .sectionHead{
+      display:flex; align-items:flex-end; justify-content:space-between; gap:12px;
+      margin-bottom: 20px;
+    }
+    .sectionTitle{
+      font-family: "Space Grotesk", "Inter", sans-serif;
+      font-size: clamp(28px, 4vw, 40px);
+      margin:0;
+      letter-spacing:-.02em;
+    }
+    .sectionLead{ color: var(--muted); max-width:560px; margin:8px 0 0; }
+
+    .hero{
+      padding-top: 20px;
+    }
+    .heroGrid{
+      display:grid;
+      grid-template-columns: 1.1fr .9fr;
+      gap:24px;
+      align-items:stretch;
+    }
+    .heroPanel{
+      padding: 36px;
+      position:relative;
+      overflow:hidden;
+    }
+    .heroPanel::after{
+      content:"";
+      position:absolute;
+      inset:-30%;
+      background: radial-gradient(circle, rgba(8,231,255,.12), transparent 60%);
+      opacity:.6;
+      pointer-events:none;
+    }
+    .heroTitle{
+      font-family: "Space Grotesk", "Inter", sans-serif;
+      font-size: clamp(40px, 7vw, 72px);
+      line-height:1.05;
+      margin:0 0 14px;
+    }
+    .heroSub{
+      display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+      color: var(--muted);
+      text-transform: uppercase;
+      font-size:11px;
+      letter-spacing:.3em;
+    }
+    .statusRow{ display:flex; gap:8px; flex-wrap:wrap; margin:18px 0; }
+    .status{
+      padding:6px 10px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.16);
+      font-size:11px;
+      letter-spacing:.2em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .heroCopy{
+      font-size:15px;
+      color: var(--muted);
+      margin-bottom: 24px;
+    }
+    .heroActions{
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+    }
+
+    .copyBox{
+      display:flex; align-items:center; justify-content:space-between;
+      gap:12px;
+      padding:14px 16px;
+      border-radius:16px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.04);
+      cursor:pointer;
+    }
+    .copyBox .k{ font-size:11px; text-transform:uppercase; letter-spacing:.2em; color: var(--muted); }
+    .copyBox .copyText{ font-weight:700; letter-spacing:.04em; }
+    .copyHint{ font-size:12px; color: var(--muted); }
+    .copyHint.ok{ color: var(--green); }
+
+    .heroSide{
+      padding: 32px;
+      display:flex;
+      flex-direction:column;
+      gap:18px;
+    }
+    .heroCard{
+      padding: 22px;
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,.08);
+      background: rgba(255,255,255,.04);
+    }
+    .heroCard h3{ margin:0 0 8px; font-size:16px; }
+    .heroCard p{ margin:0; color: var(--muted); font-size:14px; }
+
+    .whatGrid{
+      display:grid;
+      grid-template-columns: 1.1fr .9fr;
+      gap:24px;
+    }
+    .loreBox{
+      padding: 22px;
+      border-radius: 18px;
+      border:1px solid rgba(255,255,255,.1);
+      background: rgba(255,255,255,.05);
+      display:flex;
+      flex-direction:column;
+      gap:16px;
+    }
+    .proofsRow{
+      display:flex; flex-wrap:wrap; gap:8px;
+      align-items:center;
+    }
+    .proofLabel{
+      display:inline-flex; align-items:center; gap:8px;
+      font-size:11px; text-transform:uppercase; letter-spacing:.2em; color: var(--muted);
+    }
+    .pokeDot{
+      width:8px; height:8px; border-radius:50%;
+      background: var(--green);
+      box-shadow: 0 0 10px rgba(32,255,182,.6);
+    }
+
+    .toolsIntro{
+      padding: 26px;
+      display:grid;
+      grid-template-columns: 1fr auto;
+      gap:18px;
+      align-items:center;
+    }
+    .toolsQuick{ display:flex; gap:10px; flex-wrap:wrap; }
+    .toolsGrid{
+      display:grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap:16px;
+      margin-top: 18px;
+    }
+    .toolCard{
+      padding: 18px;
+      border-radius: 20px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.04);
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+      transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
+    }
+    .toolCard:hover{
+      transform: translateY(-4px);
+      border-color: rgba(8,231,255,.35);
+      box-shadow: 0 14px 40px rgba(8,231,255,.18);
+    }
+    .toolCard img{
+      width:100%;
+      border-radius: 14px;
+      border:1px solid rgba(255,255,255,.1);
+      background: rgba(255,255,255,.02);
+    }
+    .toolTitle{
+      font-family: "Space Grotesk", "Inter", sans-serif;
+      font-size:18px;
+      margin:0;
+    }
+    .toolDesc{ margin:0; color: var(--muted); font-size:14px; }
+    .toolMeta{ display:flex; gap:6px; flex-wrap:wrap; }
+    .toolCTA{
+      display:flex; align-items:center; justify-content:space-between;
+      margin-top:auto;
+      font-size:13px;
+      color: var(--muted);
+    }
+    .toolCTA .btn{ font-size:12px; }
+    .comingSoon{
+      opacity:.7;
+      filter: saturate(.6);
+    }
+
+    .statsGrid{
+      display:grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap:16px;
+    }
+    .statCard{
+      padding:18px;
+      border-radius: 18px;
+      border:1px solid rgba(255,255,255,.1);
+      background: rgba(255,255,255,.04);
+    }
+    .statTitle{ font-size:12px; text-transform:uppercase; letter-spacing:.2em; color: var(--muted); }
+    .statValue{ font-size:20px; font-weight:700; margin-top:8px; }
+
+    .timeline{
+      position:relative;
+      margin-top: 16px;
+      padding-left: 24px;
+    }
+    .timeline::before{
+      content:"";
+      position:absolute;
+      left:10px;
+      top:0;
+      bottom:0;
+      width:2px;
+      background: linear-gradient(180deg, rgba(8,231,255,.8), rgba(126,91,255,.2));
+    }
+    .tlItem{
+      position:relative;
+      padding: 18px 18px 18px 26px;
+      margin-bottom: 16px;
+      border-radius: 18px;
+      border:1px solid rgba(255,255,255,.08);
+      background: rgba(255,255,255,.04);
+      opacity:0;
+      transform: translateY(16px);
+      transition: opacity .4s ease, transform .4s ease;
+    }
+    .tlItem.in{ opacity:1; transform: translateY(0); }
+    .tlNode{
+      position:absolute;
+      left:-3px;
+      top: 24px;
+      width:14px; height:14px;
+      border-radius:50%;
+      background: var(--cyan);
+      box-shadow: 0 0 12px rgba(8,231,255,.6);
+    }
+    .tlTag{ color: var(--muted); font-size:13px; }
+    .tlList{ margin:10px 0 0; padding-left: 18px; color: var(--muted); }
+
+    .steps{
+      display:grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap:16px;
+    }
+    .step{
+      padding:18px;
+      border-radius: 18px;
+      border:1px solid rgba(255,255,255,.1);
+      background: rgba(255,255,255,.04);
+    }
+    .stepNum{
+      font-size:12px;
+      text-transform: uppercase;
+      letter-spacing:.2em;
+      color: var(--muted);
+    }
+    .step h4{ margin:10px 0 8px; }
+    .step p{ margin:0; color: var(--muted); font-size:14px; }
+
+    .socialGrid{
+      display:grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap:16px;
+    }
+    .socialCard{
+      padding:20px;
+      border-radius:18px;
+      border:1px solid rgba(255,255,255,.1);
+      background: rgba(255,255,255,.04);
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+    }
+    .socialCard h4{ margin:0; }
+    .socialCard p{ margin:0; color: var(--muted); font-size:14px; }
+
+    footer{
+      text-align:center;
+      color: var(--muted);
+      font-size:12px;
+      padding: 20px 0 60px;
+    }
+
+    .drawerOverlay{
+      position:fixed;
+      inset:0;
+      background: rgba(2,3,6,.6);
+      opacity:0;
+      pointer-events:none;
+      transition: opacity .2s ease;
+      z-index:140;
+    }
+    .drawerOverlay.open{ opacity:1; pointer-events:auto; }
+    .drawer{
+      position:fixed;
+      top:0;
+      right:-100%;
+      width:min(320px, 86vw);
+      height:100%;
+      background: rgba(9,11,18,.98);
+      border-left:1px solid rgba(255,255,255,.08);
+      padding:20px;
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+      transition: right .25s ease;
+      z-index:150;
+    }
+    .drawer.open{ right:0; }
+    .drawer a{ padding:10px 12px; border-radius:12px; background: rgba(255,255,255,.04); }
+    .drawerHead{ display:flex; align-items:center; justify-content:space-between; }
+
+    .bottomNav{
+      display:none;
+      position:fixed;
+      left:0;
+      right:0;
+      bottom:0;
+      z-index:110;
+      background: rgba(7,8,12,.9);
+      border-top:1px solid rgba(255,255,255,.08);
+      backdrop-filter: blur(16px);
+      padding:10px 16px;
+      gap:10px;
+      justify-content:space-between;
+    }
+    .bottomNav a{
+      flex:1;
+      text-align:center;
+      font-size:11px;
+      color: var(--muted);
+    }
+    .bottomNav span{
+      display:block;
+      font-size:12px;
+      color: var(--text);
+      margin-top:4px;
+    }
+
+    @media (max-width: 980px){
+      .headerInner{ grid-template-columns: auto auto; }
+      .nav{ display:none; }
+      .heroGrid{ grid-template-columns: 1fr; }
+      .whatGrid{ grid-template-columns: 1fr; }
+      .toolsGrid{ grid-template-columns: repeat(2, 1fr); }
+      .statsGrid{ grid-template-columns: 1fr; }
+      .steps{ grid-template-columns: repeat(2, 1fr); }
+      .socialGrid{ grid-template-columns: 1fr; }
+      .tickerPanel{ grid-template-columns: 1fr; }
+      .dexSearch{ width:100%; max-width:100%; }
+      .bottomNav{ display:flex; }
+    }
+
+    @media (max-width: 620px){
+      .wrap{ padding:0 14px; }
+      section{ padding: 24px 0; }
+      .heroPanel, .heroSide{ padding:22px; }
+      .toolsIntro{ grid-template-columns: 1fr; }
+      .toolsGrid{ grid-template-columns: 1fr; }
+      .steps{ grid-template-columns: 1fr; }
+    }
+
+    @media (prefers-reduced-motion: reduce){
+      *{ animation: none !important; transition: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <header class="siteHeader">
+    <div class="wrap headerInner">
+      <a class="brand" href="#top">
+        <img src="assets/logo.png" alt="$SOS logo" />
+        <span>$SOS • Solana on Solana</span>
+      </a>
+
+      <nav class="nav" aria-label="Primary">
+        <a href="#what">What is</a>
+        <a href="#tools">Tools</a>
+        <a href="#tokenomics">Tokenomics</a>
+        <a href="#roadmap">Roadmap</a>
+        <a href="#buy">How to Buy</a>
+        <a href="#socials">Socials</a>
+      </nav>
+
+      <div class="headerActions">
+        <a class="btn neon" href="https://t.me/Solana_X1" target="_blank" rel="noreferrer">Telegram</a>
+        <a class="btn neon" href="https://x.com/Solana_X1" target="_blank" rel="noreferrer">X</a>
+        <a class="btn primary" href="https://t.me/solanaonsolana_bot" target="_blank" rel="noreferrer">Bot</a>
+
+        <div class="menu">
+          <button class="btn ghost menuBtn" id="menuBtn" aria-haspopup="true" aria-expanded="false" aria-label="Open menu">⋯</button>
+          <div class="menuPop" id="menuPop" role="menu" aria-label="Quick links">
+            <div class="menuLabel">Navigate</div>
+            <a class="menuItem" role="menuitem" href="#what">What is $SOS?<span class="menuBadge">Section</span></a>
+            <a class="menuItem" role="menuitem" href="#tools">Tools<span class="menuBadge">Section</span></a>
+            <a class="menuItem" role="menuitem" href="#tokenomics">Tokenomics<span class="menuBadge">Section</span></a>
+            <a class="menuItem" role="menuitem" href="#roadmap">Roadmap<span class="menuBadge">Section</span></a>
+            <a class="menuItem" role="menuitem" href="#buy">How to Buy<span class="menuBadge">Section</span></a>
+            <a class="menuItem" role="menuitem" href="#socials">Socials<span class="menuBadge">Section</span></a>
+            <div class="menuLabel">Tools</div>
+            <a class="menuItem" role="menuitem" href="https://www.solanax1.com/dexguard" target="_blank" rel="noopener">DexGuard DEX<span class="menuBadge">DEX</span></a>
+            <a class="menuItem" role="menuitem" href="https://solanax1.com/wallet" target="_blank" rel="noreferrer">Guardian Wallet Scanner<span class="menuBadge">Tool</span></a>
+            <a class="menuItem" role="menuitem" href="https://solanax1.com/contract" target="_blank" rel="noreferrer">Guardian Contract Scanner<span class="menuBadge">Tool</span></a>
+            <div class="menuLabel">Social</div>
+            <a class="menuItem" role="menuitem" href="https://x.com/Solana_X1" target="_blank" rel="noreferrer">X<span class="menuBadge">Social</span></a>
+            <a class="menuItem" role="menuitem" href="https://t.me/Solana_X1" target="_blank" rel="noreferrer">Telegram<span class="menuBadge">Social</span></a>
+            <a class="menuItem" role="menuitem" href="https://t.me/solanaonsolana_bot" target="_blank" rel="noreferrer">Bot<span class="menuBadge">Bot</span></a>
+          </div>
+        </div>
+
+        <button class="btn ghost" id="mOpen" aria-label="Open menu">Menu</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="topBar" id="topBar">
+    <div class="wrap topBarInner">
+      <div class="tickerPanel glass" style="padding:16px;">
+        <div class="tickerHead">
+          <a class="dexguardLogo" id="dexguardLogo" href="https://www.solanax1.com/dexguard" aria-label="Open DexGuard">
+            <img src="dexguard.png" alt="DexGuard" />
+          </a>
+          <div>
+            <div class="hotLabel">LIVE TRENDING</div>
+            <div class="sectionLead" style="margin:4px 0 0;">Real-time chain intelligence feed</div>
+          </div>
+        </div>
+
+        <div class="chainToggle" id="chainToggle" role="tablist" aria-label="Choose chain">
+          <button class="chainBtn active" type="button" data-net="solana" aria-pressed="true">SOL</button>
+          <button class="chainBtn" type="button" data-net="eth" aria-pressed="false">ETH</button>
+          <button class="chainBtn" type="button" data-net="bsc" aria-pressed="false">BNB</button>
+          <button class="chainBtn" type="button" data-net="base" aria-pressed="false">BASE</button>
+        </div>
+      </div>
+
+      <div class="tickerPanel">
+        <div class="tickerWrap" aria-label="Trending tokens">
+          <div class="tickerTrack" id="trendTrack">
+            <span class="tickerItem" style="opacity:.75"><span class="rank">…</span><span class="tickerLogoWrap"><span class="tickerLogoFallback">•</span></span><span class="sym">Trending</span></span>
+            <span class="tickerItem" style="opacity:.75"><span class="rank">…</span><span class="tickerLogoWrap"><span class="tickerLogoFallback">•</span></span><span class="sym">Trending</span></span>
+            <span class="tickerItem" style="opacity:.75"><span class="rank">…</span><span class="tickerLogoWrap"><span class="tickerLogoFallback">•</span></span><span class="sym">Trending</span></span>
+            <span class="tickerItem" style="opacity:.75"><span class="rank">…</span><span class="tickerLogoWrap"><span class="tickerLogoFallback">•</span></span><span class="sym">Trending</span></span>
+            <span class="tickerItem" style="opacity:.75"><span class="rank">…</span><span class="tickerLogoWrap"><span class="tickerLogoFallback">•</span></span><span class="sym">Trending</span></span>
+            <span class="tickerItem" style="opacity:.75"><span class="rank">…</span><span class="tickerLogoWrap"><span class="tickerLogoFallback">•</span></span><span class="sym">Trending</span></span>
+            <span class="tickerItem" style="opacity:.75"><span class="rank">…</span><span class="tickerLogoWrap"><span class="tickerLogoFallback">•</span></span><span class="sym">Trending</span></span>
+            <span class="tickerItem" style="opacity:.75"><span class="rank">…</span><span class="tickerLogoWrap"><span class="tickerLogoFallback">•</span></span><span class="sym">Trending</span></span>
+          </div>
+        </div>
+
+        <div class="dexSearch" role="search" aria-label="Search token by name or contract">
+          <div class="dexSearchInner">
+            <input class="dexInput" id="dexSearchInput" autocomplete="off" spellcheck="false" placeholder="Search token / paste contract…" />
+          </div>
+          <div class="dexResults" id="dexResults" hidden></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <main id="top" class="wrap">
+    <section class="hero">
+      <div class="heroGrid">
+        <div class="glass heroPanel">
+          <div class="heroSub">Guardian Protocol • Solana Native • 0% Tax</div>
+          <h1 class="heroTitle">Security AI for memecoins. <span class="gradText">$SOS</span> lives on-chain.</h1>
+          <div class="statusRow">
+            <span class="status">LIVE</span>
+            <span class="status">SECURED</span>
+            <span class="status">ON-CHAIN</span>
+            <span class="status">COMMUNITY-DRIVEN</span>
+          </div>
+          <p class="heroCopy">
+            She wasn’t created by the chain — the chain was waiting for her. $SOS is the guardian protocol for Solana culture:
+            turning noise into signal, and signal into action. No hype, no empty promises — just presence, tools, and a discipline
+            built on protection through clarity.
+          </p>
+          <div class="heroActions">
+            <a class="btn primary" href="https://t.me/Solana_X1" target="_blank" rel="noreferrer">Join Telegram</a>
+            <a class="btn neon" href="https://x.com/Solana_X1" target="_blank" rel="noreferrer">Follow on X</a>
+            <a class="btn neon" href="https://t.me/solanaonsolana_bot" target="_blank" rel="noreferrer">Use the Bot</a>
+          </div>
+          <div style="height:18px"></div>
+          <div class="copyBox" data-copy="XXXXXXXXXXXXXXXXXXXXXXXX" role="button" tabindex="0" aria-label="Copy Contract Address">
+            <div style="min-width:0">
+              <div class="k">Contract Address</div>
+              <div class="copyText">XXXXXXXXXXXXXXXXXXXXXXXX</div>
+            </div>
+            <div class="copyHint">Click to copy</div>
+          </div>
+        </div>
+
+        <div class="glass heroSide">
+          <div class="heroCard">
+            <h3>Guardian Intelligence</h3>
+            <p>Observe the system. Understand the flow. Intervene only when balance breaks. $SOS is built to protect fast-moving culture without becoming the center of the story.</p>
+          </div>
+          <div class="heroCard">
+            <h3>AI Console</h3>
+            <p>Live trending intelligence, multi-chain contract scans, and wallet-level identity signals — all in one premium command surface.</p>
+          </div>
+          <div class="heroCard">
+            <h3>Proof of Purpose</h3>
+            <p>The guardian didn’t change. The environment did. $SOS is the original discipline applied to a new chain.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="what">
+      <div class="sectionHead">
+        <div>
+          <h2 class="sectionTitle">What is $SOS?</h2>
+          <p class="sectionLead">A proof-of-purpose intelligence project built on one mandate: protection through clarity.</p>
+        </div>
+      </div>
+      <div class="whatGrid">
+        <div class="glass" style="padding:24px;">
+          <p><strong>$SOS</strong> is a proof of purpose intelligence project built on one mandate: <strong>protection through clarity</strong>. It exists to turn noise into signal, and signal into action without pretending certainty where it doesn’t exist.</p>
+          <p><strong>Before memecoins.</strong> Before blockchains. Before Solana. The guardian already existed — not as a product, but as a discipline: observe the system, understand the flow, and intervene only when balance breaks.</p>
+          <p>In 2006, Solana emerged as a Pokémon Ranger trained not to dominate systems, but to read them. To track patterns, recognize threats early, and preserve harmony without becoming the center of the story. That training came first. The mission came before the moment.</p>
+          <p>Years later, a new environment formed: open, permissionless, and fast. Solana became the chain where culture moves at speed, where creation scales instantly, and where chaos isn’t a flaw but a byproduct of success.</p>
+          <p>The guardian did not change. The environment did. So Solana returned not as a ruler, but as a presence. On chain. On Solana. <strong>$SOS</strong> applies that original guardian discipline to the ecosystem as function: tools over promises, clarity over noise, presence over hype. <strong>This is proof of purpose.</strong></p>
+        </div>
+        <div class="loreBox">
+          <div>
+            <div class="sectionLead" style="margin:0 0 6px;">The Lore</div>
+            <h3 class="sectionTitle" style="font-size:24px; margin:0;">Origins of Solana</h3>
+          </div>
+          <div class="proofsRow">
+            <span class="proofLabel"><span class="pokeDot"></span> Proofs</span>
+            <a class="btn neon" href="https://bulbapedia.bulbagarden.net/wiki/Solana" target="_blank" rel="noreferrer">Pokémon • Bulbapedia</a>
+            <a class="btn neon" href="https://pokemon.fandom.com/wiki/Solana" target="_blank" rel="noreferrer">Pokémon • Fandom</a>
+          </div>
+          <img src="assets/WHAT.png" alt="$SOS Lore Sticker" />
+        </div>
+      </div>
+    </section>
+
+    <section id="tools">
+      <div class="glass toolsIntro">
+        <div>
+          <div class="pill">TOOLS</div>
+          <h2 class="sectionTitle" style="margin-top:10px;">Scan wallets. Scan contracts. <span class="gradText">Instantly.</span></h2>
+          <p class="sectionLead">These are not blog sections — they’re live tools. Open a scanner below to analyze a wallet or a token contract in seconds.</p>
+        </div>
+        <div class="toolsQuick">
+          <a class="btn primary" href="https://solanax1.com/wallet" target="_blank" rel="noreferrer">Open Wallet Scanner</a>
+          <a class="btn neon" href="https://solanax1.com/contract" target="_blank" rel="noreferrer">Open Contract Scanner</a>
+        </div>
+      </div>
+
+      <div class="toolsGrid">
+        <div class="toolCard" data-href="https://www.solanax1.com/dexguard" role="link" tabindex="0" aria-label="Open DexGuard">
+          <img src="dexguard.png" alt="DexGuard preview" />
+          <h3 class="toolTitle">DexGuard</h3>
+          <p class="toolDesc">Official $SOS DEX intelligence gateway. Live charts, pools, and guard-mode routing.</p>
+          <div class="toolMeta">
+            <span class="pill">LIVE</span>
+            <span class="pill">DEX</span>
+          </div>
+          <div class="toolCTA">
+            <span>SolanaX1 DEX</span>
+            <span class="btn neon">Open</span>
+          </div>
+        </div>
+
+        <div class="toolCard" data-href="https://solanax1.com/wallet" role="link" tabindex="0" aria-label="Open WalletGuard">
+          <img src="wallet.png" alt="WalletGuard preview" />
+          <h3 class="toolTitle">WalletGuard</h3>
+          <p class="toolDesc">Profile Solana wallets by power, stability, activity, and venue footprint. Share the signal.</p>
+          <div class="toolMeta">
+            <span class="pill">LIVE</span>
+            <span class="pill">SOLANA</span>
+          </div>
+          <div class="toolCTA">
+            <span>Wallet Scanner</span>
+            <span class="btn neon">Open</span>
+          </div>
+        </div>
+
+        <div class="toolCard" data-href="https://solanax1.com/contract" role="link" tabindex="0" aria-label="Open ContractGuard">
+          <img src="contract.png" alt="ContractGuard preview" />
+          <h3 class="toolTitle">ContractGuard</h3>
+          <p class="toolDesc">Multi-chain security verdicts with holder %, clusters, and branded reports.</p>
+          <div class="toolMeta">
+            <span class="pill">LIVE</span>
+            <span class="pill">MULTI-CHAIN</span>
+          </div>
+          <div class="toolCTA">
+            <span>Contract Scanner</span>
+            <span class="btn neon">Open</span>
+          </div>
+        </div>
+
+        <div class="toolCard comingSoon">
+          <img src="launchpad.png" alt="Launchpad preview" />
+          <h3 class="toolTitle">Launchpad</h3>
+          <p class="toolDesc">Safer presets, enforced locks, and verified creator profiles for new launches.</p>
+          <div class="toolMeta">
+            <span class="pill">COMING</span>
+            <span class="pill">CREATORS</span>
+          </div>
+          <div class="toolCTA">
+            <span>Creator Suite</span>
+            <span class="btn ghost">Soon</span>
+          </div>
+        </div>
+
+        <div class="toolCard comingSoon">
+          <img src="tradeguard.png" alt="TradeGuard preview" />
+          <h3 class="toolTitle">TradeGuard</h3>
+          <p class="toolDesc">Signal-first execution with anti-trap routing and realtime liquidity awareness.</p>
+          <div class="toolMeta">
+            <span class="pill">COMING</span>
+            <span class="pill">TRADING</span>
+          </div>
+          <div class="toolCTA">
+            <span>Execution Layer</span>
+            <span class="btn ghost">Soon</span>
+          </div>
+        </div>
+
+        <div class="toolCard comingSoon">
+          <img src="signalguard.png" alt="SignalGuard preview" />
+          <h3 class="toolTitle">SignalGuard</h3>
+          <p class="toolDesc">Live alerts, insider flow detection, and AI reconnaissance for new launches.</p>
+          <div class="toolMeta">
+            <span class="pill">COMING</span>
+            <span class="pill">AI SIGNAL</span>
+          </div>
+          <div class="toolCTA">
+            <span>Intel Engine</span>
+            <span class="btn ghost">Soon</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="tokenomics">
+      <div class="sectionHead">
+        <div>
+          <h2 class="sectionTitle">Tokenomics</h2>
+          <p class="sectionLead">Clean supply. Zero tax. Built for signal-driven utility.</p>
+        </div>
+      </div>
+      <div class="statsGrid">
+        <div class="statCard">
+          <div class="statTitle">Supply</div>
+          <div class="statValue"><span class="gradText">1,000,000,000</span> SOS</div>
+        </div>
+        <div class="statCard">
+          <div class="statTitle">Tax</div>
+          <div class="statValue">0%</div>
+        </div>
+        <div class="statCard">
+          <div class="statTitle">Supply</div>
+          <div class="statValue">Burned</div>
+        </div>
+      </div>
+      <div style="height:16px"></div>
+      <div class="copyBox" data-copy="XXXXXXXXXXXXXXXXXXXXXXXX" role="button" tabindex="0" aria-label="Copy Contract Address">
+        <div style="min-width:0">
+          <div class="k">Contract Address</div>
+          <div class="copyText">XXXXXXXXXXXXXXXXXXXXXXXX</div>
+        </div>
+        <div class="copyHint">Click to copy</div>
+      </div>
+    </section>
+
+    <section id="roadmap">
+      <div class="sectionHead">
+        <div>
+          <h2 class="sectionTitle">Roadmap</h2>
+          <p class="sectionLead">A product-first path from tools → intelligence → platform. Built to ship, not to promise.</p>
+        </div>
+      </div>
+      <div class="timeline" aria-label="Roadmap timeline">
+        <div class="tlItem" data-i="0">
+          <div class="tlNode" aria-hidden="true"></div>
+          <h3>Phase I — Foundation & Signal</h3>
+          <div class="tlTag">Establish authority, not noise</div>
+          <ul class="tlList">
+            <li>Core site launched + lore canon locked</li>
+            <li>Guardian Wallet Scanner v1 shipped</li>
+            <li>Multi-chain Guardian Contract Scanner shipped (Solana / ETH / BNB / Base)</li>
+            <li>Top holders % + Dex style BubbleMap + clusters/bundles + branded export</li>
+            <li>Listings pipeline + liquidity expansion</li>
+            <li>Partner network + verified community onboarding</li>
+          </ul>
+        </div>
+        <div class="tlItem" data-i="1">
+          <div class="tlNode" aria-hidden="true"></div>
+          <h3>Phase II — Intelligence Becomes Product</h3>
+          <div class="tlTag">Trust is earned through utility</div>
+          <ul class="tlList">
+            <li>Solana Scout (AI Agent): live monitoring for new launches + scam vectors</li>
+            <li>DNA Scan v2: social + on chain correlation, insider flow detection, early alerts</li>
+            <li>Public intelligence reports: why it failed / why it survived</li>
+            <li>Holder tiers: membership access, perks, rate limits, premium features</li>
+          </ul>
+        </div>
+        <div class="tlItem" data-i="2">
+          <div class="tlNode" aria-hidden="true"></div>
+          <h3>Phase III — Expansion & Ecosystem</h3>
+          <div class="tlTag">From tool to network</div>
+          <ul class="tlList">
+            <li>$SOS Creator Launchpad v1: safer presets, enforced locks, transparent creator profiles</li>
+            <li>Agent Marketplace: specialized agents (memes, DeFi, infra) as modules</li>
+            <li>Growth OS: raids, bounties, leaderboards, share cards, partner campaigns</li>
+            <li>Strategic integrations: launchpads, analytics, security partners</li>
+          </ul>
+        </div>
+        <div class="tlItem" data-i="3">
+          <div class="tlNode" aria-hidden="true"></div>
+          <h3>Phase IV — Scale & Permanence</h3>
+          <div class="tlTag">Make it impossible to ignore</div>
+          <ul class="tlList">
+            <li>Autonomous agents v2: predictive mapping + ecosystem watchlists</li>
+            <li>Launchpad v2: stricter anti bot modes + verified creator reputation</li>
+            <li>Governance layer: signal weighted proposals backed by intelligence</li>
+            <li>Protection fund: ecosystem clean up initiatives + verified incident response</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="buy">
+      <div class="sectionHead">
+        <div>
+          <h2 class="sectionTitle">How to Buy</h2>
+          <p class="sectionLead">Move clean, stay secure, and swap with confidence.</p>
+        </div>
+      </div>
+      <div class="steps">
+        <div class="step">
+          <div class="stepNum">Step 01</div>
+          <h4>Get a Wallet</h4>
+          <p>Use a Solana wallet (Phantom, Solflare, Backpack) and set it up securely.</p>
+        </div>
+        <div class="step">
+          <div class="stepNum">Step 02</div>
+          <h4>Fund with SOL</h4>
+          <p>Buy SOL on an exchange and send it to your Solana wallet address.</p>
+        </div>
+        <div class="step">
+          <div class="stepNum">Step 03</div>
+          <h4>Swap for $SOS</h4>
+          <p>Use a Solana DEX and swap SOL → $SOS using the official contract address.</p>
+        </div>
+        <div class="step">
+          <div class="stepNum">Step 04</div>
+          <h4>Join the Community</h4>
+          <p>Follow updates, memes, and announcements via Telegram and X.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="socials">
+      <div class="sectionHead">
+        <div>
+          <h2 class="sectionTitle">Socials</h2>
+          <p class="sectionLead">Connect to the live channels, the bot, and the tools.</p>
+        </div>
+      </div>
+      <div class="socialGrid">
+        <div class="socialCard">
+          <h4>Guardian Tools</h4>
+          <p>Launch the live scanners for wallets and contracts.</p>
+          <div class="heroActions">
+            <a class="btn neon" href="https://solanax1.com/wallet" target="_blank" rel="noreferrer">Wallet Scanner</a>
+            <a class="btn neon" href="https://solanax1.com/contract" target="_blank" rel="noreferrer">Contract Scanner</a>
+          </div>
+        </div>
+        <div class="socialCard">
+          <h4>Community Channels</h4>
+          <p>Updates, memes, and guardian dispatch in real time.</p>
+          <div class="heroActions">
+            <a class="btn neon" href="https://t.me/Solana_X1" target="_blank" rel="noreferrer">Telegram</a>
+            <a class="btn neon" href="https://x.com/Solana_X1" target="_blank" rel="noreferrer">X (Twitter)</a>
+          </div>
+        </div>
+        <div class="socialCard">
+          <h4>Automation Bot</h4>
+          <p>Run quick scans and intelligence prompts inside Telegram.</p>
+          <div class="heroActions">
+            <a class="btn primary" href="https://t.me/solanaonsolana_bot" target="_blank" rel="noreferrer">Telegram Bot</a>
+          </div>
+        </div>
+      </div>
+      <div style="height:16px"></div>
+      <div class="copyBox" data-copy="XXXXXXXXXXXXXXXXXXXXXXXX" role="button" tabindex="0" aria-label="Copy Contract Address">
+        <div style="min-width:0">
+          <div class="k">Contract Address</div>
+          <div class="copyText">XXXXXXXXXXXXXXXXXXXXXXXX</div>
+        </div>
+        <div class="copyHint">Click to copy</div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    © <span id="y"></span> $SOS Solana on Solana. All content is for community and entertainment.
+  </footer>
+
+  <div class="drawerOverlay" id="mOverlay" aria-hidden="true"></div>
+  <div class="drawer" id="mDrawer" aria-hidden="true">
+    <div class="drawerHead">
+      <strong>Navigation</strong>
+      <button class="btn ghost" id="mClose" aria-label="Close menu">Close</button>
+    </div>
+    <a href="#what">What is $SOS?</a>
+    <a href="#tools">Tools</a>
+    <a href="#tokenomics">Tokenomics</a>
+    <a href="#roadmap">Roadmap</a>
+    <a href="#buy">How to Buy</a>
+    <a href="#socials">Socials</a>
+    <div class="menuLabel">Tools</div>
+    <a href="https://www.solanax1.com/dexguard" target="_blank" rel="noopener">DexGuard DEX</a>
+    <a href="https://solanax1.com/wallet" target="_blank" rel="noreferrer">Guardian Wallet Scanner</a>
+    <a href="https://solanax1.com/contract" target="_blank" rel="noreferrer">Guardian Contract Scanner</a>
+    <div class="menuLabel">Social</div>
+    <a href="https://x.com/Solana_X1" target="_blank" rel="noreferrer">X</a>
+    <a href="https://t.me/Solana_X1" target="_blank" rel="noreferrer">Telegram</a>
+    <a href="https://t.me/solanaonsolana_bot" target="_blank" rel="noreferrer">Bot</a>
+  </div>
+
+  <div class="bottomNav" aria-label="Mobile quick nav">
+    <a href="#tools">Tools<span>Scan</span></a>
+    <a href="#tokenomics">Token<span>Metrics</span></a>
+    <a href="#buy">Buy<span>Steps</span></a>
+    <a href="#socials">Socials<span>Join</span></a>
+  </div>
+
+  <script>
+    document.getElementById("y").textContent = new Date().getFullYear();
+
+    function setHint(el, ok){
+      if(!el) return;
+      if(ok){
+        el.textContent = "Copied!";
+        el.classList.add("ok");
+        window.setTimeout(() => {
+          el.textContent = "Click to copy";
+          el.classList.remove("ok");
+        }, 1200);
+      } else {
+        el.textContent = "Copy failed";
+        window.setTimeout(() => {
+          el.textContent = "Click to copy";
+        }, 1200);
+      }
+    }
+
+    async function copyText(text){
+      try{
+        await navigator.clipboard.writeText(text);
+        return true;
+      }catch(e){
+        const ta = document.createElement("textarea");
+        ta.value = text;
+        ta.setAttribute("readonly","");
+        ta.style.position="fixed";
+        ta.style.top="-9999px";
+        document.body.appendChild(ta);
+        ta.select();
+        try{
+          const ok = document.execCommand("copy");
+          document.body.removeChild(ta);
+          return ok;
+        }catch(err){
+          document.body.removeChild(ta);
+          return false;
+        }
+      }
+    }
+
+    document.querySelectorAll(".copyBox").forEach(box => {
+      const value = (box.getAttribute("data-copy") || "").trim();
+      const hint = box.querySelector(".copyHint");
+
+      const handler = async () => {
+        const ok = await copyText(value);
+        setHint(hint, ok);
+      };
+
+      box.addEventListener("click", handler);
+      box.addEventListener("keydown", (e) => {
+        if(e.key === "Enter" || e.key === " "){
+          e.preventDefault();
+          handler();
+        }
+      });
+    });
+
+    const menuBtn = document.getElementById("menuBtn");
+    const menuPop = document.getElementById("menuPop");
+
+    function closeMenu(){
+      if(!menuPop) return;
+      menuPop.classList.remove("open");
+      if(menuBtn) menuBtn.setAttribute("aria-expanded","false");
+      document.body.classList.remove("menuOpen");
+    }
+
+    if(menuPop){
+      menuPop.querySelectorAll('a').forEach(a=>a.addEventListener('click', closeMenu));
+    }
+    function toggleMenu(){
+      const open = menuPop.classList.toggle("open");
+      menuBtn.setAttribute("aria-expanded", open ? "true" : "false");
+      document.body.classList.toggle("menuOpen", open);
+    }
+
+    if(menuBtn && menuPop){
+      menuBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        toggleMenu();
+      });
+      document.addEventListener("click", () => closeMenu());
+      document.addEventListener("keydown", (e) => {
+        if(e.key === "Escape") closeMenu();
+      });
+      menuPop.addEventListener("click", (e) => e.stopPropagation());
+    }
+
+    function isInteractive(el){
+      if(!el) return false;
+      return !!el.closest('a, button, input, textarea, select, summary, details');
+    }
+
+    document.querySelectorAll('.toolCard[data-href]').forEach(card => {
+      const href = (card.getAttribute('data-href') || '').trim();
+      if(!href) return;
+
+      const go = () => window.open(href, '_blank', 'noopener,noreferrer');
+
+      card.addEventListener('click', (e) => {
+        if(isInteractive(e.target)) return;
+        go();
+      });
+
+      card.addEventListener('keydown', (e) => {
+        if(e.key === 'Enter' || e.key === ' '){
+          e.preventDefault();
+          go();
+        }
+      });
+    });
+
+    const mOpen = document.getElementById("mOpen");
+    const mClose = document.getElementById("mClose");
+    const mDrawer = document.getElementById("mDrawer");
+    const mOverlay = document.getElementById("mOverlay");
+
+    function openDrawer(){ if(!mDrawer) return;
+      mDrawer.classList.add("open");
+      mOverlay.classList.add("open");
+      mDrawer.setAttribute("aria-hidden","false");
+      mOverlay.setAttribute("aria-hidden","false");
+      document.body.style.overflow = "hidden";
+    }
+
+    function closeDrawer(){ if(!mDrawer) return;
+      mDrawer.classList.remove("open");
+      mOverlay.classList.remove("open");
+      mDrawer.setAttribute("aria-hidden","true");
+      mOverlay.setAttribute("aria-hidden","true");
+      document.body.style.overflow = "";
+    }
+
+    if(mOpen && mClose && mDrawer && mOverlay){
+      mOpen && mOpen.addEventListener("click", (e) => { e.preventDefault(); openDrawer(); });
+      mClose && mClose.addEventListener("click", (e) => { e.preventDefault(); closeDrawer(); });
+      mOverlay && mOverlay.addEventListener("click", () => closeDrawer());
+      document.addEventListener("keydown", (e) => { if(e.key === "Escape") closeDrawer(); });
+
+      mDrawer.querySelectorAll('a[href^="#"]').forEach(a=>{
+        a.addEventListener("click", ()=> closeDrawer());
+      });
+    }
+
+    (function(){
+      const items = Array.from(document.querySelectorAll('.tlItem'));
+      if(!items.length) return;
+
+      items.forEach((el) => {
+        const i = parseInt(el.getAttribute('data-i') || '0', 10);
+        el.style.transitionDelay = (i * 110) + 'ms';
+      });
+
+      const io = new IntersectionObserver((entries) => {
+        entries.forEach((e) => {
+          if(e.isIntersecting){
+            e.target.classList.add('in');
+            io.unobserve(e.target);
+          }
+        });
+      }, { threshold: 0.14, rootMargin: '0px 0px -12% 0px' });
+
+      items.forEach(el => io.observe(el));
+    })();
+
+    (function(){
+      const $ = (sel, root=document) => root.querySelector(sel);
+      const trendTrack = $("#trendTrack");
+      const inEl = $("#dexSearchInput");
+      const resEl = $("#dexResults");
+      const btnGo = $("#dexSearchGo");
+      const btnCopy = $("#dexSearchCopy");
+
+      const SCANNER_PAGE = (window.SOS_SCANNER_URL && String(window.SOS_SCANNER_URL)) || (location.origin + "/contract");
+
+      const NET_TO_DEX_CHAIN = { solana: "solana", eth: "ethereum", bsc: "bsc", base: "base" };
+      const DEX_TO_SCANNER_CHAIN = { solana: "sol", ethereum: "eth", bsc: "bnb", base: "base" };
+
+      function looksEvmAddress(x){
+        const s = String(x||"").trim();
+        return /^0x[a-fA-F0-9]{40}$/.test(s);
+      }
+      function looksSolAddress(x){
+        const s = String(x||"").trim();
+        return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(s);
+      }
+      function looksAddressForNet(net, x){
+        if(net === "solana") return looksSolAddress(x);
+        if(net === "eth" || net === "bsc" || net === "base") return looksEvmAddress(x);
+        return looksEvmAddress(x) || looksSolAddress(x);
+      }
+      function openScanner(addr, dexChainId){
+        const dc = String(dexChainId||"").toLowerCase();
+        const scannerChain = DEX_TO_SCANNER_CHAIN[dc] || DEX_TO_SCANNER_CHAIN[NET_TO_DEX_CHAIN[activeNet]||""] || "sol";
+        const url = `${SCANNER_PAGE}?chain=${encodeURIComponent(scannerChain)}&addr=${encodeURIComponent(String(addr||"").trim())}`;
+        window.location.href = url;
+      }
+
+      if(!trendTrack || !inEl || !resEl) return;
+
+      const toggleEl = document.getElementById('chainToggle');
+      if(toggleEl){
+        toggleEl.addEventListener('click', (e)=>{
+          const btn = e.target.closest('.chainBtn');
+          if(!btn) return;
+          const net = btn.getAttribute('data-net');
+          setActiveNet(net);
+        });
+      }
+
+      const esc = (s="") => String(s)
+        .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+        .replace(/"/g,"&quot;").replace(/'/g,"&#39;");
+
+      const shortAddr = (a="") => a && a.length > 12 ? (a.slice(0,6)+"…"+a.slice(-4)) : a;
+
+      function formatCompact(n){
+        const num = Number(n);
+        if(!Number.isFinite(num)) return '—';
+        const abs = Math.abs(num);
+        const sign = num < 0 ? '-' : '';
+        const units = [
+          {v: 1e12, s: 'T'},
+          {v: 1e9,  s: 'B'},
+          {v: 1e6,  s: 'M'},
+          {v: 1e3,  s: 'K'},
+        ];
+        for(const u of units){
+          if(abs >= u.v){
+            const v = abs / u.v;
+            const dec = v < 10 ? 2 : (v < 100 ? 1 : 0);
+            let out = v.toFixed(dec);
+            out = out.replace(/\.0+$/,'').replace(/(\.[0-9]*?)0+$/,'$1');
+            return sign + out + u.s;
+          }
+        }
+        return sign + String(Math.round(abs));
+      }
+
+      function toast(msg){
+        try{
+          document.title = msg;
+          setTimeout(()=>{ document.title = document.title.replace(msg,"").trim() || "$SOS — Solana on Solana"; }, 700);
+        }catch(e){}
+      }
+
+      const dexguardLogo = $("#dexguardLogo");
+      if(dexguardLogo){
+        dexguardLogo.addEventListener('click', (e)=>{
+          e.preventDefault();
+          window.location.href = "https://www.solanax1.com/dexguard";
+        });
+      }
+
+      async function safeJson(url, opts={}){
+        const timeoutMs = Number(opts.timeoutMs ?? 12000);
+        const retries = Number(opts.retries ?? 2);
+        const retryBase = Number(opts.retryBaseMs ?? 800);
+
+        let lastErr = null;
+        for(let attempt=0; attempt<=retries; attempt++){
+          const controller = new AbortController();
+          const t = setTimeout(()=>controller.abort(), timeoutMs);
+          try{
+            const r = await fetch(url, {cache:"no-store", signal: controller.signal});
+            clearTimeout(t);
+            if(!r.ok){
+              if((r.status===429 || r.status>=500) && attempt<retries){
+                await new Promise(res=>setTimeout(res, retryBase * Math.pow(2, attempt)));
+                continue;
+              }
+              throw new Error("HTTP "+r.status);
+            }
+            const txt = await r.text();
+            try{ return JSON.parse(txt); }
+            catch(_e){ throw new Error("Bad JSON"); }
+          }catch(e){
+            clearTimeout(t);
+            lastErr = e;
+            if(attempt<retries){
+              await new Promise(res=>setTimeout(res, retryBase * Math.pow(2, attempt)));
+              continue;
+            }
+          }
+        }
+        throw lastErr || new Error("Fetch failed");
+      }
+
+      async function fetchTokenSymbol(chainId, tokenAddress){
+        try{
+          const pairs = await safeJson(`https://api.dexscreener.com/token-pairs/v1/${encodeURIComponent(chainId)}/${encodeURIComponent(tokenAddress)}`);
+          const p = Array.isArray(pairs) ? pairs[0] : null;
+          const sym = p?.baseToken?.symbol || p?.baseToken?.name || "";
+          const name = p?.baseToken?.name || "";
+          return { sym, name, pairUrl: p?.url || "", pairAddress: p?.pairAddress || "" };
+        }catch(e){
+          return { sym:"", name:"", pairUrl:"", pairAddress:"" };
+        }
+      }
+
+      const NETWORKS = {
+        solana: { label: 'SOL' },
+        eth: { label: 'ETH' },
+        bsc: { label: 'BNB' },
+        base: { label: 'BASE' }
+      };
+
+      let activeNet = 'solana';
+      let trendTimer = null;
+      let trendReqId = 0;
+      const TREND_CACHE_TTL = 20 * 60 * 1000;
+
+      function trendCacheKey(net){ return `sos_trending_cache_v2_${net}`; }
+
+      function readTrendCache(net){
+        try{
+          const raw = localStorage.getItem(trendCacheKey(net));
+          if(!raw) return null;
+          const obj = JSON.parse(raw);
+          if(!obj || !obj.items) return null;
+          if(obj.ts && (Date.now() - obj.ts) > TREND_CACHE_TTL) return null;
+          return obj;
+        }catch(_e){ return null; }
+      }
+
+      function writeTrendCache(net, items){
+        try{ localStorage.setItem(trendCacheKey(net), JSON.stringify({ts: Date.now(), items})); }catch(_e){}
+      }
+
+      function syncTickerMarquee(){
+        try{
+          if(!trendTrack) return;
+          const isMobile = window.matchMedia('(max-width: 860px)').matches;
+          const pxPerSec = isMobile ? 120 : 95;
+
+          requestAnimationFrame(()=>{
+            const total = trendTrack.scrollWidth || 0;
+            if(total < 20) return;
+            const one = Math.max(1, Math.round(total / 2));
+            document.documentElement.style.setProperty('--tickerDistance', one + 'px');
+            const dur = Math.min(22, Math.max(6.5, one / pxPerSec));
+            document.documentElement.style.setProperty('--tickerSpeed', dur.toFixed(2) + 's');
+          });
+        }catch(_e){}
+      }
+
+      let _tickerResizeT = null;
+      window.addEventListener('resize', ()=>{
+        clearTimeout(_tickerResizeT);
+        _tickerResizeT = setTimeout(syncTickerMarquee, 120);
+      }, {passive:true});
+
+      async function loadTrending(net){
+        const myReq = ++trendReqId;
+        const cached = readTrendCache(net);
+        try{
+          if(cached && trendTrack && (!trendTrack.innerHTML || /(Trending unavailable|Loading trending)/i.test(trendTrack.textContent||""))){
+            trendTrack.innerHTML = cached.items + cached.items;
+            syncTickerMarquee();
+          }
+
+          const url = `https://api.geckoterminal.com/api/v2/networks/${encodeURIComponent(net)}/trending_pools?include=base_token,quote_token`;
+          const data = await safeJson(url, {timeoutMs: 12000, retries: 2, retryBaseMs: 900});
+          if(myReq !== trendReqId) return;
+          const pools = Array.isArray(data?.data) ? data.data.slice(0,10) : [];
+          const included = Array.isArray(data?.included) ? data.included : [];
+
+          const byKey = new Map();
+          for(const inc of included){
+            if(!inc || !inc.id) continue;
+            const id = String(inc.id);
+            byKey.set(id, inc);
+            if(inc.type) byKey.set(String(inc.type)+':' + id, inc);
+          }
+
+          if(!pools.length) throw new Error('No data');
+
+          const items = pools.map((pool, n) => {
+            const a = pool?.attributes || {};
+            const rel = pool?.relationships || {};
+            const baseRef = rel?.base_token?.data || null;
+            const quoteRef = rel?.quote_token?.data || null;
+            const baseId = baseRef?.id ? String(baseRef.id) : '';
+            const baseType = baseRef?.type ? String(baseRef.type) : '';
+            const quoteId = quoteRef?.id ? String(quoteRef.id) : '';
+            const quoteType = quoteRef?.type ? String(quoteRef.type) : '';
+            const baseT = baseId ? ((byKey.get(baseType+':' + baseId) || byKey.get(baseId))?.attributes || {}) : {};
+            const quoteT = quoteId ? ((byKey.get(quoteType+':' + quoteId) || byKey.get(quoteId))?.attributes || {}) : {};
+            const sym = (baseT?.symbol || baseT?.name || '').trim() || (a?.name ? String(a.name).split('/')[0].trim() : '') || 'TOKEN';
+            const symClean = String(sym||'TOKEN').replace(/[^a-zA-Z0-9_$\.\-]/g,'').slice(0,24) || 'TOKEN';
+            const symDisp = symClean.startsWith('$') ? symClean : ('$' + symClean.replace(/^\$/,''));
+            const pctRaw = ((a?.price_change_percentage && (a.price_change_percentage.h24 ?? a.price_change_percentage['h24'] ?? a.price_change_percentage['24h'])) ?? a?.price_change_percentage_24h ?? a?.price_change_percentage_h24 ?? a?.price_change_percentage_24h_in_percent ?? null);
+            const pctNum = (pctRaw===null || pctRaw===undefined || pctRaw==='') ? NaN : Number(pctRaw);
+            const pctTxt = Number.isFinite(pctNum) ? `${pctNum>0?'+':''}${pctNum.toFixed(2)}%` : '';
+            const pctCls = Number.isFinite(pctNum) ? (pctNum>0?'up':(pctNum<0?'down':'')) : '';
+            const logoUrlRaw = String(
+              baseT?.image_url || baseT?.imageUrl || baseT?.image || baseT?.logo_url || baseT?.logoUrl ||
+              quoteT?.image_url || quoteT?.imageUrl || quoteT?.image || quoteT?.logo_url || quoteT?.logoUrl ||
+              a?.image_url || a?.imageUrl || a?.base_token_image_url || a?.base_token_imageUrl || a?.token_image_url || a?.token_imageUrl ||
+              ''
+            ).trim();
+            let logoUrl = logoUrlRaw;
+            if(logoUrl && logoUrl.startsWith('/')) logoUrl = 'https://www.geckoterminal.com' + logoUrl;
+            const first = (symClean || 'T').slice(0,1).toUpperCase();
+            const poolAddr = (a?.address || '').trim();
+            const tokenAddr = String((baseT?.address || baseId || '')).trim();
+            const guardNet = (net === 'solana') ? 'sol' : (net === 'eth') ? 'eth' : (net === 'bsc') ? 'bnb' : 'base';
+            const href = tokenAddr
+              ? `/dexguard?chain=${encodeURIComponent(guardNet)}&addr=${encodeURIComponent(tokenAddr)}`
+              : (poolAddr ? `https://www.geckoterminal.com/${encodeURIComponent(net)}/pools/${encodeURIComponent(poolAddr)}` : '#');
+            const top1 = (n===0);
+            const cls = `tickerItem${top1?' top1':''}`;
+            const rankTxt = top1 ? `🔥 #1` : `#${n+1}`;
+            const logo = logoUrl
+              ? `<span class="tickerLogoWrap"><img class="tickerLogo" src="${esc(logoUrl)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove(); var w=this.closest('.tickerLogoWrap'); if(w){w.innerHTML='<span class=tickerLogoFallback>${esc(first)}</span>';}"></span>`
+              : `<span class="tickerLogoWrap"><span class="tickerLogoFallback">${esc(first)}</span></span>`;
+            return `<a class="${cls}" href="${esc(href)}" target="_blank" rel="noreferrer">
+              <span class="rank">${esc(rankTxt)}</span>
+              ${logo}
+              <span class="sym">${esc(symDisp)}</span>
+              ${pctTxt ? `<span class="tickerPct ${esc(pctCls)}">${esc(pctTxt)}</span>` : ''}
+            </a>`;
+          }).join('');
+
+          writeTrendCache(net, items);
+          trendTrack.innerHTML = items + items;
+          syncTickerMarquee();
+        }catch(e){
+          if(myReq !== trendReqId) return;
+          const keepExisting = !!(trendTrack && trendTrack.children && trendTrack.children.length > 0);
+          const cached2 = readTrendCache(net);
+          if(cached2 && trendTrack){
+            trendTrack.innerHTML = cached2.items + cached2.items;
+            toast('Trending temporarily unavailable');
+          }else if(!keepExisting){
+            trendTrack.innerHTML = `<span class="tickerItem" style="opacity:.75"><span class="rank">!</span><span class="sym">Trending unavailable</span><span class="chain" style="display:none">${esc(net)}</span></span>`;
+          }else{
+            toast('Trending temporarily unavailable');
+          }
+          syncTickerMarquee();
+          setTimeout(()=>{ if(activeNet===net) loadTrending(net); }, 4500);
+        }
+      }
+
+      function setActiveNet(net){
+        if(!net || !NETWORKS[net]) net = 'solana';
+        activeNet = net;
+
+        document.body.classList.remove('net-sol','net-eth','net-bnb','net-base');
+        document.body.classList.add(net==='solana'?'net-sol':net==='eth'?'net-eth':net==='bsc'?'net-bnb':'net-base');
+
+        const wrap = document.getElementById('chainToggle');
+        if(wrap){
+          wrap.querySelectorAll('.chainBtn').forEach(b=>{
+            const on = (b.getAttribute('data-net') === net);
+            b.classList.toggle('active', on);
+            b.setAttribute('aria-pressed', on ? 'true' : 'false');
+          });
+        }
+
+        clearInterval(trendTimer);
+        loadTrending(net);
+        trendTimer = setInterval(()=>loadTrending(net), 30000);
+      }
+
+      setActiveNet('solana');
+
+      let tmr = null;
+      let searchReqId = 0;
+      async function runSearch(q){
+        q = (q || "").trim();
+        const mySReq = ++searchReqId;
+        if(!q){
+          resEl.hidden = true;
+          resEl.innerHTML = "";
+          resEl.dataset.bestCa = "";
+          resEl.dataset.bestChain = "";
+          return;
+        }
+        try{
+          const data = await safeJson(`https://api.dexscreener.com/latest/dex/search?q=${encodeURIComponent(q)}`);
+          if(mySReq !== searchReqId) return;
+          const pairs = data?.pairs || [];
+          const top = pairs.slice(0, 10);
+
+          if(!top.length){
+            resEl.innerHTML = `<div class="dexResRow" style="opacity:.75"><div class="dexResLeft">
+              <div class="dexResTitle">No results</div>
+              <div class="dexResMeta">Try symbol, name, or paste a contract.</div>
+            </div></div>`;
+            resEl.hidden = false;
+            resEl.dataset.bestCa = "";
+            resEl.dataset.bestChain = "";
+            return;
+          }
+
+          const want = (NET_TO_DEX_CHAIN[activeNet] || "solana").toLowerCase();
+          const best = top.find(p => String(p?.chainId||"").toLowerCase() === want) || top[0];
+          resEl.dataset.bestCa = best?.baseToken?.address || "";
+          resEl.dataset.bestChain = best?.chainId || "";
+
+          resEl.innerHTML = top.map(p=>{
+            const chainIdRaw = (p.chainId || '');
+            const chain = String(chainIdRaw).toUpperCase();
+            const chainClass = 'chain-' + String(chainIdRaw).toLowerCase();
+            const dex = (p.dexId || "").toUpperCase();
+            const baseSym = p.baseToken?.symbol || "TOKEN";
+            const quoteSym = p.quoteToken?.symbol || "";
+            const title = quoteSym ? `${baseSym}/${quoteSym}` : `${baseSym}`;
+            const logoUrl = (p?.info?.imageUrl || p?.info?.image || p?.baseToken?.logoURI || p?.baseToken?.logo || p?.baseToken?.image || "");
+            const ch24 = p.priceChange?.h24;
+            const chClass = (typeof ch24 === 'number') ? (ch24>0?'up':(ch24<0?'down':'')) : '';
+            const chTxt = (typeof ch24 === "number") ? `${ch24>0?"+":""}${ch24.toFixed(2)}%` : "—";
+            const mcapVal = (p.marketCap != null ? Number(p.marketCap) : (p.fdv != null ? Number(p.fdv) : null));
+            const mcap = (typeof mcapVal === 'number' && Number.isFinite(mcapVal)) ? `$${formatCompact(mcapVal)}` : "—";
+            const mcapLabel = (p.marketCap != null ? "MCap" : (p.fdv != null ? "FDV" : "MCap"));
+            const ca = p.baseToken?.address || "";
+
+            const dc = String(p.chainId||'').toLowerCase();
+            const guardChain = DEX_TO_SCANNER_CHAIN[dc] || DEX_TO_SCANNER_CHAIN[NET_TO_DEX_CHAIN[activeNet]||''] || 'sol';
+            const href = `/dexguard?chain=${encodeURIComponent(guardChain)}&addr=${encodeURIComponent(String(ca||''))}`;
+            return `<div class="dexResRow">
+              <div class="dexResLeft">
+                <div class="dexResTitleRow">
+                  <div class="dexLogoWrap ${logoUrl?"":"noimg"}">
+                    ${logoUrl ? `<img class="dexLogo" src="${esc(logoUrl)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.style.display='none'; this.closest('.dexLogoWrap').classList.add('noimg');">` : ``}
+                    <span class="dexLogoFallback">${esc((baseSym||"T").slice(0,1).toUpperCase())}</span>
+                  </div>
+                  <div class="dexResTitle">${esc(title)}</div>
+                </div>
+                <div class="dexResMeta">
+                  <div class="dexMetaRow">
+                    <span class="dexPill ${esc(chainClass)}">${esc(chain)}</span>
+                    <span class="dexPill">${esc(dex || "DEX")}</span>
+                  </div>
+                  <div class="dexMetaRow stats">
+                    <span class="dexPill ${esc(chClass)}">24h ${esc(chTxt)}</span>
+                    <span class="dexPill">${esc(mcapLabel)} ${esc(mcap)}</span>
+                  </div>
+                  <div class="dexMetaRow ca">
+                    <span class="dexPill" title="${esc(ca)}">CA ${esc(shortAddr(ca))}</span>
+                  </div>
+                </div>
+              </div>
+              <div class="dexResActions">
+                <button class="btn ghost dexMiniBtn copyBtn" type="button" data-copy="${esc(ca)}">Copy CA</button>
+                <a class="btn ghost dexMiniBtn chartBtn dexA" href="${esc(href)}">Chart</a>
+                <button class="btn neon dexMiniBtn" type="button" data-scan="${esc(ca)}" data-chain="${esc(p.chainId || '')}">Scanner</button>
+              </div>
+            </div>`;
+          }).join("");
+
+          resEl.hidden = false;
+        }catch(e){
+          const hasResults = !!(resEl && !resEl.hidden && resEl.querySelector('.dexResRow'));
+          if(hasResults){
+            toast('Try again');
+            return;
+          }
+          resEl.innerHTML = `<div class="dexResRow" style="opacity:.75"><div class="dexResLeft">
+            <div class="dexResTitle">Not found</div>
+            <div class="dexResMeta">Try again.</div>
+          </div></div>`;
+          resEl.hidden = false;
+        }
+      }
+
+      inEl.addEventListener("input", () => {
+        const q = inEl.value;
+        clearTimeout(tmr);
+        tmr = setTimeout(()=> runSearch(q), 250);
+      });
+      if(btnGo){
+        btnGo.addEventListener("click", () => {
+          const q = (inEl.value || "").trim();
+          if(!q) { inEl.focus(); return; }
+          clearTimeout(tmr);
+          runSearch(q);
+          resEl.hidden = false;
+          inEl.focus();
+        });
+      }
+      if(btnCopy){
+        btnCopy.addEventListener("click", () => {
+          (async () => {
+            const q = (inEl.value || "").trim();
+            if(!q) return;
+
+            if(looksAddressForNet(activeNet, q) || looksEvmAddress(q) || looksSolAddress(q)){
+              openScanner(q, NET_TO_DEX_CHAIN[activeNet] || "solana");
+              return;
+            }
+
+            const bestCa = (resEl.dataset.bestCa || "").trim();
+            const bestChain = (resEl.dataset.bestChain || "").trim();
+            if(bestCa){
+              openScanner(bestCa, bestChain || (NET_TO_DEX_CHAIN[activeNet] || "solana"));
+              return;
+            }
+
+            try{
+              const data = await safeJson(`https://api.dexscreener.com/latest/dex/search?q=${encodeURIComponent(q)}`);
+              const pairs = Array.isArray(data?.pairs) ? data.pairs : [];
+              const want = (NET_TO_DEX_CHAIN[activeNet] || "solana").toLowerCase();
+              const pick = pairs.find(p => String(p?.chainId||"").toLowerCase() === want) || pairs[0];
+              const ca = pick?.baseToken?.address || "";
+              if(ca){
+                openScanner(ca, pick?.chainId || want);
+                return;
+              }
+            }catch(_e){}
+
+            toast("No scan target");
+          })();
+        });
+      }
+
+      resEl.addEventListener("click", async (e) => {
+        const copyBtn = e.target.closest("button[data-copy]");
+        if(copyBtn){
+          const val = copyBtn.getAttribute("data-copy") || "";
+          if(!val) return;
+          try{
+            await navigator.clipboard.writeText(val);
+            copyBtn.textContent = "Copied";
+            setTimeout(()=> copyBtn.textContent="Copy CA", 900);
+          }catch(err){
+            copyBtn.textContent = "Error";
+            setTimeout(()=> copyBtn.textContent="Copy CA", 900);
+          }
+          return;
+        }
+
+        const scanBtn = e.target.closest("button[data-scan]");
+        if(scanBtn){
+          const ca = scanBtn.getAttribute("data-scan") || "";
+          const chainId = scanBtn.getAttribute("data-chain") || "";
+          if(!ca) return;
+          openScanner(ca, chainId);
+          return;
+        }
+      });
+
+      document.addEventListener("click", (e) => {
+        const inside = e.target.closest(".dexSearch");
+        if(!inside && !resEl.hidden){
+          resEl.hidden = true;
+        }
+      });
+
+      inEl.addEventListener("keydown", (e) => {
+        if(e.key === "Enter"){
+          e.preventDefault();
+          const q = (inEl.value || "").trim();
+          if(!q) { inEl.focus(); return; }
+          clearTimeout(tmr);
+          runSearch(q);
+          resEl.hidden = false;
+          inEl.focus();
+        }
+        if(e.key === "Escape"){
+          resEl.hidden = true;
+        }
+      });
+    })();
+  </script>
+</body>
+</html>
