@@ -2379,6 +2379,7 @@ body.net-base .chainBtn.active{ background: linear-gradient(90deg, rgba(0,82,255
   text-overflow:ellipsis;
 }
 #roadmap .rmSumRight{display:flex;align-items:center;gap:8px;flex-shrink:0; flex-wrap:wrap; justify-content:flex-end
+; flex-wrap:wrap; gap:8px
 }
 #roadmap .rmChevron{
   width:28px;height:28px;border-radius:12px;
@@ -2435,7 +2436,7 @@ body.net-base .chainBtn.active{ background: linear-gradient(90deg, rgba(0,82,255
   background: rgba(255,255,255,.04);
   transition: transform .18s ease, background .18s ease, border-color .18s ease;
 }
-#roadmap .rmItem:hover{transform: translateY(-1px); background: rgba(255,255,255,.055); border-color: rgba(255,255,255,.14)}
+#roadmap .rmItem:hover{background: rgba(255,255,255,.05); border-color: rgba(255,255,255,.16)}
 #roadmap .rmBullet{
   width:10px;height:10px;border-radius:999px;margin-top:5px;
   box-shadow: 0 0 0 4px rgba(255,255,255,.03), 0 10px 22px rgba(0,0,0,.25);
@@ -2504,6 +2505,23 @@ body.net-base .chainBtn.active{ background: linear-gradient(90deg, rgba(0,82,255
 
 
 #roadmap .rmCard, #roadmap .rmCardInner, #roadmap details.rmFold, #roadmap summary.rmSummary, #roadmap .rmBody{min-width:0}
+
+#roadmap .rmCard:hover{transform: translateY(0) scale(1)}
+
+/* desktop equal height + internal scroll (keeps grid clean) */
+@media (min-width: 981px){
+  #roadmap .rmCardInner{display:flex; height: min(76vh, 760px)}
+  #roadmap details.rmFold{display:flex; flex-direction:column; height:100%}
+  #roadmap .rmBody{flex:1; overflow:auto; padding-bottom:18px}
+  #roadmap .rmBody{scrollbar-width:thin}
+  #roadmap .rmBody::-webkit-scrollbar{width:10px}
+  #roadmap .rmBody::-webkit-scrollbar-thumb{background:rgba(255,255,255,.12); border-radius:999px; border:3px solid rgba(0,0,0,0)}
+  #roadmap .rmBody::-webkit-scrollbar-track{background:transparent}
+}
+@media (max-width: 980px){
+  #roadmap .rmCardInner{display:block; height:auto}
+  #roadmap .rmBody{overflow:visible}
+}
 </style>
 </head>
 <body>
@@ -4100,8 +4118,8 @@ function toggleMenu(){
        const rx = clamp((0.5 - y) * 10, -8, 8);
        const ry = clamp((x - 0.5) * 12, -10, 10);
 
-       inner.style.transform = `rotateX(${rx}deg) rotateY(${ry}deg) translateY(-2px)`;
-       inner.style.setProperty('--mx', `${(x*100).toFixed(2)}%`);
+       /* tilt disabled: no transform */
+inner.style.setProperty('--mx', `${(x*100).toFixed(2)}%`);
        inner.style.setProperty('--my', `${(y*100).toFixed(2)}%`);
      }, {passive:true});
 
