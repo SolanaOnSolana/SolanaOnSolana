@@ -902,11 +902,15 @@ img{max-width:100%; height:auto}
  /* ===== TOOLS (CLEAN + NOT LONG + ALWAYS STACKED) ===== */
  .toolsGrid{
  display:grid;
- grid-template-columns: 1fr; /* ✅ always under each other */
+ grid-template-columns: repeat(2, minmax(0,1fr));
  gap:18px;
  align-items:stretch;
  }
 
+
+@media (max-width: 980px){
+ .toolsGrid{ grid-template-columns: 1fr; }
+}
  .toolCard{
  position:relative;
  overflow:hidden;
@@ -1264,7 +1268,128 @@ img{max-width:100%; height:auto}
  font-weight: 1000;
  }
 
- /* Make tool cards feel like clickable apps */
+ 
+/* ===== NEXT-LEVEL TOOLS TILE GRID ===== */
+.toolBigTiles{
+  grid-template-columns: repeat(3, minmax(0,1fr));
+  gap:14px;
+}
+@media (max-width: 980px){
+  .toolBigTiles{ grid-template-columns: repeat(2, minmax(0,1fr)); }
+}
+@media (max-width: 420px){
+  .toolBigTiles{ grid-template-columns: 1fr; }
+}
+.tile{
+  min-height: 176px;
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+.tile::before{
+  content:"";
+  position:absolute; inset:-2px;
+  background:
+    radial-gradient(900px 520px at 20% 20%, rgba(20,241,149,.14), transparent 60%),
+    radial-gradient(900px 520px at 80% 20%, rgba(0,209,255,.12), transparent 60%),
+    radial-gradient(900px 520px at 70% 90%, rgba(153,69,255,.14), transparent 62%);
+  opacity:.9;
+  z-index:0;
+  pointer-events:none;
+}
+.tile > *{ position: relative; z-index: 1; }
+.tileName{ font-size: 15px; }
+.tileCta{
+  background: rgba(255,255,255,.055);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+.tileBadge{
+  font-size: 11px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  font-weight: 1000;
+  padding: 8px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.14);
+  background: rgba(0,0,0,.22);
+}
+.tileBadge.live{
+  border: 0;
+  color:#061012;
+  background: linear-gradient(90deg, var(--g), var(--c), var(--p));
+  box-shadow: 0 14px 28px rgba(0,0,0,.22);
+}
+.tileBadge.soon{
+  color: rgba(255,255,255,.78);
+}
+.tile.disabled{
+  opacity: .64;
+  filter: saturate(.9);
+  cursor: default;
+}
+.tile.disabled:hover{ transform:none; }
+.tile.disabled .tileCta{ opacity:.75; }
+.tile.disabled .tileCta::after{
+  content:"Coming soon";
+  margin-left:auto;
+  font-weight:1000;
+  opacity:.7;
+}
+
+/* Hide the long tool cards behind a clean expandable panel (still in DOM, no features removed) */
+.toolsDetails{
+  margin-top: 18px;
+  border-radius: 22px;
+  border: 1px solid rgba(255,255,255,.10);
+  background: rgba(255,255,255,.04);
+  box-shadow: var(--shadowSoft);
+  overflow: hidden;
+}
+.toolsDetails[open]{ background: rgba(255,255,255,.05); }
+.toolsSummary{
+  list-style:none;
+  cursor:pointer;
+  padding: 14px 16px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  font-weight: 1000;
+  letter-spacing: .02em;
+}
+.toolsSummary::-webkit-details-marker{ display:none; }
+.toolsSummary .hint{
+  font-size: 12px;
+  color: rgba(255,255,255,.62);
+  font-weight: 850;
+}
+.toolsSummary .chev{
+  width: 36px; height: 36px;
+  border-radius: 14px;
+  display:grid; place-items:center;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(0,0,0,.18);
+}
+.toolsDetails[open] .toolsSummary .chev{ transform: rotate(180deg); }
+
+/* Background polish: subtle grid + vignette */
+body::after{
+  content:"";
+  position: fixed;
+  inset: 0;
+  pointer-events:none;
+  z-index:-1;
+  background:
+    radial-gradient(1200px 800px at 50% 40%, rgba(0,0,0,.0), rgba(0,0,0,.55)),
+    repeating-linear-gradient(90deg, rgba(255,255,255,.035) 0 1px, transparent 1px 80px),
+    repeating-linear-gradient(0deg, rgba(255,255,255,.025) 0 1px, transparent 1px 80px);
+  opacity:.22;
+  mix-blend-mode: overlay;
+}
+
+
+/* Make tool cards feel like clickable apps */
  .toolCard{ cursor:pointer; }
  .toolCard[data-href] .toolTag{ opacity: .95; }
  .toolCorner{display:inline-flex;align-items:center;gap:8px;font-weight:800;font-size:13px;padding:10px 14px;border-radius:999px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);box-shadow:0 10px 28px rgba(0,0,0,.28);backdrop-filter: blur(10px);-webkit-backdrop-filter: blur(10px);cursor:pointer;user-select:none}
@@ -2485,33 +2610,77 @@ body.net-base .chainBtn.active{ background: linear-gradient(90deg, rgba(0,82,255
  </div>
  </div>
 
+ 
  <div class="toolBigTiles" aria-label="Quick tool tiles">
- <a class="tile" href="https://solanax1.com/wallet" target="_blank" rel="noreferrer" aria-label="Open Wallet Scanner">
- <div class="tileTop">
- <div class="tileIcon">W</div>
- <div class="menuBadge">LIVE TOOL</div>
- </div>
- <div class="tileName">Guardian Wallet Scanner</div>
- <div class="tileHint">Profile Solana wallets • archetypes • shareable card</div>
- <div class="tileCta">Tap to scan <span aria-hidden="true">→</span></div>
- </a>
+  <a class="tile" href="https://solanax1.com/wallet" target="_blank" rel="noreferrer" aria-label="Open Wallet Scanner">
+   <div class="tileTop">
+    <div class="tileIcon">W</div>
+    <div class="tileBadge live">LIVE TOOL</div>
+   </div>
+   <div class="tileName">WalletGuard</div>
+   <div class="tileHint">Profile wallets • archetypes • shareable identity signal</div>
+   <div class="tileCta">Open tool <span aria-hidden="true">→</span></div>
+  </a>
 
- <a class="tile" href="https://solanax1.com/contract" target="_blank" rel="noreferrer" aria-label="Open Contract Scanner">
- <div class="tileTop">
- <div class="tileIcon">C</div>
- <div class="menuBadge">LIVE TOOL</div>
+  <a class="tile" href="https://solanax1.com/contract" target="_blank" rel="noreferrer" aria-label="Open Contract Scanner">
+   <div class="tileTop">
+    <div class="tileIcon">C</div>
+    <div class="tileBadge live">LIVE TOOL</div>
+   </div>
+   <div class="tileName">ContractGuard</div>
+   <div class="tileHint">Multi-chain scan • holders % • bubble map • export report</div>
+   <div class="tileCta">Open tool <span aria-hidden="true">→</span></div>
+  </a>
+
+  <a class="tile" href="https://www.solanax1.com/dexguard" target="_blank" rel="noreferrer" aria-label="Open DexGuard">
+   <div class="tileTop">
+    <div class="tileIcon">D</div>
+    <div class="tileBadge live">LIVE TOOL</div>
+   </div>
+   <div class="tileName">DEXGuard</div>
+   <div class="tileHint">Market intelligence • flow view • wallets & venues in context</div>
+   <div class="tileCta">Open tool <span aria-hidden="true">→</span></div>
+  </a>
+
+  <div class="tile disabled" role="group" aria-label="SignalGuard coming soon">
+   <div class="tileTop">
+    <div class="tileIcon">S</div>
+    <div class="tileBadge soon">COMING SOON</div>
+   </div>
+   <div class="tileName">SignalGuard</div>
+   <div class="tileHint">Whale activity • capital flow • converging signals</div>
+   <div class="tileCta">Preview <span aria-hidden="true">⟡</span></div>
+  </div>
+
+  <div class="tile disabled" role="group" aria-label="TradeGuard coming soon">
+   <div class="tileTop">
+    <div class="tileIcon">T</div>
+    <div class="tileBadge soon">COMING SOON</div>
+   </div>
+   <div class="tileName">TradeGuard</div>
+   <div class="tileHint">Guarded execution from verified intelligence surfaces</div>
+   <div class="tileCta">Preview <span aria-hidden="true">⟡</span></div>
+  </div>
+
+  <div class="tile disabled" role="group" aria-label="LaunchGuard coming soon">
+   <div class="tileTop">
+    <div class="tileIcon">L</div>
+    <div class="tileBadge soon">COMING SOON</div>
+   </div>
+   <div class="tileName">LaunchGuard</div>
+   <div class="tileHint">Guided launches • standards • post-launch accountability</div>
+   <div class="tileCta">Preview <span aria-hidden="true">⟡</span></div>
+  </div>
  </div>
- <div class="tileName">Guardian Contract Scanner</div>
- <div class="tileHint">Multi chain • holders % • bubble map • export report</div>
- <div class="tileCta">Tap to scan <span aria-hidden="true">→</span></div>
- </a>
- </div>
+
  </div>
  </div>
 
  <div style="height:16px"></div>
 
- <div class="toolsGrid">
+ <details class="toolsDetails">
+  <summary class="toolsSummary">Deep dive tool breakdown <span class="hint">Full specs, previews & feature lists</span> <span class="chev" aria-hidden="true">⌄</span></summary>
+  <div class="toolsGrid">
 
  <!-- DNA -->
  <div class="card toolCard dnaCard" data-href="https://solanax1.com/wallet" role="link" tabindex="0" aria-label="Open Guardian Wallet Scanner">
@@ -2676,6 +2845,8 @@ body.net-base .chainBtn.active{ background: linear-gradient(90deg, rgba(0,82,255
  </div>
 
  </div>
+ </details>
+
  </section>
 
  <!-- Mobile tool dock (always visible on phones) -->
@@ -2922,8 +3093,10 @@ body.net-base .chainBtn.active{ background: linear-gradient(90deg, rgba(0,82,255
  <div class="card">
  <div class="cardInner">
  <h2 class="h2">$SOS</h2>
+ <div class="sub">Solana on Solana</div>
  <div style="height:8px"></div>
  <div style="color: rgba(255,255,255,.78); max-width: 72ch">
+  $SOS is an AI-assisted Solana driven ecosystem for on-chain discovery, research, trading, and launching.
  </div>
 
  <div class="socialRow">
