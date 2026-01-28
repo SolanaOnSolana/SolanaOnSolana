@@ -5248,6 +5248,30 @@ function dgWriteUrlState(meta){
     history.replaceState(null, '', url);
   }catch(e){}
 }
+function dgPushUrlState(meta){
+  try{
+    if (!meta || !meta.chain) return;
+    const chain = String(meta.chain || '').toLowerCase();
+    const pairId = meta.pool ? String(meta.pool) : (meta.pairId ? String(meta.pairId) : '');
+    const tokenAddress = meta.token ? String(meta.token) : (meta.tokenAddress ? String(meta.tokenAddress) : '');
+    const tf = meta.tf ? String(meta.tf) : '';
+    if (!chain || (!pairId && !tokenAddress)) return;
+
+    const sp = new URLSearchParams(location.search || '');
+    sp.set('dg_chain', chain);
+    if (pairId) sp.set('dg_pair', pairId); else sp.delete('dg_pair');
+    if (tokenAddress) sp.set('dg_token', tokenAddress); else sp.delete('dg_token');
+    if (tf) sp.set('dg_tf', tf); else sp.delete('dg_tf');
+    sp.set('chain', chain);
+    if (pairId) sp.set('pair', pairId); else sp.delete('pair');
+    if (tokenAddress) sp.set('ca', tokenAddress); else sp.delete('ca');
+    if (tf) sp.set('tf', tf); else sp.delete('tf');
+
+    const qs = sp.toString();
+    const url = location.pathname + (qs ? ('?' + qs) : '') + (location.hash || '');
+    history.pushState(null, '', url);
+  }catch(e){}
+}
 function dgReadUrlState(){
   try{
     const sp = new URLSearchParams(location.search || '');
@@ -5434,12 +5458,18 @@ function dgApplyTfUi(tf){
         // Persist URL ASAP (before network), so reload stays on this token even if requests are still inflight.
         try{
           const p = payload || {};
-          const chain = String(p.chain || '').toLowerCase();
+          const chain = dgNormalizeChain(p.chain || '');
           const pairId = String(p.pairId || p.pool || p.pair || '');
           const tokenAddress = String(p.tokenAddress || p.token || p.address || '');
           const tf = (window.__dgActiveTF || window.__dgCurrentTF || '').toString();
+          const hint = String(p.hint || '').toLowerCase();
           if (chain && (pairId || tokenAddress)){
-            dgWriteUrlState({ chain, pool: pairId, token: tokenAddress, tf });
+            const meta = { chain, pool: pairId, token: tokenAddress, tf };
+            if (hint && hint !== 'restore'){
+              dgPushUrlState(meta);
+            }else{
+              dgWriteUrlState(meta);
+            }
             try{ localStorage.setItem('dg_last_state_v1', JSON.stringify({ v:1, ts:Date.now(), chain, pool: pairId, token: tokenAddress, tf })); }catch(e){}
           }
         }catch(e){}
