@@ -5592,6 +5592,31 @@ async function dgRestoreLastState(){
     }
   }
 
+async function dgAutoOpenFromQuery(){
+  try{
+    const merged = dgMergeUrlState();
+    if (!merged || !merged.chain) return false;
+    const chain = merged.chain;
+    const pairId = merged.pairId || merged.pool || '';
+    const tokenAddress = merged.tokenAddress || merged.token || '';
+    if (!CHAINS[chain] || (!pairId && !tokenAddress)) return false;
+    try{
+      if (chain && chain !== state.chain && typeof setChain === 'function'){
+        setChain(chain, {silent:true});
+      }
+    }catch(e){}
+    if (pairId){
+      await openPool({chain, pairId, tokenAddress, hint:'url'});
+      return true;
+    }
+    if (tokenAddress){
+      await openPool({chain, tokenAddress, hint:'url'});
+      return true;
+    }
+  }catch(e){}
+  return false;
+}
+
 function dgMergeUrlState(){
   try{
     const urlState = dgReadUrlState();
@@ -9279,7 +9304,7 @@ function startLive(meta, {sid}){
       }catch(e){}
     }
 
-function boot(){
+async function boot(){
       try{ dgMobileInit(); }catch(e){}
       setStatus('', 'Booting…');
       clearResults();
@@ -9290,7 +9315,12 @@ function boot(){
       // Prime defaults under the search input immediately
       try{ dgShowInstantDefaults(); }catch(e){}
       // Trending removed (STEP17)
-      try{ void dgRestoreLastState(); }catch(e){}
+      try{
+        const opened = await dgAutoOpenFromQuery();
+        if (!opened){
+          await dgRestoreLastState();
+        }
+      }catch(e){}
       setStatus('live', 'Ready');
     }
 
