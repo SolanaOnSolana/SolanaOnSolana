@@ -3251,9 +3251,13 @@ body.dgHasToken .dgBackBtn{ display:inline-flex; }
       if (u.startsWith('//')) return 'https:' + u;
       return u;
     };
-    const dgDsChainForLogo = (c) => {
+    const dgNormalizeChain = (c) => {
       const k = (c||'').toString().toLowerCase();
-      return ({solana:'solana', ethereum:'ethereum', eth:'ethereum', bsc:'bsc', bnb:'bsc', base:'base'}[k] || k);
+      return ({sol:'solana', eth:'ethereum', bnb:'bsc', solana:'solana', ethereum:'ethereum', bsc:'bsc', base:'base'}[k] || k);
+    };
+    const dgDsChainForLogo = (c) => {
+      const k = dgNormalizeChain(c);
+      return ({solana:'solana', ethereum:'ethereum', bsc:'bsc', base:'base'}[k] || k);
     };
     const dgDexTokenLogo = (chain, token) => {
       try{
@@ -5208,7 +5212,7 @@ function dgReadHashState(){
     const h = String(location.hash || '');
     if (!h.startsWith('#dg=')) return null;
     const qs = new URLSearchParams(h.slice(4));
-    const chain = qs.get('chain') ? String(qs.get('chain')).toLowerCase() : '';
+    const chain = qs.get('chain') ? dgNormalizeChain(String(qs.get('chain'))) : '';
     const pairId = qs.get('pair') || '';
     const tokenAddress = qs.get('token') || '';
     const tf = qs.get('tf') || '';
@@ -5247,13 +5251,37 @@ function dgWriteUrlState(meta){
 function dgReadUrlState(){
   try{
     const sp = new URLSearchParams(location.search || '');
-    const chain = (sp.get('dg_chain') || sp.get('chain') || '').toLowerCase();
+    const chain = dgNormalizeChain(sp.get('dg_chain') || sp.get('chain') || '');
     const pairId = sp.get('dg_pair') || sp.get('pair') || '';
     const tokenAddress = sp.get('dg_token') || sp.get('ca') || sp.get('token') || '';
     const tf = sp.get('dg_tf') || sp.get('tf') || '';
     if (!chain || (!pairId && !tokenAddress)) return null;
     return { chain, pairId, tokenAddress, tf };
   }catch(e){ return null; }
+}
+
+async function dgResolvePairFromToken(chain, tokenAddress){
+  const token = String(tokenAddress || '').trim();
+  if (!token) return null;
+  const normChain = dgNormalizeChain(chain);
+  const dsChain = dgDsChainForLogo(normChain);
+  try{
+    const res = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${encodeURIComponent(token)}`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    const pairs = Array.isArray(data?.pairs) ? data.pairs : [];
+    const matches = pairs.filter(p => String(p?.chainId || '').toLowerCase() === dsChain);
+    const pool = (matches.length ? matches : pairs).sort((a, b) => {
+      const aL = Number(a?.liquidity?.usd || 0);
+      const bL = Number(b?.liquidity?.usd || 0);
+      return bL - aL;
+    })[0];
+    const pairId = pool?.pairAddress || '';
+    if (!pairId) return null;
+    return { chain: normChain, pairId, tokenAddress: token };
+  }catch(e){
+    return null;
+  }
 }
 
 function dgWriteHashState(meta){
@@ -5477,13 +5505,24 @@ async function dgRestoreLastState(){
         }
       }
 
-      const chain = chosen.chain;
-      const pairId = chosen.pairId || chosen.pool;
-      const tokenAddress = chosen.tokenAddress;
+      let chain = chosen.chain;
+      let pairId = chosen.pairId || chosen.pool;
+      let tokenAddress = chosen.tokenAddress;
       const tf = chosen.tf || "15m";
       const to = chosen.to || null;
 
-      if(!chain || !pairId) return;
+      if(!chain || (!pairId && !tokenAddress)) return;
+
+      if(!pairId && tokenAddress){
+        const resolved = await dgResolvePairFromToken(chain, tokenAddress);
+        if(resolved){
+          chain = resolved.chain;
+          pairId = resolved.pairId;
+          tokenAddress = resolved.tokenAddress;
+        }
+      }
+
+      if(!pairId) return;
 
       dgRestoreGuardActive = true;
       let attempt=0, ok=false;
