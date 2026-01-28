@@ -8032,10 +8032,10 @@ function normalizeBoosts(raw, chainKey){
         if (sid !== state.sessionId) return;
         const best = pickBestPair(Array.isArray(pairs) ? pairs : (pairs?.pairs||[]));
         const pairId = best?.pairAddress || best?.pairId || best?.pair || best?.id || null;
-        const baseSymbol = cleanText(best?.baseToken?.symbol);
-        const baseName = cleanText(best?.baseToken?.name);
-        const quoteSymbol = cleanText(best?.quoteToken?.symbol);
-        const logoUrl = dgFixLogoUrl(cleanText(best?.info?.imageUrl || best?.baseToken?.logoURI || best?.baseToken?.logo || best?.baseToken?.image));
+        let baseSymbol = cleanText(best?.baseToken?.symbol);
+        let baseName = cleanText(best?.baseToken?.name);
+        let quoteSymbol = cleanText(best?.quoteToken?.symbol);
+        let logoUrl = dgFixLogoUrl(cleanText(best?.info?.imageUrl || best?.baseToken?.logoURI || best?.baseToken?.logo || best?.baseToken?.image));
         const priceUsd = toNum(best?.priceUsd);
         const change24h = toNum(best?.priceChange?.h24);
         const volume24hUsd = toNum(best?.volume?.h24 || best?.volume24hUsd);
@@ -8045,6 +8045,22 @@ function normalizeBoosts(raw, chainKey){
           setStatus('warn', 'No pool found for token');
           toast('No pool found for this contract on this chain');
           return;
+        }
+        if (!baseSymbol || !baseName || !logoUrl){
+          try{
+            const ds = await withBackoff(() => fetchJson(dsPairsUrl(dsChain, pairId), {ttl: 4_000, signal}), {tries:2, signal});
+            if (sid !== state.sessionId) return;
+            const p = ds?.pairs?.[0] || null;
+            if (p){
+              baseSymbol = baseSymbol ?? cleanText(p?.baseToken?.symbol);
+              baseName = baseName ?? cleanText(p?.baseToken?.name);
+              quoteSymbol = quoteSymbol ?? cleanText(p?.quoteToken?.symbol);
+              logoUrl = logoUrl || dgFixLogoUrl(cleanText(p?.info?.imageUrl || p?.baseToken?.logoURI || p?.baseToken?.logo || p?.baseToken?.image));
+            }
+          }catch(e){}
+        }
+        if (!logoUrl){
+          try{ logoUrl = dgDexTokenLogo(chain, token) || ''; }catch(e){}
         }
         await openPool({
           chain,
