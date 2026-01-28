@@ -899,12 +899,138 @@ img{max-width:100%; height:auto}
  text-align:center;
  }
 
- /* ===== TOOLS (CLEAN + NOT LONG + ALWAYS STACKED) ===== */
- .toolsGrid{
+ /* ===== TOOLS (ARENA GRID) ===== */
+ .arenaHeader{
+ display:flex;
+ align-items:center;
+ justify-content:space-between;
+ gap:16px;
+ margin-bottom:18px;
+ }
+ .arenaTitle{
+ display:flex;
+ align-items:center;
+ gap:12px;
+ }
+ .arenaIcon{
+ width:44px;
+ height:44px;
+ border-radius:12px;
+ display:flex;
+ align-items:center;
+ justify-content:center;
+ background: rgba(255,255,255,.08);
+ border:1px solid rgba(255,255,255,.12);
+ box-shadow: 0 10px 28px rgba(0,0,0,.35);
+ }
+ .arenaIcon svg{ width:24px; height:24px; }
+
+ .arenaGrid{
  display:grid;
- grid-template-columns: 1fr; /* ✅ always under each other */
- gap:18px;
- align-items:stretch;
+ grid-template-columns: repeat(3, minmax(0, 1fr));
+ gap:16px;
+ }
+ @media (max-width: 980px){
+ .arenaGrid{ grid-template-columns: repeat(2, minmax(0, 1fr)); }
+ }
+ @media (max-width: 620px){
+ .arenaGrid{ grid-template-columns: 1fr; }
+ }
+
+ .arenaCard{
+ position:relative;
+ display:flex;
+ flex-direction:column;
+ gap:12px;
+ padding:16px;
+ border-radius:14px;
+ border:1px solid rgba(255,255,255,.12);
+ background: rgba(255,255,255,.05);
+ box-shadow: var(--shadowSoft);
+ text-decoration:none;
+ color: inherit;
+ min-height: 210px;
+ transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease;
+ }
+ .arenaCard:hover{
+ transform: translateY(-2px);
+ border-color: rgba(255,255,255,.2);
+ box-shadow: 0 18px 50px rgba(0,0,0,.45);
+ }
+ .arenaCard.planned{
+ background: rgba(255,255,255,.03);
+ border-color: rgba(255,255,255,.08);
+ color: rgba(255,255,255,.65);
+ }
+ .arenaCard.dex{
+ border-color: rgba(255,215,0,.25);
+ box-shadow: 0 14px 40px rgba(120,90,0,.18);
+ background: linear-gradient(180deg, rgba(255,215,0,.08), rgba(255,255,255,.03));
+ }
+ .arenaCard.dex .arenaBadge{
+ background: linear-gradient(90deg, #f6d365, #fda085);
+ color: #2a1600;
+ border: none;
+ }
+
+ .arenaTop{
+ position:relative;
+ display:flex;
+ align-items:flex-start;
+ justify-content:flex-start;
+ gap:12px;
+ }
+ .arenaLogo{
+ width:100%;
+ height:112px;
+ border-radius:12px;
+ padding:0;
+ background: transparent;
+ border:none;
+ display:flex;
+ align-items:center;
+ justify-content:center;
+ overflow:hidden;
+ }
+ .arenaLogo img{
+ width:100%;
+ height:100%;
+ object-fit:contain;
+ }
+ .arenaCard.planned .arenaLogo{
+ opacity:.7;
+ }
+ .arenaCard.dex .arenaLogo{
+ filter: drop-shadow(0 8px 18px rgba(120,90,0,.35));
+ }
+
+ .arenaBadge{
+ position:absolute;
+ top:10px;
+ right:10px;
+ padding:5px 9px;
+ border-radius:999px;
+ font-size:10px;
+ font-weight:900;
+ letter-spacing:.3px;
+ border:1px solid rgba(255,255,255,.16);
+ background: rgba(255,255,255,.08);
+ text-transform:uppercase;
+ }
+ .arenaCard.planned .arenaBadge{
+ border-color: rgba(255,255,255,.12);
+ color: rgba(255,255,255,.55);
+ }
+
+ .arenaName{
+ font-size:17px;
+ font-weight:950;
+ letter-spacing:-.2px;
+ }
+ .arenaHint{
+ color: rgba(255,255,255,.72);
+ font-size:12.5px;
+ font-weight:700;
  }
 
  .toolCard{
@@ -2481,217 +2607,102 @@ body.net-base .chainBtn.active{ background: linear-gradient(90deg, rgba(0,82,255
 
  <!-- TOOLS (UPGRADED • OBVIOUS • MOBILE-FIRST) -->
  <section id="tools">
+ <div class="card">
+ <div class="cardInner">
+ <div class="arenaHeader">
+ <div class="arenaTitle">
+ <span class="arenaIcon" aria-hidden="true">
+ <svg class="ico"><use href="#ico-stack" xlink:href="#ico-stack"></use></svg>
+ </span>
+ <h2 class="h2">Guardian Arena Of Tools</h2>
+ </div>
+ </div>
 
- <!-- Tools intro (makes it instantly obvious this is interactive) -->
- <div class="card toolsIntro">
- <div class="toolsIntroInner">
+ <div class="arenaGrid" aria-label="Guardian Arena Of Tools">
+ <a class="arenaCard dex" href="https://www.solanax1.com/dexguard" target="_blank" rel="noreferrer">
+ <div class="arenaTop">
+ <div class="arenaLogo">
+ <img src="dexdex.png" alt="Dexguard logo" />
+ </div>
+ <span class="arenaBadge">Live</span>
+ </div>
  <div>
- <div class="toolsKicker"><span class="dot"></span> Tools</div>
- <h2 class="toolsTitle">Scan wallets. Scan contracts. <span class="gradText">Instantly.</span></h2>
- <p class="toolsDesc">
- These are not blog sections they’re live tools. Open a scanner below to analyze a wallet or a token contract in seconds.
- </p>
- <div class="toolsQuick">
- <a class="btn primary" href="https://solanax1.com/wallet" target="_blank" rel="noreferrer">Open Wallet Scanner</a>
- <a class="btn grad" href="https://solanax1.com/contract" target="_blank" rel="noreferrer">Open Contract Scanner</a>
+ <div class="arenaName">Dexguard</div>
+ <div class="arenaHint">DEX intelligence + flow radar</div>
  </div>
- </div>
-
- <div class="toolBigTiles" aria-label="Quick tool tiles">
- <a class="tile" href="https://solanax1.com/wallet" target="_blank" rel="noreferrer" aria-label="Open Wallet Scanner">
- <div class="tileTop">
- <div class="tileIcon">W</div>
- <div class="menuBadge">LIVE TOOL</div>
- </div>
- <div class="tileName">Guardian Wallet Scanner</div>
- <div class="tileHint">Profile Solana wallets • archetypes • shareable card</div>
- <div class="tileCta">Tap to scan <span aria-hidden="true">→</span></div>
  </a>
 
- <a class="tile" href="https://solanax1.com/contract" target="_blank" rel="noreferrer" aria-label="Open Contract Scanner">
- <div class="tileTop">
- <div class="tileIcon">C</div>
- <div class="menuBadge">LIVE TOOL</div>
+ <a class="arenaCard" href="https://solanax1.com/wallet" target="_blank" rel="noreferrer">
+ <div class="arenaTop">
+ <div class="arenaLogo">
+ <img src="wallet.png" alt="Guardian Wallet Scanner logo" />
  </div>
- <div class="tileName">Guardian Contract Scanner</div>
- <div class="tileHint">Multi chain • holders % • bubble map • export report</div>
- <div class="tileCta">Tap to scan <span aria-hidden="true">→</span></div>
+ <span class="arenaBadge">Live</span>
+ </div>
+ <div>
+ <div class="arenaName">Guardian Wallet Scanner</div>
+ <div class="arenaHint">Wallet intel + credibility map</div>
+ </div>
  </a>
- </div>
- </div>
- </div>
 
- <div style="height:16px"></div>
-
- <div class="toolsGrid">
-
- <!-- DNA -->
- <div class="card toolCard dnaCard" data-href="https://solanax1.com/wallet" role="link" tabindex="0" aria-label="Open Guardian Wallet Scanner">
- <div class="toolInner">
-
- <div class="toolHeaderRow">
- <div class="toolId">
- <div class="toolIcon" aria-hidden="true">W</div>
- <div class="toolIdText">
- <div class="toolTag">GUARDIAN INTELLIGENCE • WALLET SCANNER</div>
- <div class="sub">Solana wallets • archetypes • shareable identity signal</div>
+ <a class="arenaCard" href="https://solanax1.com/contract" target="_blank" rel="noreferrer">
+ <div class="arenaTop">
+ <div class="arenaLogo">
+ <img src="contract.png" alt="Guardian Contract Scanner logo" />
  </div>
+ <span class="arenaBadge">Live</span>
  </div>
-
- <div class="toolRight">
-<div class="toolPills">
- <span class="pill">Mainnet</span>
- <span class="pill">On chain</span>
- <span class="pill">Shareable</span>
- </div>
-<div class="toolCorner"><b>Open</b> Wallet Scanner →</div>
-</div>
- </div>
-
- <div class="toolGrid">
  <div>
- <h2 class="toolH">
- Scan any wallet. <span class="gradText">Reveal the Guardian.</span>
- </h2>
+ <div class="arenaName">Guardian Contract Scanner</div>
+ <div class="arenaHint">Contract risk + holder map</div>
+ </div>
+ </a>
 
- <div class="toolLead">
- The Guardian is now operational. The <b>Wallet Scanner</b> profiles Solana wallets by
- <b>power</b>, <b>stability</b>, <b>activity</b>, and <b>venue footprint</b> and shows how aligned they are with <b>$SOS</b>.
- <br><br>
- This is the culture layer turning into an on chain identity signal.
+ <div class="arenaCard planned">
+ <div class="arenaTop">
+ <div class="arenaLogo">
+ <img src="signalguard.png" alt="Signalguard logo" />
  </div>
-
- <div class="featureChips" aria-label="Key features">
- <span class="chip">Archetype tiers</span>
- <span class="chip">Venue footprint</span>
- <span class="chip">Share to X</span>
- <span class="chip">$SOS alignment</span>
+ <span class="arenaBadge">Planned</span>
  </div>
-
- <div class="toolCTA">
- <a class="btn grad" href="https://solanax1.com/wallet" target="_blank" rel="noreferrer">Open Guardian Wallet Scanner</a>
- <span class="toolMini">Instant readout • Verifiable signals</span>
- </div>
- </div>
-
- <div class="toolSide">
- <div class="toolPreview" aria-label="Preview">
- <div class="toolPreviewInner">
- <div class="toolPreviewTop">
- <span class="liveBadge"><span class="ping"></span> Live Preview</span>
- <span class="menuBadge">Wallet</span>
- </div>
- <div class="previewTitle">Instant Snapshot</div>
- <div class="previewLines" style="margin-top:10px">
- <div class="bar" style="--w:78%"></div>
- <div class="bar" style="--w:62%"></div>
- <div class="bar" style="--w:86%"></div>
- </div>
- </div>
- </div>
-
- <div class="toolBox">
- <ul class="toolList">
- <li>Archetype classification (Guardian tiers)</li>
- <li>Power / Stability / Activity scores</li>
- <li>Top venues (Jupiter, Raydium, Orca…)</li>
- <li>$SOS alignment + holding tier</li>
- <li>Share to X in one click</li>
- </ul>
- </div>
- </div>
- </div>
-
- </div>
- </div>
-
- <!-- GUARDIAN -->
- <div class="card toolCard guardianCard" data-href="https://solanax1.com/contract" role="link" tabindex="0" aria-label="Open Guardian Contract Scanner">
- <div class="toolInner">
-
- <div class="toolHeaderRow">
- <div class="toolId">
- <div class="toolIcon" aria-hidden="true">C</div>
- <div class="toolIdText">
- <div class="toolTag">GUARDIAN SYSTEM • MULTI-CHAIN CONTRACT SCANNER</div>
- <div class="sub">Solana + ETH + BNB + Base • holders % • clusters • export</div>
- </div>
- </div>
-
- <div class="toolRight">
-<div class="toolPills">
- <span class="pill">Mainnet</span>
- <span class="pill">Multichain</span>
- <span class="pill">Branded Report</span>
- </div>
-<div class="toolCorner"><b>Open</b> Contract Scanner →</div>
-</div>
- </div>
-
- <div class="toolGrid">
  <div>
- <h2 class="toolH">Scan any contract. <span class="gradText">Multi Chain Guardian Check.</span></h2>
-
- <div class="toolLead">
- The <b>Guardian Contract Scanner</b> runs a fast, action driven security scan across
- <b>Solana</b>, <b>Ethereum</b>, <b>BNB Chain</b> and <b>Base</b>.
- It returns a clean verdict + score with <b>color coded</b> risk flags (mint/freeze/owner,
- mintable, blacklist/whitelist controls, trading limits) plus a live <b>DEX snapshot</b>.
- <br><br>
- You also get <b>Top Holders</b> with accurate supply %, a <b>Bubble Map</b>
- (wallet connections + clusters/bundles), explorer deep links, and a <b>branded downloadable report</b>
- with the token logo + $SOS watermark.
- </div>
-
- <div class="featureChips" aria-label="Key features">
- <span class="chip">Multichain</span>
- <span class="chip">Color-coded security</span>
- <span class="chip">Bubble map & clusters</span>
- <span class="chip">Download report</span>
- </div>
-
- <div class="toolCTA">
- <a class="btn grad" href="https://solanax1.com/contract" target="_blank" rel="noreferrer">Open Guardian Contract Scanner</a>
- <span class="toolMini">Multichain verdict • Bubble map + report</span>
+ <div class="arenaName">Signalguard</div>
+ <div class="arenaHint">Signal detection + discovery</div>
  </div>
  </div>
 
- <div class="toolSide">
- <div class="toolPreview" aria-label="Preview">
- <div class="toolPreviewInner">
- <div class="toolPreviewTop">
- <span class="liveBadge"><span class="ping"></span> Live Preview</span>
- <span class="menuBadge">Contract</span>
+ <div class="arenaCard planned">
+ <div class="arenaTop">
+ <div class="arenaLogo">
+ <img src="launchguard.png" alt="Launchguard logo" />
  </div>
- <div class="previewTitle">Risk Flags + Clusters</div>
- <div class="previewLines" style="margin-top:10px">
- <div class="bar" style="--w:92%"></div>
- <div class="bar" style="--w:58%"></div>
- <div class="bar" style="--w:74%"></div>
+ <span class="arenaBadge">Planned</span>
  </div>
+ <div>
+ <div class="arenaName">Launchguard</div>
+ <div class="arenaHint">Structured launches + standards</div>
  </div>
  </div>
 
- <div class="toolBox">
- <ul class="toolList">
- <li>Solana + ETH + BNB + Base scanning</li>
- <li>Verdict + score with color coded security flags</li>
- <li>Top holders with accurate supply %</li>
- <li>Bubble map (connections + clusters)</li>
- <li>Bundles + explorer deep-links + branded report export</li>
- </ul>
+ <div class="arenaCard planned">
+ <div class="arenaTop">
+ <div class="arenaLogo">
+ <img src="tradeguard.png" alt="Tradeguard logo" />
+ </div>
+ <span class="arenaBadge">Planned</span>
+ </div>
+ <div>
+ <div class="arenaName">Tradeguard</div>
+ <div class="arenaHint">Guarded execution + control</div>
  </div>
  </div>
  </div>
-
- </div>
- </div>
-
  </div>
  </section>
 
  <!-- Mobile tool dock (always visible on phones) -->
  <div class="toolsDock" aria-label="Quick tool access">
+ <a class="dockBtn" href="https://www.solanax1.com/dexguard" target="_blank" rel="noreferrer"><span class="mini">D</span> Dexguard</a>
  <a class="dockBtn" href="https://solanax1.com/wallet" target="_blank" rel="noreferrer"><span class="mini">W</span> Wallet Scan</a>
  <a class="dockBtn" href="https://solanax1.com/contract" target="_blank" rel="noreferrer"><span class="mini">C</span> Contract Scan</a>
  </div>
