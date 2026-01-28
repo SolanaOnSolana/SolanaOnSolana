@@ -5468,7 +5468,7 @@ function dgApplyTfUi(tf){
             if (hint === 'restore' && window.__dgRestoreFromExternal){
               try{ window.__dgRestoreFromExternal = false; }catch(e){}
               dgPushUrlState(meta);
-            }else if (hint && hint !== 'restore'){
+            }else if (hint && hint !== 'restore' && hint !== 'popstate'){
               dgPushUrlState(meta);
             }else{
               dgWriteUrlState(meta);
@@ -5555,8 +5555,6 @@ async function dgRestoreLastState(){
         }
       }
 
-      if(!pairId) return;
-
       if (hasUrl && navType === "navigate"){
         try{ window.__dgRestoreFromExternal = true; }catch(e){}
       }
@@ -5566,7 +5564,13 @@ async function dgRestoreLastState(){
       while(attempt < 3 && !ok){
         attempt++;
         try{
-          await openPool({chain, pairId, tokenAddress, hint:"restore"});
+          if (pairId){
+            await openPool({chain, pairId, tokenAddress, hint:"restore"});
+          } else if (tokenAddress){
+            await openPool({chain, tokenAddress, hint:"restore"});
+          } else {
+            return;
+          }
           if(typeof setTimeframe==="function"){
             try{ await setTimeframe(tf); }catch(e){}
           }
@@ -5586,6 +5590,55 @@ async function dgRestoreLastState(){
       dgRestoreGuardActive = false;
     }
   }
+
+function dgMergeUrlState(){
+  try{
+    const urlState = dgReadUrlState();
+    const hashState = dgReadHashState();
+    if (!urlState && !hashState) return null;
+    return Object.assign({}, urlState || {}, hashState || {});
+  }catch(e){ return null; }
+}
+
+async function dgApplyUrlState({source=''}={}){
+  try{
+    const merged = dgMergeUrlState();
+    if (!merged || !merged.chain || !(merged.pairId || merged.pool || merged.tokenAddress || merged.token)){
+      if (source === 'popstate'){
+        try{ dgBackToSearch(); }catch(e){}
+      }
+      return;
+    }
+
+    const chain = merged.chain;
+    const pairId = merged.pairId || merged.pool || '';
+    const tokenAddress = merged.tokenAddress || merged.token || '';
+    const tf = merged.tf || (state && state.tf) || '15m';
+
+    if (state && state.current && state.current.chain === chain){
+      const curPair = state.current.pool || '';
+      const curToken = state.current.tokenAddress || state.current.token || '';
+      if ((pairId && curPair === pairId) || (!pairId && tokenAddress && addrEq(chain, tokenAddress, curToken))){
+        if (tf && typeof setTimeframe === 'function'){
+          try{ await setTimeframe(tf); }catch(e){}
+        }
+        return;
+      }
+    }
+
+    if (pairId){
+      await openPool({chain, pairId, tokenAddress, hint: source === 'popstate' ? 'popstate' : 'restore'});
+    }else if (tokenAddress){
+      await openPool({chain, tokenAddress, hint: source === 'popstate' ? 'popstate' : 'restore'});
+    }
+  }catch(e){}
+}
+
+try{
+  window.addEventListener('popstate', () => {
+    try{ void dgApplyUrlState({source:'popstate'}); }catch(e){}
+  });
+}catch(e){}
 
 function dgRecentsToCmdItems(){
   const list = dgReadRecents().slice(0, 12);
@@ -7661,7 +7714,7 @@ function normalizeBoosts(raw, chainKey){
         };
         state.metaByToken.set(key, Object.assign(prev || {}, seed));
         try{ dgRecentsPush(seed); }catch(e){}
-        await openByToken(chain, tokenAddress);
+        await openByToken(chain, tokenAddress, hint || 'token');
         return;
       }
       if (!pairId){ toast('No pool found'); return; }
@@ -7938,7 +7991,7 @@ function normalizeBoosts(raw, chainKey){
       setStatus(state._usingFallbackCandles ? 'warn' : 'live', state._usingFallbackCandles ? 'Syncing candles…' : 'Live');
     }
 
-    async function openByToken(chain, token){
+    async function openByToken(chain, token, hint='token'){
       const sid = ++state.sessionId;
       if (state.abort) state.abort.abort();
       state.abort = new AbortController();
@@ -7958,7 +8011,7 @@ function normalizeBoosts(raw, chainKey){
           toast('No pool found for this contract on this chain');
           return;
         }
-        await openPool({chain, pairId, tokenAddress: token, hint:'token'});
+        await openPool({chain, pairId, tokenAddress: token, hint: hint || 'token'});
       }catch(e){
         if (signal.aborted) return;
         console.warn('[DexGuard] openByToken failed', e);
