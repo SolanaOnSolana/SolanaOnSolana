@@ -4170,11 +4170,11 @@ const inDec = await getMintDecimals(fromMint);
 
           // Determine feeMint/feeAccount: prefer output mint; if output is SOL, collect in input mint (WSOL/Token)
           const feeMint = (String(toMint) === SOL_MINT) ? String(fromMint) : String(toMint);
-          const { ata, needsCreate } = await ensureFeeAta(feeMint);
-          const feeAccountStr = ata.toString();
+          // Quote should not depend on RPC availability; derive the fee ATA locally.
+          const feeAccountStr = ataAddress(PK(FEE_WALLET), PK(feeMint)).toString();
 
           const quote = await jupQuote({ inMint: String(fromMint), outMint: String(toMint), inAmountRaw: inRaw.toString(), slippageBps: slippageBpsLocal });
-          lastQuote = { quote, feeAccountStr, feeMint, needsCreate };
+          lastQuote = { quote, feeAccountStr, feeMint, needsCreate: null };
 
           // Estimated out (raw → decimal best effort)
           const outMint = String(toMint);
