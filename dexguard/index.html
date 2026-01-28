@@ -5277,7 +5277,7 @@ function dgReadUrlState(){
     const sp = new URLSearchParams(location.search || '');
     const chain = dgNormalizeChain(sp.get('dg_chain') || sp.get('chain') || '');
     const pairId = sp.get('dg_pair') || sp.get('pair') || '';
-    const tokenAddress = sp.get('dg_token') || sp.get('ca') || sp.get('token') || '';
+    const tokenAddress = sp.get('dg_token') || sp.get('ca') || sp.get('token') || sp.get('addr') || '';
     const tf = sp.get('dg_tf') || sp.get('tf') || '';
     if (!chain || (!pairId && !tokenAddress)) return null;
     return { chain, pairId, tokenAddress, tf };
@@ -5462,10 +5462,13 @@ function dgApplyTfUi(tf){
           const pairId = String(p.pairId || p.pool || p.pair || '');
           const tokenAddress = String(p.tokenAddress || p.token || p.address || '');
           const tf = (window.__dgActiveTF || window.__dgCurrentTF || '').toString();
-          const hint = String(p.hint || '').toLowerCase();
+          const hint = String(p.hint || p.source || '').toLowerCase();
           if (chain && (pairId || tokenAddress)){
             const meta = { chain, pool: pairId, token: tokenAddress, tf };
-            if (hint && hint !== 'restore'){
+            if (hint === 'restore' && window.__dgRestoreFromExternal){
+              try{ window.__dgRestoreFromExternal = false; }catch(e){}
+              dgPushUrlState(meta);
+            }else if (hint && hint !== 'restore'){
               dgPushUrlState(meta);
             }else{
               dgWriteUrlState(meta);
@@ -5554,12 +5557,16 @@ async function dgRestoreLastState(){
 
       if(!pairId) return;
 
+      if (hasUrl && navType === "navigate"){
+        try{ window.__dgRestoreFromExternal = true; }catch(e){}
+      }
+
       dgRestoreGuardActive = true;
       let attempt=0, ok=false;
       while(attempt < 3 && !ok){
         attempt++;
         try{
-          await openPool({chain, pairId, tokenAddress, source:"restore"});
+          await openPool({chain, pairId, tokenAddress, hint:"restore"});
           if(typeof setTimeframe==="function"){
             try{ await setTimeframe(tf); }catch(e){}
           }
