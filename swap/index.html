@@ -2884,7 +2884,7 @@ body.dgHasToken .dgBackBtn{ display:inline-flex; }
                     <div class="muted2 dgDebugOnly">Live: trades → last price → safe fallback. Quiet errors (console only).</div>
                   </div>
                 </section>
-                <!-- DexGuard Swap (custom UI; routing via Jupiter API key) -->
+                <!-- DexGuard Swap (custom UI; routing via Jupiter v6 API) -->
                 <section class="panel dgSwapPanel" id="dgSwapPanel" aria-label="DexGuard Swap">
                   <div class="panelHead">
                     <div class="title">
@@ -3026,6 +3026,22 @@ body.dgHasToken .dgBackBtn{ display:inline-flex; }
                         <div class="dgSwapWalletModalHint muted2">On mobile browsers, you may need to open DexGuard inside your wallet’s in-app browser.</div>
                       </div>
                     </div>
+                    <div id="dgSwapConsentModal" class="dgSwapWalletModal" aria-hidden="true">
+                      <div class="dgSwapWalletModalScrim" data-close="1"></div>
+                      <div class="dgSwapWalletModalCard" role="dialog" aria-modal="true" aria-label="Connect wallet consent">
+                        <div class="dgSwapWalletModalHead">
+                          <div class="dgSwapWalletModalTitle">Connect Wallet</div>
+                          <button id="dgSwapConsentClose" class="btn icon dgSwapWalletModalClose" type="button" aria-label="Close">✕</button>
+                        </div>
+                        <div class="dgSwapWalletModalHint muted2" style="margin-top:0;">
+                          DexGuard only requests access to your public wallet address and permission to submit swaps you approve in your wallet. Your funds stay in your wallet at all times.
+                        </div>
+                        <div class="dgSwapWalletModalBtns" style="margin-top:14px;">
+                          <button id="dgSwapConsentAccept" class="btn grad" type="button">Continue</button>
+                          <button id="dgSwapConsentCancel" class="btn ghost" type="button">Cancel</button>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </section>
 
@@ -3101,14 +3117,6 @@ body.dgHasToken .dgBackBtn{ display:inline-flex; }
         </div>
 
         
-        <div class="field">
-          <div class="label">Jupiter API Key (optional)</div>
-          <input id="jupKey" class="input" placeholder="Paste your free key from portal.jup.ag (stored locally)" />
-          <div class="help">
-            Required for DexGuard Swap routing. Stored locally in your browser only.
-          </div>
-        </div>
-
         <div class="field">
           <div class="label">Polling</div>
           <div class="row">
@@ -3352,13 +3360,11 @@ body.dgHasToken .dgBackBtn{ display:inline-flex; }
     const LS = {
       proxy: 'dg_proxy_url_v1',
       birdeye: 'dg_birdeye_key_v1',
-      jup: 'dg_jup_key_v1',
       cache: 'dg_cache_v1',
     };
     const settings = {
       proxyUrl: localStorage.getItem(LS.proxy) || '',
       birdeyeKey: localStorage.getItem(LS.birdeye) || '',
-      jupKey: localStorage.getItem(LS.jup) || '',
       pollLiveMs: 1500,
       pollHiddenMs: 12000,
     };
@@ -3475,8 +3481,7 @@ body.dgHasToken .dgBackBtn{ display:inline-flex; }
 
 
     /* =========================================================
-       DexGuard Swap (custom UI) — routed via Jupiter Metis Swap API
-       - Requires user to paste Jupiter API key (optional) in Settings
+       DexGuard Swap (custom UI) — routed via Jupiter v6 API
        - Fee: fixed 0.5% via platformFeeBps (non-editable)
        - Wallets: Phantom / Solflare / Backpack (window providers)
        ========================================================= */
@@ -3519,6 +3524,8 @@ body.dgHasToken .dgBackBtn{ display:inline-flex; }
       let fromIsSolDefault = true;
       let lastQuote = null;
       let wallet = null;
+      let connectApproved = false;
+      try{ connectApproved = sessionStorage.getItem('dg_swap_connect_ack') === '1'; }catch(e){}
       let connection = null;
       const cachedBalances = { solLamports:0, fromUi:0, toUi:0 };
       // Slippage (editable) — stored locally
@@ -3729,6 +3736,16 @@ async function ensureConnection(){
         ui.walletModal.classList.remove('show');
         ui.walletModal.setAttribute('aria-hidden','true');
       }
+      function openConsentModal(){
+        if (!ui.consentModal) return;
+        ui.consentModal.classList.add('show');
+        ui.consentModal.setAttribute('aria-hidden','false');
+      }
+      function closeConsentModal(){
+        if (!ui.consentModal) return;
+        ui.consentModal.classList.remove('show');
+        ui.consentModal.setAttribute('aria-hidden','true');
+      }
 
       async function refreshBalances(){
         try{
@@ -3885,6 +3902,11 @@ function applyPct(pct){
           msg('Disconnected.', 'ok');
           await refreshBalances();
           await refreshQuote(true);
+          return;
+        }
+
+        if (!connectApproved){
+          openConsentModal();
           return;
         }
 
@@ -4123,7 +4145,13 @@ function applyPct(pct){
       async function refreshQuote(silent=false){
         try{
           if (!ui.panel || ui.panel.style.display === 'none') return;
-          if (!toMint) return;
+          if (!toMint){
+            ui.out.textContent = '—';
+            ui.route.textContent = '—';
+            ui.swapBtn.disabled = true;
+            if (!silent) msg('Open a chart token to quote.', 'warn');
+            return;
+          }
           const amt = parseAmount();
           if (!amt) { ui.out.textContent = '—'; ui.route.textContent = '—'; ui.swapBtn.disabled = true; return; }
           // Quotes work without a wallet; swapping requires a connected wallet.
@@ -4420,11 +4448,18 @@ ui.swapBtn.disabled = true;
         ui.pctRow = document.getElementById('dgSwapPctRow');
 
         ui.walletModal = document.getElementById('dgSwapWalletModal');
+        ui.consentModal = document.getElementById('dgSwapConsentModal');
+        ui.consentAccept = document.getElementById('dgSwapConsentAccept');
+        ui.consentCancel = document.getElementById('dgSwapConsentCancel');
+        ui.consentClose = document.getElementById('dgSwapConsentClose');
 
         // Ensure the wallet modal is attached to <body> (fixes tap/click issues inside transformed containers on mobile)
         try{
           if (ui.walletModal && ui.walletModal.parentElement !== document.body){
             document.body.appendChild(ui.walletModal);
+          }
+          if (ui.consentModal && ui.consentModal.parentElement !== document.body){
+            document.body.appendChild(ui.consentModal);
           }
         }catch(e){}
         ui.walletModalClose = document.getElementById('dgSwapWalletModalClose');
@@ -4455,6 +4490,23 @@ ui.swapBtn.disabled = true;
         bindTap(ui.openPhantom, ()=>{ closeWalletModal(); openWalletBrowse('phantom'); });
         bindTap(ui.openSolflare, ()=>{ closeWalletModal(); openWalletBrowse('solflare'); });
         bindTap(ui.openBackpack, ()=>{ closeWalletModal(); openWalletBrowse('backpack'); });
+        if (ui.consentModal){
+          const scrim = ui.consentModal.querySelector('.dgSwapWalletModalScrim');
+          bindTap(scrim, closeConsentModal);
+          ui.consentModal.addEventListener('click', (e)=>{
+            const el = e && e.target ? e.target : null;
+            if (!el) return;
+            if (el.getAttribute && el.getAttribute('data-close') === '1') closeConsentModal();
+          });
+        }
+        bindTap(ui.consentClose, closeConsentModal);
+        bindTap(ui.consentCancel, closeConsentModal);
+        bindTap(ui.consentAccept, async ()=>{
+          connectApproved = true;
+          try{ sessionStorage.setItem('dg_swap_connect_ack', '1'); }catch(e){}
+          closeConsentModal();
+          await connect();
+        });
 
         if (ui.flip) ui.flip.addEventListener('click', flip);
         if (ui.editFrom) ui.editFrom.addEventListener('click', toggleFromAdv);
@@ -9139,7 +9191,6 @@ function startLive(meta, {sid}){
     function openModal(){
       el.proxyUrl.value = settings.proxyUrl || '';
       el.birdeyeKey.value = settings.birdeyeKey || '';
-      if (el.jupKey) el.jupKey.value = settings.jupKey || '';
       el.pollLive.textContent = (settings.pollLiveMs/1000).toFixed(1) + 's';
       el.pollHidden.textContent = Math.round(settings.pollHiddenMs/1000) + 's';
       el.modalBack.classList.add('show');
@@ -9148,10 +9199,8 @@ function startLive(meta, {sid}){
     function saveSettings(){
       settings.proxyUrl = (el.proxyUrl.value || '').trim();
       settings.birdeyeKey = (el.birdeyeKey.value || '').trim();
-      if (el.jupKey) settings.jupKey = (el.jupKey.value || '').trim();
       try{ localStorage.setItem(LS.proxy, settings.proxyUrl); }catch(e){}
       try{ localStorage.setItem(LS.birdeye, settings.birdeyeKey); }catch(e){}
-      try{ localStorage.setItem(LS.jup, settings.jupKey || ''); }catch(e){}
       closeModal();
       toast('Settings saved');
       loadTrending();
