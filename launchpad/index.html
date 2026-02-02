@@ -1,868 +1,4147 @@
 <!doctype html>
-<html lang="de">
+<html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <title>DexGuard Launch — Solana Token Launchpad</title>
-  <meta name="theme-color" content="#070A0F" />
-  <style>
-    :root{
-      --bg:#070A0F; --panel:#0B1020; --panel2:#0A0F1A;
-      --stroke:rgba(255,255,255,.10); --stroke2:rgba(255,255,255,.14);
-      --text:#E9EEFF; --muted:rgba(233,238,255,.65);
-      --good:#2CFF9A; --warn:#FFB020; --bad:#FF4D6D;
-      --glow:rgba(44,255,154,.24);
-      --shadow: 0 18px 60px rgba(0,0,0,.55);
-      --radius:18px;
-      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-      --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
-    }
-    *{ box-sizing:border-box; }
-    html,body{ height:100%; }
-    body{
-      margin:0; font-family:var(--sans); background:
-        radial-gradient(1200px 600px at 20% -10%, rgba(44,255,154,.10), transparent 60%),
-        radial-gradient(1000px 700px at 100% 10%, rgba(80,120,255,.12), transparent 55%),
-        linear-gradient(180deg, #05070C, #070A0F 30%, #05070C);
-      color:var(--text);
-    }
-    a{ color:inherit; text-decoration:none; }
-    .wrap{ max-width:1180px; margin:0 auto; padding:16px 14px 80px; }
-    .topbar{
-      position:sticky; top:0; z-index:50;
-      padding:12px 10px; margin:0 -14px 14px;
-      background:rgba(7,10,15,.78);
-      backdrop-filter: blur(10px);
-      border-bottom:1px solid rgba(255,255,255,.08);
-    }
-    .toprow{
-      max-width:1180px; margin:0 auto; display:flex; gap:10px; align-items:center; justify-content:space-between;
-      padding:0 14px;
-    }
-    .brand{ display:flex; gap:10px; align-items:center; }
-    .logo{
-      width:36px; height:36px; border-radius:12px;
-      background: radial-gradient(circle at 30% 30%, rgba(44,255,154,.9), rgba(44,255,154,.15) 55%, rgba(80,120,255,.18) 100%);
-      border:1px solid rgba(44,255,154,.35);
-      box-shadow: 0 0 0 6px rgba(44,255,154,.06), 0 12px 40px rgba(0,0,0,.4);
-    }
-    .title{
-      display:flex; flex-direction:column; line-height:1.05;
-    }
-    .title b{ font-size:14px; letter-spacing:.5px; }
-    .title span{ font-size:12px; color:var(--muted); }
-    .actions{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:flex-end; }
-    .pill{
-      border:1px solid var(--stroke);
-      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
-      border-radius:999px;
-      padding:8px 10px;
-      font-size:12px; color:var(--muted);
-      display:flex; gap:8px; align-items:center;
-      box-shadow: 0 10px 24px rgba(0,0,0,.25);
-    }
-    .btn{
-      border:1px solid var(--stroke2);
-      background: linear-gradient(180deg, rgba(255,255,255,.09), rgba(255,255,255,.04));
-      color:var(--text);
-      padding:10px 12px;
-      border-radius:14px;
-      font-size:13px;
-      cursor:pointer;
-      transition:.15s transform,.15s border-color,.15s background;
-      user-select:none;
-    }
-    .btn:hover{ transform:translateY(-1px); border-color:rgba(44,255,154,.38); background: linear-gradient(180deg, rgba(44,255,154,.10), rgba(255,255,255,.04)); }
-    .btn:active{ transform:translateY(0px); }
-    .btn.primary{
-      border-color: rgba(44,255,154,.55);
-      background: linear-gradient(180deg, rgba(44,255,154,.18), rgba(44,255,154,.06));
-      box-shadow: 0 0 0 6px rgba(44,255,154,.06), 0 16px 50px rgba(0,0,0,.45);
-    }
-    .btn.danger{ border-color: rgba(255,77,109,.55); background: linear-gradient(180deg, rgba(255,77,109,.18), rgba(255,77,109,.06)); }
-    .grid{
-      display:grid;
-      grid-template-columns: 1.15fr .85fr;
-      gap:14px;
-      align-items:start;
-    }
-    @media (max-width: 980px){
-      .grid{ grid-template-columns: 1fr; }
-      .toprow{ gap:10px; }
-      .actions{ justify-content:flex-start; }
-    }
-    .card{
-      background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
-      border:1px solid rgba(255,255,255,.10);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      overflow:hidden;
-    }
-    .card .head{
-      padding:14px 14px 12px;
-      display:flex; align-items:center; justify-content:space-between; gap:10px;
-      border-bottom:1px solid rgba(255,255,255,.08);
-      background: linear-gradient(180deg, rgba(255,255,255,.04), transparent);
-    }
-    .card .head .h{
-      display:flex; flex-direction:column; gap:2px;
-    }
-    .card .head .h b{ font-size:13px; letter-spacing:.4px; }
-    .card .head .h span{ font-size:12px; color:var(--muted); }
-    .card .body{ padding:14px; }
-    .steps{
-      display:flex; gap:8px; flex-wrap:wrap;
-    }
-    .step{
-      padding:8px 10px; border-radius:999px;
-      border:1px solid rgba(255,255,255,.10);
-      background: rgba(0,0,0,.18);
-      font-size:12px; color:var(--muted);
-      display:flex; gap:8px; align-items:center;
-    }
-    .dot{ width:8px; height:8px; border-radius:999px; background:rgba(233,238,255,.25); }
-    .step.active{ border-color: rgba(44,255,154,.45); color:rgba(233,238,255,.9); background: rgba(44,255,154,.08); }
-    .step.active .dot{ background: var(--good); box-shadow: 0 0 0 5px rgba(44,255,154,.10); }
+ <meta charset="utf-8" />
+ <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+ <meta name="theme-color" content="#070711" />
 
-    .row{ display:grid; grid-template-columns: 1fr 1fr; gap:12px; }
-    @media (max-width:720px){ .row{ grid-template-columns:1fr; } }
-    label{ display:block; font-size:12px; color:var(--muted); margin:0 0 6px; }
-    input, textarea, select{
-      width:100%;
-      padding:11px 12px;
-      border-radius:14px;
-      border:1px solid rgba(255,255,255,.12);
-      background: rgba(0,0,0,.22);
-      color: var(--text);
-      outline:none;
-      font-size:13px;
-    }
-    textarea{ min-height:92px; resize:vertical; }
-    input:focus, textarea:focus, select:focus{ border-color: rgba(44,255,154,.45); box-shadow: 0 0 0 5px rgba(44,255,154,.08); }
-    .hint{ font-size:12px; color:var(--muted); margin-top:8px; line-height:1.45; }
-    .kpi{
-      display:flex; gap:10px; flex-wrap:wrap; align-items:center;
-      font-family: var(--mono);
-      font-size:12px; color:rgba(233,238,255,.85);
-    }
-    .kpi .chip{
-      padding:7px 9px; border-radius:12px;
-      border:1px solid rgba(255,255,255,.10);
-      background: rgba(0,0,0,.20);
-    }
-    .divider{ height:1px; background:rgba(255,255,255,.08); margin:14px 0; }
-    .status{
-      font-family:var(--mono);
-      font-size:12px;
-      line-height:1.45;
-      white-space:pre-wrap;
-      color:rgba(233,238,255,.86);
-      background: rgba(0,0,0,.24);
-      border:1px solid rgba(255,255,255,.10);
-      border-radius:14px;
-      padding:12px;
-      max-height: 220px;
-      overflow:auto;
-    }
-    .ok{ color: var(--good); }
-    .bad{ color: var(--bad); }
-    .warn{ color: var(--warn); }
+ <title>$SOS Solana on Solana</title>
+ <meta name="description" content="$SOS Solana on Solana. Meet the Guardian of the chain." />
 
-    .mini{
-      font-size:12px; color:var(--muted);
-      display:flex; gap:10px; flex-wrap:wrap; align-items:center;
-    }
-    .links{
-      display:flex; gap:8px; flex-wrap:wrap;
-    }
-    .link{
-      padding:9px 10px;
-      border-radius:14px;
-      border:1px solid rgba(255,255,255,.10);
-      background: rgba(0,0,0,.16);
-      font-size:12px; color:rgba(233,238,255,.9);
-    }
-    .link:hover{ border-color: rgba(44,255,154,.35); }
-    .footer-note{
-      margin-top:14px;
-      font-size:12px;
-      color:rgba(233,238,255,.55);
-      line-height:1.55;
-    }
-    .modalOverlay{
-      position:fixed; inset:0; background:rgba(0,0,0,.62);
-      display:none; align-items:center; justify-content:center;
-      z-index:9999;
-      padding:18px;
-    }
-    .modal{
-      width:min(560px, 100%);
-      border-radius:22px;
-      border:1px solid rgba(255,255,255,.12);
-      background: linear-gradient(180deg, rgba(12,16,28,.95), rgba(8,10,15,.92));
-      box-shadow: 0 30px 120px rgba(0,0,0,.75);
-      overflow:hidden;
-    }
-    .modalHead{
-      padding:14px 14px 12px;
-      display:flex; justify-content:space-between; align-items:center; gap:10px;
-      border-bottom:1px solid rgba(255,255,255,.08);
-    }
-    .modalHead b{ font-size:13px; letter-spacing:.4px; }
-    .modalBody{ padding:14px; }
-    .walletList{ display:grid; grid-template-columns:1fr; gap:10px; }
-    .walletItem{
-      display:flex; align-items:center; justify-content:space-between; gap:10px;
-      padding:12px 12px;
-      border-radius:16px;
-      border:1px solid rgba(255,255,255,.10);
-      background: rgba(0,0,0,.20);
-      cursor:pointer;
-    }
-    .walletItem:hover{ border-color: rgba(44,255,154,.35); }
-    .walletItem small{ color:var(--muted); }
-  </style>
+ <meta property="og:title" content="$SOS Solana on Solana" />
+ <meta property="og:description" content="Meet the Guardian of the chain." />
+ <meta property="og:type" content="website" />
+ <meta property="og:image" content="assets/logo.png" />
+
+ <style>
+ :root{
+ --bg:#070711;
+ --panel: rgba(255,255,255,.06);
+ --panel2: rgba(255,255,255,.085);
+ --stroke: rgba(255,255,255,.12);
+
+ --text: rgba(255,255,255,.92);
+ --muted: rgba(255,255,255,.72);
+
+ --g:#14F195;
+ --c:#00D1FF;
+ --p:#9945FF;
+
+ --radius: 22px;
+ --shadow2: 0 14px 44px rgba(0,0,0,.45);
+ --shadowSoft: 0 10px 28px rgba(0,0,0,.28);
+ --max: 1120px;
+
+ --ring: 0 0 0 6px rgba(20,241,149,.08);
+ }
+
+ *{box-sizing:border-box}
+ html{height:100%}
+body{min-height:100%; min-height:100dvh}
+ html{scroll-behavior:smooth}
+
+ body{
+ margin:0;
+ color:var(--text);
+ font: 16px/1.6 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+ background: var(--bg);
+ overflow-x:hidden;
+ position: relative;
+ }
+
+ body::before{
+ content:"";
+ position: fixed;
+ inset: 0;
+ z-index: -1;
+ pointer-events: none;
+ background:
+ radial-gradient(1200px 760px at 10% 5%, rgba(153,69,255,.24), transparent 60%),
+ radial-gradient(1000px 720px at 90% 10%, rgba(20,241,149,.18), transparent 58%),
+ radial-gradient(900px 640px at 72% 92%, rgba(0,209,255,.14), transparent 58%),
+ radial-gradient(900px 640px at 0% 95%, rgba(0,209,255,.06), transparent 60%),
+ var(--bg);
+ transform: translateZ(0);
+ }
+
+ a{color:inherit; text-decoration:none}
+img{max-width:100%; height:auto}
+ .wrap{max-width:var(--max); margin:0 auto; padding:0 18px}
+
+ /* ===== ACCESSIBILITY ===== */
+ :focus-visible{
+ outline:none;
+ box-shadow: var(--ring);
+ border-radius: 14px;
+ }
+
+ /* ===== BASE UI ===== */
+ .btn{
+ display:inline-flex; align-items:center; justify-content:center;
+ padding:9px 12px;
+ border-radius: 999px;
+ border: 1px solid rgba(255,255,255,.14);
+ background: rgba(255,255,255,.06);
+ color: rgba(255,255,255,.90);
+ font-weight:900;
+ font-size:13px;
+ transition: transform .15s ease, background .15s ease, box-shadow .15s ease, border-color .15s ease;
+ white-space: nowrap;
+ user-select:none;
+ -webkit-tap-highlight-color: transparent;
+ }
+ .btn:hover{background: rgba(255,255,255,.10); transform: translateY(-1px)}
+ .btn:active{transform: translateY(0px) scale(.99)}
+ .btn.primary,
+ .btn.grad{
+ border: 0;
+ background: linear-gradient(90deg, var(--g), var(--c), var(--p));
+ color: #061012;
+ box-shadow: 0 14px 28px rgba(0,0,0,.28);
+ }
+ .btn.ghost{ background: rgba(255,255,255,.06); }
+ .btn.icon{
+ width:44px;
+ padding:9px 0;
+ letter-spacing:2px;
+ font-weight:1000;
+ }
+
+ .card{
+ background: linear-gradient(180deg, rgba(255,255,255,.075), rgba(255,255,255,.045));
+ border: 1px solid rgba(255,255,255,.11);
+ border-radius: var(--radius);
+ box-shadow: var(--shadow2);
+ position: relative;
+ }
+ .cardInner{padding:28px}
+
+ section{padding:34px 0}
+
+ .gradText{
+ background: linear-gradient(90deg, var(--g), var(--c), var(--p));
+ -webkit-background-clip:text; background-clip:text; color:transparent;
+ }
+
+ /* ===== HEADER (CLEAN, NO CHAOS) ===== */
+ .header{
+ position:sticky; top:0; z-index:40;
+ backdrop-filter: blur(14px);
+ background: rgba(7,7,17,.68);
+ border-bottom: 1px solid rgba(255,255,255,.08);
+ }
+
+ .headerRow{
+ display:grid;
+ grid-template-columns: auto 1fr auto;
+ align-items:center;
+ gap:12px;
+ padding:12px 0;
+ }
+
+ .brand{
+ display:flex; align-items:center; gap:12px;
+ min-width: 210px;
+ white-space: nowrap;
+ }
+ .brand img{
+ width:40px; height:40px; object-fit:contain;
+ filter: drop-shadow(0 10px 25px rgba(0,0,0,.45));
+ }
+ .brandText{display:flex; flex-direction:column; line-height:1.05}
+ .brandText .ticker{font-weight:1000; letter-spacing:.2px; font-size:18px}
+ .brandText .name{font-weight:750; color:var(--muted); font-size:14px}
+
+ .nav{
+ display:flex; align-items:center; justify-content:center;
+ gap:10px;
+ min-width: 0;
+ overflow:hidden;
+ }
+
+ .headerActions{
+ display:flex;
+ align-items:center;
+ justify-content:flex-end;
+ gap:10px;
+ min-width: 240px;
+ white-space: nowrap;
+ }
+
+ /* Desktop: show 2 tool buttons + menu for socials/bot */
+ .toolLinksDesktop{ display:flex; gap:10px; align-items:center; }
+
+ /* Desktop menu (⋯) */
+ .menu{ position:relative; display:inline-flex; }
+
+ /* Floating menu only (header removed) */
+ .menuFloat{
+ position: fixed;
+ top: calc(env(safe-area-inset-top) + 12px);
+ right: 12px;
+ z-index: 999;
+}
+ .menuBtn{ font-size: 20px; padding: 10px 14px; border-radius: 16px; }
+
+ .menuLabel{
+ font-size: 11.5px;
+ letter-spacing: .12em;
+ text-transform: uppercase;
+ color: rgba(255,255,255,.55);
+ padding: 10px 10px 6px;
+ }
+ .menuSep{
+ height: 1px;
+ margin: 10px 6px;
+ background: rgba(255,255,255,.10);
+ }
+
+ /* Icons */
+ .ico{ width: 34px; height: 34px; display:block; }
+ .ico.sm{ width: 28px; height: 28px; }
+
+ /* How-to-buy steps with icons */
+ .stepTop{display:flex; align-items:center; justify-content:space-between; margin-bottom: 10px;}
+ .stepIcon{
+ width: 46px; height: 46px;
+ display:grid; place-items:center;
+ border-radius: 16px;
+ background: rgba(255,255,255,.06);
+ border: 1px solid rgba(255,255,255,.10);
+ box-shadow: 0 10px 30px rgba(0,0,0,.22);
+ }
+
+ /* Tokenomics stat icons */
+ .statHead{display:flex; align-items:center; gap:12px;}
+ .statIcon{
+ width: 46px; height: 46px;
+ display:grid; place-items:center;
+ border-radius: 16px;
+ background: rgba(255,255,255,.05);
+ border: 1px solid rgba(255,255,255,.10);
+ }
+
+ /* Remove leftover header spacing expectations */
+ .header{display:none !important;}
+.menuPop{
+ position:absolute;
+ top: calc(100% + 12px);
+ right: 0;
+ width: 380px;
+ max-width: calc(100vw - 28px);
+ max-height: calc(100vh - 96px);
+ padding: 10px;
+ padding-bottom: calc(10px + 120px + env(safe-area-inset-bottom)); /* ✅ allow scroll past bottom dock on iOS */
+ border-radius: 18px;
+ border: 1px solid rgba(255,255,255,.12);
+ background:
+ radial-gradient(120% 90% at 0% 0%, rgba(153,69,255,.18), rgba(153,69,255,0) 55%),
+ radial-gradient(120% 90% at 100% 0%, rgba(0,209,255,.16), rgba(0,209,255,0) 55%),
+ rgba(10,10,22,.92);
+ backdrop-filter: blur(18px);
+ -webkit-backdrop-filter: blur(18px);
+ box-shadow: 0 22px 70px rgba(0,0,0,.62);
+ display:none;
+ z-index: 200;
+ overflow:auto;
+ overscroll-behavior: contain;
+ -webkit-overflow-scrolling: touch;
+ transform-origin: top right;
+ transform: translateY(-8px) scale(.98);
+ opacity: 0;
+ }
+ .menuPop.open{ display:block; opacity:1; transform: translateY(0) scale(1); }
+
+ /* nicer scrollbar (desktop) */
+ .menuPop::-webkit-scrollbar{ width: 10px; }
+ .menuPop::-webkit-scrollbar-thumb{ background: rgba(255,255,255,.10); border-radius: 999px; border: 2px solid rgba(10,10,22,.6); }
+ .menuPop::-webkit-scrollbar-track{ background: rgba(255,255,255,.03); border-radius: 999px; }
+
+ .menuLabel{
+ font-size: 11px;
+ text-transform: uppercase;
+ letter-spacing: .14em;
+ font-weight: 900;
+ color: rgba(255,255,255,.62);
+ padding: 10px 10px 6px;
+ }
+ .menuSep{
+ height:1px;
+ margin: 8px 10px;
+ background: rgba(255,255,255,.10);
+ }
+
+ .menuItem{
+ display:flex;
+ align-items:flex-start;
+ justify-content:space-between;
+ gap:12px;
+ padding:11px 12px;
+ border-radius: 14px;
+ font-weight: 900;
+ color: rgba(255,255,255,.92);
+ background: transparent;
+ transition: .14s ease;
+ line-height: 1.25;
+ }
+ .menuItem .menuText{
+ flex: 1;
+ min-width: 0;
+ white-space: normal;
+ }
+ .menuItem:hover{
+ background: rgba(255,255,255,.07);
+ transform: translateY(-1px);
+ }
+
+ .menuBadge{
+ flex: 0 0 auto;
+ font-size:11px;
+ font-weight:950;
+ padding:6px 10px;
+ border-radius:999px;
+ border:1px solid rgba(255,255,255,.12);
+ background: rgba(255,255,255,.06);
+ color: rgba(255,255,255,.78);
+ align-self: flex-start;
+ }
+
+ /* badge colors */
+ .menuBadge.badgeSection{
+ background: rgba(0,209,255,.10);
+ border-color: rgba(0,209,255,.22);
+ color: rgba(215,250,255,.92);
+ }
+.menuBadge.badgeTool{
+ background: rgba(20,241,149,.10);
+ border-color: rgba(20,241,149,.24);
+ color: rgba(215,255,235,.92);
+}
+.menuBadge.badgeLive{
+ background: rgba(255,215,0,.16);
+ border-color: rgba(255,215,0,.5);
+ color: rgba(255,245,210,.98);
+ box-shadow: 0 0 0 1px rgba(0,0,0,.12) inset;
+}
+.menuBadge.badgePlanned{
+ background: rgba(180,190,210,.18);
+ border-color: rgba(200,210,230,.55);
+ color: rgba(240,244,255,.96);
+ box-shadow: 0 0 0 1px rgba(0,0,0,.12) inset;
+}
+.menuBadge.badgeSocial{
+ background: rgba(153,69,255,.10);
+ border-color: rgba(153,69,255,.22);
+ color: rgba(240,228,255,.92);
+}
+ .menuBadge.badgeBot{
+ background: rgba(255,255,255,.08);
+ border-color: rgba(255,255,255,.14);
+ color: rgba(255,255,255,.88);
+ }
+
+/* ✅ DexGuard brand item in menu (gold) */
+.menuMain{ display:block; font-weight: 1000; letter-spacing: -.2px; }
+.menuSub{
+  display:block;
+  margin-top: 4px;
+  font-size: 12px;
+  font-weight: 850;
+  color: rgba(255,255,255,.62);
+}
+.menuItem.dexItem{
+  background: rgba(255,215,0,.06);
+  box-shadow: 0 0 0 1px rgba(255,215,0,.16) inset;
+}
+.menuItem.dexItem:hover{
+  background: rgba(255,215,0,.09);
+  box-shadow: 0 0 0 1px rgba(255,215,0,.22) inset;
+}
+.menuBadge.badgeDex{
+  background: rgba(255,215,0,.12);
+  border-color: rgba(255,215,0,.38);
+  color: rgba(255,245,210,.96);
+  box-shadow: 0 0 0 1px rgba(0,0,0,.10) inset;
+}
+.menuItem.plannedItem{
+ opacity: .72;
+ cursor: default;
+ }
+.menuItem.plannedItem:hover{
+ background: transparent;
+ transform: none;
+ }
+
+ /* Mobile drawer */
+ .mToggle{ display:none; }
+ .mOverlay{
+ position:fixed;
+ inset:0;
+ background: rgba(0,0,0,.55);
+ backdrop-filter: blur(6px);
+ opacity:0;
+ pointer-events:none;
+ transition: .18s ease;
+ z-index: 80;
+ }
+ .mOverlay.open{
+ opacity:1;
+ pointer-events:auto;
+ }
+ .mDrawer{
+ position:fixed;
+ top:0; right:0;
+ height:100dvh;
+ width: min(92vw, 380px);
+ transform: translateX(110%);
+ transition: .22s ease;
+ z-index: 90;
+ padding: 14px 14px 18px;
+ background: rgba(10,10,22,.92);
+ border-left: 1px solid rgba(255,255,255,.10);
+ box-shadow: -20px 0 80px rgba(0,0,0,.55);
+ backdrop-filter: blur(16px);
+ overflow:auto;
+ -webkit-overflow-scrolling: touch;
+ overscroll-behavior: contain;
+ padding-bottom: calc(18px + 120px + env(safe-area-inset-bottom)); /* allow scroll past bottom dock */
+ }
+ .mDrawer.open{ transform: translateX(0); }
+
+ .mTop{
+ display:flex;
+ align-items:center;
+ justify-content:space-between;
+ gap:10px;
+ padding: 6px 4px 12px;
+ border-bottom: 1px solid rgba(255,255,255,.10);
+ margin-bottom: 12px;
+ }
+ .mTitle{
+ font-weight:1000;
+ letter-spacing:-.2px;
+ }
+ .mGroup{
+ margin-top:12px;
+ }
+ .mLabel{
+ font-size:12px;
+ font-weight:950;
+ letter-spacing:.55px;
+ text-transform:uppercase;
+ color: rgba(255,255,255,.62);
+ margin: 10px 6px 8px;
+ }
+ .mList{
+ display:flex;
+ flex-direction:column;
+ gap:10px;
+ }
+ .mList .btn{
+ width:100%;
+ justify-content:flex-start;
+ padding: 11px 14px;
+ border-radius: 16px;
+ }
+
+ /* ===== HERO ===== */
+ .hero{padding-top:22px}
+ .heroCard{
+ padding:38px 24px;
+ text-align:center;
+ position: relative;
+ overflow: hidden;
+ isolation: isolate;
+ }
+ .heroCard::before{
+ content:"";
+ position:absolute;
+ inset:-90px -40px;
+ background: url("assets/logo.png") no-repeat 50% 35%;
+ background-size: min(880px, 120%);
+ opacity: .075;
+ filter: saturate(1.1) blur(.2px);
+ transform: translateZ(0);
+ z-index: 0;
+ pointer-events:none;
+ }
+ .heroCard::after{
+ content:"";
+ position:absolute;
+ inset:0;
+ background:
+ radial-gradient(900px 520px at 18% 28%, rgba(20,241,149,.10), transparent 62%),
+ radial-gradient(900px 520px at 82% 20%, rgba(0,209,255,.09), transparent 62%),
+ radial-gradient(900px 520px at 70% 86%, rgba(153,69,255,.09), transparent 62%);
+ opacity:.9;
+ z-index:0;
+ pointer-events:none;
+ }
+ .heroCard > *{position: relative; z-index: 1}
+
+ .heroTitle{
+ margin: 10px 0 0;
+ font-weight: 900;
+ letter-spacing: -0.9px;
+ line-height: 1.02;
+ font-size: clamp(46px, 5.6vw, 78px);
+ }
+ .heroSubName{
+ margin: 10px 0 0;
+ font-weight: 950;
+ font-size: clamp(18px, 2.2vw, 30px);
+ letter-spacing: .18em;
+ text-transform: uppercase;
+ color: rgba(255,255,255,.92);
+ }
+
+ .heroPoem{
+ margin: 14px auto 0;
+ max-width: 860px;
+ color: rgba(255,255,255,.76);
+ font-weight: 720;
+ font-size: clamp(15px, 1.2vw, 17px);
+ line-height: 1.56;
+ text-align: center;
+ text-wrap: balance;
+ }
+ .heroPoemText{
+ margin:0;
+ }
+ .heroPoemText b{
+ color: rgba(255,255,255,.92);
+ font-weight: 900;
+ }
+ .heroActions{
+ margin-top: 18px;
+ display:flex; gap:12px; justify-content:center; flex-wrap:wrap;
+ }
+ .heroContract{
+ margin: 16px auto 0;
+ max-width: 860px;
+ }
+
+ /* ===== WHAT IS ===== */
+ .twoCol{
+ display:grid;
+ grid-template-columns: 1.35fr .65fr;
+ gap:18px;
+ align-items:start;
+ }
+ .h2{
+ margin:0 0 12px;
+ font-size: 34px;
+ line-height:1.18;
+ font-weight: 1000;
+ letter-spacing:-.7px;
+ }
+ .bodyText{color: rgba(255,255,255,.74); font-weight: 650;}
+ .bodyText p{margin: 0 0 14px}
+ .bodyText p:last-child{margin:0}
+
+ /* ===== THE LORE BOX ===== */
+ .loreBox{
+ align-self: start;
+ border: 1px solid rgba(255,255,255,.10);
+ background: rgba(0,0,0,.18);
+ border-radius: 18px;
+ box-shadow: var(--shadowSoft);
+ padding: 16px;
+ overflow:hidden;
+ position: relative;
+ }
+ .loreBox::after{
+ content:"";
+ position:absolute; inset:0;
+ background:
+ radial-gradient(900px 520px at 20% 20%, rgba(20,241,149,.08), transparent 62%),
+ radial-gradient(900px 520px at 80% 18%, rgba(0,209,255,.07), transparent 62%),
+ radial-gradient(900px 520px at 70% 88%, rgba(153,69,255,.07), transparent 62%);
+ opacity:.9;
+ pointer-events:none;
+ }
+ .loreInner{ position:relative; z-index:1; }
+
+ .loreTitle{
+ margin: 2px 0 10px;
+ font-weight: 1100;
+ letter-spacing: -.6px;
+ line-height: 1.15;
+ font-size: 20px;
+ }
+
+ .loreMedia{
+ margin-top: 12px;
+ display:flex;
+ justify-content:center;
+ }
+ .loreMedia img{
+ width:100%;
+ max-width: 320px;
+ height:auto;
+ object-fit:contain;
+ filter: drop-shadow(0 18px 44px rgba(0,0,0,.60));
+ }
+
+ /* ✅ PROOFS BUTTONS */
+ .proofsRow{
+ margin-top: 12px;
+ display: grid;
+ gap: 10px;
+ align-items: stretch;
+ max-width: 320px;
+ margin-left: auto;
+ margin-right: auto;
+ }
+ .proofsRow .btn{
+ width: 100%;
+ justify-content: center;
+ }
+ .proofLabel{
+ margin: 0 auto;
+ }
+
+ .proofBtn{
+ position: relative;
+ padding: 10px 14px;
+ font-weight: 1000;
+ letter-spacing: .2px;
+ }
+ .proofBtn::before{
+ content:"";
+ position:absolute;
+ inset:-1px;
+ border-radius: 999px;
+ background: radial-gradient(120px 60px at 30% 30%, rgba(255,255,255,.20), transparent 60%);
+ pointer-events:none;
+ opacity:.55;
+ }
+ .pokeDot{
+ width:10px; height:10px;
+ border-radius:999px;
+ background: rgba(255,255,255,.88);
+ box-shadow: 0 0 0 3px rgba(0,0,0,.18), 0 0 0 6px rgba(255,255,255,.10);
+ flex: 0 0 auto;
+ }
+ .proofLabel{
+ display:inline-flex;
+ align-items:center;
+ gap:10px;
+ padding:8px 10px;
+ border-radius:999px;
+ border:1px solid rgba(255,255,255,.14);
+ background: rgba(255,255,255,.06);
+ color: rgba(255,255,255,.82);
+ font-weight: 950;
+ font-size:12px;
+ letter-spacing:.45px;
+ text-transform:uppercase;
+ }
+
+ /* ===== ROADMAP (TOKENOMICS EXTENSION) ===== */
+ .roadmap{
+ margin-top: 18px;
+ border-radius: 20px;
+ border: 1px solid rgba(255,255,255,.10);
+ background: rgba(0,0,0,.18);
+ box-shadow: var(--shadowSoft);
+ overflow:hidden;
+ position: relative;
+ }
+ .roadmap::after{
+ content:"";
+ position:absolute; inset:-60px;
+ background:
+ radial-gradient(380px 220px at 18% 20%, rgba(20,241,149,.10), transparent 62%),
+ radial-gradient(420px 260px at 82% 22%, rgba(0,209,255,.08), transparent 62%),
+ radial-gradient(420px 260px at 62% 92%, rgba(153,69,255,.08), transparent 62%);
+ opacity:.95;
+ pointer-events:none;
+ }
+ .roadmapInner{ position:relative; z-index:1; padding: 18px; }
+
+ .roadmapHead{
+ display:flex;
+ align-items:flex-end;
+ justify-content:space-between;
+ gap:12px;
+ flex-wrap:wrap;
+ margin-bottom: 12px;
+ }
+ .roadmapHead h3{
+ margin:0;
+ font-weight: 1100;
+ letter-spacing: -.6px;
+ font-size: 22px;
+ line-height:1.2;
+ }
+ .roadmapHead p{
+ margin:8px 0 0;
+ color: rgba(255,255,255,.72);
+ font-weight: 700;
+ max-width: 70ch;
+ }
+
+ .roadChips{ display:flex; gap:8px; flex-wrap:wrap; }
+ .roadChips .pill{ background: rgba(255,255,255,.06); }
+
+ .roadGrid{
+ display:grid;
+ grid-template-columns: 1fr 1fr;
+ gap: 12px;
+ align-items:stretch;
+ margin-top: 14px;
+ }
+
+ .roadItem{
+ border-radius: 18px;
+ border: 1px solid rgba(255,255,255,.10);
+ background: rgba(0,0,0,.18);
+ box-shadow: var(--shadowSoft);
+ padding: 16px;
+ position: relative;
+ overflow:hidden;
+ transform: translateY(12px);
+ opacity: 0;
+ transition: transform .55s ease, opacity .55s ease;
+ will-change: transform, opacity;
+ }
+ .roadItem.in{ transform: translateY(0); opacity: 1; }
+
+ .roadTop{
+ display:flex;
+ align-items:flex-start;
+ justify-content:space-between;
+ gap: 12px;
+ flex-wrap:wrap;
+ margin-bottom: 10px;
+ }
+ .phase{
+ display:flex;
+ flex-direction:column;
+ gap:6px;
+ min-width: 0;
+ }
+ .phase .pnum{
+ font-size:12px;
+ font-weight: 1000;
+ letter-spacing:.55px;
+ text-transform:uppercase;
+ color: rgba(255,255,255,.66);
+ }
+ .phase .ptitle{
+ font-weight: 1100;
+ letter-spacing: -.6px;
+ line-height: 1.12;
+ font-size: 18px;
+ }
+ .theme{
+ display:inline-flex;
+ align-items:center;
+ gap:10px;
+ padding: 8px 10px;
+ border-radius: 999px;
+ border: 1px solid rgba(255,255,255,.12);
+ background: rgba(255,255,255,.06);
+ color: rgba(255,255,255,.86);
+ font-weight: 950;
+ font-size: 12px;
+ white-space: nowrap;
+ }
+ .theme .dot{
+ width: 10px;
+ height: 10px;
+ border-radius: 999px;
+ background: linear-gradient(90deg, var(--g), var(--c), var(--p));
+ box-shadow: 0 0 0 4px rgba(255,255,255,.07);
+ }
+
+ .roadCols{
+ display:grid;
+ grid-template-columns: 1fr;
+ gap: 10px;
+ margin-top: 10px;
+ }
+ .roadBlock{
+ border-radius: 16px;
+ border: 1px solid rgba(255,255,255,.10);
+ background: rgba(0,0,0,.16);
+ padding: 12px;
+ }
+ .roadLabel{
+ font-size:12px;
+ font-weight: 1000;
+ letter-spacing:.55px;
+ text-transform:uppercase;
+ color: rgba(255,255,255,.62);
+ margin-bottom: 8px;
+ }
+ .roadText{ color: rgba(255,255,255,.74); font-weight: 700; }
+ .roadText ul{ margin:0; padding-left: 18px; }
+ .roadText li{ margin: 8px 0; }
+
+ .roadOutcome{
+ margin-top: 10px;
+ padding: 12px;
+ border-radius: 16px;
+ border: 1px solid rgba(255,255,255,.10);
+ background: rgba(0,0,0,.20);
+ color: rgba(255,255,255,.78);
+ font-weight: 750;
+ }
+ .roadOutcome b{ color: rgba(255,255,255,.92); }
+
+ .roadFoot{
+ margin-top: 14px;
+ display:flex;
+ align-items:center;
+ justify-content:space-between;
+ gap: 10px;
+ flex-wrap:wrap;
+ padding-top: 14px;
+ border-top: 1px solid rgba(255,255,255,.10);
+ }
+ .roadFoot .mini{
+ color: rgba(255,255,255,.66);
+ font-weight: 750;
+ font-size: 13px;
+ }
+
+ @media (max-width: 860px){
+ .roadGrid{ grid-template-columns: 1fr; }
+ .roadmapInner{ padding: 16px; }
+ }
+
+ /* ===== TOKENOMICS ===== */
+ .grid3{
+ display:grid;
+ grid-template-columns: repeat(3, 1fr);
+ gap:14px;
+ }
+ .stat{
+ padding:16px;
+ border-radius: 18px;
+ border: 1px solid rgba(255,255,255,.10);
+ background: rgba(0,0,0,.18);
+ box-shadow: var(--shadowSoft);
+ }
+ .stat .k{color: rgba(255,255,255,.70); font-weight:900; font-size:12px; letter-spacing:.55px; text-transform:uppercase}
+ .stat .v{margin-top:8px; font-weight:1000; font-size:20px}
+ .stat .v .grad{background: linear-gradient(90deg, var(--g), var(--c), var(--p)); -webkit-background-clip:text; background-clip:text; color:transparent;}
+
+ /* ===== COPY BOX (shared) ===== */
+ .copyBox{
+ display:flex;
+ align-items:center;
+ justify-content:space-between;
+ gap:12px;
+ cursor:pointer;
+ transition: transform .15s ease, background .15s ease, border-color .15s ease;
+ }
+ .copyBox:hover{
+ transform: translateY(-1px);
+ background: rgba(0,0,0,.22);
+ border-color: rgba(255,255,255,.14);
+ }
+ .copyText{
+ margin-top:10px;
+ font-family:ui-monospace, Menlo, Consolas, monospace;
+ color:rgba(255,255,255,.88);
+ overflow:hidden;
+ text-overflow:ellipsis;
+ white-space:nowrap;
+ }
+ .copyHint{
+ font-size:12px;
+ font-weight:950;
+ color:rgba(255,255,255,.70);
+ border:1px solid rgba(255,255,255,.14);
+ background:rgba(255,255,255,.06);
+ border-radius:999px;
+ padding:8px 10px;
+ flex:0 0 auto;
+ }
+ .copyHint.ok{
+ border:0;
+ color:#061012;
+ background: linear-gradient(90deg, var(--g), var(--c), var(--p));
+ }
+
+ /* ===== HOW TO BUY ===== */
+ .steps{
+ display:grid;
+ grid-template-columns: repeat(4, 1fr);
+ gap:14px;
+ }
+ .step{
+ padding:16px;
+ border-radius: 18px;
+ border: 1px solid rgba(255,255,255,.10);
+ background: rgba(0,0,0,.18);
+ box-shadow: var(--shadowSoft);
+ }
+ .step .num{
+ width:28px; height:28px; border-radius:10px;
+ display:inline-flex; align-items:center; justify-content:center;
+ background: rgba(255,255,255,.08);
+ border: 1px solid rgba(255,255,255,.12);
+ font-weight: 1000;
+ margin-bottom: 10px;
+ }
+ .step h4{margin:0 0 8px; font-weight: 1000}
+ .step p{margin:0; color: rgba(255,255,255,.74); font-weight:650}
+
+ /* ===== FAQ ===== */
+ details{
+ border-radius: 18px;
+ border: 1px solid rgba(255,255,255,.10);
+ background: rgba(0,0,0,.18);
+ padding: 14px 16px;
+ box-shadow: var(--shadowSoft);
+ }
+ details + details{margin-top:12px}
+ summary{
+ cursor:pointer;
+ font-weight: 950;
+ color: rgba(255,255,255,.90);
+ list-style:none;
+ }
+ summary::-webkit-details-marker{display:none}
+ details p{margin:10px 0 0; color: rgba(255,255,255,.74); font-weight:650}
+
+ /* ===== SOCIALS ===== */
+ .socialRow{display:flex; gap:12px; flex-wrap:wrap;}
+
+ footer{
+ padding: 24px 0 40px;
+ color: rgba(255,255,255,.55);
+ font-weight:650;
+ text-align:center;
+ }
+
+ /* ===== TOOLS (ARENA GRID) ===== */
+ .arenaHeader{
+ display:flex;
+ align-items:center;
+ justify-content:space-between;
+ gap:16px;
+ margin-bottom:18px;
+ }
+ .arenaTitle{
+ display:flex;
+ align-items:center;
+ gap:12px;
+ }
+ .arenaIcon{
+ width:44px;
+ height:44px;
+ border-radius:12px;
+ display:flex;
+ align-items:center;
+ justify-content:center;
+ background: rgba(255,255,255,.08);
+ border:1px solid rgba(255,255,255,.12);
+ box-shadow: 0 10px 28px rgba(0,0,0,.35);
+ }
+ .arenaIcon svg{ width:24px; height:24px; }
+
+ .arenaGrid{
+ display:grid;
+ grid-template-columns: repeat(3, minmax(0, 1fr));
+ gap:16px;
+ }
+ @media (max-width: 980px){
+ .arenaGrid{ grid-template-columns: repeat(2, minmax(0, 1fr)); }
+ }
+ @media (max-width: 620px){
+ .arenaGrid{ grid-template-columns: 1fr; }
+ }
+
+ .arenaCard{
+ position:relative;
+ display:flex;
+ flex-direction:column;
+ gap:12px;
+ padding:16px;
+ border-radius:14px;
+ border:1px solid rgba(255,255,255,.12);
+ background: rgba(255,255,255,.05);
+ box-shadow: var(--shadowSoft);
+ text-decoration:none;
+ color: inherit;
+ min-height: 210px;
+ transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease;
+ }
+ .arenaCard:hover{
+ transform: translateY(-2px);
+ border-color: rgba(255,255,255,.2);
+ box-shadow: 0 18px 50px rgba(0,0,0,.45);
+ }
+ .arenaCard.planned{
+ background: rgba(255,255,255,.03);
+ border-color: rgba(255,255,255,.08);
+ color: rgba(255,255,255,.65);
+ }
+ .arenaCard.dex{
+ border-color: rgba(255,215,0,.25);
+ box-shadow: 0 14px 40px rgba(120,90,0,.18);
+ background: linear-gradient(180deg, rgba(255,215,0,.08), rgba(255,255,255,.03));
+ }
+ .arenaBadge.live{
+ background: linear-gradient(90deg, rgba(255,215,0,.85), rgba(255,176,88,.85));
+ border-color: rgba(255,215,0,.75);
+ color: #2a1600;
+ box-shadow: 0 0 0 1px rgba(0,0,0,.18) inset;
+ }
+ .arenaBadge.planned{
+ background: linear-gradient(90deg, rgba(190,200,220,.7), rgba(150,160,180,.7));
+ border-color: rgba(200,210,230,.65);
+ color: rgba(245,248,255,.98);
+ box-shadow: 0 0 0 1px rgba(0,0,0,.18) inset;
+ }
+
+ .arenaTop{
+ position:relative;
+ display:flex;
+ align-items:flex-start;
+ justify-content:flex-start;
+ gap:12px;
+ }
+ .arenaLogo{
+ width:100%;
+ height:112px;
+ border-radius:12px;
+ padding:0;
+ background: transparent;
+ border:none;
+ display:flex;
+ align-items:center;
+ justify-content:center;
+ overflow:hidden;
+ }
+ .arenaLogo img{
+ width:100%;
+ height:100%;
+ object-fit:contain;
+ }
+ .arenaCard.planned .arenaLogo{
+ opacity:.7;
+ }
+ .arenaCard.dex .arenaLogo{
+ filter: drop-shadow(0 8px 18px rgba(120,90,0,.35));
+ }
+
+ .arenaBadge{
+ position:absolute;
+ top:10px;
+ right:10px;
+ padding:5px 9px;
+ border-radius:999px;
+ font-size:10px;
+ font-weight:900;
+ letter-spacing:.3px;
+ border:1px solid rgba(255,255,255,.16);
+ background: rgba(255,255,255,.08);
+ text-transform:uppercase;
+ }
+ .arenaCard.planned .arenaBadge{
+ border-color: rgba(255,255,255,.12);
+ color: rgba(255,255,255,.55);
+ }
+
+ .arenaName{
+ font-size:17px;
+ font-weight:950;
+ letter-spacing:-.2px;
+ }
+ .arenaHint{
+ color: rgba(255,255,255,.72);
+ font-size:12.5px;
+ font-weight:700;
+ }
+
+ .toolCard{
+ position:relative;
+ overflow:hidden;
+ isolation:isolate;
+ transform: translateZ(0);
+ transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+ }
+ .toolCard:hover{
+ transform: translateY(-2px);
+ border-color: rgba(255,255,255,.16);
+ box-shadow: 0 18px 60px rgba(0,0,0,.55);
+ }
+
+ .toolCard::after{
+ content:"";
+ position:absolute; inset:0;
+ background:
+ radial-gradient(900px 520px at 18% 28%, rgba(20,241,149,.12), transparent 62%),
+ radial-gradient(900px 520px at 82% 20%, rgba(0,209,255,.10), transparent 62%),
+ radial-gradient(900px 520px at 70% 86%, rgba(153,69,255,.10), transparent 62%);
+ opacity:.9;
+ z-index:0;
+ pointer-events:none;
+ }
+
+ /* Watermarks (disabled for cleaner tool cards) */
+ .dnaCard::before,
+ .guardianCard::before{
+ content:none !important;
+ display:none !important;
+ }
+
+/* ✅ guardian.png */
+
+ .toolInner{ position:relative; z-index:1; padding:22px; }
+
+ .toolTop{
+ display:flex;
+ align-items:center;
+ justify-content:space-between;
+ gap:12px;
+ flex-wrap:wrap;
+ margin-bottom:12px;
+ }
+
+ .toolTag{
+ display:inline-flex;
+ align-items:center;
+ gap:8px;
+ padding:8px 10px;
+ border-radius:999px;
+ border:1px solid rgba(255,255,255,.14);
+ background: rgba(255,255,255,.06);
+ font-weight:950;
+ font-size:12px;
+ letter-spacing:.38px;
+ text-transform:uppercase;
+ color: rgba(255,255,255,.78);
+ }
+
+ .toolPills{display:flex;flex-wrap:wrap;gap:10px;justify-content:flex-end}
+.toolRight{display:flex;flex-direction:column;align-items:flex-end;gap:10px}
+/* TOOL RIGHT PATCH */
+.toolHeaderRow{align-items:flex-start}
+.toolPills{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.toolRight{display:flex;flex-direction:column;align-items:flex-end;gap:10px;max-width:46%}
+@media (max-width: 980px){
+  .toolRight{max-width:100%;align-items:flex-start}
+  .toolPills{justify-content:flex-start}
+}
+
+.toolCorner b{color:var(--g)}
+ .pill{
+ font-size:12px;
+ font-weight:900;
+ color: rgba(255,255,255,.70);
+ border: 1px solid rgba(255,255,255,.12);
+ background: rgba(0,0,0,.18);
+ border-radius: 999px;
+ padding:7px 10px;
+ }
+
+ .toolGrid{
+ display:grid;
+ grid-template-columns: 1.05fr .95fr;
+ gap:16px;
+ align-items:start;
+ }
+
+ .toolH{
+ margin:0;
+ font-weight:1100;
+ letter-spacing:-.9px;
+ line-height:1.05;
+ font-size: clamp(30px, 3.4vw, 50px);
+ }
+
+ /* ✅ keep text compact (no “endless” cards) */
+ .toolLead{
+ margin-top:10px;
+ color: rgba(255,255,255,.76);
+ font-weight:700;
+ max-width: 62ch;
+ display:-webkit-box;
+ -webkit-line-clamp: 5;
+ -webkit-box-orient: vertical;
+ overflow:hidden;
+ }
+
+ .featureChips{
+ margin-top:14px;
+ display:flex;
+ flex-wrap:wrap;
+ gap:10px;
+ }
+
+ .chip{
+ padding:9px 12px;
+ border-radius:999px;
+ border:1px solid rgba(255,255,255,.12);
+ background: rgba(0,0,0,.20);
+ color: rgba(255,255,255,.82);
+ font-weight:900;
+ font-size:13px;
+ white-space:nowrap;
+ }
+
+ /* ✅ keep “what you get” compact via internal scroll (content not removed) */
+ .toolBox{
+ border:1px solid rgba(255,255,255,.10);
+ background: rgba(0,0,0,.18);
+ border-radius:18px;
+ padding:16px;
+ box-shadow: var(--shadowSoft);
+ max-height: 210px;
+ overflow:auto;
+ }
+ .toolBox::-webkit-scrollbar{ width:0; height:0; }
+
+ .toolBoxTitle{
+ font-weight:950;
+ font-size:12px;
+ letter-spacing:.55px;
+ text-transform:uppercase;
+ color: rgba(255,255,255,.72);
+ margin-bottom:10px;
+ position: sticky;
+ top: 0;
+ background: rgba(0,0,0,.00);
+ backdrop-filter: blur(0px);
+ }
+
+ .toolList{
+ margin:0;
+ padding-left:18px;
+ color: rgba(255,255,255,.74);
+ font-weight:700;
+ }
+ .toolList li{ margin:8px 0; }
+
+ .toolCTA{
+ margin-top:14px;
+ display:flex;
+ gap:12px;
+ flex-wrap:wrap;
+ align-items:center;
+ }
+
+ .toolMini{
+ color: rgba(255,255,255,.60);
+ font-weight:750;
+ font-size:13px;
+ }
+
+ /* ===== RESPONSIVE ===== */
+
+ @media (max-width: 980px){
+ .headerRow{
+ grid-template-columns: auto 1fr auto;
+ }
+ .nav{
+ justify-content:flex-start;
+ overflow:auto;
+ -webkit-overflow-scrolling: touch;
+ padding-bottom:2px;
+ }
+ .nav::-webkit-scrollbar{height:0}
+ }
+
+ /* Mobile: no chaos → drawer menu */
+ @media (max-width: 860px){
+ section{padding:28px 0}
+
+ .headerRow{
+ grid-template-columns: 1fr auto;
+ gap:10px;
+ }
+
+ .nav{ display:none; } /* ✅ hide the button row on mobile */
+
+ .toolLinksDesktop{ display:none; } /* ✅ hide big buttons on mobile */
+ .menu{ display:inline-flex !important; }  /* ✅ keep the ⋯ menu on mobile */
+.mToggle{ display:none !important; }      /* ✅ disable mobile drawer toggle (not in HTML) */
+
+ .brand{ min-width: 0; }
+ .brandText .name{ font-size:13px; }
+
+ .heroCard{padding:34px 16px}
+ .heroCard::before{
+ background-position: 50% 28%;
+ background-size: min(700px, 132%);
+ opacity: .065;
+ }
+
+ .twoCol{grid-template-columns: 1fr}
+ .grid3{grid-template-columns: 1fr}
+ .steps{grid-template-columns: 1fr}
+
+ .toolInner{ padding:18px; }
+ .toolGrid{ grid-template-columns: 1fr; gap:14px; }
+ .toolH{ font-size: clamp(26px, 7vw, 38px); }
+ .toolBox{ max-height: none; overflow: visible; }
+
+ .dnaCard::before,
+ .guardianCard::before{
+ background-position: 50% 30%;
+ background-size: min(740px, 140%);
+ opacity: .075;
+ }
+
+ .copyBox{
+ flex-direction: column;
+ align-items:flex-start;
+ }
+ .copyHint{ align-self:flex-end; }
+
+ /* ✅ proofs buttons full width on mobile */
+ .proofsRow .btn{
+ width:100%;
+ justify-content:center;
+ }
+
+ /* lore image a bit smaller on mobile */
+ .loreMedia img{ max-width: 280px; }
+ }
+
+ @media (max-width: 420px){
+ .btn{padding:9px 11px}
+ .cardInner{padding:20px}
+ }
+
+ /* ===== TOOLS UPGRADE (MAKE IT FEEL LIKE REAL APPS) ===== */
+ .toolsIntro{
+ padding: 0;
+ overflow:hidden;
+ }
+ .toolsIntroInner{
+ padding: 22px;
+ display:grid;
+ grid-template-columns: 1.1fr .9fr;
+ gap:16px;
+ align-items:center;
+ position:relative;
+ isolation:isolate;
+ }
+ .toolsIntroInner::after{
+ content:"";
+ position:absolute; inset:0;
+ background:
+ radial-gradient(900px 520px at 18% 28%, rgba(20,241,149,.14), transparent 62%),
+ radial-gradient(900px 520px at 82% 20%, rgba(0,209,255,.12), transparent 62%),
+ radial-gradient(900px 520px at 70% 86%, rgba(153,69,255,.12), transparent 62%);
+ opacity:.95;
+ z-index:0;
+ pointer-events:none;
+ }
+ .toolsIntroInner > *{ position:relative; z-index:1; }
+
+ .toolsKicker{
+ display:inline-flex;
+ align-items:center;
+ gap:10px;
+ font-size:12px;
+ font-weight:1000;
+ letter-spacing:.55px;
+ text-transform:uppercase;
+ color: rgba(255,255,255,.70);
+ }
+ .toolsKicker .dot{
+ width:10px; height:10px; border-radius:999px;
+ background: linear-gradient(90deg, var(--g), var(--c), var(--p));
+ box-shadow: 0 0 0 4px rgba(255,255,255,.07);
+ }
+ .toolsTitle{
+ margin: 8px 0 0;
+ font-weight: 1100;
+ letter-spacing: -1px;
+ line-height: 1.05;
+ font-size: clamp(28px, 3.6vw, 44px);
+ }
+ .toolsDesc{
+ margin: 10px 0 0;
+ color: rgba(255,255,255,.74);
+ font-weight: 700;
+ max-width: 64ch;
+ }
+ .toolsQuick{
+ margin-top: 14px;
+ display:flex;
+ gap:12px;
+ flex-wrap:wrap;
+ align-items:center;
+ }
+
+ .toolBigTiles{
+ display:grid;
+ grid-template-columns: 1fr 1fr;
+ gap:12px;
+ align-items:stretch;
+ }
+ .tile{
+ border-radius: 18px;
+ border: 1px solid rgba(255,255,255,.12);
+ background: rgba(0,0,0,.18);
+ box-shadow: var(--shadowSoft);
+ padding: 14px;
+ display:flex;
+ flex-direction:column;
+ gap:10px;
+ transition: transform .16s ease, border-color .16s ease, background .16s ease;
+ user-select:none;
+ }
+ .tile:hover{ transform: translateY(-2px); border-color: rgba(255,255,255,.18); background: rgba(0,0,0,.22); }
+ .tileTop{ display:flex; align-items:center; justify-content:space-between; gap:10px; }
+ .tileIcon{
+ width:38px; height:38px; border-radius: 14px;
+ display:grid; place-items:center;
+ color:#061012;
+ font-weight:1100;
+ background: linear-gradient(90deg, var(--g), var(--c), var(--p));
+ box-shadow: 0 14px 28px rgba(0,0,0,.25);
+ }
+ .tileName{ font-weight: 1050; letter-spacing:-.4px; }
+ .tileHint{ color: rgba(255,255,255,.68); font-weight: 750; font-size: 13px; }
+ .tileCta{
+ margin-top:auto;
+ display:inline-flex;
+ align-items:center;
+ justify-content:space-between;
+ gap:10px;
+ padding: 10px 12px;
+ border-radius: 14px;
+ border: 1px solid rgba(255,255,255,.12);
+ background: rgba(255,255,255,.06);
+ font-weight: 1000;
+ }
+
+ /* Make tool cards feel like clickable apps */
+ .toolCard{ cursor:pointer; }
+ .toolCard[data-href] .toolTag{ opacity: .95; }
+ .toolCorner{display:inline-flex;align-items:center;gap:8px;font-weight:800;font-size:13px;padding:10px 14px;border-radius:999px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);box-shadow:0 10px 28px rgba(0,0,0,.28);backdrop-filter: blur(10px);-webkit-backdrop-filter: blur(10px);cursor:pointer;user-select:none}
+ .toolCorner b{ color: transparent; background: linear-gradient(90deg, var(--g), var(--c), var(--p)); -webkit-background-clip:text; background-clip:text; }
+
+ .toolHeaderRow{
+ display:flex;
+ align-items:flex-start;
+ justify-content:space-between;
+ gap:12px;
+ margin-bottom: 12px;
+ }
+ .toolId{
+ display:flex;
+ align-items:center;
+ gap:12px;
+ min-width: 0;
+ }
+ .toolIcon{
+ width: 46px;
+ height: 46px;
+ border-radius: 18px;
+ display:grid;
+ place-items:center;
+ color:#061012;
+ font-weight:1100;
+ background: linear-gradient(90deg, var(--g), var(--c), var(--p));
+ box-shadow: 0 16px 34px rgba(0,0,0,.28);
+ flex: 0 0 auto;
+ }
+ .toolIdText{ min-width:0; }
+ .toolIdText .sub{
+ margin-top: 3px;
+ color: rgba(255,255,255,.70);
+ font-weight: 850;
+ font-size: 13px;
+ }
+
+ .toolSide{
+ display:flex;
+ flex-direction:column;
+ gap:12px;
+ }
+ .toolPreview{
+ border-radius: 18px;
+ border: 1px solid rgba(255,255,255,.10);
+ background: rgba(0,0,0,.18);
+ box-shadow: var(--shadowSoft);
+ padding: 14px;
+ position: relative;
+ overflow:hidden;
+ }
+ .toolPreview::after{
+ content:"";
+ position:absolute; inset:-40px;
+ background:
+ radial-gradient(220px 140px at 20% 30%, rgba(20,241,149,.18), transparent 60%),
+ radial-gradient(240px 160px at 80% 30%, rgba(0,209,255,.14), transparent 60%),
+ radial-gradient(240px 160px at 60% 90%, rgba(153,69,255,.14), transparent 60%);
+ opacity:.95;
+ pointer-events:none;
+ }
+ .toolPreviewInner{ position:relative; z-index:1; }
+ .toolPreviewTop{
+ display:flex;
+ align-items:center;
+ justify-content:space-between;
+ gap:10px;
+ margin-bottom: 10px;
+ }
+ .liveBadge{
+ display:inline-flex;
+ align-items:center;
+ gap:8px;
+ padding: 7px 10px;
+ border-radius: 999px;
+ background: rgba(255,255,255,.06);
+ border: 1px solid rgba(255,255,255,.12);
+ color: rgba(255,255,255,.84);
+ font-weight: 1000;
+ font-size: 12px;
+ }
+ .liveBadge .ping{
+ width:9px; height:9px; border-radius:999px;
+ background: rgba(20,241,149,.95);
+ box-shadow: 0 0 0 5px rgba(20,241,149,.10);
+ }
+ .previewTitle{ font-weight: 1050; letter-spacing:-.35px; }
+ .previewLines{ display:grid; gap:8px; }
+ .bar{
+ height: 10px;
+ border-radius: 999px;
+ background: rgba(255,255,255,.10);
+ overflow:hidden;
+ position:relative;
+ }
+ .bar::before{
+ content:"";
+ position:absolute; inset:0;
+ background: linear-gradient(90deg, rgba(20,241,149,.75), rgba(0,209,255,.75), rgba(153,69,255,.75));
+ width: var(--w, 72%);
+ border-radius: 999px;
+ opacity: .95;
+ }
+
+ /* Mobile bottom tool dock (compact) */
+ .toolsDock{ display:none; }
+
+body.menuOpen .toolsDock{ display:none !important; }
+@media (max-width: 860px){
+ body{ padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
+
+ .toolsIntroInner{ grid-template-columns: 1fr; }
+ .toolBigTiles{ grid-template-columns: 1fr; }
+ .tile{ padding: 14px 14px 12px; }
+
+ .toolCorner{ position: static; margin-top: 10px; align-self:flex-start; }
+ .toolHeaderRow{ flex-direction:column; align-items:flex-start; }
+
+ .toolsDock{
+ display:block;
+ position:fixed;
+ left: 12px;
+ right: 12px;
+ bottom: 12px;
+ z-index: 120;
+ }
+ .dockMenu{
+ border-radius: 16px;
+ border: 1px solid rgba(255,255,255,.12);
+ background: rgba(10,10,22,.78);
+ backdrop-filter: blur(16px);
+ box-shadow: 0 18px 70px rgba(0,0,0,.60);
+ overflow:hidden;
+ }
+ .dockToggle{
+ list-style:none;
+ cursor:pointer;
+ display:flex;
+ align-items:center;
+ justify-content:center;
+ gap:10px;
+ padding: 12px 14px;
+ font-weight: 1050;
+ letter-spacing: -.2px;
+ color: #061012;
+ background: linear-gradient(90deg, var(--g), var(--c), var(--p));
+ -webkit-tap-highlight-color: transparent;
+ }
+ .dockToggle::-webkit-details-marker{ display:none; }
+ .dockPanel{
+ display:grid;
+ gap:8px;
+ padding: 10px;
+ background: rgba(6,6,14,.65);
+ }
+ .dockItem{
+ display:flex;
+ align-items:center;
+ justify-content:space-between;
+ gap:10px;
+ padding: 10px 12px;
+ border-radius: 12px;
+ border: 1px solid rgba(255,255,255,.12);
+ color: rgba(255,255,255,.9);
+ background: rgba(255,255,255,.06);
+ font-weight: 900;
+ }
+ .dockItem span{
+ font-size:12px;
+ font-weight:1000;
+ letter-spacing:.3px;
+ padding:4px 8px;
+ border-radius:999px;
+ background: rgba(255,215,0,.16);
+ border:1px solid rgba(255,215,0,.45);
+ color: rgba(255,245,210,.98);
+ }
+}
+
+ /* ROADMAP TIMELINE (NEXT LEVEL) */
+ #roadmap .sub{ color: var(--muted); margin-top: 6px; max-width: 70ch; }
+ .roadHeader{ display:flex; align-items:flex-end; justify-content:space-between; gap:16px; }
+ .roadLegend{ display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end; }
+ .badge{ font-size:12px; font-weight:950; padding:7px 10px; border-radius:999px; border:1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.06); }
+ .badge.done{ border-color: rgba(20,241,149,.35); box-shadow: 0 0 0 1px rgba(20,241,149,.12) inset; }
+ .badge.next{ border-color: rgba(0,209,255,.35); box-shadow: 0 0 0 1px rgba(0,209,255,.12) inset; }
+ .badge.planned{ border-color: rgba(153,69,255,.35); box-shadow: 0 0 0 1px rgba(153,69,255,.12) inset; }
+
+ .timeline{ position:relative; margin-top: 18px; padding: 10px 0 6px; }
+ .timeline:before{
+ content:"";
+ position:absolute;
+ left:50%;
+ top:0;
+ bottom:0;
+ width:2px;
+ background: linear-gradient(to bottom, rgba(20,241,149,.0), rgba(255,255,255,.14), rgba(153,69,255,.0));
+ transform: translateX(-50%);
+ }
+
+ .tlItem{ display:grid; grid-template-columns: 1fr 56px 1fr; gap: 18px; align-items: stretch; margin: 14px 0; opacity:0; filter: blur(2px); }
+ .tlItem.left{ transform: translateX(-34px); }
+ .tlItem.right{ transform: translateX(34px); }
+ .tlItem.in{ opacity:1; transform: translateX(0); filter: blur(0); transition: .55s cubic-bezier(.2,.8,.2,1); }
+
+ .tlCol.mid{ display:flex; justify-content:center; position:relative; }
+ .tlNode{
+ width: 14px; height: 14px; border-radius: 999px;
+ background: rgba(255,255,255,.85);
+ box-shadow: 0 0 0 6px rgba(153,69,255,.10), 0 0 0 1px rgba(255,255,255,.12) inset, 0 16px 40px rgba(0,0,0,.55);
+ margin-top: 22px;
+ }
+ .tlCard{
+ background: rgba(255,255,255,.06);
+ border: 1px solid rgba(255,255,255,.12);
+ border-radius: 18px;
+ padding: 14px 14px 12px;
+ box-shadow: 0 18px 60px rgba(0,0,0,.35);
+ backdrop-filter: blur(10px);
+ position: relative;
+ overflow: hidden;
+ }
+ .tlCard:before{
+ content:"";
+ position:absolute; inset:-2px;
+ background: radial-gradient(900px 300px at 10% 0%, rgba(20,241,149,.18), transparent 55%),
+ radial-gradient(900px 300px at 90% 100%, rgba(153,69,255,.16), transparent 55%);
+ pointer-events:none;
+ }
+ .tlMeta{ position:relative; z-index:1; }
+ .tlPhase{ font-weight:1000; letter-spacing:-.2px; }
+ .tlTitle{ font-size: 18px; font-weight:1050; letter-spacing:-.3px; margin-top: 6px; }
+ .tlTag{ color: var(--muted); margin-top: 3px; font-size: 13px; }
+ .tlBody{ color: var(--muted); font-size: 13px; margin-top: 8px; }
+ .tlBody p{ margin: 6px 0; }
+ .tlOutcome{ color: var(--muted); font-size: 13px; margin-top: 8px; }
+
+ .tlList{ position:relative; z-index:1; margin: 10px 0 0; padding: 0; list-style: none; display:flex; flex-direction:column; gap: 8px; }
+ .tlList li{ display:flex; gap: 10px; align-items:flex-start; color: rgba(255,255,255,.88); }
+ .tlList li:before{ content:""; width:8px; height:8px; border-radius:999px; margin-top: 7px; flex: 0 0 8px; background: rgba(255,255,255,.35); box-shadow: 0 0 0 3px rgba(255,255,255,.06); }
+ .tlList li.complete{ color: rgba(255,255,255,.70); text-decoration: line-through; text-decoration-thickness: 2px; text-decoration-color: rgba(20,241,149,.55); }
+ .tlList li.complete:before{ display: none; }
+ .tlList li.complete:after{
+ content:"";
+ width:8px;
+ height:8px;
+ border-radius:999px;
+ margin-top: 7px;
+ flex: 0 0 8px;
+ background: rgba(20,241,149,.95);
+ box-shadow: 0 0 0 3px rgba(20,241,149,.12);
+ }
+
+ /* Mobile timeline: single column, left rail */
+ @media (max-width: 880px){
+ .roadHeader{ flex-direction:column; align-items:flex-start; }
+ .roadLegend{ justify-content:flex-start; }
+ .timeline:before{ left: 16px; transform:none; }
+ .tlItem{ grid-template-columns: 34px 1fr; gap: 14px; }
+ .tlCol.a, .tlCol.b{ grid-column: 2; }
+ .tlCol.mid{ grid-column: 1; justify-content:flex-start; }
+ .tlNode{ margin-top: 18px; }
+ .tlItem.left, .tlItem.right{ transform: translateY(22px); }
+ .tlItem.in{ transform: translateY(0); }
+ }
+
+/* ===== Dex-style Top Trending Bar + Search (Main Page) ===== */
+:root{
+  /* will be set by JS to the actual fixed top bar height */
+  --topBarTotal: 0px;
+  /* Desktop ticker speed (mobile overrides below). Slightly slower for readability on big screens. */
+  --tickerSpeed: 8.2s;
+  /* distance the marquee should travel for one full cycle (set by JS) */
+  --tickerDistance: 50%;
+
+  /* chain colors */
+  --solColor: #9945FF;
+  --ethColor: #627EEA;
+  --bnbColor: #F3BA2F;
+  --baseColor:#0052FF;
+
+  --netColor: var(--solColor);
+  --netGlow: rgba(153,69,255,.22);
+}
+
+body.net-sol{ --netColor: var(--solColor); --netGlow: rgba(153,69,255,.22); }
+body.net-eth{ --netColor: var(--ethColor); --netGlow: rgba(98,126,234,.22); }
+body.net-bnb{ --netColor: var(--bnbColor); --netGlow: rgba(243,186,47,.22); }
+body.net-base{ --netColor: var(--baseColor); --netGlow: rgba(0,82,255,.22); }
+
+body{ padding-top: 0; }
+.topBar{
+  position: relative;
+  top: 0; left: 0; right: 0;
+  z-index: 85;
+  background: rgba(7,7,17,.62);
+  border-bottom: 1px solid rgba(255,255,255,.10);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  transition: none;
+  will-change: auto;
+}
+
+
+
+.topBarInner{
+  max-width: var(--max);
+  margin: 0 auto;
+  padding: calc(10px + env(safe-area-inset-top)) 14px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.topRow{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap: 12px;
+  flex-wrap:wrap;
+}
+
+.bottomRow{
+  display:flex;
+  align-items:center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.hotBlock{ display:flex; align-items:center; gap: 12px; flex-wrap:wrap; }
+.hotLabel{
+  display:inline-flex;
+  align-items:center;
+  gap: 10px;
+  padding: 9px 14px;
+  border-radius: 999px;
+  background: rgba(255,65,65,.10);
+  border: 1px solid rgba(255,65,65,.20);
+  box-shadow: 0 12px 32px rgba(0,0,0,.24);
+  font-weight: 1100;
+  letter-spacing: .6px;
+}
+.hotFire{ width: 18px; height: 18px; opacity: .95; }
+
+/* Dexguard button (matches the style from your reference) */
+.dexguardBtn{
+  display:inline-flex;
+  align-items:center;
+  gap:12px;
+  padding: 9px 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.12);
+  background:
+    radial-gradient(140% 120% at 0% 0%, rgba(0,209,255,.18), rgba(0,209,255,0) 55%),
+    radial-gradient(140% 120% at 100% 100%, rgba(153,69,255,.18), rgba(153,69,255,0) 55%),
+    rgba(8,18,40,.50);
+  box-shadow: 0 12px 34px rgba(0,0,0,.28);
+  color: rgba(255,255,255,.92);
+  font-weight: 1050;
+  cursor:pointer;
+  user-select:none;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform .15s ease, background .15s ease, border-color .15s ease, box-shadow .15s ease;
+}
+.dexguardBtn:hover{
+  transform: translateY(-1px);
+  border-color: rgba(255,255,255,.18);
+  background:
+    radial-gradient(140% 120% at 0% 0%, rgba(0,209,255,.22), rgba(0,209,255,0) 60%),
+    radial-gradient(140% 120% at 100% 100%, rgba(153,69,255,.22), rgba(153,69,255,0) 60%),
+    rgba(8,18,40,.62);
+  box-shadow: 0 16px 46px rgba(0,0,0,.36);
+}
+.dexguardBtn:active{ transform: translateY(0px) scale(.995); }
+
+/* ✨ Dexguard shine pulse (subtle, every few seconds) */
+.dexguardBtn{ position:relative; overflow:hidden; }
+.dexguardBtn::after{
+  content:"";
+  position:absolute;
+  inset:-60% -40%;
+  background: linear-gradient(120deg,
+    transparent 0%,
+    rgba(255,255,255,.00) 35%,
+    rgba(255,255,255,.22) 50%,
+    rgba(255,255,255,.06) 60%,
+    transparent 75%
+  );
+  transform: translateX(-170%) rotate(10deg);
+  opacity:0;
+  pointer-events:none;
+  mix-blend-mode: screen;
+  animation: dexguardShine 6.8s ease-in-out infinite;
+}
+@keyframes dexguardShine{
+  0%, 72%{ opacity:0; transform: translateX(-170%) rotate(10deg); }
+  78%{ opacity:.70; }
+  92%{ opacity:0; transform: translateX(170%) rotate(10deg); }
+  100%{ opacity:0; transform: translateX(170%) rotate(10deg); }
+}
+
+/* ✅ DexGuard free logo (kein Button) */
+.dexguardLogo{
+  display:inline-flex;
+  align-items:center;
+  justify-content:flex-start;
+  height: 48px;           /* desktop */
+  padding: 0;
+  margin-left: 10px;      /* align with ticker below */
+  margin-right: 4px;
+  cursor: pointer;
+  user-select:none;
+  -webkit-tap-highlight-color: transparent;
+}
+.dexguardLogo img{
+  height: 48px;           /* desktop */
+  width: auto;
+  display:block;
+  object-fit: contain;
+  filter: drop-shadow(0 10px 20px rgba(0,0,0,.35));
+}
+.dexguardLogo:hover{ transform: translateY(-1px); }
+.dexguardLogo:active{ transform: translateY(0px) scale(.995); }
+
+
+
+.dexguardChip{
+  position: relative;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding: 7px 14px;
+  border-radius: 999px;
+  background: rgba(3,12,24,.65);
+  border: 1px solid rgba(255,255,255,.10);
+  font-weight: 1100;
+  letter-spacing: .28em;
+  font-size: 13px;
+  color: rgba(255,255,255,.96);
+}
+.dexguardChip::before{
+  content:"";
+  position:absolute;
+  inset:-2px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(20,241,149,.88), rgba(0,209,255,.88), rgba(153,69,255,.88));
+  z-index:-1;
+  opacity:.9;
+}
+
+.dexguardText{
+  font-weight: 1050;
+  letter-spacing: -.2px;
+  font-size: 20px;
+  line-height: 1;
+}
+
+@media (max-width: 520px){
+  .dexguardText{ font-size: 18px; }
+  .dexguardBtn{ padding: 9px 14px; gap: 10px; }
+  .dexguardChip{ padding: 7px 12px; }
+}
+
+
+.chainToggle{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding: 6px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.10);
+  background: rgba(255,255,255,.04);
+}
+/* Chain selector buttons (neon + always readable text) */
+.chainBtn{
+  appearance:none;
+  border: 1px solid rgba(255,255,255,.14);
+  background: rgba(255,255,255,.05);
+  color: rgba(255,255,255,.92);
+  font-weight: 1000;
+  font-size: 12px;
+  padding: 8px 10px;
+  border-radius: 999px;
+  cursor:pointer;
+  letter-spacing: .35px;
+  transition: transform .15s ease, background .15s ease, border-color .15s ease, box-shadow .15s ease;
+}
+.chainBtn:hover{ background: rgba(255,255,255,.09); transform: translateY(-1px); }
+.chainBtn:active{ transform: translateY(0px) scale(.99); }
+.chainBtn.active{
+  color: rgba(255,255,255,.96);
+  text-shadow: 0 1px 0 rgba(0,0,0,.35);
+  border: 1px solid rgba(255,255,255,.10);
+  background: rgba(255,255,255,.08);
+  box-shadow: 0 10px 26px rgba(0,0,0,.28);
+}
+
+/* per-chain neon tint (inactive) — keep text WHITE */
+.chainBtn[data-net="solana"]{ border-color: rgba(153,69,255,.50); background: rgba(153,69,255,.10); box-shadow: 0 0 0 1px rgba(153,69,255,.12) inset, 0 10px 22px rgba(153,69,255,.10); }
+.chainBtn[data-net="eth"]{ border-color: rgba(98,126,234,.50); background: rgba(98,126,234,.10); box-shadow: 0 0 0 1px rgba(98,126,234,.12) inset, 0 10px 22px rgba(98,126,234,.10); }
+.chainBtn[data-net="bsc"]{ border-color: rgba(243,186,47,.52); background: rgba(243,186,47,.10); box-shadow: 0 0 0 1px rgba(243,186,47,.12) inset, 0 10px 22px rgba(243,186,47,.10); }
+.chainBtn[data-net="base"]{ border-color: rgba(0,82,255,.52); background: rgba(0,82,255,.10); box-shadow: 0 0 0 1px rgba(0,82,255,.12) inset, 0 10px 22px rgba(0,82,255,.10); }
+
+/* per-chain active fill (neon) — text stays WHITE */
+body.net-sol .chainBtn.active{ background: linear-gradient(90deg, rgba(153,69,255,.96), rgba(153,69,255,.52)); border-color: rgba(255,255,255,.96); box-shadow: 0 0 0 1px rgba(153,69,255,.20) inset, 0 12px 30px rgba(153,69,255,.18), 0 16px 34px rgba(0,0,0,.34); }
+body.net-eth .chainBtn.active{ background: linear-gradient(90deg, rgba(98,126,234,.96), rgba(98,126,234,.52)); border-color: rgba(255,255,255,.96); box-shadow: 0 0 0 1px rgba(98,126,234,.20) inset, 0 12px 30px rgba(98,126,234,.18), 0 16px 34px rgba(0,0,0,.34); }
+body.net-bnb .chainBtn.active{ background: linear-gradient(90deg, rgba(243,186,47,.96), rgba(243,186,47,.50)); border-color: rgba(255,255,255,.96); box-shadow: 0 0 0 1px rgba(243,186,47,.20) inset, 0 12px 30px rgba(243,186,47,.16), 0 16px 34px rgba(0,0,0,.34); }
+body.net-base .chainBtn.active{ background: linear-gradient(90deg, rgba(0,82,255,.96), rgba(0,82,255,.50)); border-color: rgba(255,255,255,.96); box-shadow: 0 0 0 1px rgba(0,82,255,.20) inset, 0 12px 30px rgba(0,82,255,.16), 0 16px 34px rgba(0,0,0,.34); }
+
+.tickerWrap{
+  flex: 1;
+  min-width: 0;
+  position: relative;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255,255,255,.05);
+  border: 1px solid rgba(255,255,255,.10);
+  box-shadow: 0 10px 30px rgba(0,0,0,.22);
+  padding: 10px 12px;
+}
+
+.tickerWrap:before,
+.tickerWrap:after{
+  content:"";
+  position:absolute;
+  top:0; bottom:0;
+  width: 44px;
+  pointer-events:none;
+  z-index: 2;
+}
+.tickerWrap:before{
+  left:0;
+  background: linear-gradient(90deg, rgba(7,7,17,.95), rgba(7,7,17,0));
+}
+.tickerWrap:after{
+  right:0;
+  background: linear-gradient(270deg, rgba(7,7,17,.95), rgba(7,7,17,0));
+}
+
+.tickerTrack{
+  display:flex;
+  gap: 10px;
+  align-items:center;
+  white-space: nowrap;
+  will-change: transform;
+  animation: tickerMarquee var(--tickerSpeed) linear infinite;
+}
+
+.tickerWrap:hover .tickerTrack{ animation-play-state: paused; }
+
+@keyframes tickerMarquee{
+  0%{ transform: translateX(0); }
+  100%{ transform: translateX(calc(-1 * var(--tickerDistance))); }
+}
+
+.tickerItem{
+  display:inline-flex;
+  align-items:center;
+  gap: 10px;
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.10);
+  box-shadow: 0 0 0 1px var(--netGlow) inset;
+  color: rgba(255,255,255,.92);
+  font-weight: 900;
+  font-size: 13px;
+  letter-spacing: .1px;
+}
+
+/* Tiny logo inside the trending ticker */
+.tickerLogoWrap{
+  width:28px;
+  height:28px;
+  flex:0 0 28px;
+  border-radius: 6px;
+  overflow:hidden;
+  display:grid;
+  place-items:center;
+  background: rgba(255,255,255,.07);
+  border: 1px solid rgba(255,255,255,.10);
+  box-shadow: 0 8px 18px rgba(0,0,0,.22);
+}
+.tickerLogo{
+  width:100%;
+  height:100%;
+  object-fit: cover;
+  display:block;
+}
+.tickerLogoFallback{
+  font-size: 12px;
+  font-weight: 1100;
+  color: rgba(255,255,255,.90);
+  line-height: 1;
+}
+.tickerItem.top1 .tickerLogoWrap{
+  border-color: rgba(255,215,0,.35);
+  box-shadow: 0 0 0 1px rgba(255,215,0,.15) inset, 0 10px 22px rgba(0,0,0,.22);
+}
+.tickerItem .rank{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width: 28px;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.10);
+  font-size: 12px;
+  font-weight: 1000;
+  color: var(--netColor);
+}
+.tickerItem .sym{ font-weight: 950; }
+.tickerItem .chain{ font-weight: 1000; color: var(--netColor); font-size: 12px; letter-spacing:.2px; }
+
+.tickerPct{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.10);
+  font-size: 12px;
+  font-weight: 950;
+  color: rgba(255,255,255,.90);
+}
+.tickerPct.up{
+  color: rgba(20,241,149,.98);
+  background: rgba(20,241,149,.10);
+  border-color: rgba(20,241,149,.22);
+}
+.tickerPct.down{
+  color: rgba(255,90,90,.96);
+  background: rgba(255,90,90,.10);
+  border-color: rgba(255,90,90,.22);
+}
+
+
+.tickerItem.top1{
+  background: rgba(255,215,0,.10);
+  border-color: rgba(255,215,0,.32);
+  box-shadow: 0 0 0 1px rgba(255,215,0,.18) inset, 0 12px 30px rgba(0,0,0,.26);
+}
+.tickerItem.top1 .rank{
+  background: linear-gradient(90deg, #F3BA2F, #FFD700, #FFF2B0);
+  color: rgba(10,10,22,.92);
+  border: 0;
+  font-weight: 1100;
+}
+.tickerItem.top1 .chain{ color: rgba(255,215,0,.92); }
+
+.dexSearch{ position: relative; width: 360px; max-width: 44vw; }
+.dexSearchInner{
+  display:flex;
+  gap: 8px;
+  align-items:center;
+  padding: 10px 10px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.05);
+  border: 1px solid rgba(255,255,255,.10);
+  box-shadow: 0 10px 30px rgba(0,0,0,.22);
+}
+.dexInput{
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: 0;
+  outline: none;
+  color: rgba(255,255,255,.92);
+  font-weight: 850;
+  font-size: 13px;
+}
+.dexInput::placeholder{ color: rgba(255,255,255,.55); font-weight: 800; }
+
+.dexMiniBtn{ padding: 8px 10px; border-radius: 999px; font-size: 12px; font-weight: 1000; }
+
+.dexMiniBtn.copyBtn{
+  border-color: rgba(20,241,149,.22);
+  background: radial-gradient(220px 80px at 20% 20%, rgba(20,241,149,.18), transparent 60%),
+              rgba(255,255,255,.06);
+}
+.dexMiniBtn.copyBtn:hover{
+  border-color: rgba(20,241,149,.34);
+  box-shadow: 0 0 0 1px rgba(20,241,149,.18) inset, 0 14px 30px rgba(0,0,0,.35);
+}
+
+.dexMiniBtn.chartBtn{
+  border-color: rgba(0,209,255,.22);
+  background: radial-gradient(220px 80px at 20% 20%, rgba(0,209,255,.16), transparent 60%),
+              rgba(255,255,255,.06);
+}
+.dexMiniBtn.chartBtn:hover{
+  border-color: rgba(0,209,255,.34);
+  box-shadow: 0 0 0 1px rgba(0,209,255,.18) inset, 0 14px 30px rgba(0,0,0,.35);
+}
+
+.dexResults{
+  position:absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: min(560px, calc(100vw - 28px));
+  max-height: 60vh;
+  overflow:auto;
+  padding: 10px;
+  border-radius: 18px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(10,10,22,.92);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  z-index: 120;
+}
+
+/* Search result rows (clean + mobile-first) */
+.dexResRow{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap: 12px;
+  padding: 12px 12px;
+  border-radius: 18px;
+  border: 1px solid rgba(255,255,255,.10);
+  background: radial-gradient(900px 240px at 10% 0%, rgba(20,241,149,.10), transparent 55%),
+              radial-gradient(900px 240px at 90% 100%, rgba(153,69,255,.10), transparent 55%),
+              rgba(255,255,255,.03);
+}
+.dexResLeft{ flex:1; min-width:0; }
+.dexResTitle{
+  font-size: 15px;
+  line-height: 1.15;
+  font-weight: 980;
+  letter-spacing: -.2px;
+  color: rgba(255,255,255,.95);
+}
+
+/* ✅ Search result title row with token logo */
+.dexResTitleRow{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  min-width:0;
+}
+.dexLogoWrap{
+  width:40px;
+  height:40px;
+  border-radius: 14px;
+  overflow:hidden;
+  flex:0 0 40px;
+  display:grid;
+  place-items:center;
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.10);
+  box-shadow: 0 10px 24px rgba(0,0,0,.25);
+  position:relative;
+}
+.dexLogo{
+  width:100%;
+  height:100%;
+  object-fit: cover;
+  display:block;
+}
+.dexLogoFallback{
+  position:absolute;
+  inset:0;
+  display:grid;
+  place-items:center;
+  font-weight: 1100;
+  font-size: 14px;
+  color: rgba(255,255,255,.92);
+  letter-spacing: .2px;
+}
+.dexLogoWrap:not(.noimg) .dexLogoFallback{
+  opacity: 0;
+}
+
+@media (max-width: 420px){
+  .dexLogoWrap{ width:36px; height:36px; flex-basis:36px; border-radius:13px; }
+  .dexLogoFallback{ font-size: 13px; }
+}
+
+/* ✅ Search meta layout: always 24h left, then MCap/FDV, CA below */
+.dexResMeta{
+  margin-top: 7px;
+  display:grid;
+  gap: 6px;
+  color: rgba(255,255,255,.70);
+  font-size: 12px;
+  line-height: 1.25;
+  font-weight: 720;
+}
+.dexMetaRow{
+  display:flex;
+  flex-wrap:wrap;
+  gap: 6px;
+  align-items:center;
+}
+.dexMetaRow.stats{
+  flex-wrap:nowrap;
+}
+.dexMetaRow.ca .dexPill{
+  max-width: 100%;
+}
+@media (max-width: 420px){
+  .dexMetaRow.stats{ flex-wrap:wrap; }
+}
+
+/* Bigger logo on mobile, but still compact */
+@media (max-width: 520px){
+  .dexLogoWrap{ width:36px; height:36px; flex-basis:36px; border-radius: 13px; }
+  .dexLogoFallback{ font-size: 13px; }
+}
+
+.dexPill{
+  display:inline-flex;
+  align-items:center;
+  gap: 6px;
+  padding: 5px 9px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.10);
+  background: rgba(255,255,255,.06);
+}
+.dexPill.up{ color: rgba(20,241,149,.95); border-color: rgba(20,241,149,.22); }
+.dexPill.down{ color: rgba(255,93,93,.95); border-color: rgba(255,93,93,.22); }
+.dexPill.chain-solana{ color: rgba(153,69,255,.95); border-color: rgba(153,69,255,.22); }
+.dexPill.chain-eth{ color: rgba(98,126,234,.95); border-color: rgba(98,126,234,.22); }
+.dexPill.chain-bsc{ color: rgba(243,186,47,.95); border-color: rgba(243,186,47,.22); }
+.dexPill.chain-base{ color: rgba(0,82,255,.95); border-color: rgba(0,82,255,.22); }
+.dexResActions{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap: 8px;
+  flex-shrink:0;
+}
+.dexMiniBtn{
+  padding: 8px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 950;
+}
+
+@media (max-width: 860px){
+  .dexResRow{ padding: 12px 10px; }
+}
+@media (max-width: 560px){
+  .dexResRow{
+    flex-direction:column;
+    align-items:stretch;
+    gap: 10px;
+  }
+  .dexResActions{
+    justify-content:flex-start;
+    width:100%;
+    flex-wrap:wrap;
+  }
+  .dexResActions .dexMiniBtn{ flex: 1 1 calc(33% - 6px); min-width: 120px; text-align:center; }
+}
+
+
+/* mobile: stack + keep everything clickable */
+@media (max-width: 860px){
+  :root{ --tickerSpeed: 5.2s; } /* ✅ mobile speed stays exactly as-is */
+
+  /* Mobile topbar: ultra clean, no horizontal scrolling, no cramped UI */
+  .topBarInner{ padding: calc(10px + env(safe-area-inset-top)) 12px 10px; gap: 10px; }
+
+  /* Row 1: label + chain selector (wraps nicely) */
+  .topRow{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap: 10px;
+    flex-wrap:wrap;
+  }
+  .hotBlock{ width:100%; display:flex; align-items:center; justify-content:flex-start; gap:10px; flex-wrap:wrap; }
+  .hotLabel{ padding: 9px 12px; font-size: 12px; letter-spacing: .5px; }
+  .hotFire{ width: 16px; height: 16px; }
+
+  /* Dexguard: EXACT same height as LIVE TRENDING (mobile) */
+  .hotLabel{ height: 40px; padding: 0 12px; }
+  .dexguardLogo{ height: 40px; }
+  .dexguardLogo img{ height: 40px; }
+  .dexguardBtn{ gap:10px; }
+  .dexguardChip{ padding: 4px 10px; font-size: 11px; line-height: 1; }
+  .dexguardText{ font-size: 15px; line-height: 1; }
+
+
+  /* Chain selector: 4 equal buttons, always visible (no scrolling) */
+  .chainToggle{
+    width: 100%;
+    display:grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+    padding: 0;
+    background: transparent;
+    border: 0;
+    overflow: visible;
+    justify-content: stretch;
+  }
+  .chainBtn{ width:100%; padding:  9px 0; font-size: 12px; }
+  .chainBtn{ box-shadow: 0 0 0 1px rgba(255,255,255,.06) inset, 0 10px 22px rgba(0,0,0,.20); }
+
+  /* Row 2: ticker */
+  .tickerWrap{ width: 100%; padding: 9px 10px; }
+  .tickerItem{ font-size: 12.5px; padding: 7px 9px; gap: 8px; }
+  .tickerLogoWrap{ width:22px; height:22px; flex:0 0 22px; border-radius:6px; }
+  .tickerLogoFallback{ font-size: 11px; }
+  .tickerItem .rank{ min-width: 26px; height: 21px; font-size: 11px; }
+
+  /* Row 3: search */
+  .bottomRow{ flex-direction: column; align-items: stretch; gap: 10px; }
+  .dexSearch{ width: 100%; max-width: 100%; }
+  .dexSearchInner{ padding: 10px 12px; }
+  /* prevent iOS input zoom */
+  .dexInput{ font-size: 16px; }
+  .dexMiniBtn{ padding: 8px 10px; }
+
+  /* Menu button: always top-right and sized for iOS */
+  .menuBtn{ padding: 9px 12px; border-radius: 14px; font-size: 20px; }
+  .menuPop{ width: min(340px, calc(100vw - 24px)); }
+}
+
+@media (max-width: 380px){
+  .chainBtn{ font-size: 11.5px; padding: 7px 0; }
+}
+
+/* reduced motion */
+@media (prefers-reduced-motion: reduce){
+  .tickerTrack{ animation: none !important; }
+}
+
+
+
+/* ============================
+   MOBILE ULTRA (LAYOUT ONLY)
+   Keeps desktop unchanged
+============================ */
+@media (max-width: 860px){
+  /* Mobile topbar: clean strip (no big bordered block) */
+  .topBar{
+    background: rgba(7,7,17,.62);
+    border-bottom: 1px solid rgba(255,255,255,.10);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    padding: 0;
+  }
+  .topBarInner{
+    max-width: var(--max);
+    margin: 0 auto;
+    padding: calc(10px + env(safe-area-inset-top)) 12px 10px;
+    border-radius: 0;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  /* Menu button always top-right, slightly smaller on mobile */
+  .menuBtn{ padding: 9px 12px; border-radius: 16px; }
+
+  /* Page spacing feels designed for mobile */
+  .wrap{ padding-left: 12px; padding-right: 12px; }
+  section{ padding: 26px 0; }
+
+  /* Hero: tighter + more premium */
+  .hero{ padding-top: 10px; }
+  .heroCard{
+    padding: 26px 16px;
+    border-radius: 26px;
+  }
+  .heroTitle{ font-size: clamp(38px, 10vw, 54px); }
+  .heroSubName{ letter-spacing: .55em; font-size: 12px; }
+  .heroPoemText{ font-size: 14.5px; line-height: 1.62; }
+
+  /* CTA buttons: 2-column grid, full width */
+  .heroActions{
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    justify-content: stretch;
+  }
+  .heroActions .btn{ width: 100%; justify-content: center; }
+
+  /* Cards overall */
+  .cardInner{ padding: 18px; border-radius: 22px; }
+  .h2{ font-size: 28px; }
+
+  /* Tool CTAs full width */
+  .toolCTA{ flex-direction: column; align-items: stretch; }
+}
+
+
+ /* =========================
+    Ranger Wallet Section
+    ========================= */
+ .walletShowcase{ position:relative; overflow:hidden; }
+ .walletShowcase .walletTop{
+   display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:18px;
+ }
+ .walletKicker{
+   display:inline-flex; align-items:center; gap:10px; padding:8px 12px;
+   background: rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12);
+   border-radius:999px; font-weight:700; letter-spacing:.02em;
+ }
+ .walletKickerDot{ width:10px; height:10px; border-radius:999px; background: rgba(165,120,255,.95); box-shadow: 0 0 0 4px rgba(165,120,255,.18); }
+ .walletTitle{
+   font-size: clamp(28px, 3.2vw, 44px);
+   line-height: 1.05;
+   margin: 12px 0 10px;
+   letter-spacing: -0.02em;
+ }
+ .walletSubtitle{ font-size: 16px; color: rgba(255,255,255,.76); max-width: 56ch; }
+ .walletBadges{ display:flex; flex-wrap:wrap; gap:10px; margin-top:14px; }
+ .walletBadge{
+   display:inline-flex; align-items:center; gap:10px;
+   padding:10px 12px;
+   border-radius:14px;
+   background: rgba(255,255,255,.055);
+   border:1px solid rgba(255,255,255,.12);
+   font-weight:700;
+   color: rgba(255,255,255,.92);
+ }
+ .walletBadgeIcon{
+   width:28px; height:28px; border-radius:10px;
+   background: rgba(165,120,255,.18);
+   border:1px solid rgba(165,120,255,.35);
+   display:grid; place-items:center;
+ }
+ .walletCtas{ display:flex; flex-wrap:wrap; gap:12px; margin-top:16px; align-items:center; }
+ .storeBtn{
+   display:inline-flex; align-items:center; gap:10px;
+   padding:12px 14px;
+   border-radius:14px;
+   background: rgba(255,255,255,.07);
+   border:1px solid rgba(255,255,255,.12);
+   font-weight:800;
+   text-decoration:none;
+   color: rgba(255,255,255,.92);
+   transition: transform .12s ease, background .12s ease, border-color .12s ease;
+ }
+ .storeBtn:hover{ transform: translateY(-1px); background: rgba(255,255,255,.085); border-color: rgba(255,255,255,.18); }
+ .storeSub{ font-size:12px; color: rgba(255,255,255,.68); margin-left:2px; font-weight:700; }
+
+ .rangerPhoneWrap{ display:flex; justify-content:center; }
+ .rangerPhone{
+   width:min(380px, 92vw);
+   border-radius: 34px;
+   padding: 14px;
+   background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.035));
+   border: 1px solid rgba(255,255,255,.14);
+   box-shadow: 0 30px 90px rgba(0,0,0,.55);
+   position:relative;
+ }
+ .rangerPhone:before{
+   content:"";
+   position:absolute; inset:-1px;
+   border-radius: 34px;
+   background: radial-gradient(80% 60% at 50% 0%, rgba(165,120,255,.25), transparent 60%),
+               radial-gradient(70% 50% at 0% 40%, rgba(64,214,255,.16), transparent 60%),
+               radial-gradient(70% 50% at 100% 45%, rgba(255,120,190,.14), transparent 60%);
+   pointer-events:none;
+ }
+ .rangerScreen{
+   position:relative;
+   border-radius: 26px;
+   overflow:hidden;
+   background: radial-gradient(120% 140% at 40% 0%, rgba(165,120,255,.18), transparent 55%),
+               linear-gradient(180deg, #0b0b18 0%, #070711 55%, #06060f 100%);
+   border: 1px solid rgba(255,255,255,.10);
+ }
+ .rpStatus{
+   display:flex; justify-content:space-between; align-items:center;
+   padding: 10px 14px 4px;
+   color: rgba(255,255,255,.78);
+   font-weight:800;
+   font-size:12px;
+   letter-spacing:.02em;
+ }
+ .rpPillsMini{ display:flex; gap:6px; align-items:center; }
+ .rpPillMini{
+   padding: 6px 10px; border-radius:999px;
+   background: rgba(255,255,255,.06);
+   border: 1px solid rgba(255,255,255,.10);
+   font-weight:800; font-size:11px;
+ }
+ .rpPillMini.live{ background: rgba(80,220,170,.10); border-color: rgba(80,220,170,.28); color: rgba(140,255,220,.95); }
+ .rpHeader{
+   display:flex; justify-content:space-between; align-items:center;
+   padding: 10px 14px 6px;
+ }
+ .rpAcct{
+   display:flex; gap:10px; align-items:center;
+ }
+ .rpLogo{
+   width:38px; height:38px; border-radius:12px;
+   border:1px solid rgba(255,255,255,.14);
+   background: rgba(255,255,255,.06);
+   object-fit:cover;
+ }
+ .rpName{ font-weight:900; letter-spacing:-.01em; }
+ .rpSub{ font-size:12px; color: rgba(255,255,255,.66); font-weight:800; margin-top:2px; }
+ .rpBtnRow{ display:flex; gap:10px; align-items:center; }
+ .rpChip{
+   width:36px; height:36px; border-radius:14px;
+   display:grid; place-items:center;
+   background: rgba(255,255,255,.06);
+   border:1px solid rgba(255,255,255,.12);
+ }
+ .rpBalance{
+   margin: 6px 14px 12px;
+   border-radius: 22px;
+   padding: 14px;
+   background: rgba(255,255,255,.05);
+   border: 1px solid rgba(255,255,255,.12);
+ }
+ .rpLabel{ color: rgba(255,255,255,.64); font-weight:800; font-size:12px; letter-spacing:.02em; }
+ .rpUsd{ font-size: 38px; line-height:1.0; font-weight:950; letter-spacing:-.03em; margin-top:8px; }
+ .rpSol{ margin-top:6px; font-weight:900; color: rgba(255,255,255,.78); }
+ .rpPills{
+   display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;
+ }
+ .rpPill{
+   padding: 7px 10px; border-radius:999px;
+   background: rgba(255,255,255,.06);
+   border: 1px solid rgba(255,255,255,.12);
+   font-weight:900; font-size:12px; color: rgba(255,255,255,.78);
+ }
+ .rpPill.live{ background: rgba(80,220,170,.10); border-color: rgba(80,220,170,.28); color: rgba(140,255,220,.95); }
+ .rpPill.backup{ background: rgba(255,110,120,.09); border-color: rgba(255,110,120,.22); color: rgba(255,170,175,.95); }
+ .rpQuick{
+   display:grid; grid-template-columns: repeat(3, 1fr); gap:10px;
+   margin-top: 12px;
+ }
+ .rpQuickBtn{
+   border-radius: 18px;
+   padding: 12px 10px;
+   background: rgba(255,255,255,.05);
+   border:1px solid rgba(255,255,255,.12);
+   display:flex; flex-direction:column; align-items:center; gap:8px;
+   font-weight:950;
+ }
+ .rpCircle{
+   width:36px; height:36px; border-radius:999px;
+   display:grid; place-items:center;
+   background: rgba(255,255,255,.06);
+   border:1px solid rgba(255,255,255,.12);
+ }
+ .rpHint{
+   padding: 0 14px 10px;
+   color: rgba(255,255,255,.55);
+   font-weight:800; font-size:12px;
+ }
+ .rpTokensRow{
+   display:flex; justify-content:space-between; align-items:center;
+   padding: 10px 14px 8px;
+ }
+ .rpTokensTitle{ font-size: 26px; font-weight:950; letter-spacing:-.02em; }
+ .rpAdd{
+   width:38px; height:38px; border-radius:16px;
+   background: rgba(165,120,255,.22);
+   border:1px solid rgba(165,120,255,.35);
+   display:grid; place-items:center;
+   font-weight:950;
+ }
+ .rpSearch{
+   flex:1; margin-left:10px;
+   height:38px;
+   border-radius: 16px;
+   background: rgba(255,255,255,.05);
+   border:1px solid rgba(255,255,255,.12);
+   color: rgba(255,255,255,.72);
+   display:flex; align-items:center; padding: 0 12px;
+   font-weight:900; font-size:12px;
+ }
+ .rpToken{
+   margin: 0 14px 10px;
+   border-radius: 20px;
+   padding: 12px;
+   background: rgba(255,255,255,.05);
+   border:1px solid rgba(255,255,255,.12);
+   display:flex; justify-content:space-between; gap:10px;
+ }
+ .rpTokenLeft{ display:flex; gap:10px; align-items:center; }
+ .rpTokenIcon{
+   width:42px; height:42px; border-radius:16px;
+   background: rgba(255,255,255,.06);
+   border: 1px solid rgba(255,255,255,.12);
+   display:grid; place-items:center;
+   font-weight:950;
+ }
+ .rpTokenSym{ font-weight:950; }
+ .rpTokenName{ font-size:12px; color: rgba(255,255,255,.64); font-weight:800; margin-top:2px; }
+ .rpTokenAmt{ font-size:12px; color: rgba(255,255,255,.68); font-weight:900; margin-top:6px; }
+ .rpTokenRight{ text-align:right; }
+ .rpTokenUsd{ font-weight:950; }
+ .rpTokenChg{ margin-top:6px; font-weight:950; color: rgba(140,255,220,.95); }
+ .rpNav{
+   margin: 12px 14px 14px;
+   border-radius: 22px;
+   padding: 10px 10px;
+   background: rgba(255,255,255,.05);
+   border: 1px solid rgba(255,255,255,.12);
+   display:grid; grid-template-columns: repeat(4, 1fr); gap: 6px;
+   color: rgba(255,255,255,.72);
+   font-weight:900; font-size:12px;
+ }
+ .rpNavItem{
+   display:flex; flex-direction:column; align-items:center; gap:6px;
+   padding: 8px 6px; border-radius:16px;
+ }
+ .rpNavItem.active{
+   background: rgba(255,255,255,.06);
+   border: 1px solid rgba(255,255,255,.10);
+   color: rgba(255,255,255,.90);
+ }
+ .walletNote{
+   margin-top:12px;
+   color: rgba(255,255,255,.64);
+   font-weight:800;
+   font-size: 12px;
+ }
+ @media (max-width: 920px){
+   .walletTop{ flex-direction:column; }
+   .walletCtas{ justify-content:flex-start; }
+ }
+
+</style>
 </head>
 
 <body>
-  <div class="topbar">
-    <div class="toprow">
-      <div class="brand">
-        <div class="logo" aria-hidden="true"></div>
-        <div class="title">
-          <b>DexGuard Launch</b>
-          <span>Solana Token Launchpad (MVP)</span>
-        </div>
-      </div>
 
-      <div class="actions">
-        <div class="pill" title="Network / Wallet">
-          <span id="netDot" style="width:8px;height:8px;border-radius:999px;background:rgba(255,255,255,.25)"></span>
-          <span id="netLabel">Mainnet</span>
-          <span style="opacity:.35">•</span>
-          <span id="walletLabel">Not connected</span>
-        </div>
+ <!-- ICON SPRITE (no emojis) -->
+ <svg aria-hidden="true" focusable="false" style="position:absolute;width:0;height:0;overflow:hidden">
+ <defs>
+ <linearGradient id="gradBrand" x1="0" y1="0" x2="1" y2="0">
+ <stop offset="0" stop-color="var(--g)"/>
+ <stop offset="0.5" stop-color="var(--c)"/>
+ <stop offset="1" stop-color="var(--p)"/>
+ </linearGradient>
+ </defs>
 
-        <button class="btn" id="btnOpenWallets">Choose Wallet</button>
-        <button class="btn primary" id="btnConnect">Connect</button>
-        <button class="btn danger" id="btnDisconnect" style="display:none;">Disconnect</button>
-      </div>
-    </div>
-  </div>
+ <symbol id="ico-vault" viewBox="0 0 24 24">
+ <path d="M4.5 7.5h15a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-15a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2Z" fill="none" stroke="url(#gradBrand)" stroke-width="2" stroke-linecap="round"/>
+ <path d="M7 7.5V6a3 3 0 0 1 3-3h4a3 3 0 0 1 3 3v1.5" fill="none" stroke="url(#gradBrand)" stroke-width="2" stroke-linecap="round"/>
+ <path d="M12 12.2a1.8 1.8 0 1 0 0 3.6a1.8 1.8 0 0 0 0-3.6Z" fill="none" stroke="url(#gradBrand)" stroke-width="2"/>
+ <path d="M12 10.5v1.7" fill="none" stroke="url(#gradBrand)" stroke-width="2" stroke-linecap="round"/>
+ </symbol>
 
-  <div class="wrap">
-    <div class="grid">
-      <!-- LEFT -->
-      <div class="card">
-        <div class="head">
-          <div class="h">
-            <b>Launch Wizard</b>
-            <span>Create SPL Token + optional Metadata. No backend needed.</span>
-          </div>
-          <div class="steps" id="steps">
-            <div class="step active" data-step="1"><span class="dot"></span>1 Wallet</div>
-            <div class="step" data-step="2"><span class="dot"></span>2 Token</div>
-            <div class="step" data-step="3"><span class="dot"></span>3 Metadata</div>
-            <div class="step" data-step="4"><span class="dot"></span>4 Review</div>
-            <div class="step" data-step="5"><span class="dot"></span>5 Deploy</div>
-          </div>
-        </div>
+ <symbol id="ico-sol" viewBox="0 0 24 24">
+ <path d="M6 7.2c.5-.5 1.2-.8 1.9-.8h12.6c.4 0 .6.5.3.8l-2 2c-.5.5-1.2.8-1.9.8H4.3c-.4 0-.6-.5-.3-.8l2-2Z" fill="url(#gradBrand)"/>
+ <path d="M6 13c.5-.5 1.2-.8 1.9-.8h12.6c.4 0 .6.5.3.8l-2 2c-.5.5-1.2.8-1.9.8H4.3c-.4 0-.6-.5-.3-.8l2-2Z" fill="url(#gradBrand)" opacity=".9"/>
+ <path d="M6 18.8c.5-.5 1.2-.8 1.9-.8h12.6c.4 0 .6.5.3.8l-2 2c-.5.5-1.2.8-1.9.8H4.3c-.4 0-.6-.5-.3-.8l2-2Z" fill="url(#gradBrand)" opacity=".8"/>
+ </symbol>
 
-        <div class="body">
-          <div class="row">
-            <div>
-              <label>Token Name</label>
-              <input id="name" placeholder="e.g. DexGuard Token" maxlength="32" />
-            </div>
-            <div>
-              <label>Symbol</label>
-              <input id="symbol" placeholder="e.g. DGUARD" maxlength="10" />
-            </div>
-          </div>
+ <symbol id="ico-arrows" viewBox="0 0 24 24">
+ <path d="M7 7h10l-2-2" fill="none" stroke="url(#gradBrand)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+ <path d="M17 7l-2 2" fill="none" stroke="url(#gradBrand)" stroke-width="2" stroke-linecap="round"/>
+ <path d="M17 17H7l2 2" fill="none" stroke="url(#gradBrand)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+ <path d="M7 17l2-2" fill="none" stroke="url(#gradBrand)" stroke-width="2" stroke-linecap="round"/>
+ </symbol>
 
-          <div class="row" style="margin-top:12px;">
-            <div>
-              <label>Decimals</label>
-              <select id="decimals">
-                <option value="9" selected>9 (Standard)</option>
-                <option value="6">6</option>
-                <option value="5">5</option>
-                <option value="3">3</option>
-                <option value="0">0</option>
-              </select>
-            </div>
-            <div>
-              <label>Initial Supply</label>
-              <input id="supply" placeholder="e.g. 1000000000" inputmode="decimal" />
-            </div>
-          </div>
+ <symbol id="ico-swap" viewBox="0 0 24 24">
+ <path d="M8 7h10" fill="none" stroke="url(#gradBrand)" stroke-width="2" stroke-linecap="round"/>
+ <path d="M16 5l2 2-2 2" fill="none" stroke="url(#gradBrand)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+ <path d="M16 17H6" fill="none" stroke="url(#gradBrand)" stroke-width="2" stroke-linecap="round"/>
+ <path d="M8 19l-2-2 2-2" fill="none" stroke="url(#gradBrand)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+ <path d="M11 11.2h2" fill="none" stroke="url(#gradBrand)" stroke-width="2" stroke-linecap="round" opacity=".7"/>
+ </symbol>
 
-          <div class="divider"></div>
+ <symbol id="ico-community" viewBox="0 0 24 24">
+ <path d="M8.2 12.2a3 3 0 1 1 0-6a3 3 0 0 1 0 6Z" fill="none" stroke="url(#gradBrand)" stroke-width="2"/>
+ <path d="M16 11.2a2.6 2.6 0 1 1 0-5.2a2.6 2.6 0 0 1 0 5.2Z" fill="none" stroke="url(#gradBrand)" stroke-width="2" opacity=".85"/>
+ <path d="M3.6 20c.7-3.1 2.7-4.8 5.3-4.8s4.6 1.7 5.3 4.8" fill="none" stroke="url(#gradBrand)" stroke-width="2" stroke-linecap="round"/>
+ <path d="M14.2 15.8c1.8.2 3.1 1.4 3.8 4.2" fill="none" stroke="url(#gradBrand)" stroke-width="2" stroke-linecap="round" opacity=".8"/>
+ </symbol>
 
-          <div class="row">
-            <div>
-              <label>Metadata URI (optional)</label>
-              <input id="metaUri" placeholder="ipfs://... or https://.../metadata.json" />
-              <div class="hint">If you provide a metadata URI, we will try to create/update Metaplex metadata on-chain.</div>
-            </div>
-            <div>
-              <label>Description (optional, for your own records)</label>
-              <textarea id="desc" placeholder="What is your token about?"></textarea>
-            </div>
-          </div>
+ <symbol id="ico-fire" viewBox="0 0 24 24">
+ <path d="M12 22c4 0 7-3 7-7c0-3.5-2.6-5.8-4.3-7.8c-.7-.8-1.2-1.7-1.4-2.7c-1 1.1-2 2.4-2.6 3.9c-.8 2-.4 3.1-1.9 4.6c-1.1 1.1-3 2.4-3 5.1c0 4 3 6.9 6.2 6.9Z" fill="none" stroke="url(#gradBrand)" stroke-width="2" stroke-linejoin="round"/>
+ <path d="M10.2 15.4c.2-1.5 1.3-2.4 2-3.4c.3-.4.5-.8.6-1.2c.6 1 .9 1.8 1.1 2.7c.2 1.1-.3 1.8-.8 2.5c-.5.7-.7 1.1-.7 1.9c0 1.4 1.1 2.1 2 2.4" fill="none" stroke="url(#gradBrand)" stroke-width="2" stroke-linecap="round" opacity=".75"/>
+ </symbol>
 
-          <div class="divider"></div>
+ <symbol id="ico-percent" viewBox="0 0 24 24">
+ <path d="M19 5L5 19" fill="none" stroke="url(#gradBrand)" stroke-width="2" stroke-linecap="round"/>
+ <path d="M7.5 9a1.8 1.8 0 1 0 0-3.6a1.8 1.8 0 0 0 0 3.6Z" fill="none" stroke="url(#gradBrand)" stroke-width="2"/>
+ <path d="M16.5 18.6a1.8 1.8 0 1 0 0-3.6a1.8 1.8 0 0 0 0 3.6Z" fill="none" stroke="url(#gradBrand)" stroke-width="2"/>
+ </symbol>
 
-          <div class="row">
-            <div>
-              <label><input type="checkbox" id="renounceMint" /> Renounce Mint Authority after mint</label>
-              <div class="hint">Prevents future minting. Irreversible.</div>
-            </div>
-            <div>
-              <label><input type="checkbox" id="disableFreeze" /> Disable Freeze Authority</label>
-              <div class="hint">Prevents freezing token accounts. Irreversible if set to null.</div>
-            </div>
-          </div>
+ <symbol id="ico-stack" viewBox="0 0 24 24">
+ <path d="M12 4l9 5-9 5-9-5 9-5Z" fill="none" stroke="url(#gradBrand)" stroke-width="2" stroke-linejoin="round"/>
+ <path d="M21 9v6l-9 5-9-5V9" fill="none" stroke="url(#gradBrand)" stroke-width="2" stroke-linejoin="round" opacity=".8"/>
+ </symbol>
+ </svg>
 
-          <div class="divider"></div>
+ <!-- TOP TRENDING BAR + SEARCH (Dex-style) -->
+ <div class="topBar" id="topBar">
+   <div class="topBarInner">
+     <div class="topRow">
+       <div class="hotBlock" aria-label="Hot trending live">
+         <a class="dexguardLogo" id="dexguardLogo" href="https://www.solanax1.com/dexguard" aria-label="Open DexGuard">
+           <img src="dexguard.png" alt="DexGuard" />
+         </a>
 
-          <div style="display:flex; gap:10px; flex-wrap:wrap;">
-            <button class="btn" id="btnReview">Review</button>
-            <button class="btn primary" id="btnDeploy">Deploy (Sign TX)</button>
-            <button class="btn" id="btnClear">Clear</button>
-          </div>
+         <div class="hotLabel" title="Live trending">
+           <svg class="hotFire" aria-hidden="true"><use href="#ico-fire"></use></svg>
+           <span>LIVE TRENDING</span>
+         </div>
+       </div>
 
-          <div class="footer-note">
-            ⚠️ This MVP creates a token on Solana (SPL). Creating liquidity pools, bonding curves, and “Pumpfun-like” mechanics are separate modules.
-          </div>
-        </div>
-      </div>
+       <div class="chainToggle" id="chainToggle" role="tablist" aria-label="Choose chain">
+         <button class="chainBtn active" type="button" data-net="solana" aria-pressed="true">SOL</button>
+         <button class="chainBtn" type="button" data-net="eth" aria-pressed="false">ETH</button>
+         <button class="chainBtn" type="button" data-net="bsc" aria-pressed="false">BNB</button>
+         <button class="chainBtn" type="button" data-net="base" aria-pressed="false">BASE</button>
+       </div>
+     </div>
 
-      <!-- RIGHT -->
-      <div class="card">
-        <div class="head">
-          <div class="h">
-            <b>Wallet & Output</b>
-            <span>Balance, explorer links, logs, and saved launches.</span>
-          </div>
-        </div>
-        <div class="body">
-          <div class="kpi">
-            <div class="chip">Address: <span id="addr">—</span></div>
-            <div class="chip">SOL: <span id="sol">—</span></div>
-          </div>
+     <div class="bottomRow">
+       <div class="tickerWrap" aria-label="Trending tokens">
+         <div class="tickerTrack" id="trendTrack">
+           <span class="tickerItem" style="opacity:.75"><span class="rank">…</span><span class="tickerLogoWrap"><span class="tickerLogoFallback">•</span></span><span class="sym">Trending</span></span><span class="tickerItem" style="opacity:.75"><span class="rank">…</span><span class="tickerLogoWrap"><span class="tickerLogoFallback">•</span></span><span class="sym">Trending</span></span><span class="tickerItem" style="opacity:.75"><span class="rank">…</span><span class="tickerLogoWrap"><span class="tickerLogoFallback">•</span></span><span class="sym">Trending</span></span><span class="tickerItem" style="opacity:.75"><span class="rank">…</span><span class="tickerLogoWrap"><span class="tickerLogoFallback">•</span></span><span class="sym">Trending</span></span><span class="tickerItem" style="opacity:.75"><span class="rank">…</span><span class="tickerLogoWrap"><span class="tickerLogoFallback">•</span></span><span class="sym">Trending</span></span><span class="tickerItem" style="opacity:.75"><span class="rank">…</span><span class="tickerLogoWrap"><span class="tickerLogoFallback">•</span></span><span class="sym">Trending</span></span><span class="tickerItem" style="opacity:.75"><span class="rank">…</span><span class="tickerLogoWrap"><span class="tickerLogoFallback">•</span></span><span class="sym">Trending</span></span><span class="tickerItem" style="opacity:.75"><span class="rank">…</span><span class="tickerLogoWrap"><span class="tickerLogoFallback">•</span></span><span class="sym">Trending</span></span>
+         </div>
+       </div>
 
-          <div class="divider"></div>
+       <div class="dexSearch" role="search" aria-label="Search token by name or contract">
+         <div class="dexSearchInner">
+           <input class="dexInput" id="dexSearchInput" autocomplete="off" spellcheck="false" placeholder="Search token / paste contract…" />
+         </div>
+         <div class="dexResults" id="dexResults" hidden></div>
+       </div>
+     </div>
+   </div>
+ </div>
 
-          <div class="mini">
-            <span>Result:</span>
-            <span id="mintOut" class="warn">No token deployed yet</span>
-          </div>
+<!-- FLOATING MENU (ALL NAV INSIDE) -->
+ <div class="menuFloat" id="menuFloat">
+ <div class="menu" id="menu">
+ <button
+ class="btn ghost icon menuBtn"
+ id="menuBtn"
+ aria-haspopup="true"
+ aria-expanded="false"
+ aria-label="Open menu"
+ >
+ ⋯
+ </button>
 
-          <div class="links" style="margin-top:10px;">
-            <a class="link" id="lnkMint" href="#" target="_blank" rel="noreferrer" style="display:none;">Explorer: Mint</a>
-            <a class="link" id="lnkCreator" href="#" target="_blank" rel="noreferrer" style="display:none;">Explorer: Creator</a>
-            <a class="link" id="lnkJup" href="#" target="_blank" rel="noreferrer" style="display:none;">Buy on Jupiter</a>
-          </div>
+ <div class="menuPop" id="menuPop" role="menu" aria-label="Quick links">
 
-          <div class="divider"></div>
+ <div class="menuLabel">Navigate</div>
 
-          <div class="mini" style="justify-content:space-between;">
-            <span>Logs</span>
-            <button class="btn" id="btnCopyLog">Copy</button>
-          </div>
-          <div id="log" class="status" style="margin-top:10px;">Ready.</div>
+ <a class="menuItem dexItem" role="menuitem" href="https://www.solanax1.com/dexguard">
+   <span class="menuText"><span class="menuMain">DexGuard DEX</span><span class="menuSub">Official $SOS DEX</span></span>
+   <span class="menuBadge badgeDex">DEX</span>
+ </a>
+ <a class="menuItem" role="menuitem" href="#what"><span class="menuText">What is $SOS?</span><span class="menuBadge badgeSection">Section</span></a>
+ <a class="menuItem" role="menuitem" href="#tools"><span class="menuText">Tools</span><span class="menuBadge badgeSection">Section</span></a>
+ <a class="menuItem" role="menuitem" href="#tokenomics"><span class="menuText">Tokenomics</span><span class="menuBadge badgeSection">Section</span></a>
+ <a class="menuItem" role="menuitem" href="#roadmap"><span class="menuText">Roadmap</span><span class="menuBadge badgeSection">Section</span></a>
+ <a class="menuItem" role="menuitem" href="#buy"><span class="menuText">How to Buy</span><span class="menuBadge badgeSection">Section</span></a>
+ <a class="menuItem" role="menuitem" href="#faq"><span class="menuText">FAQ</span><span class="menuBadge badgeSection">Section</span></a>
+ <a class="menuItem" role="menuitem" href="#socials"><span class="menuText">Socials</span><span class="menuBadge badgeSection">Section</span></a>
 
-          <div class="divider"></div>
+ <div class="menuSep"></div>
+ <div class="menuLabel">Tools</div>
+ <a class="menuItem" role="menuitem" href="https://www.solanax1.com/dexguard"><span class="menuText">Dexguard</span><span class="menuBadge badgeLive">LIVE</span></a>
+ <a class="menuItem" role="menuitem" href="https://solanax1.com/wallet"><span class="menuText">Guardian Wallet Scanner</span><span class="menuBadge badgeLive">LIVE</span></a>
+ <a class="menuItem" role="menuitem" href="https://solanax1.com/contract"><span class="menuText">Guardian Contract Scanner</span><span class="menuBadge badgeLive">LIVE</span></a>
+ <div class="menuItem plannedItem" role="menuitem" aria-disabled="true"><span class="menuText">Signalguard</span><span class="menuBadge badgePlanned">COMING SOON</span></div>
+ <div class="menuItem plannedItem" role="menuitem" aria-disabled="true"><span class="menuText">Launchguard</span><span class="menuBadge badgePlanned">COMING SOON</span></div>
+ <div class="menuItem plannedItem" role="menuitem" aria-disabled="true"><span class="menuText">Tradeguard</span><span class="menuBadge badgePlanned">COMING SOON</span></div>
 
-          <div class="mini" style="justify-content:space-between;">
-            <span>Saved Launches (local)</span>
-            <button class="btn" id="btnClearSaved">Clear</button>
-          </div>
-          <div id="saved" class="status" style="margin-top:10px; max-height:220px;"></div>
-        </div>
-      </div>
-    </div>
-  </div>
+ <div class="menuSep"></div>
+ <div class="menuLabel">Social</div>
+ <a class="menuItem" role="menuitem" href="https://x.com/Solana_X1"><span class="menuText">X</span><span class="menuBadge badgeSocial">Social</span></a>
+ <a class="menuItem" role="menuitem" href="https://t.me/Solana_X1"><span class="menuText">Telegram</span><span class="menuBadge badgeSocial">Social</span></a>
+ <a class="menuItem" role="menuitem" href="https://t.me/solanaonsolana_bot"><span class="menuText">Bot</span><span class="menuBadge badgeBot">Bot</span></a>
 
-  <!-- Wallet chooser modal -->
-  <div class="modalOverlay" id="walletModal">
-    <div class="modal">
-      <div class="modalHead">
-        <b>Choose Wallet Provider</b>
-        <button class="btn" id="btnCloseModal">Close</button>
-      </div>
-      <div class="modalBody">
-        <div class="walletList" id="walletList"></div>
-        <div class="hint" style="margin-top:10px;">
-          If you are on mobile and nothing happens, open this page inside your wallet’s in-app browser (e.g., Phantom browser).
-        </div>
-      </div>
-    </div>
-  </div>
+ </div>
+ </div>
+ </div>
 
-  <!-- Solana libs -->
-  <script src="https://unpkg.com/@solana/web3.js@1.95.2/lib/index.iife.min.js"></script>
-  <script src="https://unpkg.com/@solana/spl-token@0.4.9/lib/index.iife.min.js"></script>
+ <!-- HERO -->
+<main id="top" class="wrap">
+ <section class="hero">
+ <div class="card heroCard">
+ <h1 class="heroTitle"><span class="gradText">$SOS</span></h1>
+ <div class="heroSubName">Solana on Solana</div>
+ <div class="heroPoem">
+ <p class="heroPoemText"><b>$SOS</b> is an AI-assisted Solana driven ecosystem for on-chain discovery, research, trading, and launching.</p>
+ </div>
 
-  <script>
-    (function(){
-      const { Connection, clusterApiUrl, PublicKey, SystemProgram, Transaction } = solanaWeb3;
-      const spl = splToken;
+ <div class="heroActions">
+ <a class="btn primary" href="https://t.me/Solana_X1">Join Telegram</a>
+ <a class="btn grad" href="https://x.com/Solana_X1">Follow on X</a>
+ <a class="btn grad" href="https://t.me/solanaonsolana_bot">Use the Bot</a>
+ </div>
 
-      // ===== CONFIG =====
-      const CLUSTER = "mainnet-beta"; // switch to "devnet" for testing
-      const RPC = "https://api.mainnet-beta.solana.com"; // replace with your paid RPC later
-      const EXPLORER = (addr) => `https://solscan.io/account/${addr}`;
-      const EXPLORER_TX = (sig) => `https://solscan.io/tx/${sig}`;
-      const EXPLORER_MINT = (mint) => `https://solscan.io/token/${mint}`;
+ <!-- Contract under hero -->
+ <div class="heroContract">
+ <div class="stat copyBox" data-copy="XXXXXXXXXXXXXXXXXXXXXXXX" role="button" tabindex="0" aria-label="Copy Contract Address">
+ <div style="min-width:0">
+ <div class="k">Contract Address</div>
+ <div class="copyText">XXXXXXXXXXXXXXXXXXXXXXXX</div>
+ </div>
+ <div class="copyHint">Click to copy</div>
+ </div>
+ </div>
 
-      const conn = new Connection(RPC, "confirmed");
+ </div>
+ </section>
 
-      // ===== UI =====
-      const $ = (id)=>document.getElementById(id);
-      const logEl = $("log");
-      const stepsEl = $("steps");
-      const addrEl = $("addr");
-      const solEl  = $("sol");
-      const mintOutEl = $("mintOut");
-      const lnkMint = $("lnkMint");
-      const lnkCreator = $("lnkCreator");
-      const lnkJup = $("lnkJup");
+ <!-- WHAT IS -->
+ <section id="what">
+ <div class="card">
+ <div class="cardInner">
+ <div class="twoCol">
+ <div>
+ <h2 class="h2">What is $SOS?</h2>
+ <div class="bodyText">
+ <p><b>What is $SOS?</b></p>
+ <p>Before blockchains. Before memecoins. Before Solana the Chain. There was Solana the Guardian, inspired by the Pokémon Ranger first introduced in 2006.</p>
+ <p>Rangers like Solana were not trained to dominate systems. They observed them. Read patterns. Acted only when balance broke.</p>
+ <p>That mindset came first.</p>
+ <p>When on-chain systems emerged, fast, permissionless, and driven by culture, the same dynamic appeared again. Speed amplified creativity. Scale amplified participation. Noise became a byproduct of success.</p>
+ <p>Solana the Guardian launched on Solana the Chain because that is where the culture moves fastest, and where the cost of confusion is highest. Permissionless creation unlocked innovation, but it also flooded the system with noise, bad actors, and disposable projects. $SOS applies a guardian discipline where it matters most: inside an ecosystem that works, scales, and therefore demands clarity to sustain itself.</p>
+ <p><b>$SOS</b> turns that discipline into a guided on-chain journey:</p>
+ <p><b>✓ Discovery</b> — where meaningful activity is surfaced before it becomes noise</p>
+ <p><b>✓ Research</b> — where wallets, contracts, and market behavior are understood in context</p>
+ <p><b>✓ Trade</b> — where action is deliberate, guarded, and informed by intelligence</p>
+ <p><b>✓ Launch</b> — where creation follows structure, standards, and accountability</p>
+ <p>Together, these stages form <b>$SOS</b>: The Solana Intelligence Layer.</p>
+ <p>No predictions. No promises. It’s proof-of-purpose.</p>
+ </div>
+ </div>
 
-      const walletLabel = $("walletLabel");
-      const netLabel = $("netLabel");
-      const netDot = $("netDot");
+ <!-- ✅ THE LORE: separate small box (Proofs + Buttons + Image) -->
+ <div class="loreBox" aria-label="The Lore">
+ <div class="loreInner">
+ <div class="loreTitle">The Lore: <span class="gradText">Origins of Solana</span></div>
 
-      netLabel.textContent = (CLUSTER === "devnet") ? "Devnet" : "Mainnet";
-      netDot.style.background = (CLUSTER === "devnet") ? "rgba(255,176,32,.9)" : "rgba(44,255,154,.9)";
-      netDot.style.boxShadow = (CLUSTER === "devnet") ? "0 0 0 5px rgba(255,176,32,.12)" : "0 0 0 5px rgba(44,255,154,.12)";
+ <div class="proofsRow" aria-label="Pokémon proofs">
+ <span class="proofLabel"><span class="pokeDot"></span> Proofs</span>
 
-      const btnConnect = $("btnConnect");
-      const btnDisconnect = $("btnDisconnect");
-      const btnOpenWallets = $("btnOpenWallets");
-      const btnReview = $("btnReview");
-      const btnDeploy = $("btnDeploy");
-      const btnClear = $("btnClear");
-      const btnCopyLog = $("btnCopyLog");
-      const btnClearSaved = $("btnClearSaved");
+ <a class="btn grad proofBtn" href="https://bulbapedia.bulbagarden.net/wiki/Solana">
+ Pokémon • Bulbapedia
+ </a>
 
-      // Modal
-      const walletModal = $("walletModal");
-      const walletList = $("walletList");
-      const btnCloseModal = $("btnCloseModal");
+ <a class="btn grad proofBtn" href="https://pokemon.fandom.com/wiki/Solana">
+ Pokémon • Fandom
+ </a>
+ </div>
 
-      // ===== STATE =====
-      let selectedWalletKey = localStorage.getItem("dg_launch_wallet") || "phantom";
-      let wallet = null; // provider object
-      let pubkey = null;
+ <div class="loreMedia">
+ <!-- ✅ renamed sticker.png → WHAT.png -->
+ <img src="assets/WHAT.png" alt="$SOS Lore Sticker" />
+ </div>
+ </div>
+ </div>
 
-      // ===== HELPERS =====
-      function setStep(n){
-        [...stepsEl.querySelectorAll(".step")].forEach(s=>{
-          s.classList.toggle("active", String(s.dataset.step) === String(n));
-        });
-      }
-      function fmtAddr(a){
-        if(!a) return "—";
-        const s = String(a);
-        return s.slice(0,4)+"…"+s.slice(-4);
-      }
-      function log(msg, cls){
-        const stamp = new Date().toLocaleTimeString();
-        const line = `[${stamp}] ${msg}`;
-        const safe = line.replace(/</g,"&lt;").replace(/>/g,"&gt;");
-        logEl.innerHTML += `\n<span class="${cls||""}">${safe}</span>`;
-        logEl.scrollTop = logEl.scrollHeight;
-      }
-      function setLogReset(msg){
-        logEl.textContent = msg;
-      }
-      async function refreshBalance(){
-        if(!pubkey){ solEl.textContent="—"; return; }
-        const lamports = await conn.getBalance(pubkey, "confirmed");
-        solEl.textContent = (lamports/1e9).toFixed(4);
-      }
-      function saveLaunch(obj){
-        const key = "dg_launches";
-        const arr = JSON.parse(localStorage.getItem(key) || "[]");
-        arr.unshift(obj);
-        localStorage.setItem(key, JSON.stringify(arr.slice(0,20)));
-        renderSaved();
-      }
-      function renderSaved(){
-        const key = "dg_launches";
-        const arr = JSON.parse(localStorage.getItem(key) || "[]");
-        if(!arr.length){ $("saved").textContent="—"; return; }
-        $("saved").textContent = arr.map(x=>{
-          return `${x.time}  |  ${x.symbol}  |  ${x.mint}  |  ${x.sig}`;
-        }).join("\n");
-      }
-      function explorerLinkMint(mint){
-        lnkMint.href = EXPLORER_MINT(mint);
-        lnkMint.style.display="";
-      }
-      function explorerLinkCreator(addr){
-        lnkCreator.href = EXPLORER(addr);
-        lnkCreator.style.display="";
-      }
-      function jupLink(mint){
-        // Jupiter swap link: SOL -> token
-        const url = `https://jup.ag/swap/SOL-${mint}`;
-        lnkJup.href = url;
-        lnkJup.style.display="";
-      }
+ </div>
 
-      function getProviders(){
-        // Try multiple known injections
-        const w = window;
-        const list = [];
-        if(w?.solana?.isPhantom) list.push({key:"phantom", name:"Phantom", obj:w.solana});
-        // Solflare sometimes injects window.solflare, and may also expose window.solana.isSolflare
-        if(w?.solflare) list.push({key:"solflare", name:"Solflare", obj:w.solflare});
-        if(w?.solana?.isSolflare) list.push({key:"solflare", name:"Solflare (solana)", obj:w.solana});
-        // Backpack
-        if(w?.backpack?.solana) list.push({key:"backpack", name:"Backpack", obj:w.backpack.solana});
-        // Generic solana (if nothing else)
-        if(w?.solana && !list.some(x=>x.obj===w.solana)) list.push({key:"solana", name:"Injected Solana", obj:w.solana});
-        // De-dupe by key
-        const map = new Map();
-        list.forEach(x=>{ if(!map.has(x.key)) map.set(x.key, x); });
-        return [...map.values()];
-      }
+ </div>
+ </div>
+ </section>
 
-      function selectWallet(key){
-        selectedWalletKey = key;
-        localStorage.setItem("dg_launch_wallet", key);
-        const providers = getProviders();
-        const found = providers.find(p=>p.key===key) || providers[0];
-        wallet = found ? found.obj : null;
-        $("btnOpenWallets").textContent = found ? found.name : "Choose Wallet";
-        return wallet;
-      }
+ <!-- RANGER WALLET (SHOWCASE) -->
+ <section id="wallet" class="walletShowcase">
+   <div class="card">
+     <div class="cardInner">
+       <div class="twoCol">
+         <div>
+           <div class="walletKicker"><span class="walletKickerDot"></span> Ranger Wallet • Solana-native</div>
+           <h2 class="walletTitle">A premium wallet built for speed, safety, and serious on‑chain work.</h2>
+           <div class="walletSubtitle">
+             Self‑custody. Instant Send/Receive. Built‑in Swap. dApp Browser. Token discovery for Solana + memecoins —
+             designed to feel clean, fast, and trustworthy from the first tap.
+           </div>
 
-      function openWalletModal(){
-        const providers = getProviders();
-        walletList.innerHTML = "";
-        if(!providers.length){
-          walletList.innerHTML = `<div class="walletItem" style="cursor:default;">
-            <div><b>No wallet found</b><br><small>Install Phantom/Solflare/Backpack or open in wallet browser.</small></div>
-          </div>`;
-        } else {
-          providers.forEach(p=>{
-            const div = document.createElement("div");
-            div.className = "walletItem";
-            div.innerHTML = `<div><b>${p.name}</b><br><small>${p.key}</small></div><div style="opacity:.6">Select</div>`;
-            div.onclick = ()=>{
-              selectWallet(p.key);
-              walletModal.style.display="none";
-              log(`Selected wallet: ${p.name}`, "ok");
-            };
-            walletList.appendChild(div);
-          });
-        }
-        walletModal.style.display="flex";
-      }
+           <div class="walletBadges">
+             <div class="walletBadge"><span class="walletBadgeIcon">⚡</span> Fast confirmations</div>
+             <div class="walletBadge"><span class="walletBadgeIcon">🛡️</span> FaceID / Passcode protection</div>
+             <div class="walletBadge"><span class="walletBadgeIcon">🔁</span> Swap & route discovery</div>
+             <div class="walletBadge"><span class="walletBadgeIcon">🌐</span> Built‑in dApp browser</div>
+           </div>
 
-      function closeWalletModal(){ walletModal.style.display="none"; }
+           <div class="walletCtas">
+             <a class="storeBtn" href="#" onclick="return false;">
+               <span style="font-size:18px;"></span> App Store
+               <span class="storeSub">Coming soon</span>
+             </a>
+             <a class="storeBtn" href="#" onclick="return false;">
+               <span style="font-size:18px;">▶</span> Google Play
+               <span class="storeSub">Coming soon</span>
+             </a>
+             <a class="storeBtn" href="#tools">Explore the Guardian tools</a>
+           </div>
 
-      async function connect(){
-        const w = selectWallet(selectedWalletKey);
-        if(!w){
-          openWalletModal();
-          throw new Error("No wallet provider found.");
-        }
-        setStep(1);
-        log("Connecting wallet…");
-        const resp = await w.connect();
-        pubkey = new PublicKey(resp.publicKey.toString());
-        addrEl.textContent = fmtAddr(pubkey.toBase58());
-        walletLabel.textContent = fmtAddr(pubkey.toBase58());
-        btnConnect.style.display="none";
-        btnDisconnect.style.display="";
-        explorerLinkCreator(pubkey.toBase58());
-        await refreshBalance();
-        log("Wallet connected.", "ok");
-        setStep(2);
-      }
+           <div class="walletNote">
+             Ranger Wallet is part of the $SOS guardian ecosystem — built to reduce noise, surface clarity, and make execution frictionless.
+           </div>
+         </div>
 
-      async function disconnect(){
-        if(wallet?.disconnect) await wallet.disconnect();
-        pubkey = null;
-        addrEl.textContent = "—";
-        solEl.textContent = "—";
-        walletLabel.textContent = "Not connected";
-        btnConnect.style.display="";
-        btnDisconnect.style.display="none";
-        log("Disconnected.", "warn");
-        setStep(1);
-      }
+         <div class="rangerPhoneWrap">
+           <div class="rangerPhone" aria-label="Ranger Wallet preview">
+             <div class="rangerScreen">
+               <div class="rpStatus">
+                 <div>20:26</div>
+                 <div class="rpPillsMini">
+                   <div class="rpPillMini live">LIVE</div>
+                   <div class="rpPillMini">5G</div>
+                   <div class="rpPillMini">91%</div>
+                 </div>
+               </div>
 
-      function getForm(){
-        const name = $("name").value.trim();
-        const symbol = $("symbol").value.trim();
-        const decimals = parseInt($("decimals").value, 10);
-        const supplyStr = $("supply").value.trim();
-        const supply = supplyStr ? Number(supplyStr) : NaN;
-        const metaUri = $("metaUri").value.trim();
-        const desc = $("desc").value.trim();
-        const renounceMint = $("renounceMint").checked;
-        const disableFreeze = $("disableFreeze").checked;
+               <div class="rpHeader">
+                 <div class="rpAcct">
+                   <img class="rpLogo" src="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAkGBwgHBgkIBwgKCgkLDRYPDQwMDRsUFRAWIB0iIiAdHx8kKDQsJCYxJx8fLT0tMTU3Ojo6Iys/RD84QzQ5Ojf/2wBDAQoKCg0MDRoPDxo3JR8lNzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzf/wgARCAJwAj4DASIAAhEBAxEB/8QAGwABAQEAAwEBAAAAAAAAAAAAAAECAwQGBQf/xAAZAQEBAQEBAQAAAAAAAAAAAAAAAQIDBAX/2gAMAwEAAhADEAAAAfbgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEKgqCoKgqCoKgqCoKgqCoKgqCoKgqCoKgoAAAAAAAAAAAAABCxSWwAqCoKgqCoKgAqACoKgqCoAKgqCkAIolZNAAAAAAAAAAAEBSwAAAAAAAAAAAAAAAAAAAAALAlQoAAAAAAAAAGbQAAAAAAAAAAsAAAAAAAAAAAAALnQzc6AAAAAAAABCamiAAAAAAAAqUASwKIoAiiUIoiwAAAAAAqUkuTQAAAAAAAGdZNAAAAAAAAAApDh8dn4fo19PtfE31vrPpeG3l+h8n53y4nvet4vVvqOH4G930P1PGd3D1Nzrzc4AAAAAAC43g0lAAAAAAAGN4NgAAAAAAAAWUnz/oeK1fP3N9ut8nFy6vJvHIa3ja8lxzVN7Lm1deh+n5n03g4lnPIAAAAAFxvBbnQAAAAAAAxvBsAAAAAAApFEqHF+Y+t8d6NXWb3uuTj1bz74+S3e8ares6N7xu61rOlvr/H+j82Poyzy8gAALLAAUY3gtlAAAAAAAGN4NgAAAUBCzPTrvPj9fd9A8zx6vqs+Vlef6vqZ3vl76XFfA19nrnQ3ri1ezydTmt59cezk3x7t5LnTV+r8nsYnrZNfP4QAAFgALKMbwNSgAAAAAADG8GykAAqCdLyXS+m+V5zg9Gvrdf5+dO9OhMu++dMvp8nyB9zl8609TrynYr0vN57t6v3cdDkrPS+tznnOX73SrpcmJrXY31+ReVKvqu18f6/zuFGYBFEAAsoxvA1nQAAAAAAAxvBuwALKOt2Pl14zq8mPdvOeTJjO5lxzWczM1MsqiSoysAL2eqr7P0PLXd9hy+U+ju+g4uty11+D6k1fm67HX1eb6Hybl6Ds+Xcp7Dm8Vyc57J5fuYz9x1uzyzZYLKMbwW50AAAAAAAMbwbAABZR5Tzf6d8vtfCZ+r8v0aznUrGd5yxnkziZlkQR7rsdX03DPhvOfrnXr8mvpPN9KRbU7Bw936/05Pj97v+E6a9lry3e6a+rxcXLvWby3V4byQxNJJ634/3/Jz1DhhZRjeBrOgAAAAAABjeDYAAFgsUnQ+hDyfxv0V0v5Zj9N+Xu+EnrOnp52fU+Wklkvd/SPynsYn6vfDzE9h+Z8fX3YNX0/tfzL3HPP25w/Nwx+ddzp9alW+u+/8AK9Rzz8Lj9Ct89z/bh87u8lxJQiwWUY3galAAAAAAAGN4N2UgAAAKBHCc3UfnO77bj8O630vleTiEsEsgQASiVCwCwqU7Hp/Nfd6b9ryeb9J5s0ZwQWAAsoxvA1nQAAAAAAAxvBsAAAAFBweF9n+adb+nfnXc7278LLfa8HH3ZJ0p3OPDrzk48ksgACLyVwu72K+W+/3Lv4P0++vbXA09HD7bw3q+GPqDn89LAABZRjeBrOgAAAAAABjeDYAAAAKlMfln6r47pfMc3X16dc+c3Tk1xcmrzb4eTeeTXHV1m2XLdau8bmt3jLvXBJvsTqzOuxNdnHVwZ4OfV1tdB5v1Hn8X7Th4bLJAAFlGN4Gs6AAAAAAAGN4N2UgFgAAoJx8g/OfnfongPVrinLrreDXLmnLwl7OurrU7Wutpee8W10zxry54udeLl7vK69XlzjPffG4ed1xupMYzq55T9Q/Lv0jjy70sxwAAWUY3gazoAAAAAAAY3g2AAAUAjj8jueg8r8nPrmZZ00si8vL1Evd10bXddGL38cfbTqa+r27r4/e72bvLGL21wzrzXNw8WcNZ4+HGNceuTMZ5ePl1z+l+F/QOfn1LMecABZRjfGXWdAAAAAAADG8G7KQAoBODk8P1xx9Dln0OXFnn7818jPqOLG/Ob+r1Nurxdnu3HyOz9vlc/mdvtF4byYvouePg117XH0uO77PXxiXbhxzvLxXWGG+XG+Pk5OPn0w19zk+n9yXn4LCQABZRjeBrOgAAAAAABjeDdlIBZRLxp57z/wBf7vs8/mft/a6XHry/I+b1e+Z1u72fRw+d3O9yTh198szcy8F6a4+Lh115eLh4t9Ofh48tb4r3uff5r6nHOvXjTXG5rneKnPpmc3puM+b623j4qSYAAAqUY3gazoAAAAAAAY3g3YAALjZMadKzh+BzT6Hk4Obm575uPl1xc+O89fhXsdfObvHDz8l7dLH3O1PR5fm9D1L24t9Dh327vz9uvbiu2d5rk564c/a+rwnlfueh3w5cPMc+FgAAAALKMbwNZ0AAAAAAAMbwbAABZYcfwPo/O9Xg4+S8nXxzFxjnjPY7eevy9/d3j0/I7euldfR6/wA671rp93l6dPl4+3yXt53Pquxjt47n9gxfMdv7rjOh3dMZokIAAAABSLBZRjeBrOgAAAAAABjeTVlIBZRLws/I4tvb8WOf6HLp8/u9py98m5jv1M91rHX3zJrNqaoUAAQqCwAAAAAAFlAIC43gtzoAAAAAAAZ1k1ZSAWUnV7XV1y+b3uXsb86nL2VC1BUFQUCAAKRRFEoAQABRACkoARQxvjLqUAAAAAAAZ1BrGyAAsVCFAAWCoAFgpABYLAqUAASwAoECoAAKBx6yaoAAAAAAAJRjeYbWAAAAAAAAAFlEKRYACkUEAAFSkWAAAoIYudlAAAAAAAABM7yXXHssoiwAAAAAAWCwKlEsAFgoEAABYKgAAUJgLqUAAAAAAAAAAzN5LrjHIlIoiiKIoiiKIAoiiKIoiiKIoiwAAKJQJk1iUm1AAAAAAAAAAAAJncMWgg0wNsDbA2wNsQ5HHTbA2wNsDbA2wNsDbA2wNsDbA2xSwI1SVQAAAAAAAAAAAAAABKMtDLQy0MtDLQy0MtDLQy0MtDLQy0MtDLQy0MtDNoigAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/8QALhAAAgICAQMEAgIBAwUAAAAAAQIAAwQREAUSQBMgMFAUITFgIxUiNDJBcJCg/9oACAEBAAEFAv8A40x/4PH9IHjW2LUl/U7XP5uTE6nkLK+qAxM2h4LEM3C6iNk0rDnVz8+JnKYrBh911TJ9W3gcDjub3Y1xqYHf3Obf6GPyvA4EAmvbg2d1fgH6jrN3ddyvuDcamuMR+y7wD9Pa4rrsc2PyOB8I/RQ9y/Ofp+tXar9o+PCbuq+c/TMQq5VxyL/cDB8OA3+T5z55YCNlUrDnLDntDmWz8u6fk3T17J6k3WYa8Zp+JjtDgQ4dojVunIPwUN2W/OfMJAFubWksz7DHvBhyFn5M/KM/KM/LM/Ln5awZNcF1ZgIPAJEFpgtENVNkfCj0WJwDN+7Hbvq+Y+XkZC0jIy2sJsPyrfYIuY0XKrMDK03A5gtjV1Wx8TUatk43NzY4wG/2/MfKvsFVVtrWN4SZFixMsRLVfgOwnqAxqUePS6+yuxqyuc8XOSDLpMW1Gm/iPldRQvieMmRYsrzFiur8ByIex41Jmte4Owi5VoiZ0qvrs958vNwCD8vTMemzCt6VivL+j2LLK3qb3AkRMqxYmYpiurcb3CghUz9+7ejQxav2nzMnCrvl+DdT8nQ7e6ji2mu5c3pb1e2qmy41dGuaJ0WoR+lYqJsiJk2LFzYMhTPVQ86muACTRhsYBr3HzrsSm6W9KaW4l9fw4eQ2NdRclycXXV0pl2rdfx0zpyXpWi1rx1a/0sTnoVavW2BjtD0uqHpkHTTB08RcOkRUVfgP0NlFVks6XjtG6OY3SbxMjCuoT2U3WUNX1mwCzrNhF11lzc4mXZivj9Sx7p6tcyOo49Iy8l8q3noI1j/MforcmmqHqeOJ/qtE6hn1ZGP4ddjJMHqFpKsGHyH6BbFZstimO22PjVUtZEQIuHf22fIfPub06sLMam3aX0uprf8AmdnhfzExbWlWKizUYw/7WqbvT4z5+b/xJiZb0HNFeUvG52qZ6MNLwow+DRgqsMGLaYMMxcWoRQq8fxGs3FXtBnT7Fej4z57juWxDXZFaEe7Zm5+p2rOxJ2JO1Z+pub9m4bNQBniqEDtublGQ1F9Vi21/EfoOs42m43NzfAPx7ncJ3wtB3NErEJCxmJhljaWdHyOyz4j9BYgdM3FONb7NzugM3Nzc3O6bndNmb47oEdotSjju4J4c9xisUatu9PhP0OYcc1uFD7naDPTnptO1p2NO1p2vO152tOyaE2BDYIO9oKSYlQWHSzfBhPDtuAQ8YX/F+E+fkZtNEyOpXWwkk8bgYzvneJ3Cd4neJ6k9SepAHaLjkxMcCemJsCFieDC3BOozb4AhmpQvbT8J82x1RcvqLWfFubm4tNjwYsSlRPTmwJ3Q/vguBDZyXn88Ac4VXq5PxHzLrVpTKyXyG9wRjDWw5XHsaLiqItapzs8l1Ea2FyeS0JJ5A9nTMf0q/iPluwRcq9r7OApMTAyHi9LAjJg1RsjUe2xotbPFxRFrVZqds1wTC4hcwknnc7uNGa4C8H98dPxPUb4z5fUrtmU4Vtsq6bUs1XSt3UJbY9nC0s0WlRO2ds1wTCYTwYTNwtwBuegRP0ONQDXsw8E2FRofGfKc9qJRZkNRi108X5C1S617TqCsmJUBO2a9hIhdYbIXMJPIDOVwbZ2Y9cNx41O32V1vY2LgCv5j5TKGAGuMnI7If2dRUgXknUNghtMLMfamPbZE6c8K4VMbOaMzudTXtrreyUdOlda1j5j5mRb2LNRVgGuC4hYn2rRY8TAsM/CpSeti1SzNtaOXeds7falb2Svp9rSvAqSBQPBPlsQoc9zQDgmH98itmi4jmLh1if4ao+WI+Ra0P7mvYFJgxrmi9PtMXpyxMSlIBrxD4R+HJbgDg8Ctmi4xi01rGdFjZEax2mp6bmehaYMSyfhGfgpBh0iCmtZryT5RjnublaWaLQo4O4yO0GOs9FJ6azX0J8q0/wCPhKmaJUF+qPlX/wDRK6frD4Y99w2K6+363/v4Q/vh/pB8Uf0kf3g+Vv60n+jb+h3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3N/wDsp//EACYRAAICAgEDBQADAQAAAAAAAAABAhEDEkAEITEQEyAwQSIygFH/2gAIAQMBAT8B/wA8JFFGpqKI4c1fRJd+YvomuTqampX0Pxxq9LLLLLL9a+L88+yyvRFGhoa8JP6L+FikWdvhJrh2WX9llsvipfZCNmSGjrjL1r50xYpMjhX6RidYv3jIT+dCEWRjfk7IzvYarjL52IUSPYciU6PJmX7xdhMssss2F3FEUS0jc2F3KM7/ADhylRsL02Hlij3m/Atn5IoUkhTNiyhREiUtFbJO3fD1c3ZqkPISypDySkKhMTNhSbIx/wCiQoiQkSyKBObm+I3qiWSyeUssTI2yMJEYIjESEdh5Yolnb8cbqMneiU7LIYpz8IXS1/Zl4Y+O57kn4QtmRFI3PcZb48nSslJmPpp5DH00IFHtRfkUIr8K5ua/bdGDpkv5S/0H/8QAKBEAAgIBAwQCAgIDAAAAAAAAAAECEQMQEjETICFABEEUMFGAMkJx/9oACAECAQE/Af68Y8f2zZEeGP0fji+OdCBPB4te7BbpaLuyx2y9zDHxei7vkLxfsU2LDN/R+PM/HkKLX6MiuPrQxOQoRibv4HKRvkdSR1GLKbospHlG7smqlXqR57H3J0LIxTTP+CZY8cXyP48fofxx4ZIqvRhlrwxNPjR9j5FMu9d9EcwppifZnlF8ekm0LLIWVG+JzpKNm1kY1pKyiKrRt2b5HUkOTfqwhuOnEqv1bU0SVP1sSTRGLgyhwHFldtM2FUNk/WxunotFpRSKRQyhsZRJV62N2vJWllm4t6Voyihk/Uhjc+CGCMeStKKKKNoitHoxkvTxY97FFJUhyiuTqp8Ct9qRQ9GMkN+p1I4o19jyzm6RD4/3I8R4HIvTwJm4c6Lb4KGNkmkN36iTbMcFBDmWWJm5HWijdOXCFik/8mRhGPA2ORLLElkb9bDGvI5aOSR1P4KmxYo/7MUscT8iA/lR+h/Kl9Es82W3z66OESmkObem5m5+9Hknkvj+wf8A/8QANBAAAQIDBQcDAwMFAQAAAAAAAQACESEiAyAxMlEQEjBBUHGBQGGREyNCM1KhBGBicqCx/9oACAEBAAY/Av8AnAL3mQX26Gr9Uqe65fcsyOyzw7qTgsViFN4UolZP5VQIUQet/TaaWfyb+N7/AB6053PlwZXt0/j1kWQwbxxoesOecAE57sTx4oHq4shi7H0PbqxJwCc8+PQluvT5lZo9lS0qTQuSzfws6zKbWnwqrFq/TgpOI8qm0+QpQPZVNI4bXdMmqaj7KRDQqnRWBWVZVlCyhZf5WUrmswUtkjtyjwqHfKm344LT0qeOiqPgcWSzFVAFTkqSDsxUwsAqD8qoQvFvSXPPJFzj6KSxj3VQgpGO2oKmSwj2uRaVMAqppCzKTh0V27yn6fGPdViCpcDtqCoMb8nELGPdVt+FSehF9iJft4zC+za4z5KTS3sVGxdv+xULRpafe/JYx7qqSkdk5qXAiE0noUcrtQsu83UcR1nzadu7aNDgi+wqZpzF2FmwuPsvuOaxV2jii6uQ1Ulip7M16AEVG0kNOi1MnqF9p8fYqqzPBFoPI1QfZmIO0utHQCc9jN0HaLW1dFv7Qg1jQ0e21w/J9IuW280GYX6cOypc8Km3cv13fCnavKwJ7lUgDpNdm0qneaqLX5CkWnyt+0Ah3u71k6BVdm09iqLNre5W9aOJNzeZgcQpu3HaOWdvys+87Rq33+BpcedXdRreAsXHwsH/AAixodH39JFjiOxULWoaqIw6a5oM24p7m4gKOPp5YardC3DgemOfoIoudMOzIwMWuCLHYgqalP0UlhAe6qqO3smu1HS7b/Q7KZt5hfXscwzNuYKTlgsp4GCkwrCCqePCnFypaBtg1ROwAGbcelkHmnMPIw4eUfCyBZAsgWRvwsB8cDQXPqN8hB7MD0v67cDm9NIeVqVqbv0XYOw79LLXCIKh+JwPo9B7rU+/ADhiE12o6Xu/1DgEdx0W8ipqSx2YLBYbcVjckFU74Umqo3va5Zf6jpMzF2gVNDfZRJJ4mKkFU74WHzslclwGN0b0feeYBbtjS3Xi4fKqd8KlqmpXZbZXmjliejlzyp5eQvyaVMQ77cId1UYqlovYqXE33ZndGLjgFH8eQ2yEVkh3Uba1A7L8rU919qyYzwqnlUhVFUt9DO59R4pGHv0f6Qw57MN0alVxcsGtChZDyVF7idmi140gvuEN/wDVSPJv79pJumqgOjE6Iu15rCJ1OzV2ii8+NuvAwuwaCeyi+FmNXFTLrU+0goMAYP8AG/BjYlb1rU7TpEDht3WZlE7Z3ZLG7RZlRtXtYudoVCxY2zHsovcTfoaSo2x8BQYIDpcBib+l2TCqiGqNo5fbZE9lQN1VOJv0NJVVKqG93UhDpkVE3JKe2QUzBTiVyVLVmh2U53ZArIVMgKt5KkweVLp+7ekFUVgsVSFM7JNKyrkFNym4lZYqTB1Um5otdklN0OymSsFIDrh/sqLv7H9/+db/xAAsEAACAQIFAwQCAgMBAAAAAAAAAREhMRBAQVFxIDBhUIGRobHB0fBg4fGQ/9oACAEBAAE/If8A0pnGpDIZDIZDIZDIZDIZDIZBDIZDIIZDIZDIZDIZDIZBDIZDIZXGfQYI9HjOyXLeltCzLYl6c65hiXqKy136k8q/VFnlNfVGL/BzybLMtHQJtUdCksSnPyJDC08qBd8gktyN7C8/hkNhcFe5+ITkXt9oddCZR96ICTT1WS1yTFlWOuirAIQkvGp0FHE/klu7kQhYJcuq6EImrPIu4sixZVS/THMlurcvUQuoJYktBCxrBLo9sjcLIsWUZLDVfLxRYIQsFQ3BQyBJYRB7ORuFkWLKa/aLhDLFgi8WBCEIQm9xYNAl0xaPVTkLhZFiykvtXgsFghDSIQhCEIWMKtXjIXCyLFk3hQiWy2E3RstOhCEQDbCwQhCxj2achcLIsXcV0lyzTIL3HNB2z5Y3Zr7DYTZr+Ce7tbMm/uhrDwi6ewMlEkaefI+8ZYJwSiYhCFj4AYu/cLIsXZmDJLyUZmD4kQ1l78yJWYPb9zxfk/7h/wBIW4lqA3qnKLR7xdCeF0EJ3qMXUF8k3oE/rF2mt6hNrBSCYhY7qRXv3iyL7NfJeyFbLWlpDtqcDrfB9lNp1NFj96oj9JQps+Z9YjE6Yvb5Cn+gQVc90Nql8BhVCoJhLrItzCdt2crv3iyL7GmQHcHOEYPB9xNpy0cGxQbvtuqian7hM1CeRIQFWqeCq0N8SLuXkX+uoNfyRtLlF2/DEjs+1fkmLrVKS4QH0tZBONWbTBqjvNVF0qPDEXZzybZe6LhC/Y2aGmn5wXR9fDL+Rn7WLCzs+u8WRYutqVDJ417TTgahx0PB9bXcqbSbiBzJT6KLwMeNrU62EtD8FPcIoaNxPTEOCIchmtH2JbMjUupNMQ1qXm2uq8WRYuwyWh/WqTDBtdDH1Kau7jw8ecsFdC7/ANE9PFdFitINpln0D0HGumUxLNM1E0bVfgv0r7FYIJp2awaYWoJUm2Q1X5wKVJKEuq8WRYu07FUUuAxaqPYmg/dKUNQ6jxfRUNVtoI4/QxU2UKaPWWKALLM/ImEdExQtdGD89EOTFVSb0eTQ7+VNk8oRuRX9Ui+8tEMJPC7F4sixd1nygNH4QufyaRwiJDyVxKxPCcnWjXkTE93gGZeckORpWXRISbnZilQ6lL7KU/UHOjSrDBYVNJOhUn/pXfuWSeQoL/aaj6nADOIPpJpp57q64tn4B6p2yopvlu7eLIvuuxO6akLuhaEYVtnV7k4PKO6I3rEfeXuOm9vwxdy8WRYu4llZ4kLckUJMqopWRhxZ99RtrDTV00O+QSbQksrr8ot5l9Q0SpQ0Fd6DuVOogTc7l4sixdxW1L+iE4K/SXRRfSr35Fgms68j2rgc7XuJ2lwy5I9hpq665LN8H6UmleTNNuElrM8uD6WUS3cTVTJkUv8AtxDq733HmWyUJTTbuXiyLF3E2ckMvIuCcELo4ZUkTwQiRbzJ6wOdxf8AFwlf60SQKFl+wlxwSeMwV+F5FfzZWXP2M2Yif4HIl7SeRDxpXTt3iyLF3GNSvQ8Ho8U6IPwxbhEFxPrWNF8JsJV38ng24WdeZ4OPasY5J2IoNYzXloF2rxZF96Dc4aGZpdYomw8UyFvE6MTiMRKQInDCbbjY03qViPMKi+YNxc8Bs2BuKsqumhFC8aSiINB9q8WRYu6xxQtK1XArHTWIkUrJNcJ6IcGE8kW+PA/kXhFrr8CbV/givLHrkKWGu/J+MgoteRdx2VRytRYMlclLFmsAlMJV/wCy7V4sixdyZXvkxk0/iu+SZI3bnCcCWot6FqHnPLhtNEN9kNv9C678s/DAt3vqEi7k0aeDxy8EQMlfDTIhKjKbLYggRdg8VC+u1eLIsXab0Uasmpvlscty5fI0NdVdyW5IlpJanS3GuSyvLqJFf7CT/Qb6KBnc5JNa+BjsgbkkiDbaWQa7HSpBSuh+whdq5CyL7UdRLTckLtJZ0IIGiCMLnOEflsgajVFW6FZo70F+22VC1DBJj3vgbJLohs/dlzeEidKlwIINd4OvA0Syf1rt3iyL7LaYRLJkohQQMYc3gibO7wJYJ4fyaUh7BD+/VP5LqfEwhtV50L6fwi1iJ7C3MgsEK7ELVNNQvjbwY0Q20JnGRhoNi2DUV1QEo7d4si+w7EQ+iv8AEaqVoJU3b8IU8kXsKrLJn7psNFQiG7L+pbsTbUEurkgrDEI2RoxhAywvdjXSY3si58B/A/vDHW9xOxIbSG27/GConZBKkQlZLuXiyL7C3dkkhrCaW5VFu8BfHAhYY0SywcSMqKW4n1Ei0IGMWu0La/BsDhjV3g3BOGbIQcOpJEVtLRL+98JsSLyNolvwRBKt4iG/EEJR3bxZF9hzXLCkSShIZXVt2xNjJb1ZWyFy6s/0hJK2CLnArao7YkXhhoaGMZVK3iEQoJsql39/IquLVSVB8smebISJGMbxxJZBR++Dv3iyLF2f+Yw0223VimbAizBC1WW74DW40NDReqt4wEEvJe8uDSviFHQvyyrc4yOpDYjocRw6LhSfJFSOFKSk8LI3iyLF1se20HuvMSkl4IhHKJXCCC/79i2SlQcPEr+xCjn5dDY3YK2l2/ljTRDHg3ruEWxXNMBpX6JQXAfIRCELKXiyRdbJoTljRMOhUQOK7Hqx+EVlVbsS1ThD/wBrL48Ik9GK4fsLWfcYv8gmWVwhBV4bkz9VxIrJLM3iyL7DQpJA1ZEnGF6o3ZW2peRKLG0+TR1sghVgXn8iT+kJVZeg3CyLF1xcOFrFZiFuzS5e5HTX0S4WRYrdbxHdiUulyJamwlHpdwsiyzrctJai1lr00wsi+wj/AAFX9UsELJMXqbVFk2UP1JuEIWUY3qLcsWVeCc+ntohZiwpemSSCzMDQm0Jp+kvYVbqRnlKJbYIECBAgQIECBDcgQIECBAgQIECBAgQIENyBAgQ3IECBE4jbBIj0KCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCMY9DjCCCCCCCCCCCCCCCCMIIIIIIIIIIIIIII/8nP/2gAMAwEAAgADAAAAEPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPNNvrjjjjjjjjjjjjjnvtsPPPPPPPPPPPPPPAhPDDDDDDPDPDDDDPDDBPLttPPPPPPPPPPPJnPPPPPPPPPPPPPPPPPPPPPDCNPPPPPPPPOEvPPPPPPPPPNPPPPPPPPPPPPPEGvPPPPPPPLMvPPPPPPPCAFMMAMIMNPPPPPPCHtPPPPPPPMnPPPPPPPPPAPveITL8oPPPPPPPEFvPPPPPPFvPPPPPPPPKMLHOyvTcktPPPPPPEHvPPPPPPFvPPPPPPOMJGIPkvf0KLlPPPFPOFFvPPPPPPBvPPPIBHR9rokjlLd4ViGPPPHPKBNvPPPPPPFuPPJL4AcxonO8upg9DlJAAMPPKAPvPPPPPPFrPKH90SDUiEsAFChe5psPtoN1KAHvPPPPPPFvPPAE3yVEzGI+4zDA1h/qYPM3KAPvPPPPPPAvPPLGB+lolRELaDHWmsrRJe4NKANvPPPPPPEqPPPPAGKlBvABPEJPNCKcADHPKAPvPPPPPPAvPPPPAM60iUJAAgLNTZ96AFPPKAPvPPPPPPAvPPPPCCG1WpIN3Gr6NKp8sVPPKAPvPPPPPPEqPLPPAPGmJosZ5yO6mdldYlPPKAPvPPPPPPAvPPOAJTTobqthew/3fMeF5VPPKBPvPPPPPPFqPOALYGnCizFZLecBOXm55XPPKAPvPPPPPPFqPKFb59tyalaqXBjmwcKpBPPPCAPvPPPPPPArPPAYDDtfXxnPKxC580HHPPPPKAPvPPPPPPAvPPFNSJzBQVWAclGrADPPPPONKAPvPPPPPPEqPKA0onR+EfQAABDHPPPPPPKAPEHvPPPPPPBoPKAFFjDDDAHPOMMIAPPMPOIAMBNvPPPPPPGgvPCTPPLDPLBPLHCAAFPAHDPPADtvPPPPPPOJtPPPPPPPPPEONPOMDPPCNPPOAOnPPPPPPPPBokNPPPPPPLHCFPLAHPPLDPPIPpvPPPPPPPPLJhgMMMMMMPMMMMMMMNPPMIDIonPPPPPPPPPPLHqmvusspussssgsssssqhmjnPPPPPPPPPPPPPLHussssssssssssssspvnPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP/EACQRAQEBAAICAwEAAQUAAAAAAAEAESExEEBBUWEggDBxgbHw/9oACAEDAQE/EP8AHkxJ8CD83FxPfuDY+o8Hgiy9wPnwR4Ii4t9jGE2rVoLq0h8jEdc+qNgC18Wrdu3F0bC0cnMMMNuxz1B3/Gf1qQyA34tTs8EPdhvxLJM9H7Yd/piDvkx8+ALGvmyy2dwekP1C+bFjym2MGeEbIPCsM+fEp79XSAkD/Sd8nEur1ucGNwz9LP5xhvAA7RpgcR4f+ffrKQnOyJEYYBg/IH1A+pHxG+Algw5twP8Azb89bldQ23Efkb4aejYvlsdCA7bF+wPJgw9QoWPAK/2WLF+LXa+ouLnw1M56grmOORaemDjKW0xoc2LuWeMbbyjPnwS/Bae2Ppae/JlErL0lw25V1Bdb4C/QZzvCI57sup4IXDBN2rTq+zyZWrzbh9N6j0bfr1I8HBC7iD93wCR3fYgIyEY78PxfCVXX1dfyk6XJlIIbnHBGo4mRHuIJ3YW/jwrdvri6+Jzr3zsxqYQXWt0w4lGjb4RAOj3Qg7Y2LyP/AFB8H+QX/8QAJhEBAAIBBQACAgIDAQAAAAAAAQARMRAgITBBQFFhcVBwYIGxwf/aAAgBAgEBPxD+va+FX8Lf+Kv8edRuyR0K8YHrAMkMhx0vQddYQrzaGDLn89BHoOui3aJxpaOm9BvMQ0QJD2YAFS30lkGXA1NTpeg28zgnnX+5c+mi/JD7ofVA9ISWYZ/sgPeIaVcvug9BsAkYHAGIkTQkTYuDAZLgECuVFMkAxmxEQ/jpSlzseg21vGC8okEYxiTKIZgRxooZgcGWcVoH5ZeihmUpsPQbkLILPMVmDGZZyIzwZ0sh0FuZaUuYwfBgfs/LMg7XoOilcPclcSO6tPYYicNveg3oBlT8YlzLDiD8itblP1BvIJzxAxQQLy73oN/GQeIoRDK/EQ6VUoeQEftKeCJZROZY3PQdD1CWJjQMl/rQtYKK/UCxEYW89Bua4cfc5DkzhEloKWgpQ5WW8JzyxAnKOYqjjvc9BtevzSRmUt0V/UflU5NLIW41ZojLaOEozFt3PQbKviBh5/8AU/4YhBlYVUKgxbAuEBFHkLJhgK/cV7zOJKJ6ktb3tqRPyefRFuooyxZRzDyP7n0H9HEA4VpEZYDEwkVW3oeg2kLy6Ksy7LvBuHPWiF5smFSIewWDHYT0Y5zreg2C0IFBMJpVwLHEV9lvvwCPQbHRWMqh+M9L8oj/AByfICPWMr41fAqVKlSpUqVKlSpUqVKlSpUrS/gXpcuXLly5cuXLly5cuXLl/wBM/wD/xAArEAEAAgECBAYDAQEBAQEAAAABABExIUEQUWFxIDBAgZGhscHR8OFQkPH/2gAIAQEAAT8Q/wDnJcuXLly5cuXLly5cuXLly5cuXLly5cuXLly5cuX/AOHcvrGBuayuTiHUnUnUnUnUnUnUnUnUnUluc6k6k6ktznUnUnUnUnUnUnUnUnUluc6k6k6nAqEeUtNmHVLl+tWLyzBudIAntwuXLly5cuXLly5fG5fG5cuXLly5fG5cvwLKOUeSamYMv1LGmYDq2gGH/i34rIkdYPp2aEs1cTbT/wA0YQsaYPpWLSWav/oJZNC3B9IytCGmn/obQbwZt6JiqCtXL6U9ZtwTQh6JY60hn1deoOl8opt6FmpX01ks5yyXLlks4XwuXNJpzj6AWQh6FTB19JtGB+Ja83YOrBZI5WTrsdiVk71B8VBHyW+mDr/mR/UXDkg/vCRJcIs0/wBkC+cEVRKbXPqP0uYwPuXauuv/ABD/AFIaIX5rEsfROjIYm3nvDidvS0qnEdY0s03H2x88TthDpBovNlTkfUBoJytN19zDRMjgNoFotzw6xi7CxIeftNPC289mUwO3o9oxEtVLm8f32ihUjqd+vEGiwIdPeBFWiWMA1X0Zvoz4AnbMs7iou6xDJ5+0wduDbz2ZTZ29HtEgxL7PRcl+ivmEHgWrvFMeAjVYsLGnrAOzHb0Z3BApjJNyfj7PuDqeezF24dvPZlMDt6R1aU+tbROLf3lvwCqkUU5fAGjpfzMMUS5u4YjvKEjMLBj39Bi7TCHnsymB28/SaTTg4ha3lY4/sp8S94oOsUUMa6MwjsOcUw8JE2lyt2PbJ9eU+Dbhi7TCHnsymB28mvAukue3gEsgjYJYcUG2cPy/MzCGsx4FFVLZBQVGJdwYtYo4ptCXQ6Uzqf8AOFeO/DtwxTZDL57MpgdvJslks5xAjm4EuC4bXfxLju6j7LVY/ovS/wCZsU7CZQewJjOs6g+0xxd6Yr9yEiGfzaV8MI1l2p+yZNxsB+pe1J0fpiWkc9D5hGWjC0OjOfHHFwmOC21Aj2dP3EaN5ub+ZtwxdphDL57MpgdvGzSIAjVVoRdItsT3lye5i+7HvMxUIfWBKX8n8kdn3H/I/wDawo1b3/yf8v8A4m1vamB6p6v6j+n5Wr8ygROY3M4inwDMnBzSH04fchS2XU/Ut2p0f2SzeyZNBH2ZzozS4VRxTaDWvKXXye40eNSvJ24YJsh57MoYO0fDtHEw8mu17vIjnUOor+009V5CNVtXmsYImsSJrK43O0tyvMWIloNn+xMDnNKmUJ5L+yGX7pTqDmZm+hyjQKq3Vy8doCe+n3LIY5dPySmXW+3yZlxo/MNsM5YiDQQqxOczhe1Ms01lks4WcGvFtwwcB57MoYO0fBtwZ4q4HdwHzGAD1vP+MRNo6okESCJpE1jKlSpVcHjfgzCq+4KHYG/+ynOdin9ntTiie0FpHX8TEMctUrxB0dLIRadbp8QFHuT62gpn7hrgIk1MnKPaqKaXEQMN7L9zIx00Ss1vkxKPsozBD7y74Hh24YO0MQx57MpgdvE4jLUINwbf7OTPXvE1iRImvASJEiROG8YlTeWc+JjgiEBMI6ynB8jV95j9g5FPqdIAWV3IqdMyuKPKDrdFtfneCOly0JREMg1JmKDKhp/qlTo3NCUYJOS/uWg097H0zRea6T8Ms8G3DD2mEMee8GB28ZMAjkZckrynP2b1ERCJmynsxNYmscwRIImsTWPDeGTvGjHqc11rnEVH+618NkGFr/XowIwzSa6TabeB9/aE05BVMcBcoW/Mr+bGSGFt9dZo316TQkTluvfM18XydH3FtEOjKskxmEqEYUVqwaJBez159Y8duGHtMIY89mUwO3jYLINq7YC3ow/mJKg2LPcyRB1KiU6xN4msEETWJrKiax10hq7h/wA9x+ZeukSyMlgopqdR2h2di4P06xu9fvMvhcpbWbE7naBixqhfVp9zUqrlD+5Y8EVGtF8p0QEf6pmOUXLqLHNH8IfZ6l0+o2anktTXWHRlXtEZI8jUXKFkXA6sA0PUJq78pQeFAbHg24Ye0whjz3h2dvJcQXSoM/4Wkz7whOZot8lj9SyaDP3ouMgETIwRNYms0PBiay1gzWVzTvimHj69NFck2ZZziwyvZXVeQZWWThGZ6uwuWpvK6X05xMjObU0b7YxMCASBwYOIZY55excW2woYxxNAqAIVTi/aWDRMv1l1PoiL+SU4HkL+5lGcg/tlb1QH9DNVR5s+ij6nbTUQ7eHbhh7TCGPPZvmB5bwA6JB06Sb+cy1Qm2m+LS/rTkp9ixpRzki/kjsFaNzjSJHgZf5nQtDyDoylCNUX9tY8UTIZ9EWW1oqg6GCOeGjnWYI1a/y9YZ7iH0wZaNLs/wDaViFkiXkuCLXQUfYF6278dzvKyLqrsf2WSznNODA8e3D60MQx57MoYO0fJ242RdIxo5d/wZjwqebr8zYJ7P7Ea04Bp3cpfBiSteFy+FSuGiLtmUGK+PAlj+5TnG7T8O0arR1UDvWYf4tiQrSuNy5fh24Ye0whjz2ZQwdo+TtwQJcVCqVAd0upafpxkajj1bW7bstvfvL0/wCx2J0nLhvw3m/g34MuXwJvBlwkPvY39ga0e8+bM45reRj3i1z5W3DD2mEMeezObO3lbRmUlF9C4xVAd9b1O1sad9WbJUNyyYcxyRPkeXSLlmOTox+mOTBULrGM3m8fCxZcGXLoOQFwkt25T8Zg9At6lB7QWABgCiBZr4oGVmG+sPCA+nF8nD2mEMeezObO3lbcCZtfyI6E7PWWLczoepyYEGsaQm1N63eXaPDz1lylgcgMyybu/wBRVfYXGWVPWTNG79Kmodzg+DtB+t7QVr/fKxSu5kuaFuIvuap2NPghABdt+Y6xL9zVmnaP1W3t3RArdVZ/giLIbYG9Df11KfUvy8PaYQx57M5s7eYfVtLmJUznc9mr96j6xzGBQtxrTvG5l/64WFhHWYtYIdIBK+SbdncuDLe4/kvbe7WW5+CWpK6vgQv8ZA5h2JuF+ZrBldS1Ahqg3guxNe49otqLdNL9S+tFg/vNmiDp1CXLtDmbR0xTCxfqPPpC03FNuZ7Ok3PKw9phDHnszmzt5mEbWkV9jsJp3rnDEJp+TrHV1Ctr5RWXKlajaE4bIOsGEIQi1g6S+UpkIg6W9ojFHaA3R1hmXHantzljTu7fYwQSrKM8pYPa2Jr0a1lljTtxqps5/cyW69oBg7m3Mix5G3DD2mEMeezKGDtHwHh24OIHRF5kZdCFvc5PUh3nKBGk1l85riYl+ZyHvFVSSlkSDuQo3nNs6rC7DLbfJnKAicqoYXcG1q2BrMCe8PtE6XuXwbQxqrvFBRQZYq5luihFTQ1YrJ6EYMEg6uY3BpVE11B8jbhh7TCGPPZvmBHyblyyLTRjfCXfVc6awry1LY6jBFEO0NWh2j9IsiDhHea2f1LP4QDocNv3BK2T3SKwe1pcL3YQ0i7jNGo7axSvs1ENYdFH3Hxbvv5lIJc2X3mCDZqI+su0uYgN1rzYLqjYaHTeOhXQN2Or0GOssfzKB1Ym8SXJ/E8rD2mEMeezKYHbykjjaaQ+aP8AJy94UdtDVZ1/iLlFtUnuvCxLdnow2tXRml9oxu49p/oTQ/iUbr7Tdr7zaB3iWtHSD9O5lEa0w5avzFxEe6gWtT2COjFHLLinpf0ymoM+6zVXUtsFdWK1KrLQ6PzPhiGHR0JoDmC68o2aDVaDrEZ0WzqA8rD2mEMeezfMDyXQ1gKetSo0nUDSu3yPuFSottr1/wBvNSakTgym8M1uCNxGjJlW8taseRNYe9AhiW62H7ZpVz/bWFDj2aEowPZG4OrMctu5mHQ5S5sryymIDz3j61V7xGbgKtSbsuRbzgJ+qJQKmFu8Vq4vnP8AkNaeSz60whjz2ZQwdo+JxwCoLQOr5HWNnJatOp5vWdcdU1I3aiOUo5TEvzVmpl2n5Q3kekCgVeQXK3VP8N4aO5tB/YFXWQ1+Y26UsBrod5QrRC7t9WJq5mA8jWW6L3Zmt6GkvWIDVDvCGXdFNTXKD30laitYdusrLVVFe60Ymh+ucelAGq7J+4ZPKwdphDHnsyhg7R8G3B6whaCPIih3QW6BzerEkRDbpgKr8RBWb/JVyghZAD5izBVtk7lEWA+1NfcMu6X/AABp9RuoN3p8mERb5NEJLPmFvzLf2ZzD2myNesXaYMJeFlELQ7dZ9pkXXE05m+X2ijRRF5tsE2o6wIc2DXQvpKUcuUSZoDMeGj85VaGnKMOLjGZvXK9ZpANNtIZ8rD2mEMeezKGDtHwbcZMZHXdv2ltC1dgzERtejZ0MygA9lo9iIcskD7Qj2A0exNRswLR2MTv4zKlWY07/AK3EYFA5Eqpuj6Q0AqU3Yluxa0B3idF9o24BlCW832IVaF94jQQOkb1We8SksBawA6Fu+q9mp7pB0l+X4YPuXVpVlz9zWQo5sxBb1nXHYjOwNkq65x15osU93IgZ9ODQOD5WHtMIY89mUMHaPiyhle010P6jrpzh5yivwbSgdMRO9Y1H55E1cNwrsH7ls+3aJ6FczLAvNazfa6VrDaKRoWxVtEsxO7stKS9EPmd2OuqHQmR243esOBjXhC/UalqW0H4Ii0Rt+Rl9o3SvaBHXJKtptc5v8w6TvNSdXN2gDT4I8gORllbB9fucxSAx1eUSqZTd/thAAoOnC/Lw9phDHnsyhgj4t4gDnBzAoDBMIBQJkYP9gUSrU1WWoC4VD0No6DoNhNNAEYBZdzU0ez6FQChPmZmdLoic5VBBri7wTWhv/wBhnPWXUV30CaXV7FV+1HzcTqeKf0CdZ7M1DkfyBz7EMItiq2gtu4Klhthpod2Iml89o7v+7wAHbAPPw9phDHnsymJ28W0dCWc5q4JUU4c44CjauXrLWhNk91gmgXe5YC6VNPvyCaNQcso7qlerKHXg59LlF10ofcXE7kKv1/ZWGmQmNsKaDd9s6QbR9mIiuHJb9RTJgOLd5oNCNTeLrNWE65Ebb5G1XY/sWQXW3p8H7h9ZsAStd+Hz5m3DD2mEMeezKYHbxbTDWOPRCyamORtLXSEOQgKAoglgtzZuh6ErW0Tc0s/nhEb5Gyxnq22j/e8dOhuQP9QBU7JSaRTkNfbOsnGYCwDlpBrBEvaURHqMN07nX8pQI+4qv4qMCDyAfuUSqb/1leEMAei24YO0whjz2bpgePCOnaH/AAnYlrXBEYEs9cdJjUq3tGkpKjfUfmUoXuZUA8tRmoLurLGkO5RFWiLyMw34BysojqqJ4XJ/ia9zwV/ZKnwAEoLDr/qVlCt638wejOQVA1xDtN8SpVedt4sHaYQx57MoYO0fBtwBVgzHWXg7TW5BLDTRUq9ruVKOifg2iJ1RqhmhRHWjXmsRT/IN5qgN9cwqLZ1TAr2QvQOxA1xNvVvgx9phDHnsymB2j4Npcsg06CJYEbFZbsoQlhTJzaIAdD6mu4/ENDDHU3gJzlJ1NJUrWa9YGuPBcuXL9T+PgMee8GKPg2iZlxbARBAq0AgkN7NhMQKCGeFy/FcuX5dSvR/h4Dz3gwx8G3B5yo0DpAthbpiB0SfPlaR8JK4byvKryt+OTg289gj1TlHxUsUunzzw3Lm/jfE+U4hq3zgTb0DFV+cy+K/PPKv0ipwa+iM0RiEfSGPRvlMsry4D0LBFkwx9bt6LbhrEGtuWCHokgl5Tk9Htw39FfksxWCCBNvRME1GyEPW7eg2jLXY5wUVAh6RIk1VkLLR/8mppwQFrE0GIa0gQPTJHgMpqTCS/MTyq8aeKuNxQywcC5uFwgIE29OkSJEiTRnOtA7iTv8Pq/U6v1OrOuTr/AFOv9Trk6adcnVJ1ydcnXJ1ydcnXJ1ydedf6nXJ1/qdf6nVI8lOuTrk6pOinVnVnW+o9SPIveLNCpS5bnQhAQJt6lIkSVKlazKU8I1lZXhrx6ysr4PWVlZWVlJSU8QC00SoEwgQJXralSuBPECsrKyvglZWV4K4KysrKysrx6ysr4BUrSVAlf+FUqVKlSpUqVKlSpUqVKlSpUqVKlSpUqVKlSpUqVKlf/FP/2Q==" alt="Ranger logo" />
+                   <div>
+                     <div class="rpName">Ranger</div>
+                     <div class="rpSub">Account 1 · Mainnet</div>
+                   </div>
+                 </div>
+                 <div class="rpBtnRow">
+                   <div class="rpChip" title="Account"><span style="opacity:.9;">▾</span></div>
+                   <div class="rpChip" title="Refresh"><span style="opacity:.9;">↻</span></div>
+                 </div>
+               </div>
 
-        return { name, symbol, decimals, supply, metaUri, desc, renounceMint, disableFreeze };
-      }
+               <div class="rpBalance">
+                 <div class="rpLabel">Total Balance</div>
+                 <div class="rpUsd">$128,459.22</div>
+                 <div class="rpSol">512.34 SOL</div>
 
-      function validateForm(f){
-        const errs = [];
-        if(!pubkey) errs.push("Connect wallet first.");
-        if(!f.name || f.name.length<2) errs.push("Token Name is required.");
-        if(!f.symbol || f.symbol.length<2) errs.push("Symbol is required.");
-        if(!Number.isFinite(f.decimals) || f.decimals<0 || f.decimals>9) errs.push("Decimals must be 0..9.");
-        if(!Number.isFinite(f.supply) || f.supply<=0) errs.push("Initial Supply must be > 0.");
-        if(f.metaUri && !/^https?:\/\/|^ipfs:\/\//i.test(f.metaUri)) errs.push("Metadata URI must start with https:// or ipfs://");
-        return errs;
-      }
+                 <div class="rpPills">
+                   <div class="rpPill">Local</div>
+                   <div class="rpPill live">Live</div>
+                   <div class="rpPill backup">Backup</div>
+                 </div>
 
-      function review(){
-        const f = getForm();
-        const errs = validateForm(f);
-        if(errs.length){
-          log("Review failed:\n- " + errs.join("\n- "), "bad");
-          return;
-        }
-        setStep(4);
-        const summary =
-`Review:
-- Name: ${f.name}
-- Symbol: ${f.symbol}
-- Decimals: ${f.decimals}
-- Initial Supply: ${f.supply}
-- Metadata URI: ${f.metaUri || "(none)"}
-- Renounce Mint Authority: ${f.renounceMint ? "YES" : "no"}
-- Disable Freeze Authority: ${f.disableFreeze ? "YES" : "no"}
+                 <div class="rpQuick">
+                   <div class="rpQuickBtn">
+                     <div class="rpCircle">↓</div>
+                     Receive
+                   </div>
+                   <div class="rpQuickBtn">
+                     <div class="rpCircle">↑</div>
+                     Send
+                   </div>
+                   <div class="rpQuickBtn">
+                     <div class="rpCircle">⇄</div>
+                     Swap
+                   </div>
+                 </div>
+               </div>
 
-Wallet: ${pubkey.toBase58()}`;
-        log(summary, "ok");
-      }
+               <div class="rpHint">FaceID/Passcode protects your seed phrase.</div>
 
-      async function deploy(){
-        const f = getForm();
-        const errs = validateForm(f);
-        if(errs.length){
-          log("Deploy blocked:\n- " + errs.join("\n- "), "bad");
-          return;
-        }
-        if(!wallet?.signTransaction && !wallet?.signAllTransactions){
-          log("Wallet cannot sign transactions.", "bad");
-          return;
-        }
+               <div class="rpTokensRow">
+                 <div class="rpTokensTitle">Tokens</div>
+                 <div class="rpAdd">＋</div>
+                 <div class="rpSearch">Search</div>
+               </div>
 
-        setStep(5);
-        mintOutEl.textContent = "Deploying…";
-        mintOutEl.className = "warn";
+               <div class="rpToken">
+                 <div class="rpTokenLeft">
+                   <div class="rpTokenIcon">S</div>
+                   <div>
+                     <div class="rpTokenSym">SOL</div>
+                     <div class="rpTokenName">Solana</div>
+                     <div class="rpTokenAmt">512.34 SOL</div>
+                   </div>
+                 </div>
+                 <div class="rpTokenRight">
+                   <div class="rpTokenUsd">$128,040.00</div>
+                   <div class="rpTokenChg">+2.31%</div>
+                 </div>
+               </div>
 
-        try{
-          // Create mint account + initialize mint + create ATA + mintTo
-          const mintKeypair = solanaWeb3.Keypair.generate();
-          const mintPub = mintKeypair.publicKey;
+               <div class="rpToken">
+                 <div class="rpTokenLeft">
+                   <div class="rpTokenIcon">$</div>
+                   <div>
+                     <div class="rpTokenSym">USDC</div>
+                     <div class="rpTokenName">USD Coin</div>
+                     <div class="rpTokenAmt">419.22 USDC</div>
+                   </div>
+                 </div>
+                 <div class="rpTokenRight">
+                   <div class="rpTokenUsd">$419.22</div>
+                   <div class="rpTokenChg">+0.01%</div>
+                 </div>
+               </div>
 
-          log(`Mint address (new): ${mintPub.toBase58()}`);
+               <div class="rpNav">
+                 <div class="rpNavItem active">⌂<div>Home</div></div>
+                 <div class="rpNavItem">⇄<div>Swap</div></div>
+                 <div class="rpNavItem">⌕<div>Browser</div></div>
+                 <div class="rpNavItem">⏱<div>Activity</div></div>
+               </div>
+             </div>
+           </div>
+         </div>
+       </div>
+     </div>
+   </div>
+ </section>
 
-          // Rent-exempt for mint
-          const mintLen = spl.MINT_SIZE;
-          const lamportsForMint = await conn.getMinimumBalanceForRentExemption(mintLen);
 
-          const tx = new Transaction();
-          tx.feePayer = pubkey;
 
-          // Create mint account
-          tx.add(SystemProgram.createAccount({
-            fromPubkey: pubkey,
-            newAccountPubkey: mintPub,
-            space: mintLen,
-            lamports: lamportsForMint,
-            programId: spl.TOKEN_PROGRAM_ID
-          }));
+ <!-- TOOLS (UPGRADED • OBVIOUS • MOBILE-FIRST) -->
+ <section id="tools">
+ <div class="card">
+ <div class="cardInner">
+ <div class="arenaHeader">
+ <div class="arenaTitle">
+ <span class="arenaIcon" aria-hidden="true">
+ <svg class="ico"><use href="#ico-stack" xlink:href="#ico-stack"></use></svg>
+ </span>
+ <h2 class="h2">Guardian Arena Of Tools</h2>
+ </div>
+ </div>
 
-          // Initialize mint
-          const freezeAuth = f.disableFreeze ? null : pubkey;
-          tx.add(spl.createInitializeMintInstruction(
-            mintPub,
-            f.decimals,
-            pubkey,
-            freezeAuth,
-            spl.TOKEN_PROGRAM_ID
-          ));
+ <div class="arenaGrid" aria-label="Guardian Arena Of Tools">
+ <a class="arenaCard dex" href="https://www.solanax1.com/dexguard">
+ <div class="arenaTop">
+ <div class="arenaLogo">
+ <img src="dexdex.png" alt="Dexguard logo" />
+ </div>
+ <span class="arenaBadge live">LIVE</span>
+ </div>
+ <div>
+ <div class="arenaName">Dexguard</div>
+ <div class="arenaHint">DEX intelligence + flow radar</div>
+ </div>
+ </a>
 
-          // Create associated token account for creator
-          const ata = await spl.getAssociatedTokenAddress(
-            mintPub,
-            pubkey,
-            false,
-            spl.TOKEN_PROGRAM_ID,
-            spl.ASSOCIATED_TOKEN_PROGRAM_ID
-          );
+ <a class="arenaCard" href="https://solanax1.com/wallet">
+ <div class="arenaTop">
+ <div class="arenaLogo">
+ <img src="wallet.png" alt="Guardian Wallet Scanner logo" />
+ </div>
+ <span class="arenaBadge live">LIVE</span>
+ </div>
+ <div>
+ <div class="arenaName">Guardian Wallet Scanner</div>
+ <div class="arenaHint">Wallet intel + credibility map</div>
+ </div>
+ </a>
 
-          tx.add(spl.createAssociatedTokenAccountInstruction(
-            pubkey,
-            ata,
-            pubkey,
-            mintPub,
-            spl.TOKEN_PROGRAM_ID,
-            spl.ASSOCIATED_TOKEN_PROGRAM_ID
-          ));
+ <a class="arenaCard" href="https://solanax1.com/contract">
+ <div class="arenaTop">
+ <div class="arenaLogo">
+ <img src="contract.png" alt="Guardian Contract Scanner logo" />
+ </div>
+ <span class="arenaBadge live">LIVE</span>
+ </div>
+ <div>
+ <div class="arenaName">Guardian Contract Scanner</div>
+ <div class="arenaHint">Contract risk + holder map</div>
+ </div>
+ </a>
 
-          // Mint initial supply (adjust for decimals)
-          const multiplier = BigInt(10) ** BigInt(f.decimals);
-          const amount = BigInt(Math.floor(f.supply)) * multiplier;
+ <div class="arenaCard planned">
+ <div class="arenaTop">
+ <div class="arenaLogo">
+ <img src="signalguard.png" alt="Signalguard logo" />
+ </div>
+ <span class="arenaBadge planned">Coming Soon</span>
+ </div>
+ <div>
+ <div class="arenaName">Signalguard</div>
+ <div class="arenaHint">Signal detection + discovery</div>
+ </div>
+ </div>
 
-          tx.add(spl.createMintToInstruction(
-            mintPub,
-            ata,
-            pubkey,
-            amount,
-            [],
-            spl.TOKEN_PROGRAM_ID
-          ));
+ <div class="arenaCard planned">
+ <div class="arenaTop">
+ <div class="arenaLogo">
+ <img src="launchguard.png" alt="Launchguard logo" />
+ </div>
+ <span class="arenaBadge planned">Coming Soon</span>
+ </div>
+ <div>
+ <div class="arenaName">Launchguard</div>
+ <div class="arenaHint">Structured launches + standards</div>
+ </div>
+ </div>
 
-          // Optionally renounce mint authority (set to null)
-          if(f.renounceMint){
-            tx.add(spl.createSetAuthorityInstruction(
-              mintPub,
-              pubkey,
-              spl.AuthorityType.MintTokens,
-              null,
-              [],
-              spl.TOKEN_PROGRAM_ID
-            ));
+ <div class="arenaCard planned">
+ <div class="arenaTop">
+ <div class="arenaLogo">
+ <img src="tradeguard.png" alt="Tradeguard logo" />
+ </div>
+ <span class="arenaBadge planned">Coming Soon</span>
+ </div>
+ <div>
+ <div class="arenaName">Tradeguard</div>
+ <div class="arenaHint">Guarded execution + control</div>
+ </div>
+ </div>
+ </div>
+ </div>
+ </section>
+
+ <!-- Mobile tool dock (compact live tools menu) -->
+ <div class="toolsDock" aria-label="Live tools menu">
+ <details class="dockMenu">
+ <summary class="dockToggle">Live Tools</summary>
+ <div class="dockPanel">
+ <a class="dockItem" href="https://www.solanax1.com/dexguard">Dexguard <span>OPEN</span></a>
+ <a class="dockItem" href="https://solanax1.com/wallet">Wallet Scanner <span>OPEN</span></a>
+ <a class="dockItem" href="https://solanax1.com/contract">Contract Scanner <span>OPEN</span></a>
+ </div>
+ </details>
+ </div>
+
+ <!-- TOKENOMICS -->
+ <section id="tokenomics">
+ <div class="card">
+ <div class="cardInner">
+ <h2 class="h2">Tokenomics</h2>
+ <div class="grid3">
+ <div class="stat">
+ <div class="statHead">
+ <div class="statIcon" aria-hidden="true"><svg class="ico sm"><use href="#ico-stack" xlink:href="#ico-stack"></use></svg></div>
+ <div>
+ <div class="k">Supply</div>
+ <div class="v"><span class="grad">1,000,000,000</span> SOS</div>
+ </div>
+ </div>
+ </div>
+ <div class="stat">
+ <div class="statHead">
+ <div class="statIcon" aria-hidden="true"><svg class="ico sm"><use href="#ico-percent" xlink:href="#ico-percent"></use></svg></div>
+ <div>
+ <div class="k">Tax</div>
+ <div class="v">0%</div>
+ </div>
+ </div>
+ </div>
+ <div class="stat">
+ <div class="statHead">
+ <div class="statIcon" aria-hidden="true"><svg class="ico sm"><use href="#ico-fire" xlink:href="#ico-fire"></use></svg></div>
+ <div>
+ <div class="k">Supply</div>
+ <div class="v">Burned</div>
+ </div>
+ </div>
+ </div>
+</div>
+
+ <div style="height:14px"></div>
+
+ <div class="stat copyBox" data-copy="XXXXXXXXXXXXXXXXXXXXXXXX" role="button" tabindex="0" aria-label="Copy Contract Address">
+ <div style="min-width:0">
+ <div class="k">Contract Address</div>
+ <div class="copyText">XXXXXXXXXXXXXXXXXXXXXXXX</div>
+ </div>
+ <div class="copyHint">Click to copy</div>
+ </div>
+
+ <div style="height:18px"></div>
+
+ </div>
+ </div>
+ </section>
+
+ <!-- ROADMAP (SEPARATE SECTION • SCROLL TIMELINE) -->
+ <section id="roadmap">
+ <div class="card">
+ <div class="cardInner">
+ <div class="roadHeader">
+ <div>
+ <h2 class="h2">$SOS Roadmap</h2>
+ <p class="sub">$SOS: The Solana Intelligence Layer</p>
+ </div>
+ <div class="roadLegend" aria-label="Roadmap legend">
+ <span class="badge done">Complete</span>
+ <span class="badge planned">Planned</span>
+ </div>
+ </div>
+
+ <div class="timeline" aria-label="Roadmap timeline">
+
+ <div class="tlItem left" data-i="0">
+ <div class="tlCol a">
+ <div class="tlCard">
+ <div class="tlMeta">
+ <div class="tlPhase">Phase I</div>
+ <div class="tlTitle">Foundation</div>
+ <div class="tlTag">Establish clarity on Solana</div>
+ </div>
+ <div class="tlBody">
+ <p><b>Objective</b></p>
+ <p>Build trust by shipping Solana-native research and market observation tools before introducing signals or execution.</p>
+ <p><b>Scope</b></p>
+ <p>Research (Solana-only)</p>
+ <p><b>Status:</b> Live</p>
+ </div>
+ <ul class="tlList">
+ <li class="complete">WalletGuard v1 (Solana) — Complete. Wallet behavior analysis and credibility context for Solana addresses.</li>
+ <li class="complete">ContractGuard v1 (Solana) — Complete. Smart contract logic and risk analysis for Solana programs.</li>
+ <li class="complete">DEXGuard v1 (Solana) — Complete. Market intelligence DEX focused on observing transaction flow and wallet interaction, not hype.</li>
+ <li class="complete">Core platform, Guardian framework, and Solana-first UX — Complete.</li>
+ </ul>
+ <div class="tlOutcome">
+ <p><b>Outcome</b></p>
+ <p>$SOS is established as a trusted research and intelligence layer for Solana users.</p>
+ </div>
+ </div>
+ </div>
+ <div class="tlCol mid"><div class="tlNode" aria-hidden="true"></div></div>
+ <div class="tlCol b"></div>
+ </div>
+
+ <div class="tlItem right" data-i="1">
+ <div class="tlCol a"></div>
+ <div class="tlCol mid"><div class="tlNode" aria-hidden="true"></div></div>
+ <div class="tlCol b">
+ <div class="tlCard">
+ <div class="tlMeta">
+ <div class="tlPhase">Phase II</div>
+ <div class="tlTitle">Signal &amp; Execution</div>
+ <div class="tlTag">Turn intelligence into guarded action</div>
+ </div>
+ <div class="tlBody">
+ <p><b>Objective</b></p>
+ <p>Introduce discovery and execution while maintaining discipline, context, and user control.</p>
+ <p><b>Scope</b></p>
+ <p>Discovery → Research → Trade (Solana-first, with multichain expansion beginning)</p>
+ <p><b>Status:</b> In Development / Planned</p>
+ </div>
+ <ul class="tlList">
+ <li>SignalGuard v1 (Solana) — In Development. AI-driven signal engine detecting whale activity, capital flow, and converging market signals.</li>
+ <li>TradeGuard v1 (Solana) — Planned. Guarded click-and-trade execution directly from verified intelligence surfaces.</li>
+ <li>WalletGuard v2 (Multi-chain) — Planned. Cross-chain wallet behavior and pattern analysis.</li>
+ <li>ContractGuard v2 (Multi-chain) — Planned. Advanced heuristics and cross-chain contract risk detection.</li>
+ <li>DEXGuard v2 (Multi-chain) — Planned. Unified liquidity and transaction visibility across supported chains.</li>
+ <li>Public intelligence reports and pattern analysis — Planned.</li>
+ <li>Tiered access for advanced intelligence and execution tools — Planned.</li>
+ </ul>
+ <div class="tlOutcome">
+ <p><b>Outcome</b></p>
+ <p>$SOS closes the gap between insight and action while beginning its transition to a multichain intelligence layer.</p>
+ </div>
+ </div>
+ </div>
+ </div>
+
+ <div class="tlItem left" data-i="2">
+ <div class="tlCol a">
+ <div class="tlCard">
+ <div class="tlMeta">
+ <div class="tlPhase">Phase III</div>
+ <div class="tlTitle">Creation &amp; Expansion</div>
+ <div class="tlTag">Scale intelligence across chains and creators</div>
+ </div>
+ <div class="tlBody">
+ <p><b>Objective</b></p>
+ <p>Extend the guardian discipline to creation itself and complete the multichain ecosystem.</p>
+ <p><b>Scope</b></p>
+ <p>Discovery → Research → Trade → Launch (Multi-chain)</p>
+ <p><b>Status:</b> Planned</p>
+ </div>
+ <ul class="tlList">
+ <li>SignalGuard v2 (Multi-chain) — Planned. Cross-chain signal correlation, confidence scoring, and advanced alert filtering.</li>
+ <li>TradeGuard v2 (Multi-chain) — Planned. Guarded execution across supported ecosystems.</li>
+ <li>LaunchGuard — Planned. AI-orchestrated creator launchpad with step-by-step guided launches, built-in standards, and post-launch accountability.</li>
+ <li>Agent Marketplace — Planned.</li>
+ <li>Growth OS for ecosystem participation and verified campaigns — Planned.</li>
+ <li>Strategic integrations positioning $SOS as a portable intelligence layer — Planned.</li>
+ </ul>
+ <div class="tlOutcome">
+ <p><b>Outcome</b></p>
+ <p>$SOS evolves into a full multichain operating system for discovery, action, and responsible creation.</p>
+ </div>
+ </div>
+ </div>
+ <div class="tlCol mid"><div class="tlNode" aria-hidden="true"></div></div>
+ <div class="tlCol b"></div>
+ </div>
+
+ </div>
+ </div>
+ </div>
+ </section>
+
+ <!-- HOW TO BUY -->
+ <section id="buy">
+ <div class="card">
+ <div class="cardInner">
+ <h2 class="h2">How to Buy</h2>
+ <div class="steps">
+ <div class="step">
+ <div class="stepTop">
+ <div class="stepIcon" aria-hidden="true"><svg class="ico"><use href="#ico-vault" xlink:href="#ico-vault"></use></svg></div>
+ <div class="num">1</div>
+ </div>
+ <h4>Get a Wallet</h4>
+ <p>Use a Solana wallet (Phantom, Solflare, Backpack) and set it up securely.</p>
+ </div>
+ <div class="step">
+ <div class="stepTop">
+ <div class="stepIcon" aria-hidden="true"><svg class="ico"><use href="#ico-arrows" xlink:href="#ico-arrows"></use></svg></div>
+ <div class="num">2</div>
+ </div>
+ <h4>Fund with SOL</h4>
+ <p>Buy SOL on an exchange and send it to your Solana wallet address.</p>
+ </div>
+ <div class="step">
+ <div class="stepTop">
+ <div class="stepIcon" aria-hidden="true"><svg class="ico"><use href="#ico-swap" xlink:href="#ico-swap"></use></svg></div>
+ <div class="num">3</div>
+ </div>
+ <h4>Swap for $SOS</h4>
+ <p>Use a Solana DEX and swap SOL → $SOS using the official contract address.</p>
+ </div>
+ <div class="step">
+ <div class="stepTop">
+ <div class="stepIcon" aria-hidden="true"><svg class="ico"><use href="#ico-community" xlink:href="#ico-community"></use></svg></div>
+ <div class="num">4</div>
+ </div>
+ <h4>Join the Community</h4>
+ <p>Follow updates, memes, and announcements via Telegram and X.</p>
+ </div>
+</div>
+ </div>
+ </div>
+ </section>
+
+ <!-- FAQ -->
+ <section id="faq">
+ <div class="card">
+ <div class="cardInner">
+ <h2 class="h2">FAQ</h2>
+
+ <details>
+ <summary>What is $SOS?</summary>
+ <p>$SOS is a Solana native memecoin built around a guardian character made for Solana culture and community energy.</p>
+ </details>
+
+ <details>
+ <summary>Which chain is $SOS on?</summary>
+ <p>$SOS is on Solana.</p>
+ </details>
+
+ <details>
+ <summary>How do I buy $SOS?</summary>
+ <p>Get a Solana wallet, fund it with SOL, then swap SOL → $SOS on a Solana DEX using the official contract address.</p>
+ </details>
+
+ <details>
+ <summary>Where can I follow updates?</summary>
+ <p>Use the Socials section below for Telegram, X, and the Telegram bot.</p>
+ </details>
+ </div>
+ </div>
+ </section>
+
+ <!-- SOCIALS -->
+ <section id="socials">
+ <div class="card">
+ <div class="cardInner">
+ <h2 class="h2">Socials</h2>
+
+ <div class="socialRow">
+ <a class="btn grad" href="#tools">Tools</a>
+ <a class="btn grad" href="https://t.me/Solana_X1">Telegram</a>
+ <a class="btn grad" href="https://x.com/Solana_X1">X (Twitter)</a>
+ <a class="btn grad" href="https://t.me/solanaonsolana_bot">Telegram Bot</a>
+ </div>
+
+ <div style="height:14px"></div>
+
+ <div class="stat copyBox" data-copy="XXXXXXXXXXXXXXXXXXXXXXXX" role="button" tabindex="0" aria-label="Copy Contract Address">
+ <div style="min-width:0">
+ <div class="k">Contract Address</div>
+ <div class="copyText">XXXXXXXXXXXXXXXXXXXXXXXX</div>
+ </div>
+ <div class="copyHint">Click to copy</div>
+ </div>
+ </div>
+ </div>
+ </section>
+
+ <footer>
+ © <span id="y"></span> $SOS Solana on Solana. All content is for community and entertainment.
+ </footer>
+ </main>
+
+ <script>
+ // Year
+ document.getElementById("y").textContent = new Date().getFullYear();
+
+ // Copy helpers
+ function setHint(el, ok){
+ if(!el) return;
+ if(ok){
+ el.textContent = "Copied!";
+ el.classList.add("ok");
+ window.setTimeout(() => {
+ el.textContent = "Click to copy";
+ el.classList.remove("ok");
+ }, 1200);
+ } else {
+ el.textContent = "Copy failed";
+ window.setTimeout(() => {
+ el.textContent = "Click to copy";
+ }, 1200);
+ }
+ }
+
+ async function copyText(text){
+ try{
+ await navigator.clipboard.writeText(text);
+ return true;
+ }catch(e){
+ const ta = document.createElement("textarea");
+ ta.value = text;
+ ta.setAttribute("readonly","");
+ ta.style.position="fixed";
+ ta.style.top="-9999px";
+ document.body.appendChild(ta);
+ ta.select();
+ try{
+ const ok = document.execCommand("copy");
+ document.body.removeChild(ta);
+ return ok;
+ }catch(err){
+ document.body.removeChild(ta);
+ return false;
+ }
+ }
+ }
+
+ document.querySelectorAll(".copyBox").forEach(box => {
+ const value = (box.getAttribute("data-copy") || "").trim();
+ const hint = box.querySelector(".copyHint");
+
+ const handler = async () => {
+ const ok = await copyText(value);
+ setHint(hint, ok);
+ };
+
+ box.addEventListener("click", handler);
+ box.addEventListener("keydown", (e) => {
+ if(e.key === "Enter" || e.key === " "){
+ e.preventDefault();
+ handler();
+ }
+ });
+ });
+
+ // Desktop menu (⋯)
+ const menuBtn = document.getElementById("menuBtn");
+ const menuPop = document.getElementById("menuPop");
+
+ function closeMenu(){
+ if(!menuPop) return;
+ menuPop.classList.remove("open");
+ if(menuBtn) menuBtn.setAttribute("aria-expanded","false");
+ document.body.classList.remove("menuOpen");
+ }
+ 
+ // Close menu when a link is clicked
+ if(menuPop){
+ menuPop.querySelectorAll('a').forEach(a=>a.addEventListener('click', closeMenu));
+ }
+function toggleMenu(){
+ const open = menuPop.classList.toggle("open");
+ menuBtn.setAttribute("aria-expanded", open ? "true" : "false");
+ document.body.classList.toggle("menuOpen", open);
+ }
+
+ if(menuBtn && menuPop){
+ menuBtn.addEventListener("click", (e) => {
+ e.stopPropagation();
+ toggleMenu();
+ });
+ document.addEventListener("click", () => closeMenu());
+ document.addEventListener("keydown", (e) => {
+ if(e.key === "Escape") closeMenu();
+ });
+ menuPop.addEventListener("click", (e) => e.stopPropagation());
+ }
+
+ // Tool cards: make the entire card clickable (but don’t hijack real links/buttons)
+ function isInteractive(el){
+ if(!el) return false;
+ return !!el.closest('a, button, input, textarea, select, summary, details');
+ }
+
+ document.querySelectorAll('.toolCard[data-href]').forEach(card => {
+ const href = (card.getAttribute('data-href') || '').trim();
+ if(!href) return;
+
+ const go = () => { window.location.href = href; };
+
+ card.addEventListener('click', (e) => {
+ if(isInteractive(e.target)) return;
+ go();
+ });
+
+ card.addEventListener('keydown', (e) => {
+ if(e.key === 'Enter' || e.key === ' '){
+ e.preventDefault();
+ go();
+ }
+ });
+ });
+
+ // Mobile drawer
+ const mOpen = document.getElementById("mOpen");
+ const mClose = document.getElementById("mClose");
+ const mDrawer = document.getElementById("mDrawer");
+ const mOverlay = document.getElementById("mOverlay");
+
+ function openDrawer(){ if(!mDrawer) return;
+ mDrawer.classList.add("open");
+ mOverlay.classList.add("open");
+ mDrawer.setAttribute("aria-hidden","false");
+ mOverlay.setAttribute("aria-hidden","false");
+ document.body.style.overflow = "hidden";
+ }
+
+ function closeDrawer(){ if(!mDrawer) return;
+ mDrawer.classList.remove("open");
+ mOverlay.classList.remove("open");
+ mDrawer.setAttribute("aria-hidden","true");
+ mOverlay.setAttribute("aria-hidden","true");
+ document.body.style.overflow = "";
+ }
+
+ if(mOpen && mClose && mDrawer && mOverlay){
+ mOpen && mOpen.addEventListener("click", (e) => { e.preventDefault(); openDrawer(); });
+ mClose && mClose.addEventListener("click", (e) => { e.preventDefault(); closeDrawer(); });
+ mOverlay && mOverlay.addEventListener("click", () => closeDrawer());
+ document.addEventListener("keydown", (e) => { if(e.key === "Escape") closeDrawer(); });
+
+ // close drawer on link click
+ mDrawer.querySelectorAll('a[href^="#"]').forEach(a=>{
+ a.addEventListener("click", ()=> closeDrawer());
+ });
+ }
+
+ // Roadmap reveal on scroll
+ (function(){
+ const items = Array.from(document.querySelectorAll('.tlItem'));
+ if(!items.length) return;
+
+ items.forEach((el) => {
+ const i = parseInt(el.getAttribute('data-i') || '0', 10);
+ el.style.transitionDelay = (i * 110) + 'ms';
+ });
+
+ const io = new IntersectionObserver((entries) => {
+ entries.forEach((e) => {
+ if(e.isIntersecting){
+ e.target.classList.add('in');
+ io.unobserve(e.target);
+ }
+ });
+ }, { threshold: 0.14, rootMargin: '0px 0px -12% 0px' });
+
+ items.forEach(el => io.observe(el));
+ })();
+
+ // ===== DexScreener: Trending ticker + Search dropdown =====
+ (function(){
+   const $ = (sel, root=document) => root.querySelector(sel);
+   const trendTrack = $("#trendTrack");
+   const inEl = $("#dexSearchInput");
+   const resEl = $("#dexResults");
+   const btnGo = $("#dexSearchGo"); // (removed from UI)
+   const btnCopy = $("#dexSearchCopy"); // (removed from UI)
+
+   // Where to send users for the Contract Scanner.
+   // Your page already links to https://solanax1.com/contract, so we default to "/contract".
+   const SCANNER_PAGE = (window.SOS_SCANNER_URL && String(window.SOS_SCANNER_URL)) || (location.origin + "/contract");
+
+   const NET_TO_DEX_CHAIN = { solana: "solana", eth: "ethereum", bsc: "bsc", base: "base" };
+   const DEX_TO_SCANNER_CHAIN = { solana: "sol", ethereum: "eth", bsc: "bnb", base: "base" };
+
+   function looksEvmAddress(x){
+     const s = String(x||"").trim();
+     return /^0x[a-fA-F0-9]{40}$/.test(s);
+   }
+   function looksSolAddress(x){
+     const s = String(x||"").trim();
+     // quick base58-ish (no 0,O,I,l) + typical length range
+     return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(s);
+   }
+   function looksAddressForNet(net, x){
+     if(net === "solana") return looksSolAddress(x);
+     if(net === "eth" || net === "bsc" || net === "base") return looksEvmAddress(x);
+     // fallback: accept either
+     return looksEvmAddress(x) || looksSolAddress(x);
+   }
+   function openScanner(addr, dexChainId){
+     const dc = String(dexChainId||"").toLowerCase();
+     const scannerChain = DEX_TO_SCANNER_CHAIN[dc] || DEX_TO_SCANNER_CHAIN[NET_TO_DEX_CHAIN[activeNet]||""] || "sol";
+     const url = `${SCANNER_PAGE}?chain=${encodeURIComponent(scannerChain)}&addr=${encodeURIComponent(String(addr||"").trim())}`;
+     window.location.href = url;
+   }
+
+   if(!trendTrack || !inEl || !resEl) return;
+   // Chain toggle events
+
+   const toggleEl = document.getElementById('chainToggle');
+   if(toggleEl){
+     toggleEl.addEventListener('click', (e)=>{
+       const btn = e.target.closest('.chainBtn');
+       if(!btn) return;
+       const net = btn.getAttribute('data-net');
+       setActiveNet(net);
+     });
+   }
+
+   const esc = (s="") => String(s)
+     .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+     .replace(/"/g,"&quot;").replace(/'/g,"&#39;");
+
+   const shortAddr = (a="") => a && a.length > 12 ? (a.slice(0,6)+"…"+a.slice(-4)) : a;
+
+   function formatCompact(n){
+     const num = Number(n);
+     if(!Number.isFinite(num)) return '—';
+     const abs = Math.abs(num);
+     const sign = num < 0 ? '-' : '';
+     const units = [
+       {v: 1e12, s: 'T'},
+       {v: 1e9,  s: 'B'},
+       {v: 1e6,  s: 'M'},
+       {v: 1e3,  s: 'K'},
+     ];
+     for(const u of units){
+       if(abs >= u.v){
+         const v = abs / u.v;
+         const dec = v < 10 ? 2 : (v < 100 ? 1 : 0);
+         let out = v.toFixed(dec);
+         // trim trailing zeros
+         out = out.replace(/\.0+$/,'').replace(/(\.[0-9]*?)0+$/,'$1');
+         return sign + out + u.s;
+       }
+     }
+     // < 1K
+     return sign + String(Math.round(abs));
+   }
+
+   function toast(msg){
+     // lightweight reuse of status if exists, otherwise subtle title flash
+     try{
+       document.title = msg;
+       setTimeout(()=>{ document.title = document.title.replace(msg,"").trim() || "$SOS — Solana on Solana"; }, 700);
+     }catch(e){}
+   }
+
+   // Dexguard logo (go to Dexguard page)
+   const dexguardLogo = $("#dexguardLogo");
+   if(dexguardLogo){
+     dexguardLogo.addEventListener('click', (e)=>{
+       e.preventDefault();
+       window.location.href = "https://www.solanax1.com/dexguard";
+     });
+   }
+
+
+  async function safeJson(url, opts={}){
+    const timeoutMs = Number(opts.timeoutMs ?? 12000);
+    const retries = Number(opts.retries ?? 2);
+    const retryBase = Number(opts.retryBaseMs ?? 800);
+
+    let lastErr = null;
+    for(let attempt=0; attempt<=retries; attempt++){
+      const controller = new AbortController();
+      const t = setTimeout(()=>controller.abort(), timeoutMs);
+      try{
+        const r = await fetch(url, {cache:"no-store", signal: controller.signal});
+        clearTimeout(t);
+        if(!r.ok){
+          // Retry common transient statuses
+          if((r.status===429 || r.status>=500) && attempt<retries){
+            await new Promise(res=>setTimeout(res, retryBase * Math.pow(2, attempt)));
+            continue;
           }
-
-          // Optionally disable freeze authority (set to null) if not already null
-          if(f.disableFreeze){
-            tx.add(spl.createSetAuthorityInstruction(
-              mintPub,
-              pubkey,
-              spl.AuthorityType.FreezeAccount,
-              null,
-              [],
-              spl.TOKEN_PROGRAM_ID
-            ));
-          }
-
-          // Recent blockhash
-          const latest = await conn.getLatestBlockhash("confirmed");
-          tx.recentBlockhash = latest.blockhash;
-
-          // Partially sign with mint keypair (because we created the mint account)
-          tx.partialSign(mintKeypair);
-
-          // Wallet signs
-          const signed = await wallet.signTransaction(tx);
-
-          log("Sending transaction…");
-          const sig = await conn.sendRawTransaction(signed.serialize(), { skipPreflight:false, preflightCommitment:"confirmed" });
-          log(`Signature: ${sig}`, "ok");
-          log(`Explorer TX: ${EXPLORER_TX(sig)}`);
-
-          const conf = await conn.confirmTransaction({ signature:sig, ...latest }, "confirmed");
-          if(conf.value.err) throw new Error("Transaction failed: " + JSON.stringify(conf.value.err));
-
-          // Success
-          const mintStr = mintPub.toBase58();
-          mintOutEl.textContent = mintStr;
-          mintOutEl.className = "ok";
-
-          explorerLinkMint(mintStr);
-          jupLink(mintStr);
-
-          await refreshBalance();
-
-          saveLaunch({
-            time: new Date().toISOString(),
-            symbol: f.symbol,
-            mint: mintStr,
-            sig
-          });
-
-          log("Token deployed successfully ✅", "ok");
-          log(`Mint: ${mintStr}`, "ok");
-          log(`Creator ATA: ${ata.toBase58()}`, "ok");
-
-          // Metadata: MVP note (we don't construct Metaplex tx here to keep it stable in a single-file).
-          if(f.metaUri){
-            log("Metadata URI provided. On-chain Metaplex metadata creation is a separate transaction/module (recommended to add with @metaplex-foundation/mpl-token-metadata).", "warn");
-          }
-
-        } catch(e){
-          console.error(e);
-          mintOutEl.textContent = "Deploy failed";
-          mintOutEl.className = "bad";
-          log("ERROR: " + (e?.message || String(e)), "bad");
+          throw new Error("HTTP "+r.status);
+        }
+        const txt = await r.text();
+        try{ return JSON.parse(txt); }
+        catch(_e){ throw new Error("Bad JSON"); }
+      }catch(e){
+        clearTimeout(t);
+        lastErr = e;
+        if(attempt<retries){
+          await new Promise(res=>setTimeout(res, retryBase * Math.pow(2, attempt)));
+          continue;
         }
       }
+    }
+    throw lastErr || new Error("Fetch failed");
+  }
 
-      function clearForm(){
-        $("name").value="";
-        $("symbol").value="";
-        $("supply").value="";
-        $("metaUri").value="";
-        $("desc").value="";
-        $("renounceMint").checked=false;
-        $("disableFreeze").checked=false;
-        mintOutEl.textContent="No token deployed yet";
-        mintOutEl.className="warn";
-        lnkMint.style.display="none";
-        lnkJup.style.display="none";
-        setLogReset("Ready.");
-        setStep(pubkey ? 2 : 1);
+   async function fetchTokenSymbol(chainId, tokenAddress){
+     // Use token-pairs endpoint to infer baseToken symbol/name
+     try{
+       const pairs = await safeJson(`https://api.dexscreener.com/token-pairs/v1/${encodeURIComponent(chainId)}/${encodeURIComponent(tokenAddress)}`);
+       const p = Array.isArray(pairs) ? pairs[0] : null;
+       const sym = p?.baseToken?.symbol || p?.baseToken?.name || "";
+       const name = p?.baseToken?.name || "";
+       return { sym, name, pairUrl: p?.url || "", pairAddress: p?.pairAddress || "" };
+     }catch(e){
+       return { sym:"", name:"", pairUrl:"", pairAddress:"" };
+     }
+   }
+
+   const NETWORKS = {
+     solana: { label: 'SOL' },
+     eth: { label: 'ETH' },
+     bsc: { label: 'BNB' },
+     base: { label: 'BASE' }
+   };
+
+   let activeNet = 'solana';
+   let trendTimer = null;
+  let trendReqId = 0;
+  const TREND_CACHE_TTL = 20 * 60 * 1000; // 20 min
+
+  function trendCacheKey(net){ return `sos_trending_cache_v2_${net}`; }
+
+  function readTrendCache(net){
+    try{
+      const raw = localStorage.getItem(trendCacheKey(net));
+      if(!raw) return null;
+      const obj = JSON.parse(raw);
+      if(!obj || !obj.items) return null;
+      if(obj.ts && (Date.now() - obj.ts) > TREND_CACHE_TTL) return null;
+      return obj;
+    }catch(_e){ return null; }
+  }
+
+  function writeTrendCache(net, items){
+    try{ localStorage.setItem(trendCacheKey(net), JSON.stringify({ts: Date.now(), items})); }catch(_e){}
+  }
+
+   // Make the marquee a true endless loop: distance + duration scale with content width.
+   function syncTickerMarquee(){
+     try{
+       if(!trendTrack) return;
+       const isMobile = window.matchMedia('(max-width: 860px)').matches;
+       // Readable-but-fast speed: adapt to the real width so the loop is seamless on all screens.
+       // (Higher px/s = faster. We intentionally keep this conservative so you can actually read.)
+       const pxPerSec = isMobile ? 120 : 95;
+
+       requestAnimationFrame(()=>{
+         // We render the items twice (A+B). One full cycle should travel exactly A.
+         const total = trendTrack.scrollWidth || 0;
+         if(total < 20) return;
+         const one = Math.max(1, Math.round(total / 2));
+         document.documentElement.style.setProperty('--tickerDistance', one + 'px');
+
+         // Keep the animation within a readable band.
+         const dur = Math.min(22, Math.max(6.5, one / pxPerSec));
+         document.documentElement.style.setProperty('--tickerSpeed', dur.toFixed(2) + 's');
+       });
+     }catch(_e){}
+   }
+
+   // Re-sync on resize (debounced)
+   let _tickerResizeT = null;
+   window.addEventListener('resize', ()=>{
+     clearTimeout(_tickerResizeT);
+     _tickerResizeT = setTimeout(syncTickerMarquee, 120);
+   }, {passive:true});
+
+  async function loadTrending(net){
+    const myReq = ++trendReqId;
+    // show cached immediately (prevents blank/unavailable flashes)
+    const cached = readTrendCache(net);
+    try{
+      if(cached && trendTrack && (!trendTrack.innerHTML || /(Trending unavailable|Loading trending)/i.test(trendTrack.textContent||""))){
+        trendTrack.innerHTML = cached.items + cached.items;
+        syncTickerMarquee();
       }
 
-      // ===== EVENTS =====
-      btnOpenWallets.onclick = openWalletModal;
-      btnCloseModal.onclick = closeWalletModal;
-      walletModal.addEventListener("click", (e)=>{ if(e.target===walletModal) closeWalletModal(); });
+      const url = `https://api.geckoterminal.com/api/v2/networks/${encodeURIComponent(net)}/trending_pools?include=base_token,quote_token`;
+      const data = await safeJson(url, {timeoutMs: 12000, retries: 2, retryBaseMs: 900});
+      if(myReq !== trendReqId) return; // stale response
+       const pools = Array.isArray(data?.data) ? data.data.slice(0,10) : [];
+       const included = Array.isArray(data?.included) ? data.included : [];
 
-      btnConnect.onclick = async ()=>{ try{ await connect(); }catch(e){ log("Connect failed: " + (e?.message||e), "bad"); } };
-      btnDisconnect.onclick = async ()=>{ try{ await disconnect(); }catch(e){ log("Disconnect failed: " + (e?.message||e), "bad"); } };
+       const byKey = new Map();
+       for(const inc of included){
+         if(!inc || !inc.id) continue;
+         const id = String(inc.id);
+         byKey.set(id, inc);
+         if(inc.type) byKey.set(String(inc.type)+':' + id, inc);
+       }
 
-      btnReview.onclick = review;
-      btnDeploy.onclick = deploy;
-      btnClear.onclick = clearForm;
+       if(!pools.length) throw new Error('No data');
 
-      btnCopyLog.onclick = async ()=>{
-        try{
-          await navigator.clipboard.writeText(logEl.textContent);
-          log("Copied logs to clipboard.", "ok");
-        } catch(e){
-          log("Clipboard copy failed.", "warn");
-        }
-      };
+      const items = pools.map((pool, n) => {
+         const a = pool?.attributes || {};
+         const rel = pool?.relationships || {};
+         const baseRef = rel?.base_token?.data || null;
+         const quoteRef = rel?.quote_token?.data || null;
+         const baseId = baseRef?.id ? String(baseRef.id) : '';
+         const baseType = baseRef?.type ? String(baseRef.type) : '';
+         const quoteId = quoteRef?.id ? String(quoteRef.id) : '';
+         const quoteType = quoteRef?.type ? String(quoteRef.type) : '';
+         const baseT = baseId ? ((byKey.get(baseType+':' + baseId) || byKey.get(baseId))?.attributes || {}) : {};
+         const quoteT = quoteId ? ((byKey.get(quoteType+':' + quoteId) || byKey.get(quoteId))?.attributes || {}) : {};
+         const sym = (baseT?.symbol || baseT?.name || '').trim() || (a?.name ? String(a.name).split('/')[0].trim() : '') || 'TOKEN';
+         const symClean = String(sym||'TOKEN').replace(/[^a-zA-Z0-9_$\.\-]/g,'').slice(0,24) || 'TOKEN';
+         const symDisp = symClean.startsWith('$') ? symClean : ('$' + symClean.replace(/^\$/,''));
+         const pctRaw = ((a?.price_change_percentage && (a.price_change_percentage.h24 ?? a.price_change_percentage['h24'] ?? a.price_change_percentage['24h'])) ?? a?.price_change_percentage_24h ?? a?.price_change_percentage_h24 ?? a?.price_change_percentage_24h_in_percent ?? null);
+         const pctNum = (pctRaw===null || pctRaw===undefined || pctRaw==='') ? NaN : Number(pctRaw);
+         const pctTxt = Number.isFinite(pctNum) ? `${pctNum>0?'+':''}${pctNum.toFixed(2)}%` : '';
+         const pctCls = Number.isFinite(pctNum) ? (pctNum>0?'up':(pctNum<0?'down':'')) : '';
+        const logoUrlRaw = String(
+          baseT?.image_url || baseT?.imageUrl || baseT?.image || baseT?.logo_url || baseT?.logoUrl ||
+          quoteT?.image_url || quoteT?.imageUrl || quoteT?.image || quoteT?.logo_url || quoteT?.logoUrl ||
+          a?.image_url || a?.imageUrl || a?.base_token_image_url || a?.base_token_imageUrl || a?.token_image_url || a?.token_imageUrl ||
+          ''
+        ).trim();
+        let logoUrl = logoUrlRaw;
+        if(logoUrl && logoUrl.startsWith('/')) logoUrl = 'https://www.geckoterminal.com' + logoUrl;
+        const first = (symClean || 'T').slice(0,1).toUpperCase();
+         const poolAddr = (a?.address || '').trim();
+         // Prefer token address (GeckoTerminal base_token id is usually the token CA)
+         const tokenAddr = String((baseT?.address || baseId || '')).trim();
+         // Map Gecko networks to DexGuard chains
+         const guardNet = (net === 'solana') ? 'sol' : (net === 'eth') ? 'eth' : (net === 'bsc') ? 'bnb' : 'base';
+         // If tokenAddr is missing, keep GeckoTerminal as a safe fallback (never break the ticker)
+         const href = tokenAddr
+           ? `/dexguard?chain=${encodeURIComponent(guardNet)}&addr=${encodeURIComponent(tokenAddr)}`
+           : (poolAddr ? `https://www.geckoterminal.com/${encodeURIComponent(net)}/pools/${encodeURIComponent(poolAddr)}` : '#');
+         const top1 = (n===0);
+         const cls = `tickerItem${top1?' top1':''}`;
+         const rankTxt = top1 ? `🔥 #1` : `#${n+1}`;
+        const logo = logoUrl
+          ? `<span class="tickerLogoWrap"><img class="tickerLogo" src="${esc(logoUrl)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove(); var w=this.closest('.tickerLogoWrap'); if(w){w.innerHTML='<span class=tickerLogoFallback>${esc(first)}</span>';}">
+            </span>`
+          : `<span class="tickerLogoWrap"><span class="tickerLogoFallback">${esc(first)}</span></span>`;
+         return `<a class="${cls}" href="${esc(href)}">
+           <span class="rank">${esc(rankTxt)}</span>
+          ${logo}
+           <span class="sym">${esc(symDisp)}</span>
+           ${pctTxt ? `<span class="tickerPct ${esc(pctCls)}">${esc(pctTxt)}</span>` : ''}
+         </a>`;
+       }).join('');
 
-      btnClearSaved.onclick = ()=>{
-        localStorage.removeItem("dg_launches");
-        renderSaved();
-        log("Saved launches cleared.", "warn");
-      };
+      writeTrendCache(net, items);
+      trendTrack.innerHTML = items + items;
 
-      // ===== INIT =====
-      renderSaved();
-      selectWallet(selectedWalletKey);
-      setStep(1);
+       // ✅ ensure it runs through the full list before looping (no "cut" mid-way)
+       syncTickerMarquee();
 
-      // Auto-refresh balance every 20s when connected
-      setInterval(()=>{ if(pubkey) refreshBalance().catch(()=>{}); }, 20000);
 
-      // Helpful note if no providers
-      window.addEventListener("load", ()=>{
-        const providers = getProviders();
-        if(!providers.length){
-          log("No wallet provider detected. Install Phantom/Solflare/Backpack or open this page inside wallet browser.", "warn");
-        } else {
-          log("Wallet providers detected: " + providers.map(p=>p.name).join(", "), "ok");
-        }
-      });
+    }catch(e){
+      if(myReq !== trendReqId) return;
+      const keepExisting = !!(trendTrack && trendTrack.children && trendTrack.children.length > 0);
+      const cached2 = readTrendCache(net);
+      if(cached2 && trendTrack){
+        trendTrack.innerHTML = cached2.items + cached2.items;
+        toast('Trending temporarily unavailable');
+      }else if(!keepExisting){
+        trendTrack.innerHTML = `<span class="tickerItem" style="opacity:.75"><span class="rank">!</span><span class="sym">Trending unavailable</span><span class="chain" style="display:none">${esc(net)}</span></span>`;
+      }else{
+        toast('Trending temporarily unavailable');
+      }
+      syncTickerMarquee();
+            // quick self-heal retry (no reload needed)
+      setTimeout(()=>{ if(activeNet===net) loadTrending(net); }, 4500);
+    }
+  }
 
-    })();
-  </script>
+   function setActiveNet(net){
+     if(!net || !NETWORKS[net]) net = 'solana';
+     activeNet = net;
+
+     // theme class for chain-colored UI
+     document.body.classList.remove('net-sol','net-eth','net-bnb','net-base');
+     document.body.classList.add(net==='solana'?'net-sol':net==='eth'?'net-eth':net==='bsc'?'net-bnb':'net-base');
+
+     // buttons
+     const wrap = document.getElementById('chainToggle');
+     if(wrap){
+       wrap.querySelectorAll('.chainBtn').forEach(b=>{
+         const on = (b.getAttribute('data-net') === net);
+         b.classList.toggle('active', on);
+         b.setAttribute('aria-pressed', on ? 'true' : 'false');
+       });
+     }
+
+     // load now + refresh
+     clearInterval(trendTimer);
+     loadTrending(net);
+     trendTimer = setInterval(()=>loadTrending(net), 30000);
+   }
+
+   // Start with Solana trending
+   setActiveNet('solana');
+
+   // Search dropdown
+   let tmr = null;
+   let lastQ = "";
+   let searchReqId = 0;
+   async function runSearch(q){
+     q = (q || "").trim();
+     lastQ = q;
+     const mySReq = ++searchReqId;
+     if(!q){
+       resEl.hidden = true;
+       resEl.innerHTML = "";
+       resEl.dataset.bestCa = "";
+       resEl.dataset.bestChain = "";
+       return;
+     }
+     try{
+       const data = await safeJson(`https://api.dexscreener.com/latest/dex/search?q=${encodeURIComponent(q)}`);
+       const pairs = data?.pairs || [];
+       const top = pairs.slice(0, 10);
+
+       if(!top.length){
+         resEl.innerHTML = `<div class="dexResRow" style="opacity:.75"><div class="dexResLeft">
+           <div class="dexResTitle">No results</div>
+           <div class="dexResMeta">Try symbol, name, or paste a contract.</div>
+         </div></div>`;
+         resEl.hidden = false;
+         resEl.dataset.bestCa = "";
+         resEl.dataset.bestChain = "";
+         return;
+       }
+
+       // store a "best" candidate for the top-right Scan button
+       const want = (NET_TO_DEX_CHAIN[activeNet] || "solana").toLowerCase();
+       const best = top.find(p => String(p?.chainId||"").toLowerCase() === want) || top[0];
+       resEl.dataset.bestCa = best?.baseToken?.address || "";
+       resEl.dataset.bestChain = best?.chainId || "";
+
+       resEl.innerHTML = top.map(p=>{
+         const chainIdRaw = (p.chainId || '');
+         const chain = String(chainIdRaw).toUpperCase();
+         const chainClass = 'chain-' + String(chainIdRaw).toLowerCase();
+         const dex = (p.dexId || "").toUpperCase();
+         const baseSym = p.baseToken?.symbol || "TOKEN";
+         const quoteSym = p.quoteToken?.symbol || "";
+         const title = quoteSym ? `${baseSym}/${quoteSym}` : `${baseSym}`;
+         const logoUrl = (p?.info?.imageUrl || p?.info?.image || p?.baseToken?.logoURI || p?.baseToken?.logo || p?.baseToken?.image || "");
+         const ch24 = p.priceChange?.h24;
+         const chClass = (typeof ch24 === 'number') ? (ch24>0?'up':(ch24<0?'down':'')) : '';
+         const chTxt = (typeof ch24 === "number") ? `${ch24>0?"+":""}${ch24.toFixed(2)}%` : "—";
+         const mcapVal = (p.marketCap != null ? Number(p.marketCap) : (p.fdv != null ? Number(p.fdv) : null));
+         const mcap = (typeof mcapVal === 'number' && Number.isFinite(mcapVal)) ? `$${formatCompact(mcapVal)}` : "—";
+         const mcapLabel = (p.marketCap != null ? "MCap" : (p.fdv != null ? "FDV" : "MCap"));
+         const ca = p.baseToken?.address || "";
+
+         // Route to DexGuard (internal)
+         const dc = String(p.chainId||'').toLowerCase();
+         const guardChain = DEX_TO_SCANNER_CHAIN[dc] || DEX_TO_SCANNER_CHAIN[NET_TO_DEX_CHAIN[activeNet]||''] || 'sol';
+         const href = `/dexguard?chain=${encodeURIComponent(guardChain)}&addr=${encodeURIComponent(String(ca||''))}`;
+         return `<div class="dexResRow">
+           <div class="dexResLeft">
+             <div class="dexResTitleRow">
+               <div class="dexLogoWrap ${logoUrl?"":"noimg"}">
+                 ${logoUrl ? `<img class="dexLogo" src="${esc(logoUrl)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.style.display='none'; this.closest('.dexLogoWrap').classList.add('noimg');">` : ``}
+                 <span class="dexLogoFallback">${esc((baseSym||"T").slice(0,1).toUpperCase())}</span>
+               </div>
+               <div class="dexResTitle">${esc(title)}</div>
+             </div>
+             <div class="dexResMeta">
+               <div class="dexMetaRow">
+                 <span class="dexPill ${esc(chainClass)}">${esc(chain)}</span>
+                 <span class="dexPill">${esc(dex || "DEX")}</span>
+               </div>
+               <div class="dexMetaRow stats">
+                 <span class="dexPill ${esc(chClass)}">24h ${esc(chTxt)}</span>
+                 <span class="dexPill">${esc(mcapLabel)} ${esc(mcap)}</span>
+               </div>
+               <div class="dexMetaRow ca">
+                 <span class="dexPill" title="${esc(ca)}">CA ${esc(shortAddr(ca))}</span>
+               </div>
+             </div>
+           </div>
+           <div class="dexResActions">
+             <button class="btn ghost dexMiniBtn copyBtn" type="button" data-copy="${esc(ca)}">Copy CA</button>
+             <a class="btn ghost dexMiniBtn chartBtn dexA" href="${esc(href)}">Chart</a>
+            <button class="btn grad dexMiniBtn" type="button" data-scan="${esc(ca)}" data-chain="${esc(p.chainId || '')}">Scanner</button>
+           </div>
+         </div>`;
+       }).join("");
+
+       resEl.hidden = false;
+     }catch(e){
+       const hasResults = !!(resEl && !resEl.hidden && resEl.querySelector('.dexResRow'));
+       if(hasResults){
+         toast('Try again');
+         return;
+       }
+       resEl.innerHTML = `<div class="dexResRow" style="opacity:.75"><div class="dexResLeft">
+         <div class="dexResTitle">Not found</div>
+         <div class="dexResMeta">Try again.</div>
+       </div></div>`;
+       resEl.hidden = false;
+     }
+   }
+
+   inEl.addEventListener("input", () => {
+     const q = inEl.value;
+     clearTimeout(tmr);
+     tmr = setTimeout(()=> runSearch(q), 250);
+   });
+   if(btnGo){
+
+
+     btnGo.addEventListener("click", () => {
+       // Search button should NOT navigate away. It simply forces an immediate local search.
+       const q = (inEl.value || "").trim();
+       if(!q) { inEl.focus(); return; }
+       clearTimeout(tmr);
+       runSearch(q);
+       resEl.hidden = false;
+       inEl.focus();
+     });
+   }
+   if(btnCopy){
+
+
+     btnCopy.addEventListener("click", () => {
+       // Scan: redirects to the Contract Scanner and auto-runs with the selected CA.
+       // If user typed a real CA, we use it. Otherwise we use the best dropdown match.
+       (async () => {
+         const q = (inEl.value || "").trim();
+         if(!q) return;
+
+         // 1) If input already looks like a CA for the active network, use it.
+         if(looksAddressForNet(activeNet, q) || looksEvmAddress(q) || looksSolAddress(q)){
+           openScanner(q, NET_TO_DEX_CHAIN[activeNet] || "solana");
+           return;
+         }
+
+         // 2) If dropdown already has a best candidate, use it.
+         const bestCa = (resEl.dataset.bestCa || "").trim();
+         const bestChain = (resEl.dataset.bestChain || "").trim();
+         if(bestCa){
+           openScanner(bestCa, bestChain || (NET_TO_DEX_CHAIN[activeNet] || "solana"));
+           return;
+         }
+
+         // 3) Fallback: query DexScreener once and pick a best result.
+         try{
+           const data = await safeJson(`https://api.dexscreener.com/latest/dex/search?q=${encodeURIComponent(q)}`);
+           const pairs = Array.isArray(data?.pairs) ? data.pairs : [];
+           const want = (NET_TO_DEX_CHAIN[activeNet] || "solana").toLowerCase();
+           const pick = pairs.find(p => String(p?.chainId||"").toLowerCase() === want) || pairs[0];
+           const ca = pick?.baseToken?.address || "";
+           if(ca){
+             openScanner(ca, pick?.chainId || want);
+             return;
+           }
+         }catch(_e){}
+
+         toast("No scan target");
+       })();
+     });
+   }
+
+   // action buttons in dropdown (copy + scanner)
+   resEl.addEventListener("click", async (e) => {
+     const copyBtn = e.target.closest("button[data-copy]");
+     if(copyBtn){
+       const val = copyBtn.getAttribute("data-copy") || "";
+       if(!val) return;
+       try{
+         await navigator.clipboard.writeText(val);
+         copyBtn.textContent = "Copied";
+         setTimeout(()=> copyBtn.textContent="Copy CA", 900);
+       }catch(err){
+         copyBtn.textContent = "Error";
+         setTimeout(()=> copyBtn.textContent="Copy CA", 900);
+       }
+       return;
+     }
+
+     const scanBtn = e.target.closest("button[data-scan]");
+     if(scanBtn){
+       const ca = scanBtn.getAttribute("data-scan") || "";
+       const chainId = scanBtn.getAttribute("data-chain") || "";
+       if(!ca) return;
+       openScanner(ca, chainId);
+       return;
+     }
+   });
+
+   // close dropdown when clicking outside
+   document.addEventListener("click", (e) => {
+     const inside = e.target.closest(".dexSearch");
+     if(!inside && !resEl.hidden){
+       resEl.hidden = true;
+     }
+   });
+
+   // keyboard: Enter triggers go
+   inEl.addEventListener("keydown", (e) => {
+     if(e.key === "Enter"){
+       e.preventDefault();
+       const q = (inEl.value || "").trim();
+       if(!q) { inEl.focus(); return; }
+       clearTimeout(tmr);
+       runSearch(q);
+       resEl.hidden = false;
+       inEl.focus();
+     }
+     if(e.key === "Escape"){
+       resEl.hidden = true;
+     }
+   });
+ })();
+
+</script>
 </body>
 </html>
