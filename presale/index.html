@@ -2551,11 +2551,12 @@ body.net-base .chainBtn.active{ background: linear-gradient(90deg, rgba(0,82,255
   margin: 18px auto 6px;
   max-width: 960px;
   width: 100%;
-  display:grid;
-  grid-template-columns: 1fr auto;
-  gap: 16px;
-  align-items:center;
-  padding: 18px 18px;
+  display:flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 10px;
+  padding: 20px 18px;
   border-radius: 22px;
   background: rgba(255,255,255,.06);
   border: 1px solid rgba(255,255,255,.14);
@@ -2580,24 +2581,24 @@ body.net-base .chainBtn.active{ background: linear-gradient(90deg, rgba(0,82,255
   content:"";
   position:absolute;
   inset:0;
-  background: radial-gradient(600px 120px at 20% 0%, rgba(20,241,149,.12), transparent 60%);
-  opacity:.9;
+  background: radial-gradient(760px 180px at 50% 0%, rgba(20,241,149,.14), transparent 60%);
+  opacity:.95;
   z-index:0;
 }
 .presaleCallout > *{ position: relative; z-index: 1; }
 
-.presaleTextBlock{ min-width:0; }
 .presalePill{
   display:inline-flex;
   align-items:center;
   gap:10px;
-  padding: 8px 12px;
+  padding: 8px 14px;
   border-radius: 999px;
-  border: 1px solid rgba(20,241,149,.24);
+  border: 1px solid rgba(20,241,149,.26);
   background: rgba(20,241,149,.10);
-  font-weight: 1000;
+  font-weight: 1100;
   letter-spacing: .7px;
   text-transform: uppercase;
+  box-shadow: 0 12px 28px rgba(0,0,0,.24);
 }
 .presalePill .dot{
   width:10px;height:10px;border-radius:99px;
@@ -2605,36 +2606,76 @@ body.net-base .chainBtn.active{ background: linear-gradient(90deg, rgba(0,82,255
   box-shadow: 0 0 0 0 rgba(20,241,149,.55);
   animation: presalePulse 1.15s infinite;
 }
+.presalePill .label{
+  animation: presaleBlink 1.35s ease-in-out infinite;
+}
+@keyframes presaleBlink{
+  0%, 100%{ opacity: 1; }
+  45%{ opacity: .65; }
+  55%{ opacity: 1; }
+}
+
 .presaleTitle{
-  margin-top: 10px;
-  font-size: 20px;
-  font-weight: 1000;
+  margin-top: 6px;
+  font-size: clamp(18px, 3.6vw, 24px);
+  font-weight: 1100;
   letter-spacing: .2px;
 }
 .presaleSub{
-  margin-top: 6px;
+  margin-top: 4px;
   color: rgba(255,255,255,.74);
   font-weight: 650;
   line-height: 1.55;
+  max-width: 760px;
 }
 
+.presaleActions{
+  margin-top: 10px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
 .presaleBtn{
+  position:relative;
   display:inline-flex;
   align-items:center;
   justify-content:center;
-  padding: 14px 18px;
-  border-radius: 16px;
-  border: 1px solid rgba(20,241,149,.28);
-  background: linear-gradient(135deg, rgba(20,241,149,.30), rgba(0,209,255,.16), rgba(153,69,255,.16));
+  padding: 14px 20px;
+  border-radius: 999px;
+  border: 1px solid rgba(20,241,149,.32);
+  background: linear-gradient(135deg, rgba(20,241,149,.34), rgba(0,209,255,.18), rgba(153,69,255,.18));
   box-shadow: 0 18px 42px rgba(0,0,0,.34);
-  font-weight: 1100;
-  letter-spacing: .8px;
+  font-weight: 1150;
+  letter-spacing: .9px;
   text-transform: uppercase;
   white-space: nowrap;
+  min-width: 240px;
   transition: transform .15s ease, filter .15s ease;
+  overflow:hidden;
 }
-.presaleBtn:hover{ transform: translateY(-2px); filter: brightness(1.06); }
+.presaleBtn::after{
+  content:"";
+  position:absolute;
+  top:-40%;
+  left:-30%;
+  width:60%;
+  height:180%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.22), transparent);
+  transform: rotate(20deg);
+  animation: presaleShine 2.1s linear infinite;
+  pointer-events:none;
+}
+.presaleBtn:hover{ transform: translateY(-2px); filter: brightness(1.07); }
 .presaleBtn:active{ transform: translateY(0px); }
+
+.presaleTiny{
+  font-size: 12.5px;
+  color: rgba(255,255,255,.62);
+  font-weight: 650;
+}
+
 
 @keyframes presalePulse{
   0%{ box-shadow: 0 0 0 0 rgba(20,241,149,.55); opacity: 1; transform: scale(1); }
@@ -2649,11 +2690,12 @@ body.net-base .chainBtn.active{ background: linear-gradient(90deg, rgba(0,82,255
 
 @media (max-width: 720px){
   .presaleCallout{
-    grid-template-columns: 1fr;
-    align-items: stretch;
-    text-align: left;
+    padding: 18px 16px;
   }
-  .presaleBtn{ width: 100%; }
+  .presaleBtn{
+    width: 100%;
+    max-width: 360px;
+  }
 }
 
 
@@ -2836,12 +2878,13 @@ body.net-base .chainBtn.active{ background: linear-gradient(90deg, rgba(0,82,255
  </div>
 
  <div class="presaleCallout" aria-label="Presale live">
-   <div class="presaleTextBlock">
-     <div class="presalePill"><span class="dot" aria-hidden="true"></span> Presale Live</div>
-     <div class="presaleTitle">Join the official presale</div>
-     <div class="presaleSub">Continue on solanax1.com/presale. Claim opens after the presale ends. Launch follows 12–24 hours later.</div>
+   <div class="presalePill"><span class="dot" aria-hidden="true"></span><span class="label">Presale Live</span></div>
+   <div class="presaleTitle">Join the official presale</div>
+   <div class="presaleSub">Continue on solanax1.com/presale. Claim opens after the presale ends. Launch follows 12–24 hours later.</div>
+   <div class="presaleActions">
+     <a class="presaleBtn" href="https://solanax1.com/presale" target="_blank" rel="noopener">JOIN PRESALE</a>
    </div>
-   <a class="presaleBtn" href="https://solanax1.com/presale" target="_blank" rel="noopener">JOIN PRESALE</a>
+   <div class="presaleTiny">Always verify the domain before connecting a wallet.</div>
  </div>
 
  <!-- Contract under hero -->
