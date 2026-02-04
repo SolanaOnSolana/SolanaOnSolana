@@ -322,6 +322,45 @@
       .addr{padding:10px 10px}
       .tabs{gap:8px}
       .tab{padding:9px 11px}
+
+      /* App-style mobile density + perfect stacking */
+      body:after{opacity:0.03;mix-blend-mode:normal}
+
+      .row{flex-direction:column}
+      .btnrow{flex-direction:column;align-items:stretch}
+      .btn,.btn.secondary{width:100%}
+
+      /* Prevent iOS zoom on inputs */
+      input, textarea, select{font-size:16px}
+
+      /* Tokenomics table -> stacked cards (no cramped columns) */
+      .tbl{border-spacing:0 10px}
+      .tbl thead{display:none}
+      .tbl tbody, .tbl tr{display:block;width:100%}
+      .tbl tr{margin:0 0 10px 0}
+      .tbl td{
+        display:flex; align-items:center; justify-content:space-between;
+        gap:12px;
+        border:1px solid rgba(255,255,255,.10);
+        border-radius:14px;
+        background: rgba(255,255,255,.035);
+        padding:12px 12px;
+      }
+      .tbl tr td:first-child,
+      .tbl tr td:last-child{
+        border-left:1px solid rgba(255,255,255,.10);
+        border-right:1px solid rgba(255,255,255,.10);
+        border-top-left-radius:14px;border-bottom-left-radius:14px;
+        border-top-right-radius:14px;border-bottom-right-radius:14px;
+      }
+      .tbl td:before{
+        content:attr(data-label);
+        font-size:12px;
+        font-weight:700;
+        color:var(--muted);
+        padding-right:12px;
+      }
+      .tbl td.mono{font-variant-numeric:tabular-nums}
     }
 
   
@@ -519,7 +558,7 @@
         </button>
       </div>
 
-      <div class="mobileMenu" id="mobileMenu" data-open="false" aria-hidden="true" hidden
+      <div class="mobileMenu" id="mobileMenu" data-open="false" aria-hidden="true" hidden>
         <div class="mobileMenuInner">
           <div class="mobileMenuTop">
             <div class="mobileMenuTitle">Menu</div>
@@ -1169,7 +1208,7 @@
     tbody.innerHTML = "";
     tok.forEach(([name,pct,amt])=>{
       const tr = document.createElement("tr");
-      tr.innerHTML = `<td>${name}</td><td class="mono">${pct}%</td><td class="mono">${fmt(amt,0)}</td>`;
+      tr.innerHTML = `<td data-label="Bucket">${name}</td><td class="mono" data-label="%">${pct}%</td><td class="mono" data-label="Amount (SOS)">${fmt(amt,0)}</td>`;
       tbody.appendChild(tr);
     });
 
