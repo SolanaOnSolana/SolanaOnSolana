@@ -1,1 +1,1006 @@
-SOON
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#060814" />
+  <title>$SOS Presale Dashboard</title>
+  <style>
+    :root{
+      --bg0:#050611;
+      --bg1:#070A1A;
+      --glass: rgba(255,255,255,.06);
+      --glass2: rgba(255,255,255,.10);
+      --stroke: rgba(255,255,255,.10);
+      --stroke2: rgba(255,255,255,.14);
+      --txt: rgba(255,255,255,.92);
+      --muted: rgba(255,255,255,.62);
+      --muted2: rgba(255,255,255,.46);
+      --good: rgba(72,255,178,.92);
+      --warn: rgba(255,196,87,.92);
+      --bad: rgba(255,92,128,.92);
+      --a0: rgba(130,90,255,.95);
+      --a1: rgba(56,210,255,.95);
+      --shadow: 0 18px 55px rgba(0,0,0,.45);
+      --shadow2: 0 10px 28px rgba(0,0,0,.35);
+      --r: 18px;
+      --r2: 26px;
+      --mono: ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;
+      --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family:var(--sans);
+      color:var(--txt);
+      background:
+        radial-gradient(1200px 650px at 16% 12%, rgba(130,90,255,.22), transparent 55%),
+        radial-gradient(900px 520px at 76% 16%, rgba(56,210,255,.18), transparent 58%),
+        radial-gradient(1000px 700px at 40% 95%, rgba(72,255,178,.10), transparent 60%),
+        linear-gradient(180deg,var(--bg0),var(--bg1));
+      overflow-x:hidden;
+    }
+    a{color:inherit;text-decoration:none}
+    .wrap{max-width:1180px;margin:0 auto;padding:28px 18px 60px}
+    .topbar{
+      position:sticky; top:0; z-index:50;
+      backdrop-filter: blur(14px);
+      background: rgba(7,10,26,.62);
+      border-bottom:1px solid rgba(255,255,255,.08);
+    }
+    .topbar .inner{max-width:1180px;margin:0 auto;padding:14px 18px;display:flex;align-items:center;gap:14px;justify-content:space-between}
+    .brand{
+      display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:.2px
+    }
+    .pill{
+      font-size:12px; padding:6px 10px; border:1px solid var(--stroke);
+      border-radius:999px; color:var(--muted);
+      background: rgba(255,255,255,.04);
+    }
+    .nav{
+      display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end
+    }
+    .nav a{font-size:13px;color:var(--muted);padding:8px 10px;border-radius:999px;border:1px solid transparent}
+    .nav a:hover{border-color:rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:var(--txt)}
+    .hero{
+      margin-top:26px;
+      border-radius: var(--r2);
+      border:1px solid rgba(255,255,255,.10);
+      background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.03));
+      box-shadow: var(--shadow);
+      overflow:hidden;
+      position:relative;
+    }
+    .hero:before{
+      content:"";
+      position:absolute; inset:-2px;
+      background:
+        radial-gradient(900px 420px at 10% 0%, rgba(130,90,255,.25), transparent 60%),
+        radial-gradient(760px 420px at 90% 0%, rgba(56,210,255,.20), transparent 62%),
+        linear-gradient(180deg, rgba(255,255,255,.06), transparent 45%);
+      pointer-events:none;
+    }
+    .hero .grid{display:grid;grid-template-columns:1.25fr .75fr;gap:16px;position:relative;padding:22px}
+    @media (max-width: 980px){ .hero .grid{grid-template-columns:1fr} }
+
+    .hTitle{display:flex;flex-direction:column;gap:10px}
+    .hTitle h1{margin:0;font-size:42px;line-height:1.03;letter-spacing:-.7px}
+    .hTitle p{margin:0;color:var(--muted);max-width:62ch}
+    .tagrow{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+    .tag{
+      font-size:12px;padding:7px 10px;border-radius:999px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.18);
+      color: rgba(255,255,255,.74);
+    }
+    .card{
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(8,10,22,.55);
+      border-radius: var(--r);
+      padding:16px;
+      box-shadow: var(--shadow2);
+      backdrop-filter: blur(12px);
+    }
+    .card h3{margin:0 0 10px 0;font-size:14px;color:rgba(255,255,255,.82);letter-spacing:.2px}
+    .row{display:flex;gap:12px;flex-wrap:wrap}
+    .kpi{
+      flex:1; min-width: 160px;
+      padding:14px;
+      border-radius: 16px;
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.04);
+    }
+    .kpi .label{font-size:12px;color:var(--muted)}
+    .kpi .val{font-size:22px;font-weight:800;margin-top:6px;letter-spacing:-.2px}
+    .kpi .sub{font-size:12px;color:var(--muted2);margin-top:4px}
+    .split{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+    @media (max-width: 980px){ .split{grid-template-columns:1fr} }
+    .btnrow{display:flex;gap:10px;flex-wrap:wrap}
+    .btn{
+      cursor:pointer;
+      border:none;
+      border-radius: 14px;
+      padding:12px 14px;
+      font-weight:700;
+      color: rgba(255,255,255,.92);
+      background:
+        linear-gradient(135deg, rgba(130,90,255,.95), rgba(56,210,255,.85));
+      box-shadow: 0 12px 30px rgba(0,0,0,.35);
+      transition: transform .12s ease, filter .12s ease;
+    }
+    .btn:hover{transform: translateY(-1px); filter:saturate(1.05)}
+    .btn:active{transform: translateY(0px)}
+    .btn.secondary{
+      background: rgba(255,255,255,.05);
+      border:1px solid rgba(255,255,255,.14);
+      box-shadow: none;
+      font-weight:700;
+    }
+    .btn.ghost{
+      background: transparent;
+      border: 1px solid rgba(255,255,255,.14);
+      box-shadow:none;
+      font-weight:700;
+      color: rgba(255,255,255,.84);
+    }
+    .btn[disabled]{
+      opacity:.55; cursor:not-allowed; transform:none !important;
+    }
+    .mono{font-family:var(--mono)}
+    .addr{
+      display:flex;align-items:center;justify-content:space-between;gap:12px;
+      padding:12px 12px;
+      border:1px solid rgba(255,255,255,.12);
+      border-radius: 14px;
+      background: rgba(0,0,0,.20);
+    }
+    .addr .left{display:flex;flex-direction:column;gap:4px;min-width:0}
+    .addr .label{font-size:12px;color:var(--muted)}
+    .addr .value{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .progress{
+      height:10px;border-radius:999px;background: rgba(255,255,255,.07);
+      border:1px solid rgba(255,255,255,.10);
+      overflow:hidden;
+    }
+    .bar{height:100%;width:0%;
+      background: linear-gradient(90deg, rgba(72,255,178,.95), rgba(56,210,255,.85), rgba(130,90,255,.85));
+      border-radius:999px;
+      transition: width .35s ease;
+    }
+    .hint{font-size:12px;color:var(--muted);line-height:1.45}
+    .warnbox{
+      border:1px solid rgba(255,196,87,.35);
+      background: rgba(255,196,87,.08);
+      border-radius: 16px;
+      padding:12px;
+      color: rgba(255,255,255,.86);
+    }
+    .goodbox{
+      border:1px solid rgba(72,255,178,.30);
+      background: rgba(72,255,178,.07);
+      border-radius: 16px;
+      padding:12px;
+      color: rgba(255,255,255,.86);
+    }
+    .tabs{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+    .tab{
+      cursor:pointer;
+      font-size:13px;
+      padding:10px 12px;
+      border-radius: 999px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.04);
+      color: rgba(255,255,255,.72);
+      user-select:none;
+    }
+    .tab.active{
+      color: rgba(255,255,255,.95);
+      border-color: rgba(255,255,255,.18);
+      background: linear-gradient(135deg, rgba(130,90,255,.18), rgba(56,210,255,.10));
+    }
+    .section{margin-top:18px}
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+    @media (max-width: 980px){ .grid2{grid-template-columns:1fr} }
+    .list{
+      display:flex;flex-direction:column;gap:10px;margin-top:10px
+    }
+    .li{
+      display:flex;gap:10px;align-items:flex-start;
+      padding:10px 10px;border-radius:14px;border:1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.03);
+    }
+    .dot{
+      width:10px;height:10px;border-radius:50%;
+      background: rgba(56,210,255,.9); margin-top:4px; flex:0 0 auto;
+      box-shadow: 0 0 0 4px rgba(56,210,255,.10);
+    }
+    .li b{display:block;font-size:13px}
+    .li span{display:block;font-size:12px;color:var(--muted);line-height:1.45;margin-top:2px}
+    .tbl{width:100%;border-collapse:separate;border-spacing:0 8px}
+    .tbl th{
+      text-align:left;font-size:12px;color:var(--muted);font-weight:700;padding:0 10px 4px 10px
+    }
+    .tbl td{
+      padding:12px 10px;
+      background: rgba(255,255,255,.03);
+      border-top:1px solid rgba(255,255,255,.10);
+      border-bottom:1px solid rgba(255,255,255,.10);
+    }
+    .tbl tr td:first-child{
+      border-left:1px solid rgba(255,255,255,.10);
+      border-top-left-radius:14px;border-bottom-left-radius:14px;
+    }
+    .tbl tr td:last-child{
+      border-right:1px solid rgba(255,255,255,.10);
+      border-top-right-radius:14px;border-bottom-right-radius:14px;
+    }
+    .foot{
+      margin-top:28px;
+      color: rgba(255,255,255,.55);
+      font-size:12px;
+      line-height:1.5;
+      padding-top:16px;
+      border-top:1px solid rgba(255,255,255,.08);
+    }
+    input, textarea{
+      width:100%;
+      padding:12px 12px;
+      border-radius: 14px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.22);
+      color: rgba(255,255,255,.92);
+      outline:none;
+    }
+    input:focus, textarea:focus{
+      border-color: rgba(56,210,255,.38);
+      box-shadow: 0 0 0 4px rgba(56,210,255,.10);
+    }
+    .mini{font-size:11px;color:var(--muted2);margin-top:8px}
+    .badge{
+      font-size:11px;padding:5px 9px;border-radius:999px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.18);
+      color: rgba(255,255,255,.72);
+      display:inline-flex;gap:6px;align-items:center;
+    }
+    .badge.good{border-color: rgba(72,255,178,.25);background: rgba(72,255,178,.08);color: rgba(255,255,255,.85)}
+    .badge.warn{border-color: rgba(255,196,87,.25);background: rgba(255,196,87,.08);color: rgba(255,255,255,.85)}
+    .badge.bad{border-color: rgba(255,92,128,.25);background: rgba(255,92,128,.08);color: rgba(255,255,255,.85)}
+    .rightcol{display:flex;flex-direction:column;gap:12px}
+    .qrbox{display:flex;gap:12px;align-items:center}
+    .qrimg{
+      width:110px;height:110px;border-radius:16px;border:1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.03);
+      overflow:hidden;flex:0 0 auto;
+    }
+    .qrimg img{width:100%;height:100%;object-fit:cover}
+    .smalllinks{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}
+    .smalllinks a{
+      font-size:12px;color:rgba(255,255,255,.76);
+      padding:8px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.03);
+    }
+    .smalllinks a:hover{background: rgba(255,255,255,.05)}
+    .muted{color:var(--muted)}
+  </style>
+</head>
+
+<body>
+  <div class="topbar">
+    <div class="inner">
+      <div class="brand">
+        <span class="pill">LIVE</span>
+        <span>$SOS Presale</span>
+        <span class="pill" id="statusPill">Loading…</span>
+      </div>
+      <div class="nav">
+        <a href="#participate">Participate</a>
+        <a href="#dashboard">Your Dashboard</a>
+        <a href="#allocation">Allocation</a>
+        <a href="#proofs">Proof</a>
+        <a href="#faq">FAQ</a>
+        <a class="pill" href="https://www.solanax1.com" target="_blank" rel="noreferrer">solanax1.com</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <div class="hero" id="top">
+      <div class="grid">
+        <div class="hTitle">
+          <div class="tagrow">
+            <div class="tag">Solana on Solana</div>
+            <div class="tag">Fixed supply • Metadata immutable</div>
+            <div class="tag">Presale: SOL only</div>
+            <div class="tag">Launch: 12–24h after presale ends</div>
+          </div>
+          <h1>Join the official presale.<br/>The Gate is open.</h1>
+          <p>
+            This page is the single source of truth for the $SOS presale:
+            official address, live totals, allocation rules, and proof links. Always verify the domain before sending funds.
+          </p>
+
+          <div class="tabs" role="tablist">
+            <div class="tab active" data-tab="participate">Participate</div>
+            <div class="tab" data-tab="proof">Proof & Transparency</div>
+          </div>
+
+          <div class="section" id="participateTab">
+            <div class="row">
+              <div class="kpi">
+                <div class="label">Presale ends in</div>
+                <div class="val" id="countdown">--:--:--</div>
+                <div class="sub" id="dateLine">14 days • countdown is based on the configured end time</div>
+              </div>
+              <div class="kpi">
+                <div class="label">Total Raised (SOL)</div>
+                <div class="val" id="totalRaised">—</div>
+                <div class="sub"><span id="participants">—</span> participants • hardcap <span class="mono" id="hardcapTxt">—</span></div>
+              </div>
+              <div class="kpi">
+                <div class="label">Allocation Factor</div>
+                <div class="val" id="factor">—</div>
+                <div class="sub">If oversubscribed, allocations scale fairly (pro‑rata)</div>
+              </div>
+            </div>
+
+            <div style="margin-top:12px" class="progress" aria-label="Hardcap progress">
+              <div class="bar" id="bar"></div>
+            </div>
+            <div class="mini" id="barNote">Loading on-chain totals…</div>
+
+            <div style="margin-top:14px" class="split">
+              <div class="card">
+                <h3>Official Presale Address (SOL)</h3>
+                <div class="addr">
+                  <div class="left">
+                    <div class="label">Send SOL only to this address</div>
+                    <div class="value mono" id="presaleAddr">—</div>
+                  </div>
+                  <div class="btnrow">
+                    <button class="btn secondary" id="copyAddr">Copy</button>
+                    <a class="btn ghost" id="openSolscan" target="_blank" rel="noreferrer">Open Explorer</a>
+                  </div>
+                </div>
+
+                <div class="qrbox" style="margin-top:12px">
+                  <div class="qrimg">
+                    <img id="qr" alt="QR code" />
+                  </div>
+                  <div style="min-width:0">
+                    <div class="hint">
+                      <b>How to participate</b><br/>
+                      1) Open your Solana wallet (Phantom / Solflare)<br/>
+                      2) Send SOL to the official presale address<br/>
+                      3) Paste your transaction signature below to confirm detection
+                    </div>
+                    <div class="smalllinks">
+                      <a href="#dashboard">Open your dashboard</a>
+                      <a href="#faq">Read FAQ</a>
+                      <a href="#proofs">View proofs</a>
+                    </div>
+                  </div>
+                </div>
+
+                <div style="margin-top:12px" class="warnbox">
+                  <b>Safety rules</b><br/>
+                  • Send <b>SOL only</b>. Do not send from an exchange if you cannot control refunds.<br/>
+                  • We will never DM you a “new address”. This page is the only official address source.<br/>
+                  • If you sent SOL, keep your transaction signature. It is your proof of participation.
+                </div>
+              </div>
+
+              <div class="card">
+                <h3>Contribution Check</h3>
+                <div class="hint">Paste your transaction signature to confirm the payment was received by the presale address.</div>
+                <div style="margin-top:10px">
+                  <input id="sigInput" placeholder="Transaction signature (e.g. 5N…)" />
+                  <div class="btnrow" style="margin-top:10px">
+                    <button class="btn" id="checkSig">Verify transaction</button>
+                    <button class="btn secondary" id="refreshNow">Refresh totals</button>
+                  </div>
+                  <div class="mini" id="sigResult"></div>
+                </div>
+
+                <div style="margin-top:14px" class="card" style="padding:0"></div>
+
+                <h3 style="margin-top:14px">Presale Terms</h3>
+                <div class="list">
+                  <div class="li"><div class="dot"></div>
+                    <div><b>Hardcap</b><span><span class="mono" id="hardcapTxt2">—</span> maximum counted SOL.</span></div>
+                  </div>
+                  <div class="li"><div class="dot" style="background:rgba(72,255,178,.9)"></div>
+                    <div><b>Rate</b><span><span class="mono" id="rateTxt">—</span> per 1 SOL (before pro‑rata factor).</span></div>
+                  </div>
+                  <div class="li"><div class="dot" style="background:rgba(255,196,87,.9)"></div>
+                    <div><b>Min / Max per wallet</b><span><span class="mono" id="minmaxTxt">—</span> (enforced by rules; manual settlement).</span></div>
+                  </div>
+                  <div class="li"><div class="dot" style="background:rgba(130,90,255,.9)"></div>
+                    <div><b>Claim</b><span>Claim button appears when the presale countdown hits 0. Launch follows ~12–24 hours later.</span></div>
+                  </div>
+                </div>
+
+                <div class="btnrow" style="margin-top:14px">
+                  <a class="btn" id="claimBtn" href="claim.html" style="display:none">CLAIM $SOS</a>
+                  <button class="btn secondary" id="claimDisabled" disabled style="display:none">Claim will appear at end</button>
+                </div>
+
+                <div class="mini">This dashboard is informational and updates from on-chain data. Always verify details on the explorer.</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="section" id="proofTab" style="display:none">
+            <div class="grid2">
+              <div class="card">
+                <h3>Proof & Transparency</h3>
+                <div class="hint">
+                  These links prove: token mint, fixed supply (mint disabled), and immutable metadata.
+                </div>
+
+                <table class="tbl" style="margin-top:10px">
+                  <thead><tr>
+                    <th>Item</th><th>Value</th><th>Link</th>
+                  </tr></thead>
+                  <tbody>
+                    <tr>
+                      <td><span class="badge good">Token Mint</span></td>
+                      <td class="mono" id="mintAddrCell">—</td>
+                      <td><a id="mintLink" target="_blank" rel="noreferrer">Explorer</a></td>
+                    </tr>
+                    <tr>
+                      <td><span class="badge good">Metadata created</span></td>
+                      <td class="mono" id="metaTxCell">—</td>
+                      <td><a id="metaTxLink" target="_blank" rel="noreferrer">Explorer</a></td>
+                    </tr>
+                    <tr>
+                      <td><span class="badge good">Mint disabled</span></td>
+                      <td class="mono" id="disableTxCell">—</td>
+                      <td><a id="disableTxLink" target="_blank" rel="noreferrer">Explorer</a></td>
+                    </tr>
+                    <tr>
+                      <td><span class="badge good">Metadata immutable</span></td>
+                      <td class="mono" id="immTxCell">—</td>
+                      <td><a id="immTxLink" target="_blank" rel="noreferrer">Explorer</a></td>
+                    </tr>
+                    <tr>
+                      <td><span class="badge">Presale Wallet</span></td>
+                      <td class="mono" id="presaleAddrCell2">—</td>
+                      <td><a id="presaleLink2" target="_blank" rel="noreferrer">Explorer</a></td>
+                    </tr>
+                  </tbody>
+                </table>
+
+                <div class="goodbox" style="margin-top:12px">
+                  <b>What “fixed supply” means</b><br/>
+                  Minting is permanently disabled — no more tokens can be created. Metadata is also immutable to prevent silent changes.
+                </div>
+              </div>
+
+              <div class="card">
+                <h3>Serious Presale Timeline</h3>
+                <div class="list">
+                  <div class="li"><div class="dot"></div>
+                    <div><b>Presale live (14 days)</b><span>Participants send SOL to the official presale address. Totals update from on‑chain data.</span></div>
+                  </div>
+                  <div class="li"><div class="dot" style="background:rgba(255,196,87,.9)"></div>
+                    <div><b>Presale ends</b><span>Allocation becomes final. Claim button appears automatically at countdown 0.</span></div>
+                  </div>
+                  <div class="li"><div class="dot" style="background:rgba(130,90,255,.9)"></div>
+                    <div><b>Launch window (12–24h)</b><span>Liquidity is seeded and trading opens. Launch price is targeted ~30% higher than presale.</span></div>
+                  </div>
+                  <div class="li"><div class="dot" style="background:rgba(72,255,178,.9)"></div>
+                    <div><b>Locks/Vesting</b><span>Team & treasury locks (vesting) and LP lock proofs will be published in this page’s Proof tab after presale.</span></div>
+                  </div>
+                </div>
+
+                <div class="warnbox" style="margin-top:12px">
+                  <b>Scam protection</b><br/>
+                  We will never announce “a new address” in DMs. The only valid address is the one shown on this page.
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="rightcol">
+          <div class="card" id="dashboard">
+            <h3>Your Dashboard</h3>
+            <div class="hint">Enter your wallet address to see your contribution, estimated tokens, and launch projection.</div>
+            <div style="margin-top:10px">
+              <input id="walletInput" placeholder="Your Solana address (e.g. 9esb…)" />
+              <div class="btnrow" style="margin-top:10px">
+                <button class="btn secondary" id="loadWallet">Load</button>
+                <button class="btn ghost" id="clearWallet">Clear</button>
+              </div>
+            </div>
+
+            <div style="margin-top:12px" class="row">
+              <div class="kpi" style="min-width: 100%">
+                <div class="label">Your contribution (SOL)</div>
+                <div class="val" id="yourSol">—</div>
+                <div class="sub" id="yourTxs">—</div>
+              </div>
+              <div class="kpi" style="min-width: 100%">
+                <div class="label">Your $SOS (estimated)</div>
+                <div class="val" id="yourSos">—</div>
+                <div class="sub">Presale rate × allocation factor</div>
+              </div>
+              <div class="kpi" style="min-width: 100%">
+                <div class="label">Launch value (projection)</div>
+                <div class="val" id="yourLaunchValue">—</div>
+                <div class="sub">Launch target is +<span id="launchUp">30</span>% vs presale (projection only)</div>
+              </div>
+            </div>
+
+            <div class="mini">
+              Projection is not a promise. Final market value depends on liquidity and market conditions.
+            </div>
+          </div>
+
+          <div class="card" id="allocation">
+            <h3>Allocation & Tokenomics</h3>
+
+            <table class="tbl">
+              <thead>
+                <tr><th>Bucket</th><th>%</th><th>Amount (SOS)</th></tr>
+              </thead>
+              <tbody id="tokTable">
+                <!-- filled by JS -->
+              </tbody>
+            </table>
+
+            <div class="goodbox" style="margin-top:12px">
+              <b>Presale allocation</b><br/>
+              Presale sells <span class="mono" id="presaleAlloc">—</span> SOS. With a hardcap of <span class="mono" id="hardcapTxt3">—</span> SOL, the base rate is <span class="mono" id="rateTxt2">—</span> per 1 SOL.
+            </div>
+          </div>
+
+          <div class="card" id="proofs">
+            <h3>Quick Proof Links</h3>
+            <div class="hint">Always verify on the explorer.</div>
+            <div class="smalllinks" style="margin-top:10px">
+              <a id="solscanPresale" target="_blank" rel="noreferrer">Presale wallet</a>
+              <a id="solscanMint" target="_blank" rel="noreferrer">Mint</a>
+              <a id="solscanMeta" target="_blank" rel="noreferrer">Metadata tx</a>
+              <a id="solscanDisable" target="_blank" rel="noreferrer">Mint disabled tx</a>
+              <a id="solscanImm" target="_blank" rel="noreferrer">Immutable tx</a>
+            </div>
+          </div>
+
+          <div class="card" id="faq">
+            <h3>FAQ</h3>
+            <div class="list">
+              <div class="li">
+                <div class="dot"></div>
+                <div>
+                  <b>How do I join?</b>
+                  <span>Send SOL to the official presale address on this page. Your contribution is detected from on‑chain transfers.</span>
+                </div>
+              </div>
+              <div class="li">
+                <div class="dot" style="background:rgba(72,255,178,.9)"></div>
+                <div>
+                  <b>What is pro‑rata (fair allocation)?</b>
+                  <span>If total raised exceeds the hardcap, every wallet’s counted amount scales by the same factor. Nobody gets unfair priority.</span>
+                </div>
+              </div>
+              <div class="li">
+                <div class="dot" style="background:rgba(255,196,87,.9)"></div>
+                <div>
+                  <b>What happens if the presale is oversubscribed?</b>
+                  <span>Your token amount is calculated using the allocation factor. Any excess SOL (if refunds are used) is processed after presale end.</span>
+                </div>
+              </div>
+              <div class="li">
+                <div class="dot" style="background:rgba(130,90,255,.9)"></div>
+                <div>
+                  <b>When can I claim?</b>
+                  <span>The claim button appears automatically when the presale timer reaches 0. Launch follows ~12–24 hours later.</span>
+                </div>
+              </div>
+              <div class="li">
+                <div class="dot" style="background:rgba(255,92,128,.9)"></div>
+                <div>
+                  <b>Important: scams</b>
+                  <span>Only trust the address shown here. We will never DM a different address or ask you to “validate” your wallet.</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="foot">
+              <b>$SOS Disclaimer</b><br/>
+              $SOS provides on-chain data, analytics, and software tools for informational and educational purposes only. Nothing on this site constitutes financial, investment, legal, or tax advice, nor should it be interpreted as a recommendation to buy, sell, or hold any digital asset. Use of this site and its tools is at your own risk.
+              <div style="margin-top:10px">© 2026 $SOS Solana on Solana.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+<script>
+  // =========================
+  // EDITABLE CONFIG (presale)
+  // =========================
+  const CFG = {
+    // Core
+    project: "Solana on Solana",
+    symbol: "SOS",
+
+    // Presale rules
+    presaleAddress: "81f4iLJDNkM9nqZwKv813jDpYAA3RAUKE7RCR7gaDT7L",
+    accepted: "SOL only",
+    hardcapSOL: 1000,
+    minSOL: 0.10,
+    maxSOL: 25.0,
+    presaleAllocationSOS: 400_000_000,         // 40% of 1B
+    totalSupplySOS: 1_000_000_000,
+    launchUpPct: 30,                           // +30% (projection for dashboard)
+
+    // Presale timing (Europe/Berlin)
+    // Set a fixed end-time for a true 14-day presale.
+    // Default below ends Feb 18, 2026 at 23:59:59 Berlin time.
+    endISO: "2026-02-18T23:59:59+01:00",
+
+    // Proofs
+    mint: "8tx9gi51YbLBqBKAbBhXNcwLFSHqNqvMgMKJ8UQYqYNr",
+    metaTx: "327rQtrFacdTm7CfcXbinQvZnMWCTWaBhBq3HiBTscchHhEdAfwBycWPuaAbvjSKwbzyu6jYxQ2v1fe4WccR8ugh",
+    mintDisabledTx: "2mowm7ykCPLo8gXaNme3yLj7BoTnZU8FVBkXH8pDS3KqsA3roUfk7F7D2KpQ9pYwsf4rxSmhjgRQBn1sA8RN5cc4",
+    immutableTx: "4ET4b6QmoSthvKf9fau6v3NyZsiNWBdeZ2kNgB5KCmYEqBz6hYjDy2KzGU3r2C4334R3xiZVNAhvYs89o35xGViE",
+
+    // RPC
+    rpc: "https://api.mainnet-beta.solana.com",
+
+    // Explorer base (Solscan)
+    explorer: "https://solscan.io",
+  };
+
+  // Derived constants
+  CFG.rateSOSPerSOL = CFG.presaleAllocationSOS / CFG.hardcapSOL; // 400,000 SOS per SOL at hardcap
+  CFG.launchMultiplier = 1 + (CFG.launchUpPct / 100);
+  const END_TS = Date.parse(CFG.endISO);
+
+  // UI helpers
+  const $ = (id) => document.getElementById(id);
+  function fmt(n, d=2){
+    const x = Number(n);
+    if (!isFinite(x)) return "—";
+    return x.toLocaleString(undefined, {maximumFractionDigits:d});
+  }
+  function shortAddr(a){
+    if (!a || a.length < 12) return a || "—";
+    return a.slice(0,4) + "…" + a.slice(-4);
+  }
+  function solscanUrl(path){ return `${CFG.explorer}${path}`; }
+  function setText(id, txt){ const el=$(id); if (el) el.textContent = txt; }
+  function setHref(id, href){ const el=$(id); if (el) el.href = href; }
+
+  // Tabs
+  const tabs = Array.from(document.querySelectorAll(".tab"));
+  tabs.forEach(t => t.addEventListener("click", () => {
+    tabs.forEach(x => x.classList.remove("active"));
+    t.classList.add("active");
+    const which = t.getAttribute("data-tab");
+    $("participateTab").style.display = which === "participate" ? "" : "none";
+    $("proofTab").style.display = which === "proof" ? "" : "none";
+  }));
+
+  // Copy
+  $("copyAddr").addEventListener("click", async () => {
+    try{
+      await navigator.clipboard.writeText(CFG.presaleAddress);
+      $("copyAddr").textContent = "Copied";
+      setTimeout(()=> $("copyAddr").textContent = "Copy", 1200);
+    }catch(e){
+      alert("Copy failed. Please copy manually.");
+    }
+  });
+
+  // RPC client
+  async function rpc(method, params){
+    const body = { jsonrpc:"2.0", id: 1, method, params };
+    const res = await fetch(CFG.rpc, {
+      method:"POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify(body)
+    });
+    const j = await res.json();
+    if (j.error) throw new Error(j.error.message || "RPC error");
+    return j.result;
+  }
+
+  async function getBalanceSOL(address){
+    const r = await rpc("getBalance", [address, {commitment:"confirmed"}]);
+    return r.value / 1e9;
+  }
+
+  // Contribution scanner (reads incoming transfers to presale address and builds a map by sender)
+  const CACHE_KEY = "sos_presale_cache_v1";
+  const CACHE_MAX_AGE_MS = 30_000; // 30s
+
+  function loadCache(){
+    try{
+      const raw = localStorage.getItem(CACHE_KEY);
+      if (!raw) return null;
+      const c = JSON.parse(raw);
+      if (!c || !c.ts) return null;
+      if (Date.now() - c.ts > CACHE_MAX_AGE_MS) return null;
+      return c;
+    }catch(e){ return null; }
+  }
+  function saveCache(obj){
+    try{ localStorage.setItem(CACHE_KEY, JSON.stringify(obj)); }catch(e){}
+  }
+
+  // Parse system transfer instructions to presale address
+  function extractIncomingSOL(tx, presaleAddr){
+    try{
+      if (!tx || !tx.transaction) return [];
+      const msg = tx.transaction.message;
+      const keys = msg.accountKeys;
+      const acc = (i) => (typeof i === "number" ? (keys[i]?.pubkey || keys[i]) : i);
+
+      const out = [];
+      const inst = msg.instructions || [];
+      for (const ix of inst){
+        // jsonParsed format
+        if (ix.program === "system" && ix.parsed && ix.parsed.type === "transfer"){
+          const info = ix.parsed.info;
+          if (info?.destination === presaleAddr){
+            const lamports = Number(info?.lamports || 0);
+            out.push({ source: info.source, lamports });
+          }
+        } else if (ix.programId === "11111111111111111111111111111111"){
+          // Raw system instruction - hard to parse without decoding; ignore for stability.
+        }
+      }
+      return out;
+    }catch(e){
+      return [];
+    }
+  }
+
+  async function scanPresale(limitSigs=400){
+    // 1) Get signatures
+    const sigs = await rpc("getSignaturesForAddress", [CFG.presaleAddress, {limit: limitSigs}]);
+    const signatures = sigs.map(s => s.signature);
+
+    // 2) Fetch transactions with concurrency cap
+    const contrib = {};
+    const seenSigs = [];
+    let participants = 0;
+
+    const CONC = 4;
+    let i = 0;
+
+    async function worker(){
+      while (i < signatures.length){
+        const idx = i++;
+        const sig = signatures[idx];
+        try{
+          const tx = await rpc("getTransaction", [sig, {encoding:"jsonParsed", commitment:"confirmed", maxSupportedTransactionVersion:0}]);
+          const ins = extractIncomingSOL(tx, CFG.presaleAddress);
+          for (const item of ins){
+            const sol = item.lamports / 1e9;
+            if (sol <= 0) continue;
+            contrib[item.source] = (contrib[item.source] || 0) + sol;
+          }
+          seenSigs.push(sig);
+        }catch(e){
+          // ignore individual failures (RPC rate limits / pruned tx); keep going
+        }
+      }
+    }
+
+    await Promise.all(Array.from({length:CONC}, worker));
+
+    participants = Object.keys(contrib).length;
+    const totalRaised = Object.values(contrib).reduce((a,b)=>a+b,0);
+
+    return { totalRaised, participants, contrib, scanned: seenSigs.length, limitSigs };
+  }
+
+  function calcFactor(totalRaised){
+    if (!isFinite(totalRaised)) return 0;
+    if (totalRaised <= CFG.hardcapSOL) return 1;
+    return CFG.hardcapSOL / totalRaised;
+  }
+
+  function updateKpis(totalRaised, participants){
+    setText("totalRaised", fmt(totalRaised, 4));
+    setText("participants", fmt(participants, 0));
+    const f = calcFactor(totalRaised);
+    setText("factor", f.toFixed(4));
+    const pct = Math.min(100, (totalRaised / CFG.hardcapSOL) * 100);
+    $("bar").style.width = pct.toFixed(2) + "%";
+    setText("barNote", totalRaised <= CFG.hardcapSOL
+      ? `Under hardcap • counting 100% of contributions`
+      : `Oversubscribed • fair pro‑rata factor = ${f.toFixed(4)}`
+    );
+  }
+
+  function updateClaimUI(){
+    const now = Date.now();
+    const ended = now >= END_TS;
+    const pill = $("statusPill");
+    if (!ended){
+      pill.textContent = "PRESALE LIVE";
+      pill.style.borderColor = "rgba(72,255,178,.22)";
+      pill.style.color = "rgba(255,255,255,.86)";
+      $("claimBtn").style.display = "none";
+      $("claimDisabled").style.display = "";
+    } else {
+      pill.textContent = "PRESALE ENDED";
+      pill.style.borderColor = "rgba(255,196,87,.25)";
+      pill.style.color = "rgba(255,255,255,.90)";
+      $("claimDisabled").style.display = "none";
+      $("claimBtn").style.display = "";
+    }
+  }
+
+  function startCountdown(){
+    function tick(){
+      const now = Date.now();
+      const diff = Math.max(0, END_TS - now);
+      const s = Math.floor(diff/1000);
+      const d = Math.floor(s/86400);
+      const h = Math.floor((s%86400)/3600);
+      const m = Math.floor((s%3600)/60);
+      const ss = s%60;
+      const label = (diff === 0)
+        ? "00:00:00"
+        : `${d}d ${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}:${String(ss).padStart(2,"0")}`;
+      setText("countdown", label);
+
+      const endDate = new Date(END_TS);
+      setText("dateLine", `Ends: ${endDate.toLocaleString()} • Duration: 14 days`);
+      updateClaimUI();
+    }
+    tick();
+    setInterval(tick, 1000);
+  }
+
+  async function refreshAll(force=false){
+    // Fill static UI
+    setText("presaleAddr", CFG.presaleAddress);
+    setText("presaleAddrCell2", CFG.presaleAddress);
+    setHref("openSolscan", solscanUrl(`/account/${CFG.presaleAddress}`));
+    setHref("presaleLink2", solscanUrl(`/account/${CFG.presaleAddress}`));
+    setHref("solscanPresale", solscanUrl(`/account/${CFG.presaleAddress}`));
+    $("qr").src = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(CFG.presaleAddress)}`;
+
+    setText("hardcapTxt", `${fmt(CFG.hardcapSOL,0)} SOL`);
+    setText("hardcapTxt2", `${fmt(CFG.hardcapSOL,0)} SOL`);
+    setText("hardcapTxt3", `${fmt(CFG.hardcapSOL,0)} SOL`);
+    setText("minmaxTxt", `${CFG.minSOL} – ${CFG.maxSOL} SOL`);
+    setText("rateTxt", `${fmt(CFG.rateSOSPerSOL,0)} SOS`);
+    setText("rateTxt2", `${fmt(CFG.rateSOSPerSOL,0)} SOS`);
+    setText("presaleAlloc", fmt(CFG.presaleAllocationSOS,0));
+    setText("launchUp", String(CFG.launchUpPct));
+
+    setText("mintAddrCell", CFG.mint);
+    setHref("mintLink", solscanUrl(`/token/${CFG.mint}`));
+    setHref("solscanMint", solscanUrl(`/token/${CFG.mint}`));
+
+    setText("metaTxCell", shortAddr(CFG.metaTx));
+    setHref("metaTxLink", solscanUrl(`/tx/${CFG.metaTx}`));
+    setHref("solscanMeta", solscanUrl(`/tx/${CFG.metaTx}`));
+
+    setText("disableTxCell", shortAddr(CFG.mintDisabledTx));
+    setHref("disableTxLink", solscanUrl(`/tx/${CFG.mintDisabledTx}`));
+    setHref("solscanDisable", solscanUrl(`/tx/${CFG.mintDisabledTx}`));
+
+    setText("immTxCell", shortAddr(CFG.immutableTx));
+    setHref("immTxLink", solscanUrl(`/tx/${CFG.immutableTx}`));
+    setHref("solscanImm", solscanUrl(`/tx/${CFG.immutableTx}`));
+
+    // Tokenomics table
+    const tok = [
+      ["Presale", 40, 400_000_000],
+      ["Liquidity (DEX)", 20, 200_000_000],
+      ["Team (vesting)", 12, 120_000_000],
+      ["Dev Treasury (locked)", 10, 100_000_000],
+      ["Marketing (controlled)", 8, 80_000_000],
+      ["Community (incentives)", 10, 100_000_000],
+    ];
+    const tbody = $("tokTable");
+    tbody.innerHTML = "";
+    tok.forEach(([name,pct,amt])=>{
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td>${name}</td><td class="mono">${pct}%</td><td class="mono">${fmt(amt,0)}</td>`;
+      tbody.appendChild(tr);
+    });
+
+    // Prefer cached totals if fresh
+    const cache = !force ? loadCache() : null;
+    if (cache){
+      updateKpis(cache.totalRaised, cache.participants);
+      window.__contrib = cache.contrib || {};
+      return;
+    }
+
+    // Refresh totals from scan
+    setText("barNote", "Scanning on-chain transfers…");
+    try{
+      const s = await scanPresale(400);
+      updateKpis(s.totalRaised, s.participants);
+      window.__contrib = s.contrib || {};
+      saveCache({ts:Date.now(), ...s});
+    }catch(e){
+      setText("barNote", "RPC error. Try again or refresh.");
+    }
+  }
+
+  // User dashboard
+  function calcUser(address){
+    const contrib = window.__contrib || {};
+    const your = Number(contrib[address] || 0);
+    const totalRaised = parseFloat(($("totalRaised").textContent || "0").replace(/,/g,""));
+    const f = calcFactor(totalRaised);
+    const yourSOS = your * f * CFG.rateSOSPerSOL;
+    const presalePricePerSOS = (1 / CFG.rateSOSPerSOL); // SOL per SOS
+    const launchPricePerSOS = presalePricePerSOS * CFG.launchMultiplier;
+    const launchValueSOL = yourSOS * launchPricePerSOS;
+
+    setText("yourSol", your ? fmt(your, 6) : "0.000000");
+    setText("yourSos", your ? fmt(yourSOS, 0) : "0");
+    setText("yourLaunchValue", your ? `${fmt(launchValueSOL, 4)} SOL` : "—");
+    setText("yourTxs", your ? "Detected from on-chain transfers to the presale address." : "No contributions detected yet.");
+  }
+
+  function isBase58Likely(str){
+    return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test((str||"").trim());
+  }
+
+  $("loadWallet").addEventListener("click", ()=>{
+    const w = ($("walletInput").value||"").trim();
+    if (!isBase58Likely(w)){
+      alert("Please enter a valid Solana address.");
+      return;
+    }
+    calcUser(w);
+  });
+  $("clearWallet").addEventListener("click", ()=>{
+    $("walletInput").value = "";
+    setText("yourSol","—"); setText("yourSos","—"); setText("yourLaunchValue","—"); setText("yourTxs","—");
+  });
+
+  // Tx signature check
+  $("checkSig").addEventListener("click", async ()=>{
+    const sig = ($("sigInput").value||"").trim();
+    if (!sig || sig.length < 40){ setText("sigResult","Please paste a transaction signature."); return; }
+    setText("sigResult","Checking…");
+    try{
+      const tx = await rpc("getTransaction", [sig, {encoding:"jsonParsed", commitment:"confirmed", maxSupportedTransactionVersion:0}]);
+      const ins = extractIncomingSOL(tx, CFG.presaleAddress);
+      if (ins.length === 0){
+        setText("sigResult", "Not detected as a SOL transfer to the presale address. Verify on the explorer.");
+        return;
+      }
+      const sol = ins.reduce((a,x)=>a + x.lamports/1e9, 0);
+      const from = ins[0].source;
+      setText("sigResult", `Detected: ${fmt(sol, 6)} SOL from ${shortAddr(from)} → presale. ✅`);
+      await refreshAll(true);
+      const w = ($("walletInput").value||"").trim();
+      if (isBase58Likely(w)) calcUser(w);
+    }catch(e){
+      setText("sigResult", "Could not fetch transaction. Try again or check the explorer.");
+    }
+  });
+
+  $("refreshNow").addEventListener("click", async ()=>{
+    await refreshAll(true);
+    const w = ($("walletInput").value||"").trim();
+    if (isBase58Likely(w)) calcUser(w);
+  });
+
+  // Init
+  startCountdown();
+  refreshAll(false);
+</script>
+</body>
+</html>
