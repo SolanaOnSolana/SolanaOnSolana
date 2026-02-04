@@ -298,6 +298,9 @@
       .tab{padding:9px 11px}
     }
 
+  
+    .kgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    @media (max-width: 520px){ .kgrid{grid-template-columns:1fr} }
   </style>
 </head>
 
@@ -423,33 +426,44 @@
               <div class="card">
                 <h3>Presale Summary</h3>
 
-                <div class="row">
-                  <div class="kpi" style="min-width: 180px;">
+                <div class="kgrid">
+                  <div class="kpi">
                     <div class="label">Hardcap</div>
                     <div class="val"><span class="mono" id="hardcapTxt2">—</span></div>
                     <div class="sub">Maximum counted SOL</div>
                   </div>
-                  <div class="kpi" style="min-width: 180px;">
+
+                  <div class="kpi">
                     <div class="label">Base rate</div>
                     <div class="val"><span class="mono" id="rateTxt">—</span></div>
                     <div class="sub">per 1 SOL (before factor)</div>
                   </div>
-                  <div class="kpi" style="min-width: 180px;">
+
+                  <div class="kpi">
                     <div class="label">Min / Max</div>
                     <div class="val"><span class="mono" id="minmaxTxt">—</span></div>
                     <div class="sub">Manual settlement rules</div>
                   </div>
+
+                  <div class="kpi">
+                    <div class="label">Launch target</div>
+                    <div class="val"><span class="mono" id="launchTargetTxt">—</span></div>
+                    <div class="sub">Projection only (+% vs presale)</div>
+                  </div>
                 </div>
 
                 <div class="list" style="margin-top:12px">
-                  <div class="li"><div class="dot" style="background:rgba(130,90,255,.9)"></div>
-                    <div><b>Claim</b><span>Claim button appears automatically when the presale timer reaches 0. Launch follows ~12–24 hours later.</span></div>
+                  <div class="li">
+                    <div class="dot" style="background:rgba(130,90,255,.9)"></div>
+                    <div><b>Claim</b><span>Claim button appears automatically when the presale timer hits 0.</span></div>
                   </div>
-                  <div class="li"><div class="dot" style="background:rgba(72,255,178,.9)"></div>
-                    <div><b>Transparency</b><span>Proof links for mint, fixed supply and immutable metadata are provided. Locks/vesting proofs will be added after presale.</span></div>
+                  <div class="li">
+                    <div class="dot" style="background:rgba(72,255,178,.9)"></div>
+                    <div><b>Launch</b><span>Target launch is ~12–24 hours after presale ends.</span></div>
                   </div>
-                  <div class="li"><div class="dot" style="background:rgba(255,196,87,.9)"></div>
-                    <div><b>Refresh</b><span>Totals update from on-chain data. If your RPC blocks browser requests, switch RPC in config or use the explorer link.</span></div>
+                  <div class="li">
+                    <div class="dot" style="background:rgba(255,196,87,.9)"></div>
+                    <div><b>Proofs</b><span>Locks/vesting proofs will be added after presale for maximum clarity.</span></div>
                   </div>
                 </div>
 
@@ -459,7 +473,7 @@
                   <button class="btn ghost" id="refreshNow">Refresh totals</button>
                 </div>
 
-                <div class="mini">This dashboard is informational and updates from on-chain data. Always verify details on the explorer.</div>
+                <div class="mini">Always verify details on the explorer. This dashboard is informational and updates from on-chain data.</div>
               </div>
             </div>
 
@@ -869,6 +883,8 @@
     setText("minmaxTxt", `${CFG.minSOL} – ${CFG.maxSOL} SOL`);
     setText("rateTxt", `${fmt(CFG.rateSOSPerSOL,0)} SOS`);
     setText("rateTxt2", `${fmt(CFG.rateSOSPerSOL,0)} SOS`);
+
+    setText("launchTargetTxt", `+${CFG.launchUpPct}%`);
     setText("presaleAlloc", fmt(CFG.presaleAllocationSOS,0));
     setText("launchUp", String(CFG.launchUpPct));
 
