@@ -638,7 +638,7 @@
       <div class="brand">
         <span class="pill mini">LIVE</span>
         <b>$SOS Presale</b>
-        <span class="pill mini" id="livePill">Loading…</span>
+        <span class="pill mini" id="livePill">PRESALE LIVE</span>
       </div>
       <div class="nav">
         <div class="links">
@@ -721,7 +721,7 @@
     <div class="progress" style="margin-top:12px">
       <div class="bar" id="bar"></div>
     </div>
-    <div class="barNote" id="barNote">Loading live totals…</div>
+    <div class="barNote" id="barNote">Live totals update from on-chain data.</div>
 
     <div class="btnrow" style="margin-top:12px">
       <button class="btn secondary" id="refreshNow2" onclick="document.getElementById('refreshNow').click()">Refresh totals</button>
@@ -841,7 +841,7 @@
 
   </div>
 
-  <div class="mini" style="margin-top:10px" id="statusPill">Loading…</div>
+  <div class="mini" style="margin-top:10px" id="statusPill">PRESALE LIVE</div>
 </div>
 
     <div class="card" id="dashboard">
@@ -1057,6 +1057,7 @@
 
   // UI helpers
   const $ = (id) => document.getElementById(id);
+  const on = (id, ev, fn) => { const el = $(id); if (el) el.addEventListener(ev, fn); };
   function fmt(n, d=2){
     const x = Number(n);
     if (!isFinite(x)) return "—";
@@ -1081,7 +1082,7 @@
   }));
 
   // Copy
-  $("copyAddr").addEventListener("click", async () => {
+  on("copyAddr","click", async ()=>{
     try{
       await navigator.clipboard.writeText(CFG.presaleAddress);
       $("copyAddr").textContent = "Copied";
@@ -1207,6 +1208,7 @@
     setText("participants", fmt(participants, 0));
     const f = calcFactor(totalRaised);
     setText("factor", f.toFixed(4));
+    setText("allocationFactor", f.toFixed(4));
     const pct = Math.min(100, (totalRaised / CFG.hardcapSOL) * 100);
     $("bar").style.width = pct.toFixed(2) + "%";
     setText("barNote", totalRaised <= CFG.hardcapSOL
@@ -1316,18 +1318,20 @@
     if (cache){
       updateKpis(cache.totalRaised, cache.participants);
       window.__contrib = cache.contrib || {};
+      setText("barNote", "Updated recently. Refresh if needed.");
       return;
     }
 
     // Refresh totals from scan
-    setText("barNote", "Scanning on-chain transfers…");
+    /* no loading text on first paint */
     try{
       const s = await scanPresale(400);
       updateKpis(s.totalRaised, s.participants);
+      setText("barNote", "Updated just now from on-chain data.");
       window.__contrib = s.contrib || {};
       saveCache({ts:Date.now(), ...s});
     }catch(e){
-      setText("barNote", "Live totals unavailable (RPC blocked or rate-limited). Use Open Explorer or Refresh totals.");
+      setText("barNote", "Live totals limited. Use Open Explorer or Refresh totals.");
     }
   }
 
@@ -1352,7 +1356,7 @@
     return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test((str||"").trim());
   }
 
-  $("loadWallet").addEventListener("click", ()=>{
+  on("loadWallet","click", ()=>{
     const w = ($("walletInput").value||"").trim();
     if (!isBase58Likely(w)){
       alert("Please enter a valid Solana address.");
@@ -1360,13 +1364,13 @@
     }
     calcUser(w);
   });
-  $("clearWallet").addEventListener("click", ()=>{
+  on("clearWallet","click", ()=>{
     $("walletInput").value = "";
     setText("yourSol","—"); setText("yourSos","—"); setText("yourLaunchValue","—"); setText("yourTxs","—");
   });
 
   // Tx signature check
-  $("checkSig").addEventListener("click", async ()=>{
+  on("checkSig","click", async ()=>{
     const sig = ($("sigInput").value||"").trim();
     if (!sig || sig.length < 40){ setText("sigResult","Please paste a transaction signature."); return; }
     setText("sigResult","Checking…");
@@ -1388,13 +1392,27 @@
     }
   });
 
-  $("refreshNow").addEventListener("click", async ()=>{
+  on("refreshNow","click", async ()=>{
     await refreshAll(true);
     const w = ($("walletInput").value||"").trim();
     if (isBase58Likely(w)) calcUser(w);
   });
 
   // Init
+  try{
+    const c = loadCache();
+    if (c && isFinite(c.totalRaised)){
+      updateKpis(c.totalRaised, c.participants||0);
+      window.__contrib = c.contrib || {};
+      setText("barNote", "Updated recently. Refresh if needed.");
+    } else {
+      updateKpis(0, 0);
+      setText("barNote", "Live totals update from on-chain data.");
+    }
+  }catch(e){
+    updateKpis(0, 0);
+    setText("barNote", "Live totals update from on-chain data.");
+  }
   startCountdown();
   refreshAll(false);
 
