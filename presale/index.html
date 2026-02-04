@@ -1034,23 +1034,49 @@
   CFG.launchMultiplier = 1 + (CFG.launchUpPct / 100);
   const END_TS = Date.parse(CFG.endISO);
 
+// Pick an RPC endpoint that works in browsers (CORS-friendly). Falls back automatically.
+// Important: we validate the endpoint (res.ok + JSON-RPC result) before caching it.
+async function pickRpc(){
+  if (CFG.rpc) return CFG.rpc;
+  const list = Array.isArray(CFG.rpcEndpoints) && CFG.rpcEndpoints.length
+    ? CFG.rpcEndpoints
+    : ["https://api.mainnet-beta.solana.com"];
 
-  // Pick an RPC endpoint that works in browsers (CORS-friendly). Falls back automatically.
-  async function pickRpc(){
-    if (CFG.rpc) return CFG.rpc;
-    const list = Array.isArray(CFG.rpcEndpoints) && CFG.rpcEndpoints.length ? CFG.rpcEndpoints : ["https://api.mainnet-beta.solana.com"];
-    for (const url of list){
-      try{
-        const res = await fetch(url, {
-          method:"POST",
-          headers: {"Content-Type":"application/json"},
-          body: JSON.stringify({jsonrpc:"2.0", id:1, method:"getHealth", params:[]})
-        });
-        await res.json().catch(()=>null);
-        CFG.rpc = url;
-        return url;
-      }catch(e){}
+  // quick validation helper
+  async function validate(url){
+    const ctrl = new AbortController();
+    const t = setTimeout(()=>ctrl.abort(), 6000);
+    try{
+      const res = await fetch(url, {
+        method:"POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({jsonrpc:"2.0", id:1, method:"getHealth", params:[]}),
+        signal: ctrl.signal
+      });
+      if (!res.ok) return false;
+      const j = await res.json().catch(()=>null);
+      if (!j || j.error) return false;
+      // Solana returns "ok" when healthy
+      return (j.result === "ok" || j.result === "healthy" || j.result === null || j.result === true);
+    }catch(e){
+      return false;
+    }finally{
+      clearTimeout(t);
     }
+  }
+
+  for (const url of list){
+    const ok = await validate(url);
+    if (ok){
+      CFG.rpc = url;
+      return url;
+    }
+  }
+
+  // If none validate, still pick the first (some providers block getHealth but allow other methods).
+  CFG.rpc = list[0];
+  return CFG.rpc;
+}
     CFG.rpc = list[0];
     return CFG.rpc;
   }
@@ -1092,18 +1118,65 @@
   });
 
   // RPC client
-  async function rpc(method, params){
-    const body = { jsonrpc:"2.0", id: 1, method, params };
-    const rpcUrl = await pickRpc();
-    const res = await fetch(rpcUrl, {
-      method:"POST",
-      headers: {"Content-Type":"application/json"},
-      body: JSON.stringify(body)
-    });
-    const j = await res.json();
-    if (j.error) throw new Error(j.error.message || "RPC error");
-    return j.result;
+
+async function rpc(method, params){
+  const body = { jsonrpc:"2.0", id: 1, method, params };
+
+  const list = Array.isArray(CFG.rpcEndpoints) && CFG.rpcEndpoints.length
+    ? CFG.rpcEndpoints.slice()
+    : ["https://api.mainnet-beta.solana.com"];
+
+  // Prefer cached RPC first
+  const first = CFG.rpc || await pickRpc();
+  if (first && !list.includes(first)) list.unshift(first);
+  else if (first){
+    // move to front
+    list.splice(list.indexOf(first),1);
+    list.unshift(first);
   }
+
+  let lastErr = null;
+
+  for (const url of list){
+    const ctrl = new AbortController();
+    const t = setTimeout(()=>ctrl.abort(), 10000);
+    try{
+      const res = await fetch(url, {
+        method:"POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify(body),
+        signal: ctrl.signal
+      });
+
+      // Handle common rate limits / gateway failures quickly
+      if (res.status === 429 || res.status === 503 || res.status === 504){
+        lastErr = new Error(`RPC ${res.status}`);
+        continue;
+      }
+      if (!res.ok){
+        lastErr = new Error(`RPC ${res.status}`);
+        continue;
+      }
+
+      const j = await res.json();
+      if (j && j.error){
+        // Some providers return -32005/-32004 etc for rate limits; try next
+        lastErr = new Error(j.error.message || "RPC error");
+        continue;
+      }
+
+      // Success: cache this RPC for next calls
+      CFG.rpc = url;
+      return j.result;
+    }catch(e){
+      lastErr = e;
+    }finally{
+      clearTimeout(t);
+    }
+  }
+
+  throw (lastErr || new Error("RPC unavailable"));
+}
 
   async function getBalanceSOL(address){
     const r = await rpc("getBalance", [address, {commitment:"confirmed"}]);
@@ -1156,9 +1229,16 @@
     }
   }
 
-  async function scanPresale(limitSigs=400){
+  async function scanPresale(limitSigs=250){
     // 1) Get signatures
-    const sigs = await rpc("getSignaturesForAddress", [CFG.presaleAddress, {limit: limitSigs}]);
+    let sigs = [];
+    try{
+      sigs = await rpc("getSignaturesForAddress", [CFG.presaleAddress, {limit: limitSigs}]);
+    }catch(e){
+      // If signature scan fails, fall back to balance-only totals
+      const bal = await getBalanceSOL(CFG.presaleAddress);
+      return { totalRaised: bal, participants: 0, contrib: {}, scanned: 0, limitSigs };
+    }
     const signatures = sigs.map(s => s.signature);
 
     // 2) Fetch transactions with concurrency cap
@@ -1322,12 +1402,19 @@
     // Refresh totals from scan
     setText("barNote", "Scanning on-chain transfers…");
     try{
-      const s = await scanPresale(400);
+      const s = await scanPresale(250);
       updateKpis(s.totalRaised, s.participants);
       window.__contrib = s.contrib || {};
       saveCache({ts:Date.now(), ...s});
     }catch(e){
-      setText("barNote", "Live totals unavailable (RPC blocked or rate-limited). Use Open Explorer or Refresh totals.");
+      try{
+        // Fallback: show current wallet balance (still useful even if full scan is blocked)
+        const bal = await getBalanceSOL(CFG.presaleAddress);
+        updateKpis(bal, 0);
+        setText("barNote", "Live scan unavailable (RPC rate-limited). Showing wallet balance as raised total.");
+      }catch(e2){
+        setText("barNote", "Live totals unavailable (RPC blocked or rate-limited). Use Open Explorer or Refresh totals.");
+      }
     }
   }
 
