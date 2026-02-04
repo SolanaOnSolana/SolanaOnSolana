@@ -68,7 +68,7 @@
       pointer-events:none;
     }
     .topbar .inner{position:relative}
-    .topbar .inner{max-width:1180px;margin:0 auto;padding:14px 18px;display:flex;align-items:center;gap:14px;justify-content:space-between}
+    .topbar .inner{max-width:1180px;margin:0 auto;padding:calc(14px + env(safe-area-inset-top)) 18px 14px;display:flex;align-items:center;gap:14px;justify-content:space-between}
     .brand{
       display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:.2px
     }
@@ -377,7 +377,7 @@
     .addr .value{font-size:14px}
 
       /* Header polish */
-  .topbar .inner{max-width:1180px;margin:0 auto;padding:14px 18px;display:flex;align-items:center;gap:14px;justify-content:space-between}
+  .topbar .inner{max-width:1180px;margin:0 auto;padding:calc(14px + env(safe-area-inset-top)) 18px 14px;display:flex;align-items:center;gap:14px;justify-content:space-between}
   .brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:.2px;min-width:0}
   .nav{display:flex;align-items:center;gap:10px;justify-content:flex-end}
   .nav .links{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end}
@@ -398,11 +398,14 @@
 
   .mobileMenu{
     position:fixed; inset:0; z-index:80;
-    display:flex; justify-content:flex-end; align-items:flex-start;
+    display:none; justify-content:flex-end; align-items:flex-start;
     padding:12px;
     background: rgba(5,6,17,.78);
     backdrop-filter: blur(14px);
   }
+  .mobileMenu[data-open="true"]{display:flex}
+  .mobileMenu[hidden]{display:none !important}
+
   .mobileMenuInner{
     width:min(360px, 92vw);
     border-radius:22px;
@@ -451,33 +454,43 @@
   @media (max-width: 820px){
     .nav .links{display:none}
     .menuBtn{display:inline-flex}
-    .topbar .inner{padding:12px 14px}
+    .topbar .inner{padding:calc(12px + env(safe-area-inset-top)) 14px 12px}
     .brand b{font-size:14px}
   }
 
   /* Mobile layout: tighter + cleaner, no horizontal scrolling */
   @media (max-width: 720px){
+    body{
+      background:
+        radial-gradient(900px 560px at 20% 0%, rgba(130,90,255,.18), transparent 62%),
+        radial-gradient(900px 560px at 85% 10%, rgba(56,210,255,.14), transparent 64%),
+        radial-gradient(900px 700px at 50% 100%, rgba(72,255,178,.08), transparent 68%),
+        linear-gradient(180deg,var(--bg0),var(--bg1));
+    }
+    .wrap{padding:16px 14px 46px}
     .hero{margin-top:14px;border-radius:22px}
-    .hero .grid{padding:16px;gap:14px}
-    h1{font-size:36px}
-    .tagrow{display:flex;flex-direction:column;gap:8px}
-    .tag{width:100%;text-align:left}
-    .btnrow{flex-direction:column;align-items:stretch}
+    .hero .grid{padding:14px;gap:12px}
+    h1{font-size:30px}
+    .hTitle p{font-size:14px}
+    .tagrow{display:flex;flex-wrap:wrap;gap:8px}
+    .tag{width:auto;flex:0 0 auto;padding:6px 10px;font-size:12px}
+    .btnrow{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .btnrow > :nth-child(3){grid-column:1 / -1}
     .btnrow .btn, .btnrow a.btn{width:100%;text-align:center}
-    .row{flex-direction:column}
-    .kpi{min-width:0}
-    .addr{flex-direction:column;align-items:stretch}
-    .addr .btnrow{width:100%}
-    .addr .btnrow .btn{flex:1;min-width:0}
-    .qrbox{flex-direction:column;align-items:center}
-    .qrimg{width:160px;height:160px}
+    .statusKpis{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .statusKpis .kpi{min-width:0;padding:12px}
+    .statusKpis .kpi:nth-child(3){grid-column:1 / -1}
+    .kpi .val{font-size:19px}
+    .addr{flex-direction:column;align-items:stretch;gap:10px}
+    .addr .btnrow{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .qrbox{flex-direction:column;align-items:center;gap:10px}
+    .qrimg{width:148px;height:148px}
     .tbl{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch}
     .tbl th, .tbl td{white-space:nowrap}
-    .tbl tr td{min-width:120px}
   }
+
   @media (max-width: 420px){
-    h1{font-size:32px}
-    .tagrow{grid-template-columns:1fr}
+    h1{font-size:28px}
   }
 
 </style>
@@ -501,16 +514,16 @@
         <a class="pill" href="https://www.solanax1.com" target="_blank" rel="noreferrer">solanax1.com</a>
         </div>
 
-        <button class="menuBtn" id="menuBtn" aria-label="Menu" aria-expanded="false">
+        <button type="button" class="menuBtn" id="menuBtn" aria-label="Menu" aria-expanded="false">
           <span></span><span></span><span></span>
         </button>
       </div>
 
-      <div class="mobileMenu" id="mobileMenu" aria-hidden="true" hidden>
+      <div class="mobileMenu" id="mobileMenu" data-open="false" aria-hidden="true" hidden
         <div class="mobileMenuInner">
           <div class="mobileMenuTop">
             <div class="mobileMenuTitle">Menu</div>
-            <button class="mobileClose" id="menuClose" aria-label="Close menu">✕</button>
+            <button type="button" class="mobileClose" id="menuClose" aria-label="Close menu">✕</button>
           </div>
           <a class="mobileLink" href="#steps">Participate</a>
           <a class="mobileLink" href="#dashboard">Your Dashboard</a>
@@ -551,7 +564,7 @@
     <h2 style="margin:0 0 6px 0">Presale status</h2>
     <div class="hint">Live totals update from on‑chain data. If your RPC blocks browser requests, use the explorer link.</div>
 
-    <div class="row" style="margin-top:12px">
+    <div class="row statusKpis" style="margin-top:12px">
       <div class="kpi" style="min-height:104px">
         <div class="label">Presale ends in</div>
         <div class="val" id="countdown">—</div>
@@ -652,7 +665,7 @@
         <div class="miniCard">
           <div class="label">Presale rate</div>
           <div class="val mono" id="rateTxt2">—</div>
-          <div class="subtle">$SOS per 1 SOL</div>
+          <div class="subtle">SOS per 1 SOL (before factor)</div>
         </div>
         <div class="miniCard">
           <div class="label">Min / Max</div>
@@ -1267,28 +1280,36 @@
         new MutationObserver(sync2).observe(s, {childList:true, subtree:true, characterData:true});
       }
 
-      // Mobile menu
+      // Mobile menu (iOS-safe)
       const btn = document.getElementById('menuBtn');
       const menu = document.getElementById('mobileMenu');
       const close = document.getElementById('menuClose');
 
+      const isOpen = ()=> !!menu && menu.getAttribute('data-open') === 'true';
+
       const setOpen = (open)=>{
-        if(!menu || !btn) return;
-        if(open && window.innerWidth > 820) return;
-        menu.hidden = !open;
-        menu.setAttribute('aria-hidden', open ? 'false' : 'true');
-        btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+        if(menu){
+          menu.setAttribute('data-open', open ? 'true' : 'false');
+          menu.hidden = !open;
+          menu.setAttribute('aria-hidden', open ? 'false' : 'true');
+        }
+        if(btn){
+          btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+        }
+        document.documentElement.style.overflow = open ? 'hidden' : '';
         document.body.style.overflow = open ? 'hidden' : '';
       };
 
       if(btn && menu && close){
-        btn.addEventListener('click', ()=> setOpen(true));
-        close.addEventListener('click', ()=> setOpen(false));
+        setOpen(false);
+        btn.addEventListener('click', ()=> setOpen(!isOpen()));
+        close.addEventListener('click', (e)=>{ e.preventDefault(); setOpen(false); });
         menu.addEventListener('click', (e)=>{ if(e.target === menu) setOpen(false); });
         menu.querySelectorAll('a').forEach((a)=> a.addEventListener('click', ()=> setOpen(false)));
         window.addEventListener('keydown', (e)=>{ if(e.key === 'Escape') setOpen(false); });
         window.addEventListener('resize', ()=>{ if(window.innerWidth > 820) setOpen(false); });
       }
+
     })();
   </script>
 
