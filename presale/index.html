@@ -283,6 +283,21 @@
     }
     .smalllinks a:hover{background: rgba(255,255,255,.05)}
     .muted{color:var(--muted)}
+  
+    @media (max-width: 520px){
+      .wrap{padding:18px 14px 46px}
+      .hero .grid{padding:16px}
+      .hTitle h1{font-size:32px}
+      .card{padding:14px}
+      .kpi{padding:12px;border-radius:14px}
+      .kpi .val{font-size:20px}
+      .qrimg{width:96px;height:96px;border-radius:14px}
+      .btn{padding:11px 12px;border-radius:14px}
+      .addr{padding:10px 10px}
+      .tabs{gap:8px}
+      .tab{padding:9px 11px}
+    }
+
   </style>
 </head>
 
@@ -391,44 +406,63 @@
                 </div>
               </div>
 
-              <div class="card">
-                <h3>Contribution Check</h3>
+                <h3 style="margin-top:14px">Contribution Check</h3>
                 <div class="hint">Paste your transaction signature to confirm the payment was received by the presale address.</div>
                 <div style="margin-top:10px">
                   <input id="sigInput" placeholder="Transaction signature (e.g. 5N…)" />
                   <div class="btnrow" style="margin-top:10px">
                     <button class="btn" id="checkSig">Verify transaction</button>
-                    <button class="btn secondary" id="refreshNow">Refresh totals</button>
                   </div>
                   <div class="mini" id="sigResult"></div>
                 </div>
 
-                <div style="margin-top:14px" class="card" style="padding:0"></div>
+                <div class="mini">Tip: After a successful check, totals refresh automatically.</div>
 
-                <h3 style="margin-top:14px">Presale Terms</h3>
-                <div class="list">
-                  <div class="li"><div class="dot"></div>
-                    <div><b>Hardcap</b><span><span class="mono" id="hardcapTxt2">—</span> maximum counted SOL.</span></div>
+
+              <div class="card">
+                <h3>Presale Summary</h3>
+
+                <div class="row">
+                  <div class="kpi" style="min-width: 180px;">
+                    <div class="label">Hardcap</div>
+                    <div class="val"><span class="mono" id="hardcapTxt2">—</span></div>
+                    <div class="sub">Maximum counted SOL</div>
+                  </div>
+                  <div class="kpi" style="min-width: 180px;">
+                    <div class="label">Base rate</div>
+                    <div class="val"><span class="mono" id="rateTxt">—</span></div>
+                    <div class="sub">per 1 SOL (before factor)</div>
+                  </div>
+                  <div class="kpi" style="min-width: 180px;">
+                    <div class="label">Min / Max</div>
+                    <div class="val"><span class="mono" id="minmaxTxt">—</span></div>
+                    <div class="sub">Manual settlement rules</div>
+                  </div>
+                </div>
+
+                <div class="list" style="margin-top:12px">
+                  <div class="li"><div class="dot" style="background:rgba(130,90,255,.9)"></div>
+                    <div><b>Claim</b><span>Claim button appears automatically when the presale timer reaches 0. Launch follows ~12–24 hours later.</span></div>
                   </div>
                   <div class="li"><div class="dot" style="background:rgba(72,255,178,.9)"></div>
-                    <div><b>Rate</b><span><span class="mono" id="rateTxt">—</span> per 1 SOL (before pro‑rata factor).</span></div>
+                    <div><b>Transparency</b><span>Proof links for mint, fixed supply and immutable metadata are provided. Locks/vesting proofs will be added after presale.</span></div>
                   </div>
                   <div class="li"><div class="dot" style="background:rgba(255,196,87,.9)"></div>
-                    <div><b>Min / Max per wallet</b><span><span class="mono" id="minmaxTxt">—</span> (enforced by rules; manual settlement).</span></div>
-                  </div>
-                  <div class="li"><div class="dot" style="background:rgba(130,90,255,.9)"></div>
-                    <div><b>Claim</b><span>Claim button appears when the presale countdown hits 0. Launch follows ~12–24 hours later.</span></div>
+                    <div><b>Refresh</b><span>Totals update from on-chain data. If your RPC blocks browser requests, switch RPC in config or use the explorer link.</span></div>
                   </div>
                 </div>
 
                 <div class="btnrow" style="margin-top:14px">
                   <a class="btn" id="claimBtn" href="claim.html" style="display:none">CLAIM $SOS</a>
                   <button class="btn secondary" id="claimDisabled" disabled style="display:none">Claim will appear at end</button>
+                  <button class="btn ghost" id="refreshNow">Refresh totals</button>
                 </div>
 
-                <div class="mini">This dashboard is informational and updates from on-chain data. Always verify details on the explorer.</div>
+                <div class="mini">
+                  This dashboard is informational and updates from on-chain data. Always verify details on the explorer.
+                </div>
               </div>
-            </div>
+
           </div>
 
           <div class="section" id="proofTab" style="display:none">
@@ -653,7 +687,10 @@
     immutableTx: "4ET4b6QmoSthvKf9fau6v3NyZsiNWBdeZ2kNgB5KCmYEqBz6hYjDy2KzGU3r2C4334R3xiZVNAhvYs89o35xGViE",
 
     // RPC
-    rpc: "https://api.mainnet-beta.solana.com",
+    rpcEndpoints: ["https://rpc.ankr.com/solana", "https://api.mainnet-beta.solana.com"],
+
+    // Preferred RPC (auto-selected from rpcEndpoints)
+    rpc: "",
 
     // Explorer base (Solscan)
     explorer: "https://solscan.io",
@@ -663,6 +700,27 @@
   CFG.rateSOSPerSOL = CFG.presaleAllocationSOS / CFG.hardcapSOL; // 400,000 SOS per SOL at hardcap
   CFG.launchMultiplier = 1 + (CFG.launchUpPct / 100);
   const END_TS = Date.parse(CFG.endISO);
+
+
+  // Pick an RPC endpoint that works in browsers (CORS-friendly). Falls back automatically.
+  async function pickRpc(){
+    if (CFG.rpc) return CFG.rpc;
+    const list = Array.isArray(CFG.rpcEndpoints) && CFG.rpcEndpoints.length ? CFG.rpcEndpoints : ["https://api.mainnet-beta.solana.com"];
+    for (const url of list){
+      try{
+        const res = await fetch(url, {
+          method:"POST",
+          headers: {"Content-Type":"application/json"},
+          body: JSON.stringify({jsonrpc:"2.0", id:1, method:"getHealth", params:[]})
+        });
+        await res.json().catch(()=>null);
+        CFG.rpc = url;
+        return url;
+      }catch(e){}
+    }
+    CFG.rpc = list[0];
+    return CFG.rpc;
+  }
 
   // UI helpers
   const $ = (id) => document.getElementById(id);
@@ -703,7 +761,8 @@
   // RPC client
   async function rpc(method, params){
     const body = { jsonrpc:"2.0", id: 1, method, params };
-    const res = await fetch(CFG.rpc, {
+    const rpcUrl = await pickRpc();
+    const res = await fetch(rpcUrl, {
       method:"POST",
       headers: {"Content-Type":"application/json"},
       body: JSON.stringify(body)
@@ -931,7 +990,7 @@
       window.__contrib = s.contrib || {};
       saveCache({ts:Date.now(), ...s});
     }catch(e){
-      setText("barNote", "RPC error. Try again or refresh.");
+      setText("barNote", "Live totals unavailable (RPC blocked or rate-limited). Use “Open Explorer” or try “Refresh totals”.");
     }
   }
 
