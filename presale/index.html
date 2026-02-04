@@ -301,6 +301,37 @@
   
     .kgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
     @media (max-width: 520px){ .kgrid{grid-template-columns:1fr} }
+  
+    /* Step-by-step layout (clean, low clutter) */
+    .steps{display:grid;gap:14px;margin-top:14px}
+    .stepCard{position:relative}
+    .stepTop{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+    .stepNum{width:28px;height:28px;border-radius:10px;display:grid;place-items:center;
+      background:rgba(130,90,255,.18);border:1px solid rgba(130,90,255,.35);color:#d9d1ff;font-weight:800}
+    .stepTitle{font-weight:800;letter-spacing:.2px}
+    .stepDesc{color:var(--muted);font-size:13px;line-height:1.35}
+    .stepGrid{display:grid;grid-template-columns:1.25fr .75fr;gap:12px;align-items:start}
+    .tight{margin-top:8px}
+    .pillRow{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+    .pillMini{padding:7px 10px;border-radius:999px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.10);color:rgba(255,255,255,.86);font-size:12px}
+    .callout{margin-top:10px;padding:10px 12px;border-radius:14px;background:rgba(72,255,178,.08);border:1px solid rgba(72,255,178,.18);color:rgba(230,255,245,.88);font-size:12px}
+    .callout b{color:#eafff5}
+    details.accord{border-radius:18px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.10);padding:12px 14px}
+    details.accord + details.accord{margin-top:10px}
+    details.accord summary{cursor:pointer;list-style:none;display:flex;align-items:center;justify-content:space-between;gap:10px;font-weight:800}
+    details.accord summary::-webkit-details-marker{display:none}
+    .chev{opacity:.75;transition:transform .2s ease}
+    details[open] .chev{transform:rotate(90deg)}
+    .subtle{color:var(--muted);font-size:13px;line-height:1.45;margin-top:8px}
+    .miniGrid{display:grid;grid-template-columns:repeat(2, minmax(0,1fr));gap:10px}
+    .miniCard{padding:12px;border-radius:16px;background:rgba(0,0,0,.22);border:1px solid rgba(255,255,255,.10)}
+    .miniCard .label{color:var(--muted);font-size:12px}
+    .miniCard .val{font-size:18px;font-weight:900;margin-top:6px}
+    @media (max-width: 920px){
+      .stepGrid{grid-template-columns:1fr}
+      .miniGrid{grid-template-columns:1fr}
+    }
+
   </style>
 </head>
 
@@ -344,148 +375,167 @@
             <div class="tab" data-tab="proof">Proof & Transparency</div>
           </div>
 
-          <div class="section" id="participateTab">
-            <div class="row">
+          
+<div class="section" id="participateTab">
+          <div class="card">
+            <h2 style="margin:0 0 6px 0">Participate in 3 steps</h2>
+            <div class="hint">Step-by-step, verifiable, and easy. Always confirm the domain before sending funds.</div>
+
+            <div class="steps">
+
+              <div class="cards stepCard">
+                <div class="stepTop">
+                  <div class="stepNum">1</div>
+                  <div>
+                    <div class="stepTitle">Copy the official presale address</div>
+                    <div class="stepDesc">Send SOL only to the address shown here. This page is the single source of truth.</div>
+                  </div>
+                </div>
+
+                <div class="stepGrid">
+                  <div>
+                    <div class="addr">
+                      <div class="left">
+                        <div class="label">Official Presale Address (SOL)</div>
+                        <div class="value mono" id="presaleAddress">—</div>
+                      </div>
+                      <div class="btnrow">
+                        <button class="btn secondary" id="copyBtn">Copy</button>
+                        <a class="btn ghost" id="openExplorer" target="_blank" rel="noreferrer">Open Explorer</a>
+                      </div>
+                    </div>
+
+                    <div class="pillRow">
+                      <span class="pillMini">SOL only</span>
+                      <span class="pillMini">Fixed supply</span>
+                      <span class="pillMini">Metadata immutable</span>
+                      <span class="pillMini">Launch: 12–24h after presale ends</span>
+                    </div>
+
+                    <div class="callout">
+                      <b>Safety:</b> We will never DM you a different address. Avoid sending from an exchange if you can’t control refunds.
+                    </div>
+                  </div>
+
+                  <div class="qrbox" style="margin-top:0">
+                    <div class="qrimg" style="width:130px;height:130px">
+                      <img id="qrImg" alt="QR code" />
+                    </div>
+                    <div class="subtle" style="margin-top:10px">Scan to copy the address safely.</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="card stepCard">
+                <div class="stepTop">
+                  <div class="stepNum">2</div>
+                  <div>
+                    <div class="stepTitle">Send SOL to join the presale</div>
+                    <div class="stepDesc">Your estimated tokens are calculated from your contribution and the presale rate. If oversubscribed, allocations scale fairly (pro‑rata).</div>
+                  </div>
+                </div>
+
+                <div class="miniGrid">
+                  <div class="miniCard">
+                    <div class="label">Hardcap</div>
+                    <div class="val mono" id="hardcapText">—</div>
+                    <div class="subtle">Maximum counted SOL</div>
+                  </div>
+                  <div class="miniCard">
+                    <div class="label">Presale rate</div>
+                    <div class="val mono" id="rateText">—</div>
+                    <div class="subtle">SOS per 1 SOL (before factor)</div>
+                  </div>
+                  <div class="miniCard">
+                    <div class="label">Min / Max</div>
+                    <div class="val mono" id="minMaxText">—</div>
+                    <div class="subtle">per wallet (rules)</div>
+                  </div>
+                  <div class="miniCard">
+                    <div class="label">Launch target</div>
+                    <div class="val mono">+30%</div>
+                    <div class="subtle">Projection only (not a promise)</div>
+                  </div>
+                </div>
+
+                <div class="callout" style="margin-top:12px;background:rgba(130,90,255,.10);border-color:rgba(130,90,255,.20)">
+                  <b>About “+30% at launch”:</b> the planned launch price is ~30% higher than the presale price. Your dashboard shows the same projection for your purchase (projection only).
+                </div>
+              </div>
+
+              <div class="card stepCard">
+                <div class="stepTop">
+                  <div class="stepNum">3</div>
+                  <div>
+                    <div class="stepTitle">Confirm your transaction (optional)</div>
+                    <div class="stepDesc">Paste your transaction signature to confirm the payment was received by the presale address.</div>
+                  </div>
+                </div>
+
+                <input id="txSig" placeholder="Transaction signature (e.g. 5N…)" />
+                <div class="btnrow tight">
+                  <button class="btn" id="verifyBtn">Verify transaction</button>
+                  <button class="btn ghost" id="refreshTotals">Refresh totals</button>
+                </div>
+                <div class="mini" id="verifyOut"></div>
+
+                <div class="subtle">Tip: Keep your transaction signature. It’s your proof of participation.</div>
+              </div>
+
+            </div>
+
+            <div style="margin-top:14px" class="row">
               <div class="kpi">
                 <div class="label">Presale ends in</div>
-                <div class="val" id="countdown">--:--:--</div>
-                <div class="sub" id="dateLine">14 days • countdown is based on the configured end time</div>
+                <div class="val" id="countdown">—</div>
+                <div class="sub" id="dateLine">—</div>
               </div>
               <div class="kpi">
                 <div class="label">Total Raised (SOL)</div>
                 <div class="val" id="totalRaised">—</div>
-                <div class="sub"><span id="participants">—</span> participants • hardcap <span class="mono" id="hardcapTxt">—</span></div>
+                <div class="sub"><span id="participants">—</span> participants • hardcap <span id="hardcapInline">—</span></div>
               </div>
               <div class="kpi">
-                <div class="label">Allocation Factor</div>
-                <div class="val" id="factor">—</div>
-                <div class="sub">If oversubscribed, allocations scale fairly (pro‑rata)</div>
+                <div class="label">Allocation factor</div>
+                <div class="val" id="allocationFactor">—</div>
+                <div class="sub">Only affects if oversubscribed</div>
               </div>
             </div>
 
-            <div style="margin-top:12px" class="progress" aria-label="Hardcap progress">
-              <div class="bar" id="bar"></div>
+            <div class="bar">
+              <div class="barFill" id="barFill"></div>
             </div>
-            <div class="mini" id="barNote">Loading on-chain totals…</div>
+            <div class="barNote" id="barNote">Loading live totals…</div>
 
-            <div style="margin-top:14px" class="split">
-              <!-- LEFT: Official address + instructions + safety + contribution check -->
-              <div class="card">
-                <h3>Official Presale Address (SOL)</h3>
-                <div class="addr">
-                  <div class="left">
-                    <div class="label">Send SOL only to this address</div>
-                    <div class="value mono" id="presaleAddr">—</div>
-                  </div>
-                  <div class="btnrow">
-                    <button class="btn secondary" id="copyAddr">Copy</button>
-                    <a class="btn ghost" id="openSolscan" target="_blank" rel="noreferrer">Open Explorer</a>
-                  </div>
-                </div>
+<div style="display:none">
+  <span id="presaleAddr"></span>
+  <button id="copyAddr"></button>
+  <a id="openSolscan"></a>
+  <img id="qr" alt="" />
+  <input id="sigInput" />
+  <button id="checkSig"></button>
+  <div id="sigResult"></div>
+  <button id="refreshNow"></button>
+  <span id="hardcapTxt2"></span>
+  <span id="rateTxt"></span>
+  <span id="minmaxTxt"></span>
+  <span id="hardcapTxt"></span>
+  <span id="participantsTxt"></span>
+  <span id="raisedTxt"></span>
+  <span id="factorTxt"></span>
+  <span id="endTxt"></span>
+</div>
 
-                <div class="qrbox" style="margin-top:12px">
-                  <div class="qrimg">
-                    <img id="qr" alt="QR code" />
-                  </div>
-                  <div style="min-width:0">
-                    <div class="hint">
-                      <b>How to participate</b><br/>
-                      1) Open your Solana wallet (Phantom / Solflare)<br/>
-                      2) Send SOL to the official presale address<br/>
-                      3) Paste your transaction signature below to confirm detection
-                    </div>
-                    <div class="smalllinks">
-                      <a href="#dashboard">Open your dashboard</a>
-                      <a href="#faq">Read FAQ</a>
-                      <a href="#proofs">View proofs</a>
-                    </div>
-                  </div>
-                </div>
 
-                <div style="margin-top:12px" class="warnbox">
-                  <b>Safety rules</b><br/>
-                  • Send <b>SOL only</b>. Do not send from an exchange if you cannot control refunds.<br/>
-                  • We will never DM you a “new address”. This page is the only official address source.<br/>
-                  • If you sent SOL, keep your transaction signature. It is your proof of participation.
-                </div>
-
-                <h3 style="margin-top:14px">Contribution Check</h3>
-                <div class="hint">Paste your transaction signature to confirm the payment was received by the presale address.</div>
-                <div style="margin-top:10px">
-                  <input id="sigInput" placeholder="Transaction signature (e.g. 5N…)" />
-                  <div class="btnrow" style="margin-top:10px">
-                    <button class="btn" id="checkSig">Verify transaction</button>
-                  </div>
-                  <div class="mini" id="sigResult"></div>
-                </div>
-
-                <div class="mini">Tip: After a successful check, totals refresh automatically.</div>
-              </div>
-
-              <!-- RIGHT: summary + claim + refresh -->
-              <div class="card">
-                <h3>Presale Summary</h3>
-
-                <div class="kgrid">
-                  <div class="kpi">
-                    <div class="label">Hardcap</div>
-                    <div class="val"><span class="mono" id="hardcapTxt2">—</span></div>
-                    <div class="sub">Maximum counted SOL</div>
-                  </div>
-
-                  <div class="kpi">
-                    <div class="label">Base rate</div>
-                    <div class="val"><span class="mono" id="rateTxt">—</span></div>
-                    <div class="sub">per 1 SOL (before factor)</div>
-                  </div>
-
-                  <div class="kpi">
-                    <div class="label">Min / Max</div>
-                    <div class="val"><span class="mono" id="minmaxTxt">—</span></div>
-                    <div class="sub">Manual settlement rules</div>
-                  </div>
-
-                  <div class="kpi">
-                    <div class="label">Launch target</div>
-                    <div class="val"><span class="mono" id="launchTargetTxt">—</span></div>
-                    <div class="sub">Projection only (+% vs presale)</div>
-                  </div>
-                </div>
-
-                <div class="list" style="margin-top:12px">
-                  <div class="li">
-                    <div class="dot" style="background:rgba(130,90,255,.9)"></div>
-                    <div><b>Claim</b><span>Claim button appears automatically when the presale timer hits 0.</span></div>
-                  </div>
-                  <div class="li">
-                    <div class="dot" style="background:rgba(72,255,178,.9)"></div>
-                    <div><b>Launch</b><span>Target launch is ~12–24 hours after presale ends.</span></div>
-                  </div>
-                  <div class="li">
-                    <div class="dot" style="background:rgba(255,196,87,.9)"></div>
-                    <div><b>Proofs</b><span>Locks/vesting proofs will be added after presale for maximum clarity.</span></div>
-                  </div>
-                </div>
-
-                <div class="btnrow" style="margin-top:14px">
-                  <a class="btn" id="claimBtn" href="claim.html" style="display:none">CLAIM $SOS</a>
-                  <button class="btn secondary" id="claimDisabled" disabled style="display:none">Claim will appear at end</button>
-                  <button class="btn ghost" id="refreshNow">Refresh totals</button>
-                </div>
-
-                <div class="mini">Always verify details on the explorer. This dashboard is informational and updates from on-chain data.</div>
-              </div>
-            </div>
-
-          </div>
-
+            <div class="btnrow" style="margin-top:12px">
+              <a class="btn secondary" href="#dashboard">Open your dashboard</a>
+              <a class="btn ghost" href="#allocation">Read details</a>
             </div>
           </div>
-
         </div>
 
-        <div class="rightcol">
-          <div class="card" id="dashboard">
+
+        <div class="card" id="dashboard">
             <h3>Your Dashboard</h3>
             <div class="hint">Enter your wallet address to see your contribution, estimated tokens, and launch projection.</div>
             <div style="margin-top:10px">
@@ -519,8 +569,15 @@
             </div>
           </div>
 
-          <div class="card" id="allocation">
-            <h3>Allocation & Tokenomics</h3>
+          
+<div class="card" id="allocation">
+            <h3>Details</h3>
+            <div class="hint">Less clutter. Everything optional is collapsed below.</div>
+
+            <details class="accord" open>
+              <summary>Allocation & Tokenomics <span class="chev">›</span></summary>
+              <div class="subtle">Locks/vesting proofs will be added after presale.</div>
+              <div style="margin-top:10px"><h3>Allocation & Tokenomics</h3>
 
             <table class="tbl">
               <thead>
@@ -534,11 +591,13 @@
             <div class="goodbox" style="margin-top:12px">
               <b>Presale allocation</b><br/>
               Presale sells <span class="mono" id="presaleAlloc">—</span> SOS. With a hardcap of <span class="mono" id="hardcapTxt3">—</span> SOL, the base rate is <span class="mono" id="rateTxt2">—</span> per 1 SOL.
-            </div>
-          </div>
+            </div></div>
+            </details>
 
-          <div class="card" id="proofs">
-            <h3>Quick Proof Links</h3>
+            <div id="proofs"></div>
+            <details class="accord">
+              <summary>Proof & Transparency <span class="chev">›</span></summary>
+              <div style="margin-top:10px"><h3>Quick Proof Links</h3>
             <div class="hint">Always verify on the explorer.</div>
             <div class="smalllinks" style="margin-top:10px">
               <a id="solscanPresale" target="_blank" rel="noreferrer">Presale wallet</a>
@@ -546,11 +605,13 @@
               <a id="solscanMeta" target="_blank" rel="noreferrer">Metadata tx</a>
               <a id="solscanDisable" target="_blank" rel="noreferrer">Mint disabled tx</a>
               <a id="solscanImm" target="_blank" rel="noreferrer">Immutable tx</a>
-            </div>
-          </div>
+            </div></div>
+            </details>
 
-          <div class="card" id="faq">
-            <h3>FAQ</h3>
+            <div id="faq"></div>
+            <details class="accord">
+              <summary>FAQ <span class="chev">›</span></summary>
+              <div style="margin-top:10px"><h3>FAQ</h3>
             <div class="list">
               <div class="li">
                 <div class="dot"></div>
@@ -1007,6 +1068,54 @@
   // Init
   startCountdown();
   refreshAll(false);
+<script>
+
+  // UI bridge: keep old logic working while presenting a cleaner step-by-step UI
+  function bridge(){
+    const map = [
+      ["presaleAddress","presaleAddr"],
+      ["copyBtn","copyAddr"],
+      ["openExplorer","openSolscan"],
+      ["qrImg","qr"],
+      ["txSig","sigInput"],
+      ["verifyBtn","checkSig"],
+      ["verifyOut","sigResult"],
+      ["refreshTotals","refreshNow"],
+      ["hardcapText","hardcapTxt2"],
+      ["rateText","rateTxt"],
+      ["minMaxText","minmaxTxt"],
+      ["hardcapInline","hardcapTxt"],
+      ["participants","participantsTxt"],
+      ["totalRaised","raisedTxt"],
+      ["allocationFactor","factorTxt"]
+    ];
+    for(const [newId, oldId] of map){
+      const n = document.getElementById(newId);
+      const o = document.getElementById(oldId);
+      if(n && o){
+        // Mirror text updates both ways (best-effort)
+        const sync = () => { o.textContent = n.textContent || ""; };
+        const syncBack = () => { n.textContent = o.textContent || n.textContent || ""; };
+        // initial
+        syncBack(); sync();
+        // observer for changes on old id (logic writes here)
+        const mo = new MutationObserver(syncBack);
+        mo.observe(o, {childList:true, subtree:true, characterData:true});
+        // observer for changes on new id (rare)
+        const mn = new MutationObserver(sync);
+        mn.observe(n, {childList:true, subtree:true, characterData:true});
+      }
+    }
+  }
+
+bridge();
+</script>
 </script>
 </body>
 </html>
+</div>
+            </details>
+          </div>
+
+
+          
