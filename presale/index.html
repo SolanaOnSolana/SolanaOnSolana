@@ -182,7 +182,7 @@
     }
     .addr .left{display:flex;flex-direction:column;gap:4px;min-width:0}
     .addr .label{font-size:12px;color:var(--muted)}
-    .addr .value{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .addr .value{display:block;max-width:100%;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .progress{
       height:10px;border-radius:999px;background: rgba(255,255,255,.07);
       border:1px solid rgba(255,255,255,.10);
@@ -579,6 +579,11 @@
   .field{width:100%}
   .input, input[type="text"], input[type="search"]{width:100%}
   .mono, .addrval{word-break:break-all; overflow-wrap:anywhere}
+
+  /* Steps: keep address inside screen (no overflow) */
+  #steps .addr, #steps .stepCard, #steps .stepGrid{max-width:100% !important}
+  #steps .addr .left{min-width:0 !important}
+  #steps .addr .value{width:100% !important; max-width:100% !important; overflow:hidden !important; text-overflow:ellipsis !important; white-space:nowrap !important}
 
   /* Tokenomics: one clean card per bucket (no 3 separate blocks) */
   .tbl{border-spacing:0 !important}
@@ -1253,8 +1258,10 @@
 
   async function refreshAll(force=false){
     // Fill static UI
-    setText("presaleAddr", CFG.presaleAddress);
-    setText("presaleAddrCell2", CFG.presaleAddress);
+    const mobileUI = (window.matchMedia && window.matchMedia("(max-width: 820px)").matches);
+    const displayPresaleAddr = mobileUI ? shortAddr(CFG.presaleAddress) : CFG.presaleAddress;
+    setText("presaleAddr", displayPresaleAddr);
+    setText("presaleAddrCell2", displayPresaleAddr);
     setHref("openSolscan", solscanUrl(`/account/${CFG.presaleAddress}`));
     setHref("presaleLink2", solscanUrl(`/account/${CFG.presaleAddress}`));
     setHref("solscanPresale", solscanUrl(`/account/${CFG.presaleAddress}`));
