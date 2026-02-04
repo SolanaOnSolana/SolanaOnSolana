@@ -730,13 +730,7 @@
       <div class="bar" id="bar"></div>
     </div>
     <div class="barNote" id="barNote">Live totals update from on-chain data.</div>
-
-    <div class="btnrow" style="margin-top:12px">
-      <button class="btn secondary" id="refreshNow2" onclick="document.getElementById('refreshNow').click()">Refresh totals</button>
-      <a class="btn ghost" id="openSolscan2" href="#" target="_blank" rel="noreferrer">Open Explorer</a>
-    </div>
-
-    <div class="mini" style="margin-top:10px">Always verify on the explorer.</div>
+<div class="mini" style="margin-top:10px">Always verify on the explorer.</div>
   </div>
 </div>
       </div>
@@ -766,8 +760,7 @@
             </div>
             <div class="btnrow">
               <button class="btn secondary" id="copyAddr">Copy</button>
-              <a class="btn ghost" id="openSolscan" target="_blank" rel="noreferrer">Open Explorer</a>
-            </div>
+</div>
           </div>
 
           <div class="callout" style="margin-top:12px">
@@ -833,16 +826,13 @@
       <input id="sigInput" placeholder="Transaction signature (e.g. 5N…)" />
       <div class="btnrow tight">
         <button class="btn" id="checkSig">Verify transaction</button>
-        <button class="btn ghost" id="refreshNow">Refresh totals</button>
-      </div>
+</div>
       <div class="mini" id="sigResult"></div>
 
       <div class="subtle">Tip: Keep your transaction signature. It’s your proof of participation.</div>
     </div>
 
   </div>
-
-  <div class="mini" style="margin-top:10px" id="statusPill">PRESALE LIVE</div>
 </div>
 
     <div class="card" id="dashboard">
@@ -1220,18 +1210,26 @@
     const now = Date.now();
     const ended = now >= END_TS;
     const pill = $("statusPill");
-    if (!ended){
+    const claimBtn = $("claimBtn");
+    const claimDisabled = $("claimDisabled");
+    if (!pill) {
+      // status pill removed from UI
+      if (claimBtn) claimBtn.style.display = "none";
+      if (claimDisabled) claimDisabled.style.display = "none";
+      return;
+    }
+if (!ended){
       pill.textContent = "PRESALE LIVE";
       pill.style.borderColor = "rgba(72,255,178,.22)";
       pill.style.color = "rgba(255,255,255,.86)";
-      $("claimBtn").style.display = "none";
-      $("claimDisabled").style.display = "";
+      if (claimBtn) claimBtn.style.display = "none";
+      if (claimDisabled) claimDisabled.style.display = "";
     } else {
       pill.textContent = "PRESALE ENDED";
       pill.style.borderColor = "rgba(255,196,87,.25)";
       pill.style.color = "rgba(255,255,255,.90)";
-      $("claimDisabled").style.display = "none";
-      $("claimBtn").style.display = "";
+      if (claimDisabled) claimDisabled.style.display = "none";
+      if (claimBtn) claimBtn.style.display = "";
     }
   }
 
