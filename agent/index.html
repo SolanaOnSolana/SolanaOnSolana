@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Termin- & Diagnose-Agent • Live Demo</title>
-  <meta name="description" content="Kategorie-spezifische Demo eines Termin- & Diagnose-Agenten: fragt richtig nach, triagiert Dringlichkeit und routed sauber – ohne externe Abhängigkeiten." />
+  <title>Sanitär-Notdienst Assistent • Demo</title>
+  <meta name="description" content="Hochwertiger Sanitär-Notdienst Assistent: Triage, gezielte Rückfragen, sichere Sofort-Hinweise, saubere Übergabe (Zusammenfassung) – standalone HTML." />
   <meta name="theme-color" content="#0b3b8a" />
   <style>
     :root{
@@ -17,6 +17,7 @@
       --accent2:#1e60d4;
       --ok:#0a7a2e;
       --warn:#b45309;
+      --danger:#b91c1c;
       --shadow:0 18px 50px rgba(2, 10, 30, .12);
       --shadow2:0 12px 30px rgba(2, 10, 30, .10);
       --radius:18px;
@@ -37,7 +38,7 @@
     a{color:var(--accent2); text-decoration:none}
     a:hover{text-decoration:underline}
 
-    .wrap{max-width:1100px; margin:0 auto; padding:40px 18px 110px;}
+    .wrap{max-width:1120px; margin:0 auto; padding:40px 18px 120px;}
     .top{
       display:flex; align-items:center; justify-content:space-between; gap:14px;
       padding:14px 16px;
@@ -55,7 +56,7 @@
       flex:0 0 auto;
     }
     .brand b{display:block; font-size:14px; letter-spacing:.2px}
-    .brand small{display:block; font-size:12px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:72ch}
+    .brand small{display:block; font-size:12px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:76ch}
     .status{
       display:inline-flex; align-items:center; gap:10px;
       padding:10px 12px;
@@ -71,7 +72,7 @@
     .hero{
       margin-top:18px;
       display:grid;
-      grid-template-columns: 1.15fr .85fr;
+      grid-template-columns: 1.2fr .8fr;
       gap:16px;
       align-items:stretch;
     }
@@ -87,7 +88,7 @@
     .pad{padding:24px 24px 20px;}
     .h1{margin:0 0 10px; font-size:40px; line-height:1.06; letter-spacing:-.7px;}
     @media (max-width: 540px){ .h1{font-size:32px;} }
-    .sub{margin:0 0 16px; color:var(--muted); font-size:15px; line-height:1.55; max-width:74ch;}
+    .sub{margin:0 0 16px; color:var(--muted); font-size:15px; line-height:1.55; max-width:80ch;}
     .actions{display:flex; flex-wrap:wrap; gap:10px; margin-top:14px;}
     .btn{
       appearance:none; border:0; cursor:pointer; user-select:none;
@@ -146,6 +147,20 @@
       line-height:1.5;
       background:rgba(245,247,255,.65);
     }
+    .badge{
+      display:inline-flex; align-items:center; gap:8px;
+      padding:8px 10px;
+      border-radius:999px;
+      border:1px solid rgba(15,23,42,.10);
+      background:rgba(255,255,255,.7);
+      color:var(--muted);
+      font-size:12px;
+      margin-top:10px;
+    }
+    .badge i{
+      width:8px; height:8px; border-radius:999px; display:inline-block; background:var(--warn);
+      box-shadow:0 0 0 6px rgba(180,83,9,.10);
+    }
 
     /* Widget */
     .fab{
@@ -168,10 +183,10 @@
       position:fixed;
       right:18px;
       bottom:18px;
-      width:392px;
+      width:398px;
       max-width:92vw;
-      height:600px;
-      max-height:78vh;
+      height:640px;
+      max-height:80vh;
       z-index:40;
       border-radius:20px;
       overflow:hidden;
@@ -211,7 +226,7 @@
 
     .wbody{
       padding:14px;
-      height: calc(100% - 136px);
+      height: calc(100% - 156px);
       overflow:auto;
       background:
         radial-gradient(900px 380px at 20% -20%, rgba(30,96,212,.07), transparent 55%),
@@ -249,6 +264,22 @@
       font-family:var(--mono);
     }
     .bubble.me .meta{color:rgba(255,255,255,.75)}
+
+    .callout{
+      border:1px solid rgba(180,83,9,.25);
+      background:rgba(180,83,9,.08);
+      color:#7c2d12;
+      border-radius:16px;
+      padding:10px 12px;
+      font-size:12.8px;
+      line-height:1.45;
+    }
+    .danger{
+      border:1px solid rgba(185,28,28,.25);
+      background:rgba(185,28,28,.08);
+      color:#7f1d1d;
+    }
+
     .wfoot{
       border-top:1px solid rgba(15,23,42,.10);
       padding:10px 10px;
@@ -281,6 +312,7 @@
       color:#fff;
       border:0;
     }
+
     .helper{margin-top:10px; display:flex; gap:8px; flex-wrap:wrap;}
     .chip{
       font-size:12px;
@@ -298,6 +330,24 @@
       color:var(--accent);
       font-weight:900;
     }
+
+    .uploader{
+      margin-top:10px;
+      padding:10px 10px;
+      border-radius:16px;
+      border:1px dashed rgba(15,23,42,.18);
+      background:rgba(15,23,42,.02);
+      display:none;
+    }
+    .uploader label{display:block; font-size:12px; color:var(--muted); margin-bottom:8px}
+    .uploader input{width:100%}
+    .files{
+      margin-top:8px;
+      font-size:12px;
+      color:var(--muted);
+      line-height:1.4;
+    }
+
     .toast{
       position:fixed;
       left:50%;
@@ -326,20 +376,21 @@
       <div class="brand">
         <div class="logo" aria-hidden="true"></div>
         <div style="min-width:0">
-          <b id="topTitle">Termin- & Diagnose-Agent (Demo)</b>
-          <small id="topSub">Kategorie-spezifische Rückfragen: der Agent “diagnostiziert” zuerst, bevor er Daten abfragt.</small>
+          <b id="topTitle">Sanitär-Notdienst Assistent (Demo)</b>
+          <small id="topSub">Nimmt Anfragen an, triagiert Notfälle und sammelt alle Infos für den sofortigen Einsatz.</small>
         </div>
       </div>
-      <div class="status"><span class="dot" aria-hidden="true"></span><span id="statusPill">Live Demo • KFZ Werkstatt</span></div>
+      <div class="status"><span class="dot" aria-hidden="true"></span><span id="statusPill">Live Demo • Sanitär / Rohrreinigung</span></div>
     </div>
 
     <div class="hero">
       <div class="card">
         <div class="pad">
-          <h1 class="h1">Erst Diagnose, dann Daten.<br/>So zahlt man gern dafür.</h1>
+          <h1 class="h1">24/7 Auftragsannahme,<br/>die wirklich qualifiziert.</h1>
           <p class="sub">
-            Diese Demo ist <b>kategorie-spezifisch</b>. Wenn jemand nur sagt „Ich habe ein Problem“, fragt der Agent
-            sinnvoll nach (Symptome → Dringlichkeit → Kontext → nächster Schritt). Name/Telefon kommen <b>erst später</b>.
+            Wenn jemand nur sagt „Ich habe ein Problem“, fragt dieser Assistent nicht stumpf nach Name/Telefon,
+            sondern erst nach den entscheidenden Punkten: <b>Wasser abstellen?</b> <b>Schweregrad?</b> <b>Ort/Zugang?</b>
+            Danach gibt es eine saubere Einsatz-Zusammenfassung – fertig für Rückruf oder Notdienst.
           </p>
 
           <div class="actions">
@@ -351,49 +402,64 @@
               Demo starten
             </button>
 
+            <button class="btn ghost" id="copyPitchBtn" type="button">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M9 9h10v10H9V9Z" stroke="currentColor" stroke-width="2"/>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" stroke="currentColor" stroke-width="2"/>
+              </svg>
+              Pitch kopieren
+            </button>
+
             <button class="btn ghost" id="openConfigBtn" type="button">
               <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" stroke="currentColor" stroke-width="2"/>
                 <path d="M19.4 15a7.8 7.8 0 0 0 .1-2l2-1.5-2-3.5-2.4 1a8.3 8.3 0 0 0-1.7-1L15 2h-6l-.4 2.9a8.3 8.3 0 0 0-1.7 1L4.5 5l-2 3.5 2 1.5a7.8 7.8 0 0 0 .1 2l-2 1.5 2 3.5 2.4-1a8.3 8.3 0 0 0 1.7 1L9 22h6l.4-2.9a8.3 8.3 0 0 0 1.7-1l2.4 1 2-3.5-2-1.5Z" stroke="currentColor" stroke-width="2"/>
               </svg>
-              Kategorie wählen
+              Konfiguration
             </button>
           </div>
 
           <div class="grid" aria-label="Highlights">
-            <div class="feat"><b>Problem zuerst</b><span>Der Agent fragt erst nach Symptomen/Grund – nicht nach Namen.</span></div>
-            <div class="feat"><b>Triage & Sicherheit</b><span>Notfall-Hinweise + “Fahrbereit?” / “Wasser abgestellt?”</span></div>
-            <div class="feat"><b>Saubere Übergabe</b><span>Zusammenfassung + Copy + E-Mail ans Team.</span></div>
+            <div class="feat"><b>Triage (Notfall vs. Termin)</b><span>Wasser läuft? Stromnähe? Hauptwasserhahn? – priorisiert richtig.</span></div>
+            <div class="feat"><b>Einsatz-Relevante Fragen</b><span>Ort, Zugang, Problemtyp, Schweregrad, seit wann, schon probiert.</span></div>
+            <div class="feat"><b>Übergabe in 1 Klick</b><span>Zusammenfassung kopieren oder als E-Mail ans Team senden.</span></div>
           </div>
+
+          <div class="badge"><i aria-hidden="true"></i><span><b>Datenschutz:</b> Demo speichert nichts auf einem Server. Übergabe erfolgt per Copy/E-Mail über dein Gerät.</span></div>
         </div>
+
         <div class="note">
-          Du kannst in der Konfiguration die Kategorie wechseln (KFZ / Sanitär / Zahnarzt / Allgemein).
+          Verkaufssatz: <b>„24/7 Notdienst-Assistent – nimmt Anfragen an, triagiert Notfälle und liefert Einsatzinfos, damit ihr sofort rausfahren könnt.“</b>
         </div>
       </div>
 
       <div class="card side">
         <div class="pad">
           <div class="mini">
-            <h3>Aktive Kategorie</h3>
-            <p id="catExplainer">KFZ Werkstatt: Symptome → Fahrbarkeit → Warnlampen → Fahrzeug → Ort → Termin → Kontakt.</p>
+            <h3>Für wen du das vermarktest</h3>
+            <p>
+              Sanitärbetriebe, Rohrreinigung, Hausmeisterservice – überall, wo verpasste Anfragen direkt Geld kosten.
+              Der Nutzen ist messbar: <b>mehr angenommene Einsätze</b> + <b>weniger Rückfragen</b> + <b>klarere Priorisierung</b>.
+            </p>
             <div class="kv">
-              <div class="k"><small>Kategorie</small><strong id="demoCategory">KFZ Werkstatt</strong></div>
-              <div class="k"><small>1. Frage</small><strong id="demoFirst">Was genau ist das Problem?</strong></div>
-              <div class="k"><small>Kontakt ab</small><strong>Frage 6–7</strong></div>
-              <div class="k"><small>Output</small><strong>Zusammenfassung</strong></div>
+              <div class="k"><small>Produkt</small><strong>Notdienst-Assistent</strong></div>
+              <div class="k"><small>Einsatz</small><strong>Inbound / Auftragsannahme</strong></div>
+              <div class="k"><small>Output</small><strong>Einsatz-Zusammenfassung</strong></div>
+              <div class="k"><small>Demo-Modus</small><strong>Standalone HTML</strong></div>
             </div>
           </div>
 
           <div class="mini" style="margin-top:12px">
-            <h3>Warum das nicht “billig” ist</h3>
-            <p>
-              Kunden zahlen, weil der Agent <b>richtig qualifiziert</b>: weniger Rückfragen, weniger Ping-Pong,
-              und am Ende kann das Team sofort handeln.
+            <h3>Pitch (copy/paste)</h3>
+            <p id="pitchText">
+              “Wir setzen euch einen 24/7 Notdienst-Assistenten auf, der Anfragen sofort annimmt, Notfälle triagiert
+              (Wasser läuft / Hauptwasserhahn / Stromnähe) und alle Einsatzinfos sammelt. Am Ende bekommt ihr eine saubere
+              Zusammenfassung für Rückruf oder Einsatz – ohne verpasste Leads.”
             </p>
           </div>
         </div>
         <div class="note">
-          Diese Seite ist komplett standalone (nur HTML). Kein Server, keine Libraries.
+          Du kannst in der Konfiguration Firmenname, Einsatzgebiet, Hotline und Terminlink eintragen.
         </div>
       </div>
     </div>
@@ -410,13 +476,13 @@
   </button>
 
   <!-- Widget -->
-  <div class="widget" id="widget" role="dialog" aria-modal="true" aria-label="Termin- & Diagnose-Agent">
+  <div class="widget" id="widget" role="dialog" aria-modal="true" aria-label="Sanitär-Notdienst Assistent">
     <div class="whead">
       <div class="wbrand">
         <div class="wlogo" aria-hidden="true"></div>
         <div class="t">
-          <b id="brandName">Service-Agent</b>
-          <small id="brandTag">Diagnose → Routing → Übergabe</small>
+          <b id="brandName">Sanitär-Service</b>
+          <small id="brandTag">Notfall-Triage • Einsatzinfos • Übergabe</small>
         </div>
       </div>
       <div class="wbtns">
@@ -446,6 +512,12 @@
         <button class="send primary" id="sendBtn" type="button">Senden</button>
       </div>
       <div class="helper" id="chips"></div>
+
+      <div class="uploader" id="uploader">
+        <label for="file">Optional: Foto(s) hinzufügen (z.B. Leck / Rohr / Anschluss)</label>
+        <input id="file" type="file" multiple accept="image/*" />
+        <div class="files" id="files"></div>
+      </div>
     </div>
   </div>
 
@@ -453,267 +525,23 @@
 
 <script>
 /* ===============================
-   CATEGORY TEMPLATES (No AI API)
+   CONFIG (anpassbar per Button)
    =============================== */
-const TEMPLATES = {
-  kfz: {
-    label: "KFZ Werkstatt",
-    explainer: "KFZ Werkstatt: Symptome → Fahrbarkeit → Warnlampen → Fahrzeug → Ort → Termin → Kontakt.",
-    brandName: "KFZ-Service",
-    brandTag: "Diagnose • Termin • Rückruf",
-    first: "Was genau ist das Problem?",
-    chips: [
-      {label:"🚗 Motor/Warnlampe", value:"Motorleuchte / Warnlampe"},
-      {label:"🔧 Geräusch/Vibration", value:"Geräusch / Vibration"},
-      {label:"🛑 Bremse", value:"Bremsen fühlen sich komisch an"},
-      {label:"🌡️ Überhitzung", value:"Temperatur steigt / überhitzt"},
-      {label:"⚡ Startet nicht", value:"Auto startet nicht"},
-      {label:"📅 Termin", value:"Ich möchte einen Termin buchen", primary:true},
-      {label:"⚠️ Dringend", value:"Es ist dringend / Notfall"},
-    ],
-    flow: (problemText, urgency) => {
-      const urgent = urgency || /dringend|notfall|sofort|akut|überhit/.test((problemText||"").toLowerCase());
-      const q = [];
-      q.push({key:"problem", q:"Okay – beschreib bitte kurz: Was genau ist das Problem / welches Symptom tritt auf?", chips:[]});
-      q.push({key:"drive", q:"Ist das Auto aktuell fahrbereit? (ja / nein / unsicher)", chips:[
-        {label:"Ja", value:"Ja", primary:true},
-        {label:"Nein", value:"Nein"},
-        {label:"Unsicher", value:"Unsicher"}
-      ]});
-      q.push({key:"warnings", q:"Leuchten Warnlampen? (Motor, Öl, Batterie, Temperatur, ABS …)", chips:[
-        {label:"Motorleuchte", value:"Motorleuchte"},
-        {label:"Öl", value:"Öl"},
-        {label:"Temperatur", value:"Temperatur", primary:true},
-        {label:"Keine", value:"Keine"}
-      ]});
-      q.push({key:"when", q:"Seit wann ist es so? (seit heute / seit Tagen / sporadisch)", chips:[
-        {label:"Heute", value:"Heute", primary:true},
-        {label:"Seit Tagen", value:"Seit Tagen"},
-        {label:"Sporadisch", value:"Sporadisch"}
-      ]});
-      q.push({key:"vehicle", q:"Fahrzeugdaten: Marke/Modell + Baujahr (wenn bekannt)", chips:[
-        {label:"VW Golf", value:"VW Golf"},
-        {label:"BMW 3er", value:"BMW 3er"},
-        {label:"Mercedes C", value:"Mercedes C"}
-      ]});
-      q.push({key:"location", q:"Wo befindet sich das Fahrzeug? (PLZ/Ort)", chips:[
-        {label:"10115", value:"10115"}, {label:"20095", value:"20095"}, {label:"80331", value:"80331"}
-      ]});
-      q.push({key:"time", q: urgent ? "Wann können wir dich erreichen? (jetzt / in 30 Min / später)" : "Wann passt es dir am besten? (z.B. morgen Vormittag)", chips: urgent ? [
-        {label:"Jetzt", value:"Jetzt", primary:true},
-        {label:"In 30 Min", value:"In 30 Min"},
-        {label:"Später", value:"Später"}
-      ] : [
-        {label:"Morgen", value:"Morgen", primary:true},
-        {label:"Diese Woche", value:"Diese Woche"},
-        {label:"Flexibel", value:"Flexibel"}
-      ]});
-      // contact late
-      q.push({key:"phone", q: urgent ? "Telefonnummer für sofortigen Rückruf?" : "Telefonnummer für Bestätigung/Rückfragen?", validate:"phone"});
-      q.push({key:"name", q:"Wie heißt du? (für die Zuordnung)", validate:"required"});
-      q.push({key:"email", q:"E-Mail (optional) für Bestätigung/Zusammenfassung", validate:"emailOptional"});
-      return {q, urgent};
-    },
-    safety: (answers, urgent) => {
-      const t = (answers.problem||"").toLowerCase() + " " + (answers.warnings||"").toLowerCase();
-      const overheating = /überhitz|temperatur/.test(t);
-      const oil = /öl/.test(t);
-      const brake = /brem/.test(t);
-      const drive = (answers.drive||"").toLowerCase();
-      const lines = [];
-      if(overheating){
-        lines.push("Hinweis: Bei Überhitzung bitte nicht weiterfahren. Motor abkühlen lassen und ggf. Abschleppdienst nutzen.");
-      }
-      if(oil){
-        lines.push("Hinweis: Bei Öldruck/Öl-Warnung bitte Motor sofort aus – Weiterfahrt kann Motorschaden verursachen.");
-      }
-      if(brake){
-        lines.push("Hinweis: Bei Bremsproblemen bitte nicht weiterfahren, wenn unsicher – wir priorisieren den Rückruf.");
-      }
-      if(drive.includes("nein") || drive.includes("unsicher")){
-        lines.push("Wenn du unsicher bist: lieber stehen lassen. Wir melden uns mit dem nächsten Schritt.");
-      }
-      return lines;
-    }
-  },
-
-  sanitaer: {
-    label: "Sanitär / Notdienst",
-    explainer: "Sanitär: Problemtyp → Wasser abstellen? → Schweregrad → Ort → Fotos? → Termin/Notdienst → Kontakt.",
-    brandName: "Sanitär-Service",
-    brandTag: "Diagnose • Notdienst • Termin",
-    first: "Was ist passiert?",
-    chips: [
-      {label:"💧 Wasserleck", value:"Ich habe ein Wasserleck"},
-      {label:"🚽 Verstopfung", value:"Abfluss/Toilette verstopft"},
-      {label:"🔥 Kein warmes Wasser", value:"Kein warmes Wasser / Heizung"},
-      {label:"🚿 Niedriger Druck", value:"Wasserdruck sehr niedrig"},
-      {label:"📅 Termin", value:"Ich möchte einen Termin", primary:true},
-      {label:"⚠️ Notfall", value:"Notfall (Wasser läuft)"},
-    ],
-    flow: (problemText, urgency) => {
-      const urgent = urgency || /notfall|sofort|wasser läuft|überschwemm/.test((problemText||"").toLowerCase());
-      const q = [];
-      q.push({key:"problem", q:"Okay – was genau ist das Problem? (z.B. Leck unter Spüle, Rohr tropft, WC verstopft)", chips:[]});
-      q.push({key:"water", q:"Kannst du das Wasser abstellen? (ja / nein / weiß nicht)", chips:[
-        {label:"Ja", value:"Ja", primary:true},
-        {label:"Nein", value:"Nein"},
-        {label:"Weiß nicht", value:"Weiß nicht"}
-      ]});
-      q.push({key:"severity", q:"Wie schlimm ist es? (tropft / läuft / läuft stark)", chips:[
-        {label:"Tropft", value:"Tropft", primary:true},
-        {label:"Läuft", value:"Läuft"},
-        {label:"Stark", value:"Läuft stark"}
-      ]});
-      q.push({key:"location", q:"Adresse/PLZ, wo wir hin müssen?", chips:[
-        {label:"10115", value:"10115"}, {label:"20095", value:"20095"}, {label:"80331", value:"80331"}
-      ]});
-      q.push({key:"access", q:"Ist Zugang möglich? (Keller/Bad/ Küche) – kurz beschreiben", chips:[
-        {label:"Küche", value:"Küche", primary:true},
-        {label:"Bad", value:"Bad"},
-        {label:"Keller", value:"Keller"}
-      ]});
-      q.push({key:"time", q: urgent ? "Wann können wir dich erreichen? (jetzt / in 30 Min / später)" : "Wann passt es dir am besten? (heute / morgen / diese Woche)", chips: urgent ? [
-        {label:"Jetzt", value:"Jetzt", primary:true},
-        {label:"In 30 Min", value:"In 30 Min"},
-        {label:"Später", value:"Später"}
-      ] : [
-        {label:"Heute", value:"Heute", primary:true},
-        {label:"Morgen", value:"Morgen"},
-        {label:"Diese Woche", value:"Diese Woche"}
-      ]});
-      q.push({key:"phone", q: urgent ? "Telefonnummer für sofortigen Rückruf?" : "Telefonnummer für Bestätigung/Rückfragen?", validate:"phone"});
-      q.push({key:"name", q:"Wie heißt du? (für die Zuordnung)", validate:"required"});
-      q.push({key:"email", q:"E-Mail (optional) für Bestätigung/Zusammenfassung", validate:"emailOptional"});
-      return {q, urgent};
-    },
-    safety: (answers, urgent) => {
-      const lines = [];
-      const water = (answers.water||"").toLowerCase();
-      const severity = (answers.severity||"").toLowerCase();
-      if(urgent || severity.includes("stark")){
-        lines.push("Hinweis: Wenn Wasser stark läuft: Hauptwasserhahn schließen (falls möglich) und Strom im betroffenen Bereich meiden.");
-      } else if(water.includes("weiß")){
-        lines.push("Tipp: Hauptwasserhahn ist oft im Bad/Keller/Flur. Wenn du ihn findest, bitte schließen und kurz sagen, ob es stoppt.");
-      }
-      return lines;
-    }
-  },
-
-  zahnarzt: {
-    label: "Zahnarzt / Praxis",
-    explainer: "Praxis: Symptom → Schmerzskala → Schwellung/Fieber → Notfall? → Wunschzeit → Daten → Kontakt.",
-    brandName: "Praxis-Assistent",
-    brandTag: "Triage • Termin • Rückruf",
-    first: "Was ist das Hauptproblem?",
-    chips: [
-      {label:"😖 Starke Schmerzen", value:"Ich habe starke Zahnschmerzen"},
-      {label:"🩸 Blutung", value:"Ich habe eine Blutung"},
-      {label:"😷 Schwellung", value:"Schwellung / Entzündung"},
-      {label:"🦷 Kontrolle", value:"Kontrolltermin", primary:true},
-      {label:"📅 Termin", value:"Ich möchte einen Termin"},
-      {label:"⚠️ Notfall", value:"Notfall"},
-    ],
-    flow: (problemText, urgency) => {
-      const t = (problemText||"").toLowerCase();
-      const urgent = urgency || /notfall|blutung|schwell|fieber|stark/.test(t);
-      const q = [];
-      q.push({key:"problem", q:"Okay – was genau ist das Problem? (kurz)", chips:[]});
-      q.push({key:"pain", q:"Wie stark sind die Schmerzen (0–10)?", chips:[
-        {label:"0–3", value:"0–3"},
-        {label:"4–6", value:"4–6", primary:true},
-        {label:"7–10", value:"7–10"}
-      ]});
-      q.push({key:"swelling", q:"Gibt es Schwellung, Fieber oder Schluckbeschwerden? (ja/nein)", chips:[
-        {label:"Ja", value:"Ja", primary:true},
-        {label:"Nein", value:"Nein"}
-      ]});
-      q.push({key:"bleed", q:"Blutet es aktuell stark? (ja/nein)", chips:[
-        {label:"Ja", value:"Ja"},
-        {label:"Nein", value:"Nein", primary:true}
-      ]});
-      q.push({key:"time", q: urgent ? "Wann können wir dich heute erreichen? (jetzt / später)" : "Wann passt dir der Termin? (diese Woche / flexibel)", chips: urgent ? [
-        {label:"Jetzt", value:"Jetzt", primary:true},
-        {label:"Später", value:"Später"}
-      ] : [
-        {label:"Diese Woche", value:"Diese Woche", primary:true},
-        {label:"Flexibel", value:"Flexibel"}
-      ]});
-      q.push({key:"phone", q: urgent ? "Telefonnummer für schnellen Rückruf?" : "Telefonnummer für Bestätigung?", validate:"phone"});
-      q.push({key:"name", q:"Wie heißt du? (für die Zuordnung)", validate:"required"});
-      q.push({key:"email", q:"E-Mail (optional) für Bestätigung/Zusammenfassung", validate:"emailOptional"});
-      return {q, urgent};
-    },
-    safety: (answers, urgent) => {
-      const lines = [];
-      const pain = (answers.pain||"").toLowerCase();
-      const swelling = (answers.swelling||"").toLowerCase();
-      const bleed = (answers.bleed||"").toLowerCase();
-      if(bleed.includes("ja")){
-        lines.push("Hinweis: Bei starker, nicht stoppbarer Blutung bitte sofort medizinische Hilfe in Anspruch nehmen.");
-      }
-      if(swelling.includes("ja")){
-        lines.push("Hinweis: Bei Schwellung + Fieber/Schluckbeschwerden bitte dringend abklären – wir priorisieren dich.");
-      }
-      if(pain.includes("7") || pain.includes("10")){
-        lines.push("Wir priorisieren starke Schmerzen – bitte bleib erreichbar.");
-      }
-      return lines;
-    }
-  },
-
-  general: {
-    label: "Allgemein (Dienstleister)",
-    explainer: "Allgemein: Problem → Ziel (Termin/Angebot/Info) → Details → Ort → Zeit → Kontakt → Zusammenfassung.",
-    brandName: "Service-Agent",
-    brandTag: "Diagnose → Routing → Übergabe",
-    first: "Worum geht es genau?",
-    chips: [
-      {label:"📅 Termin", value:"Ich möchte einen Termin", primary:true},
-      {label:"🧾 Angebot", value:"Ich möchte ein Angebot"},
-      {label:"💬 Frage", value:"Ich habe eine Frage"},
-      {label:"⚠️ Dringend", value:"Es ist dringend"},
-    ],
-    flow: (problemText, urgency) => {
-      const urgent = urgency || /dringend|notfall|sofort/.test((problemText||"").toLowerCase());
-      const q = [];
-      q.push({key:"problem", q:"Okay – worum geht’s genau? (kurz)", chips:[]});
-      q.push({key:"goal", q:"Was ist dein Ziel? (Termin / Angebot / Info)", chips:[
-        {label:"Termin", value:"Termin", primary:true},
-        {label:"Angebot", value:"Angebot"},
-        {label:"Info", value:"Info"}
-      ]});
-      q.push({key:"details", q:"Welche Details sind wichtig? (z.B. Umfang, Symptome, Wunsch)", chips:[]});
-      q.push({key:"location", q:"Ort/PLZ?", chips:[{label:"10115", value:"10115"},{label:"20095", value:"20095"},{label:"80331", value:"80331"}]});
-      q.push({key:"time", q: urgent ? "Wann können wir dich erreichen? (jetzt/später)" : "Wann passt es dir? (morgen/diese Woche/flexibel)", chips: urgent ? [
-        {label:"Jetzt", value:"Jetzt", primary:true},
-        {label:"Später", value:"Später"}
-      ] : [
-        {label:"Morgen", value:"Morgen", primary:true},
-        {label:"Diese Woche", value:"Diese Woche"},
-        {label:"Flexibel", value:"Flexibel"}
-      ]});
-      q.push({key:"phone", q:"Telefonnummer für Rückfragen?", validate:"phone"});
-      q.push({key:"name", q:"Wie heißt du?", validate:"required"});
-      q.push({key:"email", q:"E-Mail (optional) für Bestätigung/Zusammenfassung", validate:"emailOptional"});
-      return {q, urgent};
-    },
-    safety: () => []
-  }
+const CONFIG = {
+  companyName: "Sanitär-Service",
+  tagLine: "Notfall-Triage • Einsatzinfos • Übergabe",
+  serviceArea: "Berlin & Umgebung",
+  openingHours: "24/7 (Notdienst)",
+  hotline: "",                // optional: tel:+49...
+  bookingLink: "",            // optional
+  handoverEmail: "beispiel@firma.de",
+  emailSubjectPrefix: "Neuer Notdienst-Lead",
+  priceHint: "Preis richtet sich nach Aufwand & Material. Nach kurzer Klärung nennen wir eine realistische Spanne.",
 };
 
 /* ===============================
-   CONFIG
+   UI helpers
    =============================== */
-const CONFIG = {
-  templateKey: "kfz",               // kfz | sanitaer | zahnarzt | general
-  handoverEmail: "beispiel@firma.de",
-  companyNameForEmailSubject: "Neuer Lead",
-  bookingLink: "",                  // optional
-  phoneHotline: "",                 // optional
-};
-
-// ======= UI helpers =======
 const $ = (id)=>document.getElementById(id);
 const wbody = $("wbody");
 const input = $("input");
@@ -721,6 +549,9 @@ const chips = $("chips");
 const toast = $("toast");
 const widget = $("widget");
 const fab = $("fab");
+const uploader = $("uploader");
+const fileEl = $("file");
+const filesEl = $("files");
 
 function nowTime(){
   const d = new Date();
@@ -735,12 +566,14 @@ function showToast(msg){
 function escapeHtml(s){
   return (s||"").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
 }
-function addBubble(who, text){
+function addBubble(who, text, kind){
   const wrap = document.createElement("div");
   wrap.className = "bubble " + (who==="me" ? "me" : "bot");
   const msg = document.createElement("div");
   msg.className = "msg";
-  msg.innerHTML = escapeHtml(text).replace(/\n/g,"<br>");
+  if(kind === "callout") msg.innerHTML = `<div class="callout">${escapeHtml(text).replace(/\n/g,"<br>")}</div>`;
+  else if(kind === "danger") msg.innerHTML = `<div class="callout danger">${escapeHtml(text).replace(/\n/g,"<br>")}</div>`;
+  else msg.innerHTML = escapeHtml(text).replace(/\n/g,"<br>");
   const meta = document.createElement("span");
   meta.className = "meta";
   meta.textContent = nowTime();
@@ -773,6 +606,9 @@ $("closeBtn").onclick = closeWidget;
 fab.onclick = openWidget;
 $("startDemoBtn").onclick = openWidget;
 
+/* ===============================
+   Validation helpers
+   =============================== */
 function normalizePhone(v){ return (v||"").trim().replace(/[^\d+]/g,""); }
 function okPhone(v){
   const p = normalizePhone(v);
@@ -782,110 +618,231 @@ function okPhone(v){
 function isEmail(v){ return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test((v||"").trim()); }
 
 /* ===============================
-   State machine
+   Intent detection (simple but practical)
+   =============================== */
+function detectIntent(text){
+  const t = (text||"").toLowerCase();
+  if(/wasser läuft|überschwemm|notfall|dringend|sofort|rohrbruch|leck.*stark/.test(t)) return "emergency";
+  if(/termin|kommen|wann|verfügbar|vorbeikommen/.test(t)) return "appointment";
+  if(/preis|kosten|angebot|was kostet|pauschal|preisrahmen/.test(t)) return "quote";
+  if(/öffnungs|zeiten|adresse|standort|servicegebiet|wie funktioniert|ablauf/.test(t)) return "faq";
+  return "problem";
+}
+
+/* ===============================
+   Conversation state machine
    =============================== */
 const state = {
-  stage: "intro",     // intro -> captureProblem -> flow -> done
-  answers: {},
-  queue: [],          // current question queue
+  stage: "intro",    // intro -> capture -> triage -> details -> scheduling -> contact -> done
+  intent: null,
   urgent: false,
-  template: null,
+  answers: {},
+  queue: [],
+  photos: [],
 };
 
-function applyTemplate(){
-  state.template = TEMPLATES[CONFIG.templateKey] || TEMPLATES.general;
-
-  $("brandName").textContent = state.template.brandName;
-  $("brandTag").textContent = state.template.brandTag;
-
-  $("statusPill").textContent = "Live Demo • " + state.template.label;
-  $("demoCategory").textContent = state.template.label;
-  $("demoFirst").textContent = state.template.first;
-  $("catExplainer").textContent = state.template.explainer;
-}
-
-function buildSummary(){
-  const a = state.answers;
-  const lines = [];
-  const add = (k,label)=>{ if(a[k]) lines.push(`${label}: ${a[k]}`); };
-  add("problem","Problem");
-  add("drive","Fahrbereit / Abstellbar");
-  add("warnings","Warnlampen");
-  add("when","Seit wann");
-  add("vehicle","Fahrzeug");
-  add("water","Wasser abgestellt");
-  add("severity","Schweregrad");
-  add("access","Zugang");
-  add("pain","Schmerz");
-  add("swelling","Schwellung/Fieber");
-  add("bleed","Blutung");
-  add("goal","Ziel");
-  add("details","Details");
-  add("location","Ort/PLZ");
-  add("time","Wunschzeit");
-  add("phone","Telefon");
-  add("name","Name");
-  add("email","E-Mail");
-  lines.push(`Kategorie: ${state.template.label}`);
-  lines.push(`Urgent: ${state.urgent ? "Ja" : "Nein"}`);
-  lines.push(`Zeit: ${new Date().toLocaleString("de-DE")}`);
-  return lines.join("\n");
-}
-
-function buildMailto(){
-  const subject = encodeURIComponent(`${CONFIG.companyNameForEmailSubject} • ${state.template.label}`);
-  const body = encodeURIComponent(buildSummary());
-  return `mailto:${encodeURIComponent(CONFIG.handoverEmail)}?subject=${subject}&body=${body}`;
-}
-async function copySummary(){
-  try{ await navigator.clipboard.writeText(buildSummary()); showToast("Zusammenfassung kopiert ✅"); }
-  catch(e){ showToast("Konnte nicht kopieren"); }
+function applyConfigToUI(){
+  $("brandName").textContent = CONFIG.companyName;
+  $("brandTag").textContent = CONFIG.tagLine;
+  $("topTitle").textContent = CONFIG.companyName + " (Demo)";
+  $("topSub").textContent = `Servicegebiet: ${CONFIG.serviceArea} • Zeiten: ${CONFIG.openingHours}`;
 }
 
 function resetConversation(){
   wbody.innerHTML = "";
-  state.stage = "intro";
+  state.stage = "capture";
+  state.intent = null;
+  state.urgent = false;
   state.answers = {};
   state.queue = [];
-  state.urgent = false;
+  state.photos = [];
+  uploader.style.display = "none";
+  filesEl.textContent = "";
+  if(fileEl) fileEl.value = "";
 
-  addBubble("bot", `Hallo 👋 Ich bin der ${state.template.brandName}. Beschreibe kurz dein Problem in 1 Satz — oder wähle:`);
-  setChips(state.template.chips);
-  state.stage = "captureProblem";
+  addBubble("bot",
+`Hallo 👋 Ich helfe dir sofort weiter.
+Beschreibe bitte kurz dein Problem (1 Satz) — oder wähle:`, null);
+
+  setChips([
+    {label:"💧 Wasserleck / Rohrbruch", value:"Wasserleck / Rohrbruch", primary:true},
+    {label:"🚽 WC / Abfluss verstopft", value:"WC / Abfluss verstopft"},
+    {label:"🔥 Kein warmes Wasser / Heizung", value:"Kein warmes Wasser / Heizung"},
+    {label:"🚿 Niedriger Wasserdruck", value:"Wasserdruck sehr niedrig"},
+    {label:"📅 Termin (kein Notfall)", value:"Ich möchte einen Termin"},
+    {label:"🧾 Preise/Angebot", value:"Was kostet das ungefähr?"}
+  ]);
 }
+
 $("resetBtn").onclick = ()=>{ resetConversation(); showToast("Neu gestartet"); };
 
-function startFlow(problemText){
-  // Decide if urgent by keywords
-  const t = (problemText||"").toLowerCase();
-  const urgent = /notfall|dringend|sofort|akut|wasser läuft|blutung|überhitz|ölwarn|starke schmerzen/.test(t);
-  state.urgent = urgent;
-
-  // Build category-specific queue
-  const result = state.template.flow(problemText, urgent);
-  state.queue = result.q.slice();
-  state.urgent = !!result.urgent;
-
-  // “Human” response: no “super”
-  addBubble("bot", "Alles klar. Ich stelle dir jetzt gezielte Fragen, damit wir die Ursache eingrenzen und den richtigen nächsten Schritt wählen.");
-  askNext();
+function enqueue(list){
+  state.queue = list.slice();
+}
+function askNext(){
+  if(state.queue.length === 0){ finish(); return; }
+  const s = state.queue[0];
+  addBubble("bot", s.q, null);
+  setChips(s.chips || []);
+  if(s.showUploader) uploader.style.display = "block";
+  else uploader.style.display = "none";
 }
 
-function askNext(){
-  if(state.queue.length === 0){
-    finish();
+function safetyHints(){
+  const t = (state.answers.problem||"").toLowerCase() + " " + (state.answers.details||"").toLowerCase();
+  const severity = (state.answers.severity||"").toLowerCase();
+  const nearPower = (state.answers.power||"").toLowerCase();
+  const gas = /gas|gasgeruch/.test(t);
+  const lines = [];
+
+  if(gas){
+    lines.push({type:"danger", text:"Wichtiger Hinweis: Bei Gasgeruch sofort lüften, keine Schalter/Flammen benutzen und den Notruf/Versorger kontaktieren."});
+  }
+  if(severity.includes("stark") || severity.includes("läuft")){
+    lines.push({type:"callout", text:"Wenn Wasser stark läuft: Hauptwasserhahn schließen (falls möglich) und Wertsachen sichern."});
+  }
+  if(nearPower.includes("ja")){
+    lines.push({type:"danger", text:"Wenn Wasser in der Nähe von Strom/Steckdosen ist: Strom im betroffenen Bereich nicht berühren. Wenn möglich Sicherung ausschalten."});
+  }
+  if((state.answers.waterOff||"").toLowerCase().includes("weiß")){
+    lines.push({type:"callout", text:"Tipp: Hauptwasserhahn ist oft im Bad/Keller/Flur. Wenn du ihn findest: schließen und kurz sagen, ob es stoppt."});
+  }
+  return lines;
+}
+
+function buildFlows(firstText){
+  const intent = detectIntent(firstText);
+  state.intent = intent;
+
+  // FAQ: answer quickly, then offer to continue
+  if(intent === "faq"){
+    addBubble("bot", "Klar — kurze Infos:", null);
+    addBubble("bot", `• Servicegebiet: ${CONFIG.serviceArea}\n• Zeiten: ${CONFIG.openingHours}`, "callout");
+    if(CONFIG.hotline) addBubble("bot", `• Hotline: ${CONFIG.hotline}`, "callout");
+    addBubble("bot", "Wenn du ein konkretes Problem hast, schreib kurz was passiert ist.", null);
+    state.intent = "problem";
+    state.stage = "capture";
     return;
   }
-  const step = state.queue[0];
-  addBubble("bot", step.q);
-  setChips(step.chips || []);
+
+  // Quote: give policy + continue to qualify
+  if(intent === "quote"){
+    addBubble("bot", CONFIG.priceHint, "callout");
+    addBubble("bot", "Damit wir dir eine realistische Spanne nennen können, brauche ich kurz ein paar Details.", null);
+  }
+
+  // Emergency keyword triggers triage first
+  const urgent = (intent === "emergency") || /notfall|dringend|sofort|wasser läuft|rohrbruch|überschwemm/.test((firstText||"").toLowerCase());
+  state.urgent = urgent;
+
+  state.answers.problem = firstText;
+
+  // Triage + details + scheduling + contact
+  const triage = [
+    {key:"waterOff", q:"Läuft Wasser gerade? Kannst du es abstellen? (ja / nein / weiß nicht)", chips:[
+      {label:"Ja, abgestellt", value:"Ja, abgestellt", primary:true},
+      {label:"Nein, läuft weiter", value:"Nein, läuft weiter"},
+      {label:"Weiß nicht", value:"Weiß nicht"}
+    ]},
+    {key:"severity", q:"Wie stark ist es? (tropft / läuft / läuft stark)", chips:[
+      {label:"Tropft", value:"Tropft", primary:true},
+      {label:"Läuft", value:"Läuft"},
+      {label:"Läuft stark", value:"Läuft stark"}
+    ]},
+    {key:"power", q:"Ist Wasser in der Nähe von Strom/Steckdosen? (ja/nein)", chips:[
+      {label:"Nein", value:"Nein", primary:true},
+      {label:"Ja", value:"Ja"}
+    ]},
+  ];
+
+  const details = [
+    {key:"type", q:"Worum geht’s genau? (z.B. Leck unter Spüle, Rohr tropft, WC verstopft, Heizung)", chips:[
+      {label:"Leck unter Spüle", value:"Leck unter Spüle", primary:true},
+      {label:"Rohr tropft", value:"Rohr tropft"},
+      {label:"WC verstopft", value:"WC verstopft"},
+      {label:"Abfluss verstopft", value:"Abfluss verstopft"},
+      {label:"Kein warmes Wasser", value:"Kein warmes Wasser"},
+    ]},
+    {key:"since", q:"Seit wann ist das so? (seit heute / seit Tagen / plötzlich)", chips:[
+      {label:"Seit heute", value:"Seit heute", primary:true},
+      {label:"Seit Tagen", value:"Seit Tagen"},
+      {label:"Plötzlich", value:"Plötzlich aufgetreten"}
+    ]},
+    {key:"property", q:"Objekt: Wohnung / Haus / Gewerbe?", chips:[
+      {label:"Wohnung", value:"Wohnung", primary:true},
+      {label:"Haus", value:"Haus"},
+      {label:"Gewerbe", value:"Gewerbe"}
+    ]},
+    {key:"access", q:"Zugang: Etage / Klingelname / Besonderheiten? (kurz)", chips:[
+      {label:"EG", value:"EG", primary:true},
+      {label:"1. OG", value:"1. OG"},
+      {label:"Keller", value:"Keller"},
+      {label:"Hinterhof", value:"Hinterhof"}
+    ]},
+    {key:"address", q:"Adresse oder mindestens PLZ + Straße (für Anfahrt)", chips:[
+      {label:"10115", value:"10115"},
+      {label:"20095", value:"20095"},
+      {label:"80331", value:"80331"}
+    ]},
+    {key:"details", q:"Noch Details, die wichtig sind? (z.B. bereits versucht, Ventil defekt, Foto vorhanden)", chips:[] , showUploader:true},
+  ];
+
+  const scheduling = [
+    {key:"availability", q: urgent ? "Wann können wir dich erreichen? (jetzt / in 30 Min / später)" : "Wann passt es dir? (heute / morgen / diese Woche)", chips: urgent ? [
+      {label:"Jetzt", value:"Jetzt", primary:true},
+      {label:"In 30 Min", value:"In 30 Min"},
+      {label:"Später", value:"Später"}
+    ] : [
+      {label:"Heute", value:"Heute", primary:true},
+      {label:"Morgen", value:"Morgen"},
+      {label:"Diese Woche", value:"Diese Woche"}
+    ]},
+  ];
+
+  const contact = [
+    {key:"phone", q: urgent ? "Telefonnummer für sofortigen Rückruf?" : "Telefonnummer für Bestätigung/Rückfragen?", validate:"phone"},
+    {key:"name", q:"Wie heißt du? (für die Zuordnung)", validate:"required"},
+    {key:"email", q:"E-Mail (optional) für Bestätigung/Zusammenfassung", validate:"emailOptional"},
+  ];
+
+  // If user asked only for an appointment (non-emergency), skip some triage but still ask essentials.
+  const wantsAppointment = /termin/.test((firstText||"").toLowerCase());
+  const wantsPrice = intent === "quote";
+
+  let flow = [];
+  if(!wantsAppointment) flow = flow.concat(triage);
+  flow = flow.concat(details);
+  flow = flow.concat(scheduling);
+  flow = flow.concat(contact);
+
+  // For quote intent: add budget question (optional) before contact
+  if(wantsPrice){
+    flow.splice(flow.length-3, 0, {key:"budget", q:"Budget-Rahmen (optional)?", chips:[
+      {label:"Kein festes Budget", value:"Kein festes Budget", primary:true},
+      {label:"< 300€", value:"< 300€"},
+      {label:"300–800€", value:"300–800€"},
+      {label:"800€+", value:"800€+"},
+    ]});
+  }
+
+  enqueue(flow);
+
+  // opening statement that feels correct (no “super”)
+  addBubble("bot",
+    urgent
+      ? "Verstanden. Ich priorisiere das als Notfall. Ich kläre jetzt kurz die entscheidenden Punkte, damit wir sofort den richtigen nächsten Schritt wählen."
+      : "Alles klar. Ich stelle dir kurz gezielte Fragen, damit wir den Fall richtig einordnen und sauber weiterleiten.",
+    null
+  );
+
+  askNext();
 }
 
 function validateAndStore(step, v){
   const val = (v||"").trim();
   if(step.validate === "phone"){
     if(!okPhone(val)){
-      addBubble("bot","Bitte gib eine gültige Telefonnummer ein (mind. 7 Ziffern).");
+      addBubble("bot","Bitte gib eine gültige Telefonnummer ein (mind. 7 Ziffern).", null);
       return false;
     }
     state.answers[step.key] = val;
@@ -893,7 +850,7 @@ function validateAndStore(step, v){
   }
   if(step.validate === "emailOptional"){
     if(val && !isEmail(val)){
-      addBubble("bot","Das sieht nicht nach einer gültigen E-Mail aus. Entweder leer lassen oder korrekt eingeben (z.B. name@domain.de).");
+      addBubble("bot","Das sieht nicht nach einer gültigen E-Mail aus. Entweder leer lassen oder korrekt eingeben (z.B. name@domain.de).", null);
       return false;
     }
     state.answers[step.key] = val;
@@ -901,7 +858,7 @@ function validateAndStore(step, v){
   }
   if(step.validate === "required"){
     if(!val){
-      addBubble("bot","Bitte kurz angeben.");
+      addBubble("bot","Bitte kurz angeben.", null);
       return false;
     }
     state.answers[step.key] = val;
@@ -911,29 +868,67 @@ function validateAndStore(step, v){
   return true;
 }
 
+function buildSummary(){
+  const a = state.answers;
+  const lines = [];
+  const add = (k,label)=>{ if(a[k]) lines.push(`${label}: ${a[k]}`); };
+  lines.push(`Firma: ${CONFIG.companyName}`);
+  lines.push(`Servicegebiet: ${CONFIG.serviceArea}`);
+  lines.push(`---`);
+  add("problem","Problem (Erstmeldung)");
+  add("type","Kategorie/Typ");
+  add("waterOff","Wasser abgestellt");
+  add("severity","Schweregrad");
+  add("power","Stromnähe");
+  add("since","Seit wann");
+  add("property","Objekt");
+  add("access","Zugang");
+  add("address","Adresse/PLZ");
+  add("details","Zusatzdetails");
+  if(state.photos.length) lines.push(`Fotos (Dateinamen): ${state.photos.join(", ")}`);
+  add("availability","Erreichbarkeit/Wunschtermin");
+  add("budget","Budget");
+  add("phone","Telefon");
+  add("name","Name");
+  add("email","E-Mail");
+  lines.push(`Notfall: ${state.urgent ? "Ja" : "Nein"}`);
+  lines.push(`Zeit: ${new Date().toLocaleString("de-DE")}`);
+  return lines.join("\n");
+}
+
+function buildMailto(){
+  const subject = encodeURIComponent(`${CONFIG.emailSubjectPrefix} • ${state.urgent ? "NOTFALL" : "Anfrage"}`);
+  const body = encodeURIComponent(buildSummary());
+  return `mailto:${encodeURIComponent(CONFIG.handoverEmail)}?subject=${subject}&body=${body}`;
+}
+async function copySummary(){
+  try{ await navigator.clipboard.writeText(buildSummary()); showToast("Zusammenfassung kopiert ✅"); }
+  catch(e){ showToast("Konnte nicht kopieren"); }
+}
+
 function finish(){
   setChips([]);
+  uploader.style.display = "none";
 
-  // Safety hints (category-specific)
-  const tips = state.template.safety(state.answers, state.urgent) || [];
+  // safety hints
+  const tips = safetyHints();
   if(tips.length){
-    addBubble("bot", "Wichtige Hinweise:");
-    tips.forEach(t => addBubble("bot", "• " + t));
+    addBubble("bot", "Wichtige Hinweise:", null);
+    tips.forEach(t => addBubble("bot", t.text, t.type));
   }
 
-  addBubble("bot", "Danke. ✅ Ich habe alles aufgenommen und kann es jetzt sauber ans Team übergeben.");
+  addBubble("bot", "Danke. ✅ Ich habe alles aufgenommen und kann es jetzt sauber ans Team übergeben.", null);
 
-  // Next steps – keep generic (no false promises)
-  if(CONFIG.bookingLink){
-    addBubble("bot", `Nächster Schritt: Termin buchen → ${CONFIG.bookingLink}`);
+  if(CONFIG.bookingLink && !state.urgent){
+    addBubble("bot", `Optional: Termin buchen → ${CONFIG.bookingLink}`, null);
   } else {
-    addBubble("bot", state.urgent ? "Nächster Schritt: Wir priorisieren den Rückruf. Bitte bleib erreichbar." : "Nächster Schritt: Wir melden uns zur Termin-/Rückrufbestätigung.");
+    addBubble("bot", state.urgent ? "Nächster Schritt: Wir priorisieren den Rückruf. Bitte bleib erreichbar." : "Nächster Schritt: Wir melden uns zur Termin-/Rückrufbestätigung.", null);
   }
-  if(CONFIG.phoneHotline){
-    addBubble("bot", `Direkt anrufen (optional): ${CONFIG.phoneHotline}`);
+  if(CONFIG.hotline){
+    addBubble("bot", `Hotline (optional): ${CONFIG.hotline}`, "callout");
   }
 
-  addBubble("bot", "Übergabe:\n1) Zusammenfassung kopieren\n2) Per E-Mail ans Team schicken\n3) Neu starten");
+  addBubble("bot", "Übergabe:\n1) Zusammenfassung kopieren\n2) Per E‑Mail ans Team schicken\n3) Neu starten", null);
 
   chips.innerHTML = "";
 
@@ -942,7 +937,7 @@ function finish(){
   c1.onclick = copySummary;
 
   const c2 = document.createElement("a");
-  c2.className="chip"; c2.textContent="E-Mail ans Team";
+  c2.className="chip"; c2.textContent="E‑Mail ans Team";
   c2.href = buildMailto();
   c2.target="_blank";
   c2.rel="noopener";
@@ -961,39 +956,47 @@ function finish(){
 function handleAnswer(raw){
   const v = (raw||"").trim();
   if(!v) return;
-  addBubble("me", v);
+  addBubble("me", v, null);
 
-  if(state.stage === "captureProblem"){
-    // If user said something generic, force the “what exactly” question
-    const generic = /ich habe ein problem|problem|hilfe|geht nicht|funktioniert nicht|ich brauche hilfe/i.test(v);
+  if(state.stage === "capture"){
+    // If too generic, ask for specifics instead of praising
+    const generic = /ich habe ein problem|problem|hilfe|geht nicht|funktioniert nicht|dringend|notfall/i.test(v) && v.length < 28;
     if(generic){
-      addBubble("bot", state.template.first + " (kurz) — oder wähle:");
-      setChips(state.template.chips.filter(x => !String(x.value||x.label).toLowerCase().includes("termin")));
+      addBubble("bot", "Alles klar — damit ich richtig triagieren kann: Was ist passiert? (z.B. Wasser läuft / WC verstopft / Rohr tropft)", null);
+      setChips([
+        {label:"Wasser läuft", value:"Wasser läuft", primary:true},
+        {label:"Rohr tropft", value:"Rohr tropft"},
+        {label:"WC verstopft", value:"WC verstopft"},
+        {label:"Abfluss verstopft", value:"Abfluss verstopft"},
+        {label:"Kein warmes Wasser", value:"Kein warmes Wasser"},
+      ]);
       return;
     }
-    state.answers.problem = v;
+    buildFlows(v);
     state.stage = "flow";
-    startFlow(v);
     return;
   }
 
   if(state.stage === "flow"){
     const step = state.queue[0];
     if(!step){
-      // fallback
-      addBubble("bot","Alles klar. Beschreibe kurz dein Problem – ich frage dann gezielt nach.");
-      state.stage = "captureProblem";
-      setChips(state.template.chips);
+      finish();
       return;
     }
     if(!validateAndStore(step, v)) return;
 
-    // Minor, “human” confirmations
-    if(step.key === "drive" || step.key === "water"){
-      addBubble("bot", "Okay, verstanden.");
+    // subtle confirmations that feel human
+    if(step.key === "waterOff"){
+      const t = v.toLowerCase();
+      if(t.includes("nein") || t.includes("läuft weiter")){
+        addBubble("bot", "Verstanden. Dann priorisieren wir das höher.", null);
+        state.urgent = true;
+      } else {
+        addBubble("bot", "Okay, gut. Das hilft.", null);
+      }
     }
-    if(step.key === "warnings" || step.key === "severity" || step.key === "pain"){
-      addBubble("bot", "Danke – das hilft bei der Priorisierung.");
+    if(step.key === "power" && v.toLowerCase().includes("ja")){
+      addBubble("bot", "Danke. Sicherheit geht vor – ich gebe dazu gleich einen Hinweis.", null);
     }
 
     state.queue.shift();
@@ -1001,7 +1004,6 @@ function handleAnswer(raw){
     return;
   }
 
-  // done -> restart
   if(state.stage === "done"){
     resetConversation();
   }
@@ -1016,24 +1018,44 @@ function send(){
 $("sendBtn").onclick = send;
 input.addEventListener("keydown",(e)=>{ if(e.key === "Enter") send(); });
 
+/* ===============================
+   Uploader (optional) — stores filenames only
+   =============================== */
+fileEl.addEventListener("change", ()=>{
+  const files = Array.from(fileEl.files || []);
+  state.photos = files.map(f => f.name).slice(0, 8);
+  filesEl.textContent = state.photos.length ? ("Ausgewählt: " + state.photos.join(", ")) : "";
+});
+
+/* ===============================
+   Config prompt-based (no code editing needed)
+   =============================== */
 $("openConfigBtn").onclick = ()=>{
-  const key = prompt("Kategorie wählen: kfz / sanitaer / zahnarzt / general", CONFIG.templateKey) ?? CONFIG.templateKey;
-  const mail = prompt("Übergabe-E-Mail:", CONFIG.handoverEmail) ?? CONFIG.handoverEmail;
+  const cn = prompt("Firmenname:", CONFIG.companyName) ?? CONFIG.companyName;
+  const area = prompt("Servicegebiet:", CONFIG.serviceArea) ?? CONFIG.serviceArea;
+  const hrs = prompt("Öffnungszeiten:", CONFIG.openingHours) ?? CONFIG.openingHours;
+  const hot = prompt("Hotline (optional, tel:+49...):", CONFIG.hotline) ?? CONFIG.hotline;
   const book = prompt("Termin-Link (optional):", CONFIG.bookingLink) ?? CONFIG.bookingLink;
-  const hot  = prompt("Hotline (optional, tel:+49...):", CONFIG.phoneHotline) ?? CONFIG.phoneHotline;
+  const mail = prompt("Übergabe-E-Mail:", CONFIG.handoverEmail) ?? CONFIG.handoverEmail;
 
-  const k = String(key||"").trim().toLowerCase();
-  CONFIG.templateKey = (k in TEMPLATES) ? k : CONFIG.templateKey;
-  CONFIG.handoverEmail = String(mail||"").trim() || CONFIG.handoverEmail;
+  CONFIG.companyName = String(cn||"").trim() || CONFIG.companyName;
+  CONFIG.serviceArea = String(area||"").trim() || CONFIG.serviceArea;
+  CONFIG.openingHours = String(hrs||"").trim() || CONFIG.openingHours;
+  CONFIG.hotline = String(hot||"").trim();
   CONFIG.bookingLink = String(book||"").trim();
-  CONFIG.phoneHotline = String(hot||"").trim();
+  CONFIG.handoverEmail = String(mail||"").trim() || CONFIG.handoverEmail;
 
-  applyTemplate();
-  resetConversation();
-  showToast("Kategorie gesetzt ✅");
+  applyConfigToUI();
+  showToast("Konfiguration gespeichert ✅");
 };
 
-applyTemplate();
+$("copyPitchBtn").onclick = async ()=>{
+  const text = $("pitchText").textContent.trim();
+  try{ await navigator.clipboard.writeText(text); showToast("Pitch kopiert ✅"); }
+  catch(e){ showToast("Kopieren nicht möglich"); }
+};
+
+applyConfigToUI();
 resetConversation();
 </script>
 </body>
