@@ -1,0 +1,858 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>24/7 Termin‑Agent • Demo</title>
+  <meta name="description" content="Hochprofessionelle Demo eines Termin‑Agenten (Web‑Widget) für Dienstleister. Funktioniert ohne externe Abhängigkeiten." />
+  <meta name="theme-color" content="#0b1220" />
+  <style>
+    :root{
+      --bg:#070b14;
+      --panel:#0b1220;
+      --panel2:#0f1830;
+      --line:rgba(255,255,255,.10);
+      --text:rgba(255,255,255,.92);
+      --muted:rgba(255,255,255,.68);
+      --brand:#6ae6ff;
+      --brand2:#a2ffb8;
+      --danger:#ff6a8a;
+      --shadow:0 18px 60px rgba(0,0,0,.55);
+      --radius:20px;
+      --radius2:14px;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      --sans: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+    }
+
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family:var(--sans);
+      color:var(--text);
+      background:
+        radial-gradient(1100px 600px at 20% -10%, rgba(106,230,255,.18), transparent 60%),
+        radial-gradient(900px 540px at 85% 10%, rgba(162,255,184,.14), transparent 55%),
+        radial-gradient(900px 540px at 40% 110%, rgba(106,230,255,.10), transparent 55%),
+        linear-gradient(180deg, #060913, #070b14);
+    }
+
+    a{color:var(--brand); text-decoration:none}
+    a:hover{text-decoration:underline}
+    .wrap{
+      max-width:1100px;
+      margin:0 auto;
+      padding:44px 20px 110px;
+    }
+    .topbar{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:16px;
+      padding:14px 16px;
+      background:rgba(255,255,255,.03);
+      border:1px solid var(--line);
+      border-radius:999px;
+      backdrop-filter: blur(12px);
+    }
+    .brand{
+      display:flex; align-items:center; gap:10px;
+      min-width:0;
+    }
+    .logo{
+      width:34px; height:34px; border-radius:12px;
+      background:linear-gradient(135deg, rgba(106,230,255,.95), rgba(162,255,184,.85));
+      box-shadow:0 10px 30px rgba(106,230,255,.18);
+      flex:0 0 auto;
+    }
+    .brand strong{font-size:14px; letter-spacing:.2px}
+    .brand span{display:block; font-size:12px; color:var(--muted)}
+    .pill{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:10px 12px;
+      border-radius:999px;
+      border:1px solid var(--line);
+      background:rgba(255,255,255,.02);
+      font-size:12px;
+      color:var(--muted);
+      white-space:nowrap;
+    }
+    .dot{
+      width:8px; height:8px; border-radius:99px;
+      background:var(--brand2);
+      box-shadow:0 0 0 6px rgba(162,255,184,.12);
+    }
+    .hero{
+      margin-top:22px;
+      display:grid;
+      grid-template-columns: 1.15fr .85fr;
+      gap:18px;
+      align-items:stretch;
+    }
+    @media (max-width: 980px){
+      .hero{grid-template-columns:1fr; }
+    }
+    .card{
+      border:1px solid var(--line);
+      background:linear-gradient(180deg, rgba(255,255,255,.035), rgba(255,255,255,.02));
+      border-radius:var(--radius);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+    }
+    .card .inner{padding:26px 26px 22px}
+    .h1{
+      font-size:44px;
+      line-height:1.02;
+      letter-spacing:-.8px;
+      margin:0 0 10px;
+    }
+    @media (max-width: 540px){
+      .h1{font-size:34px}
+    }
+    .sub{
+      margin:0 0 18px;
+      color:var(--muted);
+      font-size:15px;
+      line-height:1.55;
+      max-width:62ch;
+    }
+    .grid{
+      display:grid;
+      grid-template-columns:repeat(3,minmax(0,1fr));
+      gap:10px;
+      margin-top:18px;
+    }
+    @media (max-width: 980px){
+      .grid{grid-template-columns:repeat(2,minmax(0,1fr));}
+    }
+    @media (max-width: 520px){
+      .grid{grid-template-columns:1fr;}
+    }
+    .feat{
+      padding:12px 12px;
+      border:1px solid var(--line);
+      border-radius:16px;
+      background:rgba(11,18,32,.6);
+    }
+    .feat b{display:block; font-size:13px; margin-bottom:4px}
+    .feat span{display:block; font-size:12px; color:var(--muted); line-height:1.35}
+    .actions{
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      margin-top:18px;
+    }
+    .btn{
+      appearance:none;
+      border:0;
+      border-radius:14px;
+      padding:12px 14px;
+      font-weight:800;
+      letter-spacing:.2px;
+      cursor:pointer;
+      transition:transform .12s ease, filter .12s ease, box-shadow .12s ease;
+      display:inline-flex;
+      align-items:center;
+      gap:10px;
+      user-select:none;
+    }
+    .btn:active{transform:translateY(1px)}
+    .btn.primary{
+      background:linear-gradient(135deg, rgba(106,230,255,.95), rgba(162,255,184,.9));
+      color:#061018;
+      box-shadow:0 12px 40px rgba(106,230,255,.15);
+    }
+    .btn.ghost{
+      background:rgba(255,255,255,.03);
+      border:1px solid var(--line);
+      color:var(--text);
+    }
+    .btn svg{width:18px; height:18px; opacity:.92}
+    .side{
+      display:flex;
+      flex-direction:column;
+      height:100%;
+    }
+    .side .inner{padding:18px 18px 18px}
+    .mini{
+      border:1px solid var(--line);
+      border-radius:18px;
+      background:rgba(11,18,32,.72);
+      padding:16px;
+    }
+    .mini h3{
+      margin:0 0 8px;
+      font-size:14px;
+      letter-spacing:.2px;
+    }
+    .mini p{
+      margin:0;
+      color:var(--muted);
+      font-size:12.5px;
+      line-height:1.55;
+    }
+    .kv{
+      margin-top:12px;
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:10px;
+    }
+    .kv .k{
+      border:1px solid var(--line);
+      border-radius:14px;
+      padding:10px 10px;
+      background:rgba(255,255,255,.02);
+      min-height:62px;
+    }
+    .kv .k small{display:block; color:var(--muted); font-size:11px; margin-bottom:4px}
+    .kv .k strong{display:block; font-size:13px}
+    .footer{
+      margin-top:16px;
+      padding:14px 18px 18px;
+      border-top:1px solid var(--line);
+      color:var(--muted);
+      font-size:12px;
+      line-height:1.5;
+    }
+
+    /* Chat widget */
+    .fab{
+      position:fixed;
+      right:18px;
+      bottom:18px;
+      z-index:20;
+      border-radius:999px;
+      padding:12px 14px;
+      background:linear-gradient(135deg, rgba(106,230,255,.95), rgba(162,255,184,.9));
+      color:#061018;
+      border:0;
+      cursor:pointer;
+      font-weight:900;
+      box-shadow:0 18px 55px rgba(0,0,0,.55);
+      display:flex; gap:10px; align-items:center;
+    }
+    .fab svg{width:18px; height:18px}
+    .widget{
+      position:fixed;
+      right:18px;
+      bottom:18px;
+      width:380px;
+      max-width:92vw;
+      height:560px;
+      max-height:78vh;
+      z-index:30;
+      border-radius:22px;
+      overflow:hidden;
+      box-shadow: var(--shadow);
+      border:1px solid rgba(255,255,255,.12);
+      background:linear-gradient(180deg, rgba(15,24,48,.96), rgba(11,18,32,.96));
+      display:none;
+      backdrop-filter: blur(16px);
+    }
+    .whead{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      padding:12px 12px 12px 14px;
+      border-bottom:1px solid rgba(255,255,255,.10);
+      background:rgba(255,255,255,.03);
+    }
+    .wbrand{
+      display:flex; align-items:center; gap:10px; min-width:0;
+    }
+    .wbrand .wlogo{
+      width:30px; height:30px; border-radius:12px;
+      background:linear-gradient(135deg, rgba(106,230,255,.95), rgba(162,255,184,.9));
+      flex:0 0 auto;
+    }
+    .wbrand .t{
+      min-width:0;
+    }
+    .wbrand .t b{
+      display:block; font-size:13px; line-height:1.1; letter-spacing:.2px;
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    }
+    .wbrand .t small{
+      display:block; font-size:11px; color:var(--muted);
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    }
+    .wbtns{display:flex; gap:8px; align-items:center;}
+    .iconbtn{
+      width:36px; height:36px; border-radius:12px;
+      background:rgba(255,255,255,.04);
+      border:1px solid rgba(255,255,255,.10);
+      color:var(--text);
+      cursor:pointer;
+      display:grid;
+      place-items:center;
+      transition: transform .12s ease, filter .12s ease;
+    }
+    .iconbtn:active{transform: translateY(1px)}
+    .iconbtn svg{width:18px; height:18px; opacity:.92}
+    .wbody{
+      padding:14px;
+      height: calc(100% - 124px);
+      overflow:auto;
+    }
+    .bubble{
+      display:flex;
+      gap:10px;
+      margin:10px 0;
+      align-items:flex-end;
+    }
+    .bubble.me{justify-content:flex-end}
+    .msg{
+      max-width: 86%;
+      border:1px solid rgba(255,255,255,.10);
+      background:rgba(255,255,255,.04);
+      border-radius:18px;
+      padding:10px 12px;
+      font-size:13px;
+      line-height:1.45;
+      color:var(--text);
+      word-wrap:break-word;
+      white-space:pre-wrap;
+    }
+    .bubble.me .msg{
+      background:linear-gradient(135deg, rgba(106,230,255,.92), rgba(162,255,184,.88));
+      color:#061018;
+      border:0;
+    }
+    .meta{
+      display:block;
+      margin-top:6px;
+      font-size:10.5px;
+      color:rgba(255,255,255,.56);
+      font-family:var(--mono);
+    }
+    .bubble.me .meta{color:rgba(6,16,24,.65)}
+    .wfoot{
+      border-top:1px solid rgba(255,255,255,.10);
+      padding:10px 10px;
+      background:rgba(255,255,255,.02);
+    }
+    .row2{
+      display:flex; gap:10px; align-items:center;
+    }
+    .input{
+      flex:1;
+      height:42px;
+      border-radius:14px;
+      padding:10px 12px;
+      border:1px solid rgba(255,255,255,.12);
+      background:rgba(7,11,20,.9);
+      color:var(--text);
+      outline:none;
+      font-size:13px;
+    }
+    .send{
+      height:42px;
+      padding:0 14px;
+      border-radius:14px;
+      border:0;
+      cursor:pointer;
+      font-weight:900;
+      background:rgba(255,255,255,.08);
+      border:1px solid rgba(255,255,255,.12);
+      color:var(--text);
+    }
+    .send.primary{
+      background:linear-gradient(135deg, rgba(106,230,255,.95), rgba(162,255,184,.9));
+      color:#061018;
+      border:0;
+    }
+    .helper{
+      margin-top:10px;
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+    }
+    .chip{
+      font-size:12px;
+      padding:8px 10px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.12);
+      background:rgba(255,255,255,.03);
+      color:var(--text);
+      cursor:pointer;
+    }
+    .chip:hover{filter:brightness(1.06)}
+    .toast{
+      position:fixed;
+      left:50%;
+      bottom:18px;
+      transform:translateX(-50%);
+      background:rgba(0,0,0,.75);
+      border:1px solid rgba(255,255,255,.14);
+      color:#fff;
+      padding:10px 12px;
+      border-radius:14px;
+      font-size:12px;
+      opacity:0;
+      pointer-events:none;
+      transition:opacity .18s ease, transform .18s ease;
+      z-index:50;
+    }
+    .toast.show{opacity:1; transform:translateX(-50%) translateY(-6px)}
+    .sr-only{
+      position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden;
+      clip:rect(0,0,0,0); border:0;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="topbar">
+      <div class="brand">
+        <div class="logo" aria-hidden="true"></div>
+        <div style="min-width:0">
+          <strong id="brandNameTop">Termin‑Agent Demo</strong>
+          <span id="brandTagTop">24/7 Anfrage‑Qualifizierung & Termin‑Routing</span>
+        </div>
+      </div>
+      <div class="pill"><span class="dot" aria-hidden="true"></span><span>Live Demo • 0€ Setup möglich</span></div>
+    </div>
+
+    <div class="hero">
+      <div class="card">
+        <div class="inner">
+          <h1 class="h1">24/7 Termin‑Agent,<br/>der Anfragen in Termine verwandelt.</h1>
+          <p class="sub">
+            Diese Seite ist eine komplette, sofort lauffähige Demo (nur HTML). Sie sammelt strukturiert Leads,
+            priorisiert Dringlichkeit und leitet zur Terminbuchung weiter – ohne externe Bibliotheken.
+          </p>
+
+          <div class="actions">
+            <button class="btn primary" id="startDemoBtn" type="button">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M4 12a8 8 0 1 0 16 0 8 8 0 0 0-16 0Z" stroke="currentColor" stroke-width="2"/>
+                <path d="M10 9v6l5-3-5-3Z" fill="currentColor"/>
+              </svg>
+              Demo starten
+            </button>
+
+            <button class="btn ghost" id="copyPitchBtn" type="button">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M9 9h10v10H9V9Z" stroke="currentColor" stroke-width="2"/>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" stroke="currentColor" stroke-width="2"/>
+              </svg>
+              Pitch kopieren
+            </button>
+
+            <button class="btn ghost" id="openConfigBtn" type="button">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" stroke="currentColor" stroke-width="2"/>
+                <path d="M19.4 15a7.8 7.8 0 0 0 .1-2l2-1.5-2-3.5-2.4 1a8.3 8.3 0 0 0-1.7-1L15 2h-6l-.4 2.9a8.3 8.3 0 0 0-1.7 1L4.5 5l-2 3.5 2 1.5a7.8 7.8 0 0 0 .1 2l-2 1.5 2 3.5 2.4-1a8.3 8.3 0 0 0 1.7 1L9 22h6l.4-2.9a8.3 8.3 0 0 0 1.7-1l2.4 1 2-3.5-2-1.5Z" stroke="currentColor" stroke-width="2"/>
+              </svg>
+              Konfiguration
+            </button>
+          </div>
+
+          <div class="grid" aria-label="Highlights">
+            <div class="feat"><b>Qualifiziert & priorisiert</b><span>Fragenbaum + Dringlichkeit + passende Route.</span></div>
+            <div class="feat"><b>Saubere Übergabe</b><span>Zusammenfassung + Copy‑Button + E‑Mail Übergabe.</span></div>
+            <div class="feat"><b>Professionelles UX</b><span>Widget, Chips, States, mobile‑optimiert.</span></div>
+          </div>
+        </div>
+        <div class="footer">
+          Hinweis: Diese Demo ist absichtlich “kostenfrei startbar” (ohne KI‑API). In echten Kundenprojekten
+          kann anschließend ein KI‑Modul ergänzt werden (z.B. für natürlichere Dialoge), ohne das UI zu ändern.
+        </div>
+      </div>
+
+      <div class="card side">
+        <div class="inner">
+          <div class="mini">
+            <h3>Was diese Demo zeigt</h3>
+            <p>
+              Ein Termin‑Agent, der wie ein echter Mitarbeiter arbeitet: fragt die relevanten Details ab,
+              erkennt Dringlichkeit und führt zum nächsten Schritt (Termin/Callback).
+            </p>
+            <div class="kv" style="margin-top:14px">
+              <div class="k">
+                <small>Branche (Demo)</small>
+                <strong id="demoIndustry">Dienstleister</strong>
+              </div>
+              <div class="k">
+                <small>Nächster Schritt</small>
+                <strong id="demoNextStep">Terminbuchung</strong>
+              </div>
+              <div class="k">
+                <small>Lead‑Übergabe</small>
+                <strong id="demoHandover">E‑Mail / Copy</strong>
+              </div>
+              <div class="k">
+                <small>Modus</small>
+                <strong id="demoMode">0€ / Offline‑Ready</strong>
+              </div>
+            </div>
+          </div>
+
+          <div class="mini" style="margin-top:14px">
+            <h3>So verkaufst du das als Pilot</h3>
+            <p id="pitchText">
+              “Ich setze euch in 48h einen 24/7 Termin‑Agenten auf, der Anfragen qualifiziert und Termine routet.
+              Ihr seht sofort mehr strukturierte Leads, weniger verpasste Anfragen und klare Priorisierung.”
+            </p>
+          </div>
+        </div>
+        <div class="footer">
+          Tipp: Diese Datei kannst du 1:1 auf GitHub Pages hochladen. Danach hast du einen Link, den du als Demo verschickst.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Floating Action Button -->
+  <button class="fab" id="fab" type="button" aria-label="Chat öffnen">
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M4 12a8 8 0 1 0 16 0 8 8 0 0 0-16 0Z" stroke="currentColor" stroke-width="2"/>
+      <path d="M7.5 12h9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      <path d="M12 7.5v9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    </svg>
+    Chat starten
+  </button>
+
+  <!-- Widget -->
+  <div class="widget" id="widget" role="dialog" aria-modal="true" aria-label="Termin‑Agent">
+    <div class="whead">
+      <div class="wbrand">
+        <div class="wlogo" aria-hidden="true"></div>
+        <div class="t">
+          <b id="brandName">Termin‑Agent</b>
+          <small id="brandTag">Antwortet in Sekunden • 24/7</small>
+        </div>
+      </div>
+      <div class="wbtns">
+        <button class="iconbtn" id="resetBtn" type="button" aria-label="Neu starten" title="Neu starten">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M3 12a9 9 0 0 1 15.7-6.2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <path d="M18 4v5h-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M21 12a9 9 0 0 1-15.7 6.2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <path d="M6 20v-5h5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+        <button class="iconbtn" id="closeBtn" type="button" aria-label="Schließen" title="Schließen">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <path d="M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="wbody" id="wbody" aria-live="polite"></div>
+
+    <div class="wfoot">
+      <div class="row2">
+        <label class="sr-only" for="input">Antwort</label>
+        <input class="input" id="input" autocomplete="off" placeholder="Antwort eingeben…" />
+        <button class="send primary" id="sendBtn" type="button">Senden</button>
+      </div>
+      <div class="helper" id="chips"></div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+/**
+ * ✅ PROFESSIONELLE DEMO – KEINE EXTERNEN ABHÄNGIGKEITEN
+ * Du kannst die folgenden Werte später anpassen (optional).
+ */
+const CONFIG = {
+  brandName: "Termin‑Agent",
+  brandTag: "Antwortet in Sekunden • 24/7",
+  industryLabel: "Dienstleister",
+  bookingLink: "https://calendly.com/", // <— optional: deinen Termin‑Link eintragen
+  handoverEmail: "beispiel@firma.de",   // <— optional: wohin Lead per E‑Mail gehen soll
+  companyNameForEmailSubject: "Neuer Lead",
+  language: "de",
+};
+
+// ======= FLOW (regelbasiert) =======
+// Note: Das ist absichtlich ohne KI‑API, damit es sofort/0€ funktioniert.
+const FLOW = [
+  { key:"name",      q:"Hi 👋 Wie heißt du?", chips:["Ich bin…"] },
+  { key:"topic",     q:"Worum geht’s genau? (kurz)", chips:["Notfall","Angebot","Beratung","Termin"] },
+  { key:"location",  q:"Welche Stadt/PLZ?", chips:["Berlin","Hamburg","München","Andere"] },
+  { key:"urgency",   q:"Wie dringend ist es?", chips:["Heute","Diese Woche","Flexibel"] },
+  { key:"phone",     q:"Deine Telefonnummer für Rückfragen?", chips:[] },
+  { key:"email",     q:"Und deine E‑Mail für die Bestätigung?", chips:[] },
+];
+
+// ======= UI helpers =======
+const $ = (id)=>document.getElementById(id);
+const wbody = $("wbody");
+const input = $("input");
+const chips = $("chips");
+const toast = $("toast");
+const widget = $("widget");
+const fab = $("fab");
+
+$("brandName").textContent = CONFIG.brandName;
+$("brandTag").textContent = CONFIG.brandTag;
+$("brandNameTop").textContent = CONFIG.brandName + " Demo";
+$("brandTagTop").textContent = "24/7 Anfrage‑Qualifizierung & Termin‑Routing";
+$("demoIndustry").textContent = CONFIG.industryLabel;
+
+function nowTime(){
+  const d = new Date();
+  return d.toLocaleTimeString("de-DE", {hour:"2-digit", minute:"2-digit"});
+}
+function showToast(msg){
+  toast.textContent = msg;
+  toast.classList.add("show");
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(()=>toast.classList.remove("show"), 1600);
+}
+function escapeHtml(s){
+  return (s||"").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
+}
+function addBubble(who, text){
+  const wrap = document.createElement("div");
+  wrap.className = "bubble " + (who==="me" ? "me" : "bot");
+  const msg = document.createElement("div");
+  msg.className = "msg";
+  msg.innerHTML = escapeHtml(text).replace(/\n/g,"<br>");
+  const meta = document.createElement("span");
+  meta.className = "meta";
+  meta.textContent = nowTime();
+  msg.appendChild(meta);
+  wrap.appendChild(msg);
+  wbody.appendChild(wrap);
+  wbody.scrollTop = wbody.scrollHeight;
+}
+function setChips(list){
+  chips.innerHTML = "";
+  (list||[]).forEach(label=>{
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "chip";
+    b.textContent = label;
+    b.onclick = ()=>{
+      input.value = label;
+      input.focus();
+    };
+    chips.appendChild(b);
+  });
+}
+function openWidget(){
+  widget.style.display = "block";
+  fab.style.display = "none";
+  setTimeout(()=>input.focus(), 80);
+}
+function closeWidget(){
+  widget.style.display = "none";
+  fab.style.display = "flex";
+}
+$("closeBtn").onclick = closeWidget;
+fab.onclick = openWidget;
+$("startDemoBtn").onclick = openWidget;
+
+$("copyPitchBtn").onclick = async ()=>{
+  const text = $("pitchText").textContent.trim();
+  try{
+    await navigator.clipboard.writeText(text);
+    showToast("Pitch kopiert ✅");
+  } catch(e){
+    showToast("Kopieren nicht möglich (Browser) ");
+  }
+};
+
+// ======= Conversation state =======
+const state = {
+  i: 0,
+  answers: {},
+  started: false,
+};
+
+function resetConversation(){
+  state.i = 0;
+  state.answers = {};
+  state.started = false;
+  wbody.innerHTML = "";
+  addBubble("bot", `Hi! Ich bin dein ${CONFIG.brandName}. Ich stelle kurz ein paar Fragen und leite dich dann weiter.`);
+  ask();
+}
+$("resetBtn").onclick = ()=>{
+  resetConversation();
+  showToast("Neu gestartet");
+};
+
+function ask(){
+  const step = FLOW[state.i];
+  if(!step) return;
+  addBubble("bot", step.q);
+  setChips(step.chips);
+}
+
+function isEmail(v){
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test((v||"").trim());
+}
+
+function formatLeadSummary(){
+  const a = state.answers;
+  const lines = [
+    `Name: ${a.name||"-"}`,
+    `Anliegen: ${a.topic||"-"}`,
+    `Ort/PLZ: ${a.location||"-"}`,
+    `Dringlichkeit: ${a.urgency||"-"}`,
+    `Telefon: ${a.phone||"-"}`,
+    `E‑Mail: ${a.email||"-"}`,
+    `Zeit: ${new Date().toLocaleString("de-DE")}`,
+  ];
+  return lines.join("\n");
+}
+
+function buildMailto(){
+  const subject = encodeURIComponent(`${CONFIG.companyNameForEmailSubject} • ${state.answers.topic || "Anfrage"}`);
+  const body = encodeURIComponent(formatLeadSummary());
+  return `mailto:${encodeURIComponent(CONFIG.handoverEmail)}?subject=${subject}&body=${body}`;
+}
+
+async function copySummary(){
+  try{
+    await navigator.clipboard.writeText(formatLeadSummary());
+    showToast("Zusammenfassung kopiert ✅");
+  } catch(e){
+    showToast("Konnte nicht kopieren");
+  }
+}
+
+function finish(){
+  setChips([]);
+
+  // “Dringlichkeit” Hinweis
+  const topic = (state.answers.topic||"").toLowerCase();
+  const urgent = (topic.includes("notfall") || (state.answers.urgency||"").toLowerCase().includes("heute"));
+
+  addBubble("bot", urgent
+    ? "Verstanden. ✅ Das klingt dringend. Bitte buche den frühesten Slot oder wähle Rückruf – wir priorisieren dich."
+    : "Danke! ✅ Ich habe alles aufgenommen.");
+
+  // Call-to-action
+  const booking = CONFIG.bookingLink && CONFIG.bookingLink !== "https://calendly.com/";
+  if(booking){
+    addBubble("bot", `Nächster Schritt: Termin buchen → ${CONFIG.bookingLink}`);
+  } else {
+    addBubble("bot", "Nächster Schritt: Wir melden uns zeitnah. (Optional: In der Konfiguration kannst du einen Termin‑Link eintragen.)");
+  }
+
+  // Handover options
+  addBubble("bot",
+`Übergabe (Demo):
+1) Zusammenfassung kopieren
+2) Per E‑Mail ans Team schicken`);
+
+  // Action chips
+  chips.innerHTML = "";
+
+  const c1 = document.createElement("button");
+  c1.type="button"; c1.className="chip"; c1.textContent="Zusammenfassung kopieren";
+  c1.onclick = copySummary;
+
+  const c2 = document.createElement("a");
+  c2.className="chip"; c2.textContent="E‑Mail ans Team";
+  c2.href = buildMailto();
+  c2.target = "_blank";
+  c2.rel = "noopener";
+
+  const c3 = document.createElement("button");
+  c3.type="button"; c3.className="chip"; c3.textContent="Neu starten";
+  c3.onclick = resetConversation;
+
+  chips.appendChild(c1);
+  chips.appendChild(c2);
+  chips.appendChild(c3);
+
+  // Update side labels
+  $("demoNextStep").textContent = booking ? "Terminbuchung" : "Callback";
+  $("demoHandover").textContent = "E‑Mail / Copy";
+}
+
+function handleAnswer(raw){
+  const v = (raw||"").trim();
+  if(!v) return;
+
+  // render user message
+  addBubble("me", v);
+
+  const step = FLOW[state.i];
+  const key = step?.key;
+  state.answers[key] = v;
+
+  // validations
+  if(key === "email" && !isEmail(v)){
+    addBubble("bot","Hmm – das sieht nicht wie eine gültige E‑Mail aus. Bitte nochmal eingeben (z.B. name@domain.de).");
+    state.answers[key] = "";
+    setChips([]);
+    return;
+  }
+  if(key === "phone"){
+    const digits = v.replace(/[^\d+]/g,"");
+    if(digits.length < 7){
+      addBubble("bot","Bitte gib eine gültige Telefonnummer ein (mind. 7 Ziffern).");
+      state.answers[key] = "";
+      return;
+    }
+  }
+
+  // simple routing hints
+  if(key === "topic"){
+    if(/notfall|dringend|sofort/i.test(v)){
+      addBubble("bot","Okay — ich priorisiere das als dringend.");
+    }
+  }
+
+  state.i++;
+
+  if(state.i < FLOW.length){
+    ask();
+  } else {
+    finish();
+  }
+}
+
+function send(){
+  const v = input.value;
+  input.value = "";
+  handleAnswer(v);
+  setTimeout(()=>input.focus(), 50);
+}
+
+$("sendBtn").onclick = send;
+input.addEventListener("keydown",(e)=>{
+  if(e.key==="Enter") send();
+});
+
+// "Konfiguration" Button: simple prompt-based config (keine code edits nötig)
+$("openConfigBtn").onclick = ()=>{
+  const name = prompt("Brand Name (z.B. 'Muster‑Praxis'): ", CONFIG.brandName) ?? CONFIG.brandName;
+  const tag  = prompt("Brand Tag (z.B. '24/7 Terminservice'): ", CONFIG.brandTag) ?? CONFIG.brandTag;
+  const ind  = prompt("Branche Label (z.B. 'Zahnarztpraxis'): ", CONFIG.industryLabel) ?? CONFIG.industryLabel;
+  const book = prompt("Termin‑Link (optional, sonst leer lassen): ", CONFIG.bookingLink) ?? CONFIG.bookingLink;
+  const mail = prompt("Übergabe‑E‑Mail (optional): ", CONFIG.handoverEmail) ?? CONFIG.handoverEmail;
+
+  CONFIG.brandName = name.trim() || CONFIG.brandName;
+  CONFIG.brandTag = tag.trim() || CONFIG.brandTag;
+  CONFIG.industryLabel = ind.trim() || CONFIG.industryLabel;
+  CONFIG.bookingLink = book.trim() || "";
+  CONFIG.handoverEmail = mail.trim() || CONFIG.handoverEmail;
+
+  $("brandName").textContent = CONFIG.brandName;
+  $("brandTag").textContent = CONFIG.brandTag;
+  $("brandNameTop").textContent = CONFIG.brandName + " Demo";
+  $("demoIndustry").textContent = CONFIG.industryLabel;
+
+  showToast("Konfiguration gespeichert ✅");
+};
+
+// Start with a ready conversation
+resetConversation();
+
+</script>
+</body>
+</html>
