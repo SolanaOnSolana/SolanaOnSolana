@@ -3,371 +3,116 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Sanitär-Notdienst Assistent • Demo</title>
-  <meta name="description" content="Hochwertiger Sanitär-Notdienst Assistent: Triage, gezielte Rückfragen, sichere Sofort-Hinweise, saubere Übergabe (Zusammenfassung) – standalone HTML." />
+  <title>Sanitär-Notdienst Agent • KI-Demo (BYOK)</title>
+  <meta name="description" content="Sanitär-Notdienst Agent Demo: Offline-Triage + KI-Modus (BYOK) mit echten, menschlichen Antworten." />
   <meta name="theme-color" content="#0b3b8a" />
   <style>
     :root{
-      --bg:#f6f8fc;
-      --card:#ffffff;
-      --text:#0f172a;
-      --muted:#55627a;
-      --line:rgba(15, 23, 42, .12);
-      --accent:#0b3b8a;
-      --accent2:#1e60d4;
-      --ok:#0a7a2e;
-      --warn:#b45309;
-      --danger:#b91c1c;
-      --shadow:0 18px 50px rgba(2, 10, 30, .12);
-      --shadow2:0 12px 30px rgba(2, 10, 30, .10);
-      --radius:18px;
-      --sans: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
-      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      --bg:#f6f8fc;--card:#fff;--text:#0f172a;--muted:#55627a;--line:rgba(15,23,42,.12);
+      --accent:#0b3b8a;--accent2:#1e60d4;--ok:#0a7a2e;--warn:#b45309;--danger:#b91c1c;
+      --shadow:0 18px 50px rgba(2,10,30,.12);--shadow2:0 12px 30px rgba(2,10,30,.10);
+      --radius:18px;--sans:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;
+      --mono:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;
     }
-    *{box-sizing:border-box}
-    html,body{height:100%}
+    *{box-sizing:border-box} html,body{height:100%}
     body{
-      margin:0;
-      font-family:var(--sans);
-      color:var(--text);
-      background:
-        radial-gradient(1200px 600px at 15% -10%, rgba(30,96,212,.10), transparent 60%),
-        radial-gradient(1000px 520px at 95% 0%, rgba(11,59,138,.10), transparent 55%),
-        linear-gradient(180deg, #f6f8fc, #f3f6ff);
+      margin:0;font-family:var(--sans);color:var(--text);
+      background:radial-gradient(1200px 600px at 15% -10%, rgba(30,96,212,.10), transparent 60%),
+               radial-gradient(1000px 520px at 95% 0%, rgba(11,59,138,.10), transparent 55%),
+               linear-gradient(180deg, #f6f8fc, #f3f6ff);
     }
-    a{color:var(--accent2); text-decoration:none}
-    a:hover{text-decoration:underline}
-
-    .wrap{max-width:1120px; margin:0 auto; padding:40px 18px 120px;}
+    .wrap{max-width:1100px;margin:0 auto;padding:38px 18px 120px;}
     .top{
-      display:flex; align-items:center; justify-content:space-between; gap:14px;
-      padding:14px 16px;
-      background:rgba(255,255,255,.78);
-      border:1px solid var(--line);
-      border-radius:999px;
-      box-shadow: var(--shadow2);
-      backdrop-filter: blur(10px);
+      display:flex;align-items:center;justify-content:space-between;gap:14px;
+      padding:14px 16px;background:rgba(255,255,255,.78);border:1px solid var(--line);
+      border-radius:999px;box-shadow:var(--shadow2);backdrop-filter:blur(10px);
     }
-    .brand{display:flex; align-items:center; gap:12px; min-width:0;}
-    .logo{
-      width:36px; height:36px; border-radius:12px;
-      background:linear-gradient(135deg, var(--accent2), var(--accent));
-      box-shadow:0 10px 24px rgba(30,96,212,.18);
-      flex:0 0 auto;
-    }
-    .brand b{display:block; font-size:14px; letter-spacing:.2px}
-    .brand small{display:block; font-size:12px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:76ch}
-    .status{
-      display:inline-flex; align-items:center; gap:10px;
-      padding:10px 12px;
-      border-radius:999px;
-      border:1px solid var(--line);
-      background:rgba(255,255,255,.72);
-      color:var(--muted);
-      font-size:12px;
-      white-space:nowrap;
-    }
-    .dot{width:9px; height:9px; border-radius:99px; background:var(--ok); box-shadow:0 0 0 6px rgba(10,122,46,.12);}
-
-    .hero{
-      margin-top:18px;
-      display:grid;
-      grid-template-columns: 1.2fr .8fr;
-      gap:16px;
-      align-items:stretch;
-    }
-    @media (max-width: 980px){ .hero{grid-template-columns:1fr;} }
-
-    .card{
-      background:var(--card);
-      border:1px solid var(--line);
-      border-radius:var(--radius);
-      box-shadow: var(--shadow);
-      overflow:hidden;
-    }
+    .brand{display:flex;align-items:center;gap:12px;min-width:0;}
+    .logo{width:36px;height:36px;border-radius:12px;background:linear-gradient(135deg,var(--accent2),var(--accent));
+      box-shadow:0 10px 24px rgba(30,96,212,.18);}
+    .brand b{display:block;font-size:14px;letter-spacing:.2px}
+    .brand small{display:block;font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:76ch}
+    .status{display:inline-flex;align-items:center;gap:10px;padding:10px 12px;border-radius:999px;border:1px solid var(--line);
+      background:rgba(255,255,255,.72);color:var(--muted);font-size:12px;white-space:nowrap;}
+    .dot{width:9px;height:9px;border-radius:99px;background:var(--ok);box-shadow:0 0 0 6px rgba(10,122,46,.12);}
+    .hero{margin-top:18px;display:grid;grid-template-columns:1.2fr .8fr;gap:16px;align-items:stretch;}
+    @media (max-width:980px){.hero{grid-template-columns:1fr;}}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;}
     .pad{padding:24px 24px 20px;}
-    .h1{margin:0 0 10px; font-size:40px; line-height:1.06; letter-spacing:-.7px;}
-    @media (max-width: 540px){ .h1{font-size:32px;} }
-    .sub{margin:0 0 16px; color:var(--muted); font-size:15px; line-height:1.55; max-width:80ch;}
-    .actions{display:flex; flex-wrap:wrap; gap:10px; margin-top:14px;}
-    .btn{
-      appearance:none; border:0; cursor:pointer; user-select:none;
-      padding:12px 14px; border-radius:14px; font-weight:800; letter-spacing:.2px;
-      display:inline-flex; align-items:center; gap:10px;
-      transition: transform .12s ease, filter .12s ease;
-    }
-    .btn:active{transform:translateY(1px)}
-    .btn.primary{
-      background:linear-gradient(135deg, var(--accent2), var(--accent));
-      color:#fff;
-      box-shadow:0 12px 30px rgba(30,96,212,.20);
-    }
-    .btn.ghost{
-      background:rgba(15,23,42,.04);
-      border:1px solid rgba(15,23,42,.10);
-      color:var(--text);
-    }
-    .btn svg{width:18px; height:18px; opacity:.95}
-    .grid{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin-top:16px;}
-    @media (max-width: 980px){ .grid{grid-template-columns:repeat(2,minmax(0,1fr));} }
-    @media (max-width: 520px){ .grid{grid-template-columns:1fr;} }
-    .feat{
-      padding:12px 12px;
-      border-radius:16px;
-      border:1px solid rgba(15,23,42,.10);
-      background:linear-gradient(180deg, rgba(30,96,212,.05), rgba(30,96,212,.02));
-    }
-    .feat b{display:block; font-size:13px; margin-bottom:4px}
-    .feat span{display:block; font-size:12px; color:var(--muted); line-height:1.35}
-
-    .side .pad{padding:18px 18px 16px;}
-    .mini{
-      border:1px solid rgba(15,23,42,.10);
-      border-radius:16px;
-      background:linear-gradient(180deg, rgba(30,96,212,.05), rgba(255,255,255,.65));
-      padding:14px 14px;
-    }
-    .mini h3{margin:0 0 8px; font-size:14px; letter-spacing:.2px}
-    .mini p{margin:0; font-size:12.8px; color:var(--muted); line-height:1.55}
-    .kv{margin-top:12px; display:grid; grid-template-columns:1fr 1fr; gap:10px;}
-    .k{
-      border:1px solid rgba(15,23,42,.10);
-      border-radius:14px;
-      padding:10px 10px;
-      background:rgba(255,255,255,.78);
-      min-height:60px;
-    }
-    .k small{display:block; font-size:11px; color:var(--muted); margin-bottom:4px}
-    .k strong{display:block; font-size:13px}
-    .note{
-      border-top:1px solid rgba(15,23,42,.10);
-      padding:14px 18px 18px;
-      color:var(--muted);
-      font-size:12px;
-      line-height:1.5;
-      background:rgba(245,247,255,.65);
-    }
-    .badge{
-      display:inline-flex; align-items:center; gap:8px;
-      padding:8px 10px;
-      border-radius:999px;
-      border:1px solid rgba(15,23,42,.10);
-      background:rgba(255,255,255,.7);
-      color:var(--muted);
-      font-size:12px;
-      margin-top:10px;
-    }
-    .badge i{
-      width:8px; height:8px; border-radius:999px; display:inline-block; background:var(--warn);
-      box-shadow:0 0 0 6px rgba(180,83,9,.10);
-    }
-
-    /* Widget */
-    .fab{
-      position:fixed;
-      right:18px;
-      bottom:18px;
-      z-index:30;
-      border-radius:999px;
-      padding:12px 14px;
-      background:linear-gradient(135deg, var(--accent2), var(--accent));
-      color:#fff;
-      border:0;
-      cursor:pointer;
-      font-weight:900;
-      box-shadow:0 18px 55px rgba(2, 10, 30, .25);
-      display:flex; gap:10px; align-items:center;
-    }
-    .fab svg{width:18px; height:18px}
-    .widget{
-      position:fixed;
-      right:18px;
-      bottom:18px;
-      width:398px;
-      max-width:92vw;
-      height:640px;
-      max-height:80vh;
-      z-index:40;
-      border-radius:20px;
-      overflow:hidden;
-      box-shadow:0 22px 60px rgba(2, 10, 30, .22);
-      border:1px solid rgba(15,23,42,.12);
-      background:#ffffff;
-      display:none;
-    }
-    .whead{
-      display:flex; align-items:center; justify-content:space-between;
-      padding:12px 12px 12px 14px;
-      border-bottom:1px solid rgba(15,23,42,.10);
-      background:linear-gradient(135deg, rgba(30,96,212,.12), rgba(11,59,138,.08));
-    }
-    .wbrand{display:flex; align-items:center; gap:10px; min-width:0;}
-    .wlogo{
-      width:30px; height:30px; border-radius:12px;
-      background:linear-gradient(135deg, var(--accent2), var(--accent));
-      flex:0 0 auto;
-    }
+    .h1{margin:0 0 10px;font-size:40px;line-height:1.06;letter-spacing:-.7px;}
+    @media (max-width:540px){.h1{font-size:32px;}}
+    .sub{margin:0 0 16px;color:var(--muted);font-size:15px;line-height:1.55;max-width:80ch;}
+    .actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px;}
+    .btn{appearance:none;border:0;cursor:pointer;user-select:none;padding:12px 14px;border-radius:14px;font-weight:800;
+      letter-spacing:.2px;display:inline-flex;align-items:center;gap:10px;transition:transform .12s ease,filter .12s ease;}
+    .btn:active{transform:translateY(1px)} .btn svg{width:18px;height:18px;opacity:.95}
+    .btn.primary{background:linear-gradient(135deg,var(--accent2),var(--accent));color:#fff;box-shadow:0 12px 30px rgba(30,96,212,.20);}
+    .btn.ghost{background:rgba(15,23,42,.04);border:1px solid rgba(15,23,42,.10);color:var(--text);}
+    .grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:16px;}
+    @media (max-width:980px){.grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
+    @media (max-width:520px){.grid{grid-template-columns:1fr;}}
+    .feat{padding:12px;border-radius:16px;border:1px solid rgba(15,23,42,.10);
+      background:linear-gradient(180deg,rgba(30,96,212,.05),rgba(30,96,212,.02));}
+    .feat b{display:block;font-size:13px;margin-bottom:4px}
+    .feat span{display:block;font-size:12px;color:var(--muted);line-height:1.35}
+    .note{border-top:1px solid rgba(15,23,42,.10);padding:14px 18px 18px;color:var(--muted);font-size:12px;line-height:1.5;
+      background:rgba(245,247,255,.65);}
+    .badge{display:inline-flex;align-items:center;gap:8px;padding:8px 10px;border-radius:999px;border:1px solid rgba(15,23,42,.10);
+      background:rgba(255,255,255,.7);color:var(--muted);font-size:12px;margin-top:10px;}
+    .badge i{width:8px;height:8px;border-radius:999px;display:inline-block;background:var(--warn);box-shadow:0 0 0 6px rgba(180,83,9,.10);}
+    .badge i.on{background:var(--ok);box-shadow:0 0 0 6px rgba(10,122,46,.10);}
+    .mini{border:1px solid rgba(15,23,42,.10);border-radius:16px;background:linear-gradient(180deg,rgba(30,96,212,.05),rgba(255,255,255,.65));
+      padding:14px;}
+    .mini h3{margin:0 0 8px;font-size:14px;letter-spacing:.2px}
+    .mini p{margin:0;font-size:12.8px;color:var(--muted);line-height:1.55}
+    .mini small{font-family:var(--mono);font-size:11px;color:rgba(15,23,42,.65);display:block;margin-top:6px;line-height:1.4;word-break:break-all}
+    .kv{margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+    .k{border:1px solid rgba(15,23,42,.10);border-radius:14px;padding:10px;background:rgba(255,255,255,.78);min-height:60px;}
+    .k small{display:block;font-size:11px;color:var(--muted);margin-bottom:4px}
+    .k strong{display:block;font-size:13px}
+    /* widget */
+    .fab{position:fixed;right:18px;bottom:18px;z-index:30;border-radius:999px;padding:12px 14px;background:linear-gradient(135deg,var(--accent2),var(--accent));
+      color:#fff;border:0;cursor:pointer;font-weight:900;box-shadow:0 18px 55px rgba(2,10,30,.25);display:flex;gap:10px;align-items:center;}
+    .fab svg{width:18px;height:18px}
+    .widget{position:fixed;right:18px;bottom:18px;width:398px;max-width:92vw;height:640px;max-height:80vh;z-index:40;border-radius:20px;
+      overflow:hidden;box-shadow:0 22px 60px rgba(2,10,30,.22);border:1px solid rgba(15,23,42,.12);background:#fff;display:none;}
+    .whead{display:flex;align-items:center;justify-content:space-between;padding:12px 12px 12px 14px;border-bottom:1px solid rgba(15,23,42,.10);
+      background:linear-gradient(135deg,rgba(30,96,212,.12),rgba(11,59,138,.08));}
+    .wbrand{display:flex;align-items:center;gap:10px;min-width:0;}
+    .wlogo{width:30px;height:30px;border-radius:12px;background:linear-gradient(135deg,var(--accent2),var(--accent));}
     .wbrand .t{min-width:0;}
-    .wbrand .t b{display:block; font-size:13px; line-height:1.1; letter-spacing:.2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
-    .wbrand .t small{display:block; font-size:11px; color:rgba(15,23,42,.72); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
-    .wbtns{display:flex; gap:8px; align-items:center;}
-    .iconbtn{
-      width:36px; height:36px; border-radius:12px;
-      background:rgba(255,255,255,.78);
-      border:1px solid rgba(15,23,42,.10);
-      color:var(--text);
-      cursor:pointer;
-      display:grid;
-      place-items:center;
-      transition: transform .12s ease, filter .12s ease;
-    }
-    .iconbtn:active{transform: translateY(1px)}
-    .iconbtn svg{width:18px; height:18px; opacity:.92}
-
-    .wbody{
-      padding:14px;
-      height: calc(100% - 156px);
-      overflow:auto;
-      background:
-        radial-gradient(900px 380px at 20% -20%, rgba(30,96,212,.07), transparent 55%),
-        linear-gradient(180deg, #ffffff, #fbfcff);
-    }
-    .bubble{
-      display:flex;
-      gap:10px;
-      margin:10px 0;
-      align-items:flex-end;
-    }
+    .wbrand .t b{display:block;font-size:13px;line-height:1.1;letter-spacing:.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .wbrand .t small{display:block;font-size:11px;color:rgba(15,23,42,.72);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .wbtns{display:flex;gap:8px;align-items:center;}
+    .iconbtn{width:36px;height:36px;border-radius:12px;background:rgba(255,255,255,.78);border:1px solid rgba(15,23,42,.10);color:var(--text);
+      cursor:pointer;display:grid;place-items:center;transition:transform .12s ease,filter .12s ease;}
+    .iconbtn:active{transform:translateY(1px)} .iconbtn svg{width:18px;height:18px;opacity:.92}
+    .wbody{padding:14px;height:calc(100% - 186px);overflow:auto;background:radial-gradient(900px 380px at 20% -20%, rgba(30,96,212,.07), transparent 55%),
+      linear-gradient(180deg,#fff,#fbfcff);}
+    .bubble{display:flex;gap:10px;margin:10px 0;align-items:flex-end;}
     .bubble.me{justify-content:flex-end}
-    .msg{
-      max-width: 86%;
-      border:1px solid rgba(15,23,42,.10);
-      background:rgba(15,23,42,.03);
-      border-radius:18px;
-      padding:10px 12px;
-      font-size:13px;
-      line-height:1.45;
-      color:var(--text);
-      white-space:pre-wrap;
-      word-break:break-word;
-    }
-    .bubble.me .msg{
-      background:linear-gradient(135deg, var(--accent2), var(--accent));
-      color:#fff;
-      border:0;
-    }
-    .meta{
-      display:block;
-      margin-top:6px;
-      font-size:10.5px;
-      color:rgba(15,23,42,.55);
-      font-family:var(--mono);
-    }
+    .msg{max-width:86%;border:1px solid rgba(15,23,42,.10);background:rgba(15,23,42,.03);border-radius:18px;padding:10px 12px;font-size:13px;line-height:1.45;
+      color:var(--text);white-space:pre-wrap;word-break:break-word;}
+    .bubble.me .msg{background:linear-gradient(135deg,var(--accent2),var(--accent));color:#fff;border:0;}
+    .meta{display:block;margin-top:6px;font-size:10.5px;color:rgba(15,23,42,.55);font-family:var(--mono);}
     .bubble.me .meta{color:rgba(255,255,255,.75)}
-
-    .callout{
-      border:1px solid rgba(180,83,9,.25);
-      background:rgba(180,83,9,.08);
-      color:#7c2d12;
-      border-radius:16px;
-      padding:10px 12px;
-      font-size:12.8px;
-      line-height:1.45;
-    }
-    .danger{
-      border:1px solid rgba(185,28,28,.25);
-      background:rgba(185,28,28,.08);
-      color:#7f1d1d;
-    }
-
-    .wfoot{
-      border-top:1px solid rgba(15,23,42,.10);
-      padding:10px 10px;
-      background:#fff;
-    }
-    .row2{display:flex; gap:10px; align-items:center;}
-    .input{
-      flex:1; height:42px;
-      border-radius:14px;
-      padding:10px 12px;
-      border:1px solid rgba(15,23,42,.12);
-      background:#fff;
-      color:var(--text);
-      outline:none;
-      font-size:13px;
-    }
-    .send{
-      height:42px;
-      padding:0 14px;
-      border-radius:14px;
-      border:0;
-      cursor:pointer;
-      font-weight:900;
-      background:rgba(15,23,42,.06);
-      border:1px solid rgba(15,23,42,.10);
-      color:var(--text);
-    }
-    .send.primary{
-      background:linear-gradient(135deg, var(--accent2), var(--accent));
-      color:#fff;
-      border:0;
-    }
-
-    .helper{margin-top:10px; display:flex; gap:8px; flex-wrap:wrap;}
-    .chip{
-      font-size:12px;
-      padding:8px 10px;
-      border-radius:999px;
-      border:1px solid rgba(15,23,42,.12);
-      background:rgba(15,23,42,.03);
-      color:var(--text);
-      cursor:pointer;
-    }
-    .chip:hover{filter:brightness(1.03)}
-    .chip.primary{
-      background:rgba(30,96,212,.10);
-      border-color:rgba(30,96,212,.18);
-      color:var(--accent);
-      font-weight:900;
-    }
-
-    .uploader{
-      margin-top:10px;
-      padding:10px 10px;
-      border-radius:16px;
-      border:1px dashed rgba(15,23,42,.18);
-      background:rgba(15,23,42,.02);
-      display:none;
-    }
-    .uploader label{display:block; font-size:12px; color:var(--muted); margin-bottom:8px}
-    .uploader input{width:100%}
-    .files{
-      margin-top:8px;
-      font-size:12px;
-      color:var(--muted);
-      line-height:1.4;
-    }
-
-    .toast{
-      position:fixed;
-      left:50%;
-      bottom:18px;
-      transform:translateX(-50%);
-      background:rgba(15,23,42,.92);
-      color:#fff;
-      padding:10px 12px;
-      border-radius:14px;
-      font-size:12px;
-      opacity:0;
-      pointer-events:none;
-      transition:opacity .18s ease, transform .18s ease;
-      z-index:60;
-    }
-    .toast.show{opacity:1; transform:translateX(-50%) translateY(-6px)}
-    .sr-only{
-      position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden;
-      clip:rect(0,0,0,0); border:0;
-    }
+    .callout{border:1px solid rgba(180,83,9,.25);background:rgba(180,83,9,.08);color:#7c2d12;border-radius:16px;padding:10px 12px;font-size:12.8px;line-height:1.45;}
+    .danger{border:1px solid rgba(185,28,28,.25);background:rgba(185,28,28,.08);color:#7f1d1d;}
+    .wfoot{border-top:1px solid rgba(15,23,42,.10);padding:10px;background:#fff;}
+    .row2{display:flex;gap:10px;align-items:center;}
+    .input{flex:1;height:42px;border-radius:14px;padding:10px 12px;border:1px solid rgba(15,23,42,.12);background:#fff;color:var(--text);outline:none;font-size:13px;}
+    .send{height:42px;padding:0 14px;border-radius:14px;border:0;cursor:pointer;font-weight:900;background:rgba(15,23,42,.06);border:1px solid rgba(15,23,42,.10);color:var(--text);}
+    .send.primary{background:linear-gradient(135deg,var(--accent2),var(--accent));color:#fff;border:0;}
+    .helper{margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;}
+    .chip{font-size:12px;padding:8px 10px;border-radius:999px;border:1px solid rgba(15,23,42,.12);background:rgba(15,23,42,.03);color:var(--text);cursor:pointer;}
+    .chip.primary{background:rgba(30,96,212,.10);border-color:rgba(30,96,212,.18);color:var(--accent);font-weight:900;}
+    .uploader{margin-top:10px;padding:10px;border-radius:16px;border:1px dashed rgba(15,23,42,.18);background:rgba(15,23,42,.02);display:none;}
+    .uploader label{display:block;font-size:12px;color:var(--muted);margin-bottom:8px}
+    .files{margin-top:8px;font-size:12px;color:var(--muted);line-height:1.4;}
+    .toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:rgba(15,23,42,.92);color:#fff;padding:10px 12px;border-radius:14px;font-size:12px;
+      opacity:0;pointer-events:none;transition:opacity .18s ease, transform .18s ease;z-index:60;}
+    .toast.show{opacity:1;transform:translateX(-50%) translateY(-6px)}
+    .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);border:0;}
   </style>
 </head>
 <body>
@@ -376,8 +121,8 @@
       <div class="brand">
         <div class="logo" aria-hidden="true"></div>
         <div style="min-width:0">
-          <b id="topTitle">Sanitär-Notdienst Assistent (Demo)</b>
-          <small id="topSub">Nimmt Anfragen an, triagiert Notfälle und sammelt alle Infos für den sofortigen Einsatz.</small>
+          <b id="topTitle">Sanitär-Notdienst Agent (KI-Demo)</b>
+          <small id="topSub">Offline + KI-Modus (BYOK)</small>
         </div>
       </div>
       <div class="status"><span class="dot" aria-hidden="true"></span><span id="statusPill">Live Demo • Sanitär / Rohrreinigung</span></div>
@@ -386,11 +131,10 @@
     <div class="hero">
       <div class="card">
         <div class="pad">
-          <h1 class="h1">24/7 Auftragsannahme,<br/>die wirklich qualifiziert.</h1>
+          <h1 class="h1">Menschliche Antworten<br>statt Standard-Bot.</h1>
           <p class="sub">
-            Wenn jemand nur sagt „Ich habe ein Problem“, fragt dieser Assistent nicht stumpf nach Name/Telefon,
-            sondern erst nach den entscheidenden Punkten: <b>Wasser abstellen?</b> <b>Schweregrad?</b> <b>Ort/Zugang?</b>
-            Danach gibt es eine saubere Einsatz-Zusammenfassung – fertig für Rückruf oder Notdienst.
+            Offline-Modus fragt solide Triage ab. <b>KI-Modus</b> geht auf Inhalte ein, versteht auch chaotische Nachrichten
+            und stellt dynamische Rückfragen. Am Ende entsteht eine <b>Übergabe</b>, die ein Team direkt nutzen kann.
           </p>
 
           <div class="actions">
@@ -401,71 +145,54 @@
               </svg>
               Demo starten
             </button>
-
-            <button class="btn ghost" id="copyPitchBtn" type="button">
-              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path d="M9 9h10v10H9V9Z" stroke="currentColor" stroke-width="2"/>
-                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" stroke="currentColor" stroke-width="2"/>
-              </svg>
-              Pitch kopieren
-            </button>
-
             <button class="btn ghost" id="openConfigBtn" type="button">
               <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" stroke="currentColor" stroke-width="2"/>
                 <path d="M19.4 15a7.8 7.8 0 0 0 .1-2l2-1.5-2-3.5-2.4 1a8.3 8.3 0 0 0-1.7-1L15 2h-6l-.4 2.9a8.3 8.3 0 0 0-1.7 1L4.5 5l-2 3.5 2 1.5a7.8 7.8 0 0 0 .1 2l-2 1.5 2 3.5 2.4-1a8.3 8.3 0 0 0 1.7 1L9 22h6l.4-2.9a8.3 8.3 0 0 0 1.7-1l2.4 1 2-3.5-2-1.5Z" stroke="currentColor" stroke-width="2"/>
               </svg>
-              Konfiguration
+              Konfiguration (KI)
             </button>
           </div>
 
           <div class="grid" aria-label="Highlights">
-            <div class="feat"><b>Triage (Notfall vs. Termin)</b><span>Wasser läuft? Stromnähe? Hauptwasserhahn? – priorisiert richtig.</span></div>
-            <div class="feat"><b>Einsatz-Relevante Fragen</b><span>Ort, Zugang, Problemtyp, Schweregrad, seit wann, schon probiert.</span></div>
-            <div class="feat"><b>Übergabe in 1 Klick</b><span>Zusammenfassung kopieren oder als E-Mail ans Team senden.</span></div>
+            <div class="feat"><b>KI versteht Freitext</b><span>Reagiert sinnvoll auf fast jede Nachricht.</span></div>
+            <div class="feat"><b>Sicherheits-Triage</b><span>Wasser abstellen, Stromnähe, Priorität.</span></div>
+            <div class="feat"><b>Übergabe</b><span>Saubere Einsatzinfos für Rückruf/Einsatz.</span></div>
           </div>
 
-          <div class="badge"><i aria-hidden="true"></i><span><b>Datenschutz:</b> Demo speichert nichts auf einem Server. Übergabe erfolgt per Copy/E-Mail über dein Gerät.</span></div>
+          <div class="badge"><i id="aiDot" aria-hidden="true"></i><span id="aiBadgeText"><b>KI-Modus:</b> AUS (Offline aktiv)</span></div>
         </div>
-
         <div class="note">
-          Verkaufssatz: <b>„24/7 Notdienst-Assistent – nimmt Anfragen an, triagiert Notfälle und liefert Einsatzinfos, damit ihr sofort rausfahren könnt.“</b>
+          Wichtig: OpenAI rät davon ab, API Keys im Browser zu verwenden. Diese Demo nutzt BYOK + Proxy, damit es trotzdem sauber funktioniert.
         </div>
       </div>
 
-      <div class="card side">
+      <div class="card">
         <div class="pad">
           <div class="mini">
-            <h3>Für wen du das vermarktest</h3>
-            <p>
-              Sanitärbetriebe, Rohrreinigung, Hausmeisterservice – überall, wo verpasste Anfragen direkt Geld kosten.
-              Der Nutzen ist messbar: <b>mehr angenommene Einsätze</b> + <b>weniger Rückfragen</b> + <b>klarere Priorisierung</b>.
-            </p>
-            <div class="kv">
-              <div class="k"><small>Produkt</small><strong>Notdienst-Assistent</strong></div>
-              <div class="k"><small>Einsatz</small><strong>Inbound / Auftragsannahme</strong></div>
-              <div class="k"><small>Output</small><strong>Einsatz-Zusammenfassung</strong></div>
-              <div class="k"><small>Demo-Modus</small><strong>Standalone HTML</strong></div>
-            </div>
+            <h3>Was du jetzt brauchst (schnell)</h3>
+            <p>1) Cloudflare Worker URL (kostenlos) • 2) Deinen OpenAI Key • 3) KI einschalten.</p>
+            <small id="aiStatus">Worker: (nicht gesetzt) • Model: gpt-4o-mini</small>
           </div>
 
           <div class="mini" style="margin-top:12px">
             <h3>Pitch (copy/paste)</h3>
-            <p id="pitchText">
-              “Wir setzen euch einen 24/7 Notdienst-Assistenten auf, der Anfragen sofort annimmt, Notfälle triagiert
-              (Wasser läuft / Hauptwasserhahn / Stromnähe) und alle Einsatzinfos sammelt. Am Ende bekommt ihr eine saubere
-              Zusammenfassung für Rückruf oder Einsatz – ohne verpasste Leads.”
-            </p>
+            <p id="pitchText">“24/7 Notdienst-Assistent: nimmt Anfragen an, triagiert Notfälle und sammelt Einsatzinfos.
+Am Ende bekommt ihr eine klare Übergabe für Rückruf/Einsatz – ohne verpasste Leads.”</p>
+          </div>
+
+          <div class="kv">
+            <div class="k"><small>Branche</small><strong>Sanitär / Rohrreinigung</strong></div>
+            <div class="k"><small>Use-Case</small><strong>Auftragsannahme</strong></div>
+            <div class="k"><small>Output</small><strong>Einsatz-Summary</strong></div>
+            <div class="k"><small>Setup</small><strong>BYOK (Key)</strong></div>
           </div>
         </div>
-        <div class="note">
-          Du kannst in der Konfiguration Firmenname, Einsatzgebiet, Hotline und Terminlink eintragen.
-        </div>
+        <div class="note">Tipp: Offline verkaufen + KI-Upgrade als “Pro”.</div>
       </div>
     </div>
   </div>
 
-  <!-- Floating Button -->
   <button class="fab" id="fab" type="button" aria-label="Chat öffnen">
     <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <path d="M4 12a8 8 0 1 0 16 0 8 8 0 0 0-16 0Z" stroke="currentColor" stroke-width="2"/>
@@ -475,8 +202,7 @@
     Chat starten
   </button>
 
-  <!-- Widget -->
-  <div class="widget" id="widget" role="dialog" aria-modal="true" aria-label="Sanitär-Notdienst Assistent">
+  <div class="widget" id="widget" role="dialog" aria-modal="true" aria-label="Sanitär-Notdienst Agent">
     <div class="whead">
       <div class="wbrand">
         <div class="wlogo" aria-hidden="true"></div>
@@ -514,7 +240,7 @@
       <div class="helper" id="chips"></div>
 
       <div class="uploader" id="uploader">
-        <label for="file">Optional: Foto(s) hinzufügen (z.B. Leck / Rohr / Anschluss)</label>
+        <label for="file">Optional: Foto(s) hinzufügen (Dateiname wird in Übergabe erwähnt)</label>
         <input id="file" type="file" multiple accept="image/*" />
         <div class="files" id="files"></div>
       </div>
@@ -524,354 +250,96 @@
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script>
-/* ===============================
-   CONFIG (anpassbar per Button)
-   =============================== */
+/* ========= Config ========= */
 const CONFIG = {
   companyName: "Sanitär-Service",
   tagLine: "Notfall-Triage • Einsatzinfos • Übergabe",
   serviceArea: "Berlin & Umgebung",
   openingHours: "24/7 (Notdienst)",
-  hotline: "",                // optional: tel:+49...
-  bookingLink: "",            // optional
   handoverEmail: "beispiel@firma.de",
   emailSubjectPrefix: "Neuer Notdienst-Lead",
   priceHint: "Preis richtet sich nach Aufwand & Material. Nach kurzer Klärung nennen wir eine realistische Spanne.",
+  aiEnabled: false,
+  aiModel: "gpt-4o-mini",
+  workerUrl: "",
+  apiKey: ""
 };
 
-/* ===============================
-   UI helpers
-   =============================== */
-const $ = (id)=>document.getElementById(id);
-const wbody = $("wbody");
-const input = $("input");
-const chips = $("chips");
-const toast = $("toast");
-const widget = $("widget");
-const fab = $("fab");
-const uploader = $("uploader");
-const fileEl = $("file");
-const filesEl = $("files");
+const STORAGE_KEY = "sanitaer_ai_demo_byok_v1";
+function loadCfg(){ try{ const v=JSON.parse(localStorage.getItem(STORAGE_KEY)||"null"); if(v) Object.assign(CONFIG,v);}catch{} }
+function saveCfg(){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({
+    companyName:CONFIG.companyName, tagLine:CONFIG.tagLine, serviceArea:CONFIG.serviceArea, openingHours:CONFIG.openingHours,
+    handoverEmail:CONFIG.handoverEmail, emailSubjectPrefix:CONFIG.emailSubjectPrefix,
+    aiEnabled:CONFIG.aiEnabled, aiModel:CONFIG.aiModel, workerUrl:CONFIG.workerUrl, apiKey:CONFIG.apiKey
+  }));
+}
 
-function nowTime(){
-  const d = new Date();
-  return d.toLocaleTimeString("de-DE", {hour:"2-digit", minute:"2-digit"});
-}
+/* ========= UI ========= */
+const $ = (id)=>document.getElementById(id);
+const wbody = $("wbody"), input = $("input"), chips = $("chips"), toast = $("toast");
+const widget = $("widget"), fab = $("fab");
+const uploader = $("uploader"), fileEl = $("file"), filesEl = $("files");
+
+function nowTime(){ return new Date().toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"}); }
 function showToast(msg){
-  toast.textContent = msg;
-  toast.classList.add("show");
-  clearTimeout(showToast._t);
-  showToast._t = setTimeout(()=>toast.classList.remove("show"), 1700);
+  toast.textContent = msg; toast.classList.add("show");
+  clearTimeout(showToast._t); showToast._t=setTimeout(()=>toast.classList.remove("show"),1700);
 }
-function escapeHtml(s){
-  return (s||"").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
-}
-function addBubble(who, text, kind){
-  const wrap = document.createElement("div");
-  wrap.className = "bubble " + (who==="me" ? "me" : "bot");
-  const msg = document.createElement("div");
-  msg.className = "msg";
-  if(kind === "callout") msg.innerHTML = `<div class="callout">${escapeHtml(text).replace(/\n/g,"<br>")}</div>`;
-  else if(kind === "danger") msg.innerHTML = `<div class="callout danger">${escapeHtml(text).replace(/\n/g,"<br>")}</div>`;
-  else msg.innerHTML = escapeHtml(text).replace(/\n/g,"<br>");
-  const meta = document.createElement("span");
-  meta.className = "meta";
-  meta.textContent = nowTime();
-  msg.appendChild(meta);
-  wrap.appendChild(msg);
-  wbody.appendChild(wrap);
-  wbody.scrollTop = wbody.scrollHeight;
+function escapeHtml(s){ return (s||"").replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m])); }
+function addBubble(who,text,kind){
+  const wrap=document.createElement("div"); wrap.className="bubble "+(who==="me"?"me":"bot");
+  const msg=document.createElement("div"); msg.className="msg";
+  if(kind==="callout") msg.innerHTML=`<div class="callout">${escapeHtml(text).replace(/\n/g,"<br>")}</div>`;
+  else if(kind==="danger") msg.innerHTML=`<div class="callout danger">${escapeHtml(text).replace(/\n/g,"<br>")}</div>`;
+  else msg.innerHTML=escapeHtml(text).replace(/\n/g,"<br>");
+  const meta=document.createElement("span"); meta.className="meta"; meta.textContent=nowTime();
+  msg.appendChild(meta); wrap.appendChild(msg); wbody.appendChild(wrap); wbody.scrollTop=wbody.scrollHeight;
 }
 function setChips(list){
-  chips.innerHTML = "";
-  (list||[]).forEach(({label, value, primary})=>{
-    const b = document.createElement("button");
-    b.type="button";
-    b.className = "chip" + (primary ? " primary" : "");
-    b.textContent = label;
-    b.onclick = ()=>{ input.value = value ?? label; input.focus(); };
+  chips.innerHTML="";
+  (list||[]).forEach(({label,value,primary})=>{
+    const b=document.createElement("button"); b.type="button";
+    b.className="chip"+(primary?" primary":""); b.textContent=label;
+    b.onclick=()=>{ input.value = value ?? label; input.focus(); };
     chips.appendChild(b);
   });
 }
-function openWidget(){
-  widget.style.display = "block";
-  fab.style.display = "none";
-  setTimeout(()=>input.focus(), 80);
-}
-function closeWidget(){
-  widget.style.display = "none";
-  fab.style.display = "flex";
-}
-$("closeBtn").onclick = closeWidget;
-fab.onclick = openWidget;
-$("startDemoBtn").onclick = openWidget;
+function openWidget(){ widget.style.display="block"; fab.style.display="none"; setTimeout(()=>input.focus(),80); }
+function closeWidget(){ widget.style.display="none"; fab.style.display="flex"; }
+$("closeBtn").onclick=closeWidget; fab.onclick=openWidget; $("startDemoBtn").onclick=openWidget;
 
-/* ===============================
-   Validation helpers
-   =============================== */
-function normalizePhone(v){ return (v||"").trim().replace(/[^\d+]/g,""); }
-function okPhone(v){
-  const p = normalizePhone(v);
-  const digits = p.replace(/[^\d]/g,"");
-  return digits.length >= 7;
-}
-function isEmail(v){ return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test((v||"").trim()); }
-
-/* ===============================
-   Intent detection (simple but practical)
-   =============================== */
-function detectIntent(text){
-  const t = (text||"").toLowerCase();
-  if(/wasser läuft|überschwemm|notfall|dringend|sofort|rohrbruch|leck.*stark/.test(t)) return "emergency";
-  if(/termin|kommen|wann|verfügbar|vorbeikommen/.test(t)) return "appointment";
-  if(/preis|kosten|angebot|was kostet|pauschal|preisrahmen/.test(t)) return "quote";
-  if(/öffnungs|zeiten|adresse|standort|servicegebiet|wie funktioniert|ablauf/.test(t)) return "faq";
-  return "problem";
-}
-
-/* ===============================
-   Conversation state machine
-   =============================== */
-const state = {
-  stage: "intro",    // intro -> capture -> triage -> details -> scheduling -> contact -> done
-  intent: null,
-  urgent: false,
-  answers: {},
-  queue: [],
-  photos: [],
-};
-
+/* ========= State ========= */
+const state = { mode:"offline", history:[], fields:{}, urgent:false, photos:[] };
 function applyConfigToUI(){
-  $("brandName").textContent = CONFIG.companyName;
-  $("brandTag").textContent = CONFIG.tagLine;
-  $("topTitle").textContent = CONFIG.companyName + " (Demo)";
-  $("topSub").textContent = `Servicegebiet: ${CONFIG.serviceArea} • Zeiten: ${CONFIG.openingHours}`;
+  $("brandName").textContent=CONFIG.companyName;
+  $("brandTag").textContent=CONFIG.tagLine;
+  $("topTitle").textContent=CONFIG.companyName+" (KI-Demo)";
+  $("topSub").textContent=`Servicegebiet: ${CONFIG.serviceArea} • Zeiten: ${CONFIG.openingHours}`;
+  const on = CONFIG.aiEnabled && CONFIG.workerUrl && CONFIG.apiKey;
+  state.mode = on ? "ai" : "offline";
+  $("aiDot").className = on ? "on" : "";
+  $("aiBadgeText").innerHTML = on ? "<b>KI-Modus:</b> AN (menschlich)" : "<b>KI-Modus:</b> AUS (Offline aktiv)";
+  $("aiStatus").textContent = `Worker: ${CONFIG.workerUrl || "(nicht gesetzt)"} • Model: ${CONFIG.aiModel}`;
 }
-
 function resetConversation(){
-  wbody.innerHTML = "";
-  state.stage = "capture";
-  state.intent = null;
-  state.urgent = false;
-  state.answers = {};
-  state.queue = [];
-  state.photos = [];
-  uploader.style.display = "none";
-  filesEl.textContent = "";
-  if(fileEl) fileEl.value = "";
-
-  addBubble("bot",
-`Hallo 👋 Ich helfe dir sofort weiter.
-Beschreibe bitte kurz dein Problem (1 Satz) — oder wähle:`, null);
-
-  setChips([
-    {label:"💧 Wasserleck / Rohrbruch", value:"Wasserleck / Rohrbruch", primary:true},
-    {label:"🚽 WC / Abfluss verstopft", value:"WC / Abfluss verstopft"},
-    {label:"🔥 Kein warmes Wasser / Heizung", value:"Kein warmes Wasser / Heizung"},
-    {label:"🚿 Niedriger Wasserdruck", value:"Wasserdruck sehr niedrig"},
-    {label:"📅 Termin (kein Notfall)", value:"Ich möchte einen Termin"},
-    {label:"🧾 Preise/Angebot", value:"Was kostet das ungefähr?"}
-  ]);
-}
-
-$("resetBtn").onclick = ()=>{ resetConversation(); showToast("Neu gestartet"); };
-
-function enqueue(list){
-  state.queue = list.slice();
-}
-function askNext(){
-  if(state.queue.length === 0){ finish(); return; }
-  const s = state.queue[0];
-  addBubble("bot", s.q, null);
-  setChips(s.chips || []);
-  if(s.showUploader) uploader.style.display = "block";
-  else uploader.style.display = "none";
-}
-
-function safetyHints(){
-  const t = (state.answers.problem||"").toLowerCase() + " " + (state.answers.details||"").toLowerCase();
-  const severity = (state.answers.severity||"").toLowerCase();
-  const nearPower = (state.answers.power||"").toLowerCase();
-  const gas = /gas|gasgeruch/.test(t);
-  const lines = [];
-
-  if(gas){
-    lines.push({type:"danger", text:"Wichtiger Hinweis: Bei Gasgeruch sofort lüften, keine Schalter/Flammen benutzen und den Notruf/Versorger kontaktieren."});
-  }
-  if(severity.includes("stark") || severity.includes("läuft")){
-    lines.push({type:"callout", text:"Wenn Wasser stark läuft: Hauptwasserhahn schließen (falls möglich) und Wertsachen sichern."});
-  }
-  if(nearPower.includes("ja")){
-    lines.push({type:"danger", text:"Wenn Wasser in der Nähe von Strom/Steckdosen ist: Strom im betroffenen Bereich nicht berühren. Wenn möglich Sicherung ausschalten."});
-  }
-  if((state.answers.waterOff||"").toLowerCase().includes("weiß")){
-    lines.push({type:"callout", text:"Tipp: Hauptwasserhahn ist oft im Bad/Keller/Flur. Wenn du ihn findest: schließen und kurz sagen, ob es stoppt."});
-  }
-  return lines;
-}
-
-function buildFlows(firstText){
-  const intent = detectIntent(firstText);
-  state.intent = intent;
-
-  // FAQ: answer quickly, then offer to continue
-  if(intent === "faq"){
-    addBubble("bot", "Klar — kurze Infos:", null);
-    addBubble("bot", `• Servicegebiet: ${CONFIG.serviceArea}\n• Zeiten: ${CONFIG.openingHours}`, "callout");
-    if(CONFIG.hotline) addBubble("bot", `• Hotline: ${CONFIG.hotline}`, "callout");
-    addBubble("bot", "Wenn du ein konkretes Problem hast, schreib kurz was passiert ist.", null);
-    state.intent = "problem";
-    state.stage = "capture";
-    return;
-  }
-
-  // Quote: give policy + continue to qualify
-  if(intent === "quote"){
-    addBubble("bot", CONFIG.priceHint, "callout");
-    addBubble("bot", "Damit wir dir eine realistische Spanne nennen können, brauche ich kurz ein paar Details.", null);
-  }
-
-  // Emergency keyword triggers triage first
-  const urgent = (intent === "emergency") || /notfall|dringend|sofort|wasser läuft|rohrbruch|überschwemm/.test((firstText||"").toLowerCase());
-  state.urgent = urgent;
-
-  state.answers.problem = firstText;
-
-  // Triage + details + scheduling + contact
-  const triage = [
-    {key:"waterOff", q:"Läuft Wasser gerade? Kannst du es abstellen? (ja / nein / weiß nicht)", chips:[
-      {label:"Ja, abgestellt", value:"Ja, abgestellt", primary:true},
-      {label:"Nein, läuft weiter", value:"Nein, läuft weiter"},
-      {label:"Weiß nicht", value:"Weiß nicht"}
-    ]},
-    {key:"severity", q:"Wie stark ist es? (tropft / läuft / läuft stark)", chips:[
-      {label:"Tropft", value:"Tropft", primary:true},
-      {label:"Läuft", value:"Läuft"},
-      {label:"Läuft stark", value:"Läuft stark"}
-    ]},
-    {key:"power", q:"Ist Wasser in der Nähe von Strom/Steckdosen? (ja/nein)", chips:[
-      {label:"Nein", value:"Nein", primary:true},
-      {label:"Ja", value:"Ja"}
-    ]},
-  ];
-
-  const details = [
-    {key:"type", q:"Worum geht’s genau? (z.B. Leck unter Spüle, Rohr tropft, WC verstopft, Heizung)", chips:[
-      {label:"Leck unter Spüle", value:"Leck unter Spüle", primary:true},
-      {label:"Rohr tropft", value:"Rohr tropft"},
-      {label:"WC verstopft", value:"WC verstopft"},
-      {label:"Abfluss verstopft", value:"Abfluss verstopft"},
-      {label:"Kein warmes Wasser", value:"Kein warmes Wasser"},
-    ]},
-    {key:"since", q:"Seit wann ist das so? (seit heute / seit Tagen / plötzlich)", chips:[
-      {label:"Seit heute", value:"Seit heute", primary:true},
-      {label:"Seit Tagen", value:"Seit Tagen"},
-      {label:"Plötzlich", value:"Plötzlich aufgetreten"}
-    ]},
-    {key:"property", q:"Objekt: Wohnung / Haus / Gewerbe?", chips:[
-      {label:"Wohnung", value:"Wohnung", primary:true},
-      {label:"Haus", value:"Haus"},
-      {label:"Gewerbe", value:"Gewerbe"}
-    ]},
-    {key:"access", q:"Zugang: Etage / Klingelname / Besonderheiten? (kurz)", chips:[
-      {label:"EG", value:"EG", primary:true},
-      {label:"1. OG", value:"1. OG"},
-      {label:"Keller", value:"Keller"},
-      {label:"Hinterhof", value:"Hinterhof"}
-    ]},
-    {key:"address", q:"Adresse oder mindestens PLZ + Straße (für Anfahrt)", chips:[
-      {label:"10115", value:"10115"},
-      {label:"20095", value:"20095"},
-      {label:"80331", value:"80331"}
-    ]},
-    {key:"details", q:"Noch Details, die wichtig sind? (z.B. bereits versucht, Ventil defekt, Foto vorhanden)", chips:[] , showUploader:true},
-  ];
-
-  const scheduling = [
-    {key:"availability", q: urgent ? "Wann können wir dich erreichen? (jetzt / in 30 Min / später)" : "Wann passt es dir? (heute / morgen / diese Woche)", chips: urgent ? [
-      {label:"Jetzt", value:"Jetzt", primary:true},
-      {label:"In 30 Min", value:"In 30 Min"},
-      {label:"Später", value:"Später"}
-    ] : [
-      {label:"Heute", value:"Heute", primary:true},
-      {label:"Morgen", value:"Morgen"},
-      {label:"Diese Woche", value:"Diese Woche"}
-    ]},
-  ];
-
-  const contact = [
-    {key:"phone", q: urgent ? "Telefonnummer für sofortigen Rückruf?" : "Telefonnummer für Bestätigung/Rückfragen?", validate:"phone"},
-    {key:"name", q:"Wie heißt du? (für die Zuordnung)", validate:"required"},
-    {key:"email", q:"E-Mail (optional) für Bestätigung/Zusammenfassung", validate:"emailOptional"},
-  ];
-
-  // If user asked only for an appointment (non-emergency), skip some triage but still ask essentials.
-  const wantsAppointment = /termin/.test((firstText||"").toLowerCase());
-  const wantsPrice = intent === "quote";
-
-  let flow = [];
-  if(!wantsAppointment) flow = flow.concat(triage);
-  flow = flow.concat(details);
-  flow = flow.concat(scheduling);
-  flow = flow.concat(contact);
-
-  // For quote intent: add budget question (optional) before contact
-  if(wantsPrice){
-    flow.splice(flow.length-3, 0, {key:"budget", q:"Budget-Rahmen (optional)?", chips:[
-      {label:"Kein festes Budget", value:"Kein festes Budget", primary:true},
-      {label:"< 300€", value:"< 300€"},
-      {label:"300–800€", value:"300–800€"},
-      {label:"800€+", value:"800€+"},
-    ]});
-  }
-
-  enqueue(flow);
-
-  // opening statement that feels correct (no “super”)
-  addBubble("bot",
-    urgent
-      ? "Verstanden. Ich priorisiere das als Notfall. Ich kläre jetzt kurz die entscheidenden Punkte, damit wir sofort den richtigen nächsten Schritt wählen."
-      : "Alles klar. Ich stelle dir kurz gezielte Fragen, damit wir den Fall richtig einordnen und sauber weiterleiten.",
-    null
+  wbody.innerHTML=""; state.history=[]; state.fields={}; state.urgent=false; state.photos=[];
+  uploader.style.display="none"; filesEl.textContent=""; if(fileEl) fileEl.value="";
+  addBot(`Hallo 👋 Ich bin die Auftragsannahme von ${CONFIG.companyName}.
+Beschreibe bitte kurz dein Problem (1 Satz) — ich frage dann gezielt nach.`);
+  setChips(state.mode==="ai"
+    ? [{label:"Notfall: Wasser läuft",value:"Notfall: Wasser läuft",primary:true},{label:"WC verstopft",value:"WC verstopft"},{label:"Termin",value:"Termin"},{label:"Preis",value:"Was kostet das?"}]
+    : [{label:"💧 Wasserleck / Rohrbruch",value:"Wasserleck / Rohrbruch",primary:true},{label:"🚽 WC / Abfluss verstopft",value:"WC / Abfluss verstopft"},{label:"🔥 Kein warmes Wasser",value:"Kein warmes Wasser / Heizung"},{label:"📅 Termin",value:"Ich möchte einen Termin"}]
   );
-
-  askNext();
 }
+function addUser(text){ state.history.push({role:"user",text}); addBubble("me",text); }
+function addBot(text,kind){ state.history.push({role:"assistant",text}); addBubble("bot",text,kind); }
 
-function validateAndStore(step, v){
-  const val = (v||"").trim();
-  if(step.validate === "phone"){
-    if(!okPhone(val)){
-      addBubble("bot","Bitte gib eine gültige Telefonnummer ein (mind. 7 Ziffern).", null);
-      return false;
-    }
-    state.answers[step.key] = val;
-    return true;
-  }
-  if(step.validate === "emailOptional"){
-    if(val && !isEmail(val)){
-      addBubble("bot","Das sieht nicht nach einer gültigen E-Mail aus. Entweder leer lassen oder korrekt eingeben (z.B. name@domain.de).", null);
-      return false;
-    }
-    state.answers[step.key] = val;
-    return true;
-  }
-  if(step.validate === "required"){
-    if(!val){
-      addBubble("bot","Bitte kurz angeben.", null);
-      return false;
-    }
-    state.answers[step.key] = val;
-    return true;
-  }
-  state.answers[step.key] = val;
-  return true;
-}
-
+/* ========= Summary ========= */
 function buildSummary(){
-  const a = state.answers;
-  const lines = [];
-  const add = (k,label)=>{ if(a[k]) lines.push(`${label}: ${a[k]}`); };
+  const f=state.fields||{};
+  const lines=[];
+  const add=(k,label)=>{ if(f[k]) lines.push(`${label}: ${f[k]}`); };
   lines.push(`Firma: ${CONFIG.companyName}`);
   lines.push(`Servicegebiet: ${CONFIG.serviceArea}`);
   lines.push(`---`);
@@ -887,7 +355,6 @@ function buildSummary(){
   add("details","Zusatzdetails");
   if(state.photos.length) lines.push(`Fotos (Dateinamen): ${state.photos.join(", ")}`);
   add("availability","Erreichbarkeit/Wunschtermin");
-  add("budget","Budget");
   add("phone","Telefon");
   add("name","Name");
   add("email","E-Mail");
@@ -895,166 +362,189 @@ function buildSummary(){
   lines.push(`Zeit: ${new Date().toLocaleString("de-DE")}`);
   return lines.join("\n");
 }
-
 function buildMailto(){
   const subject = encodeURIComponent(`${CONFIG.emailSubjectPrefix} • ${state.urgent ? "NOTFALL" : "Anfrage"}`);
   const body = encodeURIComponent(buildSummary());
   return `mailto:${encodeURIComponent(CONFIG.handoverEmail)}?subject=${subject}&body=${body}`;
 }
-async function copySummary(){
-  try{ await navigator.clipboard.writeText(buildSummary()); showToast("Zusammenfassung kopiert ✅"); }
-  catch(e){ showToast("Konnte nicht kopieren"); }
+async function copySummary(){ try{ await navigator.clipboard.writeText(buildSummary()); showToast("Zusammenfassung kopiert ✅"); }catch{ showToast("Konnte nicht kopieren"); } }
+function showHandoverChips(){
+  setChips([]); chips.innerHTML="";
+  const c1=document.createElement("button"); c1.type="button"; c1.className="chip primary"; c1.textContent="Zusammenfassung kopieren"; c1.onclick=copySummary;
+  const c2=document.createElement("a"); c2.className="chip"; c2.textContent="E-Mail ans Team"; c2.href=buildMailto(); c2.target="_blank"; c2.rel="noopener";
+  const c3=document.createElement("button"); c3.type="button"; c3.className="chip"; c3.textContent="Neu starten"; c3.onclick=resetConversation;
+  chips.appendChild(c1); chips.appendChild(c2); chips.appendChild(c3);
 }
 
-function finish(){
-  setChips([]);
-  uploader.style.display = "none";
+/* ========= Offline fallback ========= */
+function offlineReplyRouter(text){
+  const t=(text||"").toLowerCase();
+  state.fields.problem ||= text;
+  const waterRunning = /läuft|rohrbruch|überschwemm|wasser läuft/.test(t);
+  if(waterRunning) state.urgent=true;
+  if(/preis|kosten|angebot/.test(t)) addBot(CONFIG.priceHint,"callout");
 
-  // safety hints
-  const tips = safetyHints();
-  if(tips.length){
-    addBubble("bot", "Wichtige Hinweise:", null);
-    tips.forEach(t => addBubble("bot", t.text, t.type));
+  if(waterRunning){
+    addBot("Kurz damit wir richtig reagieren: Läuft es noch, und kannst du das Wasser abstellen (Hauptwasserhahn)?");
+    setChips([{label:"Ja, abgestellt",value:"Ja, abgestellt",primary:true},{label:"Nein, läuft weiter",value:"Nein, läuft weiter"},{label:"Weiß nicht",value:"Weiß nicht"}]);
+    return;
   }
 
-  addBubble("bot", "Danke. ✅ Ich habe alles aufgenommen und kann es jetzt sauber ans Team übergeben.", null);
-
-  if(CONFIG.bookingLink && !state.urgent){
-    addBubble("bot", `Optional: Termin buchen → ${CONFIG.bookingLink}`, null);
-  } else {
-    addBubble("bot", state.urgent ? "Nächster Schritt: Wir priorisieren den Rückruf. Bitte bleib erreichbar." : "Nächster Schritt: Wir melden uns zur Termin-/Rückrufbestätigung.", null);
-  }
-  if(CONFIG.hotline){
-    addBubble("bot", `Hotline (optional): ${CONFIG.hotline}`, "callout");
+  if(t.length<18 || /ich habe ein problem|hilfe|geht nicht/.test(t)){
+    addBot("Damit ich es richtig einordnen kann: Was genau passiert? (z.B. Wasser läuft / Rohr tropft / WC verstopft)");
+    setChips([{label:"Wasser läuft",value:"Wasser läuft",primary:true},{label:"Rohr tropft",value:"Rohr tropft"},{label:"WC verstopft",value:"WC verstopft"},{label:"Abfluss verstopft",value:"Abfluss verstopft"},{label:"Kein warmes Wasser",value:"Kein warmes Wasser"}]);
+    return;
   }
 
-  addBubble("bot", "Übergabe:\n1) Zusammenfassung kopieren\n2) Per E‑Mail ans Team schicken\n3) Neu starten", null);
-
-  chips.innerHTML = "";
-
-  const c1 = document.createElement("button");
-  c1.type="button"; c1.className="chip primary"; c1.textContent="Zusammenfassung kopieren";
-  c1.onclick = copySummary;
-
-  const c2 = document.createElement("a");
-  c2.className="chip"; c2.textContent="E‑Mail ans Team";
-  c2.href = buildMailto();
-  c2.target="_blank";
-  c2.rel="noopener";
-
-  const c3 = document.createElement("button");
-  c3.type="button"; c3.className="chip"; c3.textContent="Neu starten";
-  c3.onclick = resetConversation;
-
-  chips.appendChild(c1);
-  chips.appendChild(c2);
-  chips.appendChild(c3);
-
-  state.stage = "done";
+  addBot("Danke. Für die Einsatzplanung brauche ich kurz:\n1) Wo genau (Küche/Bad/Keller)?\n2) Adresse/PLZ?\n3) Telefonnummer für Rückruf?");
+  setChips([{label:"Übergabe anzeigen",value:"Übergabe anzeigen",primary:true},{label:"Neu starten",value:"Neu starten"}]);
 }
 
+/* ========= AI mode (OpenAI Responses via Worker) ========= */
+function systemInstructions(){
+  return `Du bist ein deutschsprachiger Auftragsannahme-Assistent für Sanitär/Installateur/Notdienst von "${CONFIG.companyName}".
+Ziel: menschliche, professionelle Aufnahme.
+- Reagiere konkret auf die Nachricht, keine Standardfloskeln.
+- Stelle pro Antwort max. 1-2 sehr relevante Rückfragen.
+- Sicherheit: Bei starkem Wasser/Überschwemmung: Hauptwasserhahn schließen. Bei Stromnähe: Sicherung aus, nichts anfassen.
+- Wenn NICHT Sanitär/Heizung/Abfluss: freundlich sagen + an passende Stelle verweisen.
+- Wenn genug Infos da sind: Rückruf/Termin ankündigen + Übergabe bereit.
+
+Antworte IMMER als reines JSON (kein Text außerhalb!), Schema:
+{"reply":"string","urgent":true/false,"fields":{"problem":"","type":"","waterOff":"","severity":"","power":"","since":"","property":"","access":"","address":"","details":"","availability":"","phone":"","name":"","email":""},"handover_ready":true/false}
+
+Regeln für fields:
+- setze nur Felder, die der Nutzer genannt hat (sonst weglassen/leer).
+- handover_ready nur true, wenn Problem + Ort (Adresse/PLZ) + Kontakt (Telefon oder E-Mail) vorhanden sind.`;
+}
+function transcriptText(){
+  return state.history.slice(-12).map(m=>`${m.role==="user"?"User":"Assistent"}: ${m.text}`).join("\n");
+}
+function extractOutputText(resp){
+  try{ return resp?.output_text || resp?.output?.[0]?.content?.[0]?.text || ""; }catch{ return ""; }
+}
+function safeJsonParse(text){
+  if(!text) return null;
+  const t=String(text).trim();
+  if(t.startsWith("{") && t.endsWith("}")){ try{return JSON.parse(t);}catch{} }
+  const s=t.indexOf("{"), e=t.lastIndexOf("}");
+  if(s!==-1 && e!==-1 && e>s){ try{return JSON.parse(t.slice(s,e+1));}catch{} }
+  return null;
+}
+async function callAI(userText){
+  if(!CONFIG.workerUrl || !CONFIG.apiKey){
+    addBot("KI-Modus ist nicht vollständig eingerichtet. Ich schalte auf Offline-Modus.","callout");
+    CONFIG.aiEnabled=false; saveCfg(); applyConfigToUI();
+    offlineReplyRouter(userText); return;
+  }
+
+  const photoLine = state.photos.length ? `\nFotos (Dateinamen): ${state.photos.join(", ")}` : "";
+  const payload = {
+    model: CONFIG.aiModel,
+    instructions: systemInstructions(),
+    input: `KONVERSATION (letzte Nachrichten):\n${transcriptText()}\n\nBekannte Daten (JSON): ${JSON.stringify(state.fields||{})}${photoLine}\n\nNeue Nutzer-Nachricht: ${userText}`,
+    max_output_tokens: 420,
+    temperature: 0.4
+  };
+
+  addBot("…kurz prüfen","callout");
+
+  try{
+    const res = await fetch(CONFIG.workerUrl.replace(/\/$/,""), {
+      method:"POST",
+      headers:{ "Content-Type":"application/json", "X-OpenAI-Key": CONFIG.apiKey },
+      body: JSON.stringify({payload})
+    });
+    const raw = await res.text();
+    if(!res.ok){
+      addBot("KI-Modus konnte gerade nicht antworten – ich bleibe im Offline-Modus.","danger");
+      CONFIG.aiEnabled=false; saveCfg(); applyConfigToUI();
+      offlineReplyRouter(userText); return;
+    }
+    const data = JSON.parse(raw);
+    const outText = extractOutputText(data);
+    const json = safeJsonParse(outText);
+    if(!json || !json.reply){
+      addBot("KI-Modus hat eine unerwartete Antwort geliefert – Offline-Modus aktiv.","danger");
+      CONFIG.aiEnabled=false; saveCfg(); applyConfigToUI();
+      offlineReplyRouter(userText); return;
+    }
+    if(json.fields && typeof json.fields==="object"){
+      Object.keys(json.fields).forEach(k=>{
+        const v=json.fields[k];
+        if(v!==undefined && v!==null && String(v).trim()!=="") state.fields[k]=String(v).trim();
+      });
+    }
+    if(typeof json.urgent==="boolean") state.urgent=json.urgent;
+
+    addBot(json.reply);
+
+    if(json.handover_ready){
+      addBot("Übergabe bereit. ✅","callout");
+      showHandoverChips();
+    }else{
+      setChips([{label:"Übergabe anzeigen",value:"Übergabe anzeigen",primary:true},{label:"Neu starten",value:"Neu starten"}]);
+    }
+  }catch{
+    addBot("KI-Modus ist gerade nicht erreichbar – Offline-Modus aktiv.","danger");
+    CONFIG.aiEnabled=false; saveCfg(); applyConfigToUI();
+    offlineReplyRouter(userText);
+  }
+}
+
+/* ========= Events ========= */
 function handleAnswer(raw){
-  const v = (raw||"").trim();
-  if(!v) return;
-  addBubble("me", v, null);
-
-  if(state.stage === "capture"){
-    // If too generic, ask for specifics instead of praising
-    const generic = /ich habe ein problem|problem|hilfe|geht nicht|funktioniert nicht|dringend|notfall/i.test(v) && v.length < 28;
-    if(generic){
-      addBubble("bot", "Alles klar — damit ich richtig triagieren kann: Was ist passiert? (z.B. Wasser läuft / WC verstopft / Rohr tropft)", null);
-      setChips([
-        {label:"Wasser läuft", value:"Wasser läuft", primary:true},
-        {label:"Rohr tropft", value:"Rohr tropft"},
-        {label:"WC verstopft", value:"WC verstopft"},
-        {label:"Abfluss verstopft", value:"Abfluss verstopft"},
-        {label:"Kein warmes Wasser", value:"Kein warmes Wasser"},
-      ]);
-      return;
-    }
-    buildFlows(v);
-    state.stage = "flow";
+  const v=(raw||"").trim(); if(!v) return;
+  if(v.toLowerCase().includes("neu starten")){ resetConversation(); return; }
+  if(v.toLowerCase().includes("übergabe anzeigen")){
+    addBot("Übergabe:","callout");
+    addBot(buildSummary(),"callout");
+    showHandoverChips();
     return;
   }
-
-  if(state.stage === "flow"){
-    const step = state.queue[0];
-    if(!step){
-      finish();
-      return;
-    }
-    if(!validateAndStore(step, v)) return;
-
-    // subtle confirmations that feel human
-    if(step.key === "waterOff"){
-      const t = v.toLowerCase();
-      if(t.includes("nein") || t.includes("läuft weiter")){
-        addBubble("bot", "Verstanden. Dann priorisieren wir das höher.", null);
-        state.urgent = true;
-      } else {
-        addBubble("bot", "Okay, gut. Das hilft.", null);
-      }
-    }
-    if(step.key === "power" && v.toLowerCase().includes("ja")){
-      addBubble("bot", "Danke. Sicherheit geht vor – ich gebe dazu gleich einen Hinweis.", null);
-    }
-
-    state.queue.shift();
-    askNext();
-    return;
-  }
-
-  if(state.stage === "done"){
-    resetConversation();
-  }
+  addUser(v);
+  if(state.mode==="ai") callAI(v); else offlineReplyRouter(v);
+  uploader.style.display="block";
 }
+function send(){ const v=input.value; input.value=""; handleAnswer(v); setTimeout(()=>input.focus(),40); }
+$("sendBtn").onclick=send;
+input.addEventListener("keydown",(e)=>{ if(e.key==="Enter") send(); });
+$("resetBtn").onclick=()=>{ resetConversation(); showToast("Neu gestartet"); };
 
-function send(){
-  const v = input.value;
-  input.value = "";
-  handleAnswer(v);
-  setTimeout(()=>input.focus(), 40);
-}
-$("sendBtn").onclick = send;
-input.addEventListener("keydown",(e)=>{ if(e.key === "Enter") send(); });
-
-/* ===============================
-   Uploader (optional) — stores filenames only
-   =============================== */
 fileEl.addEventListener("change", ()=>{
-  const files = Array.from(fileEl.files || []);
-  state.photos = files.map(f => f.name).slice(0, 8);
+  const files = Array.from(fileEl.files||[]);
+  state.photos = files.map(f=>f.name).slice(0,8);
   filesEl.textContent = state.photos.length ? ("Ausgewählt: " + state.photos.join(", ")) : "";
 });
 
-/* ===============================
-   Config prompt-based (no code editing needed)
-   =============================== */
+/* Config via prompts (simple) */
 $("openConfigBtn").onclick = ()=>{
   const cn = prompt("Firmenname:", CONFIG.companyName) ?? CONFIG.companyName;
   const area = prompt("Servicegebiet:", CONFIG.serviceArea) ?? CONFIG.serviceArea;
   const hrs = prompt("Öffnungszeiten:", CONFIG.openingHours) ?? CONFIG.openingHours;
-  const hot = prompt("Hotline (optional, tel:+49...):", CONFIG.hotline) ?? CONFIG.hotline;
-  const book = prompt("Termin-Link (optional):", CONFIG.bookingLink) ?? CONFIG.bookingLink;
   const mail = prompt("Übergabe-E-Mail:", CONFIG.handoverEmail) ?? CONFIG.handoverEmail;
 
-  CONFIG.companyName = String(cn||"").trim() || CONFIG.companyName;
-  CONFIG.serviceArea = String(area||"").trim() || CONFIG.serviceArea;
-  CONFIG.openingHours = String(hrs||"").trim() || CONFIG.openingHours;
-  CONFIG.hotline = String(hot||"").trim();
-  CONFIG.bookingLink = String(book||"").trim();
-  CONFIG.handoverEmail = String(mail||"").trim() || CONFIG.handoverEmail;
+  const ai = prompt("KI-Modus aktivieren? (ja/nein)", CONFIG.aiEnabled ? "ja" : "nein");
+  const worker = prompt("Worker URL (Cloudflare Worker):", CONFIG.workerUrl) ?? CONFIG.workerUrl;
+  const model = prompt("Model (z.B. gpt-4o-mini):", CONFIG.aiModel) ?? CONFIG.aiModel;
+  const key = prompt("OpenAI API Key (wird nur lokal gespeichert):", CONFIG.apiKey) ?? CONFIG.apiKey;
 
-  applyConfigToUI();
-  showToast("Konfiguration gespeichert ✅");
+  CONFIG.companyName=String(cn||"").trim()||CONFIG.companyName;
+  CONFIG.serviceArea=String(area||"").trim()||CONFIG.serviceArea;
+  CONFIG.openingHours=String(hrs||"").trim()||CONFIG.openingHours;
+  CONFIG.handoverEmail=String(mail||"").trim()||CONFIG.handoverEmail;
+
+  CONFIG.aiEnabled=String(ai||"").toLowerCase().startsWith("j");
+  CONFIG.workerUrl=String(worker||"").trim();
+  CONFIG.aiModel=String(model||"").trim()||CONFIG.aiModel;
+  CONFIG.apiKey=String(key||"").trim();
+
+  saveCfg(); applyConfigToUI(); resetConversation(); showToast("Gespeichert ✅");
 };
 
-$("copyPitchBtn").onclick = async ()=>{
-  const text = $("pitchText").textContent.trim();
-  try{ await navigator.clipboard.writeText(text); showToast("Pitch kopiert ✅"); }
-  catch(e){ showToast("Kopieren nicht möglich"); }
-};
+$("closeBtn").onclick=closeWidget;
 
+loadCfg();
 applyConfigToUI();
 resetConversation();
 </script>
